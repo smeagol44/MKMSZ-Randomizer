@@ -1,3 +1,5 @@
+import hashlib
+
 from mkmszr.data.addresses import (
     ARENA_START_PATCHES,
     FIRE_POTION_CALLBACK_EXPECTED,
@@ -84,10 +86,17 @@ def test_v38_descriptor_and_bitset_design_is_exact() -> None:
 
 def test_generalized_code_fits_confirmed_regions() -> None:
     assert len(GENERALIZED_PAYLOAD) == CODE_SIZE == 0x200
-    assert GENERALIZED_ACTUAL_CODE_SIZE <= CODE_SIZE
+    assert GENERALIZED_ACTUAL_CODE_SIZE == 0x1D4
+    assert hashlib.sha256(GENERALIZED_PAYLOAD).hexdigest() == (
+        "c09beaa649720d3a06d19206b4a669e555c7b6267e1ec67c7d586be7a1284bad"
+    )
     assert len(RESTORE_TRAMPOLINE) == 0x10
     assert len(LOADER_STUB) == 84
-    assert CAPTURE_HELPER_ROM + len(CAPTURE_HELPER) <= DESCRIPTOR_TABLE_ROM
+    assert len(CAPTURE_HELPER) == 0xD8
+    assert hashlib.sha256(CAPTURE_HELPER).hexdigest() == (
+        "58c489febd5e44634f9800b69fd6b12a6d761b227e8f05c7e7a49a89fb046578"
+    )
+    assert CAPTURE_HELPER_ROM + len(CAPTURE_HELPER) == DESCRIPTOR_TABLE_ROM
     assert DESCRIPTOR_TABLE_ROM == 0x0009AEC0
     assert FIRE_TRANSLATION_ROM == 0x0009AEE8
     assert RESTORE_TRAMPOLINE_ROM == 0x0009ADD8
