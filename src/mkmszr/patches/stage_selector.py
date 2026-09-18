@@ -1,6 +1,5 @@
 """Runtime-confirmed compact safe native stage selector."""
 
-from ..errors import PatchError
 from ..mips import jal, jump, words_blob
 from ..rom import RomImage
 from .base import PatchContext
