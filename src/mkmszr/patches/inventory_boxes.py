@@ -13,7 +13,6 @@ deferred until this bounded switching proof succeeds.
 from __future__ import annotations
 
 from ..data.addresses import NATIVE_BOOTSTRAP_STUB_ROM, NATIVE_BOOTSTRAP_STUB_VA
-from ..errors import PatchError
 from ..mips import (
     Emitter,
     addiu,
@@ -25,7 +24,6 @@ from ..mips import (
     lhu,
     lui,
     lw,
-    or_,
     ori,
     sh,
     sll,
