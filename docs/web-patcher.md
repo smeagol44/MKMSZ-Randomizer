@@ -22,6 +22,11 @@ The Pages workflow builds a pure-Python wheel, publishes it next to the static w
 assets, and installs that wheel inside Pyodide at page load. No patch logic is
 duplicated in JavaScript.
 
+## Always-applied patches
+
+Every browser-generated ROM includes the runtime-confirmed compact safe eight-stage
+selector. It is part of the randomizer rather than an optional setting.
+
 ## Current browser options
 
 - vanilla / red / green outfit;
@@ -34,8 +39,9 @@ All currently exposed recolor modes have been visually validated in BizHawk thro
 ROMs produced by the browser patcher. Custom RGB mode has been validated as a mode;
 this does not imply exhaustive testing of every possible RGB input.
 
-The Python core still performs clean-ROM SHA-256 validation and CIC-6102 checksum
-recalculation.
+The browser uses the same shared Python pipeline as the CLI, so the always-on stage
+selector and all selected options are applied by one implementation path. The Python
+core still performs clean-ROM SHA-256 validation and CIC-6102 checksum recalculation.
 
 ## Publishing
 

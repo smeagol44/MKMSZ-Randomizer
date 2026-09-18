@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .config import RandomizerConfig
-from .patches import ArenaReservationPatch, SubZeroPalettePatch
+from .patches import ArenaReservationPatch, SafeStageSelectorPatch, SubZeroPalettePatch
 from .patches.base import PatchContext, PatchPipeline, PatchResult
 from .rom import RomImage
 
@@ -20,7 +20,8 @@ class BuildResult:
 
 
 def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
-    patches = []
+    # The compact safe stage selector is a core randomizer feature, not an option.
+    patches = [SafeStageSelectorPatch()]
     if config.reserve_runtime_memory:
         patches.append(ArenaReservationPatch())
     if config.outfit.mode.lower() != "vanilla":
