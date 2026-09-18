@@ -5,10 +5,10 @@ from pathlib import Path
 
 from .config import RandomizerConfig
 from .patches import (
+    PICKUP_PERSISTENCE_PAYLOAD,
     ArenaReservationPatch,
     NativePayloadPatch,
     NativePayloadSpec,
-    PICKUP_PERSISTENCE_PAYLOAD,
     PickupPersistencePatch,
     SafeStageSelectorPatch,
     SubZeroPalettePatch,
