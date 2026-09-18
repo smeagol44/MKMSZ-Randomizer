@@ -4,7 +4,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .config import RandomizerConfig
-from .patches import ArenaReservationPatch, SafeStageSelectorPatch, SubZeroPalettePatch
+from .patches import (
+    ArenaReservationPatch,
+    NativePayloadPatch,
+    NativePayloadSpec,
+    PICKUP_PERSISTENCE_PAYLOAD,
+    PickupPersistencePatch,
+    SafeStageSelectorPatch,
+    SubZeroPalettePatch,
+)
 from .patches.base import PatchContext, PatchPipeline, PatchResult
 from .rom import RomImage
 
@@ -21,7 +29,12 @@ class BuildResult:
 
 def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
     # Core native infrastructure is always installed in randomizer ROMs.
-    patches = [SafeStageSelectorPatch(), ArenaReservationPatch()]
+    patches = [
+        SafeStageSelectorPatch(),
+        ArenaReservationPatch(),
+        NativePayloadPatch(NativePayloadSpec(payload=PICKUP_PERSISTENCE_PAYLOAD)),
+        PickupPersistencePatch(),
+    ]
     if config.outfit.mode.lower() != "vanilla":
         patches.append(
             SubZeroPalettePatch(
