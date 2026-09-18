@@ -1,0 +1,168 @@
+const runtimeStatus = document.querySelector("#runtimeStatus");
+const romFile = document.querySelector("#romFile");
+const outfitMode = document.querySelector("#outfitMode");
+const seed = document.querySelector("#seed");
+const seedField = document.querySelector("#seedField");
+const colorField = document.querySelector("#colorField");
+const customColor = document.querySelector("#customColor");
+const colorValue = document.querySelector("#colorValue");
+const runtimeReservation = document.querySelector("#runtimeReservation");
+const patchButton = document.querySelector("#patchButton");
+const resultPanel = document.querySelector("#result");
+const outputSha = document.querySelector("#outputSha");
+const outputCrc = document.querySelector("#outputCrc");
+const patchList = document.querySelector("#patchList");
+const downloadButton = document.querySelector("#downloadButton");
+const log = document.querySelector("#log");
+
+let pyodide;
+let outputBytes = null;
+let outputName = "MKMSZR-patched.z64";
+
+function setLog(message, error = false) {
+  log.textContent = message;
+  log.style.color = error ? "#ffaaaa" : "";
+}
+
+function updateModeUi() {
+  colorField.hidden = outfitMode.value !== "rgb";
+  seedField.style.opacity = outfitMode.value === "seeded" ? "1" : ".72";
+}
+
+function outputFilename(inputName, mode, seedValue) {
+  const stem = inputName.replace(/\.(z64|n64|v64)$/i, "");
+  let suffix = mode === "vanilla" ? "mkmszr" : `mkmszr-${mode}`;
+  if (mode === "seeded" && seedValue) {
+    const safeSeed = seedValue.replace(/[^a-z0-9_-]/gi, "").slice(0, 24);
+    if (safeSeed) suffix += `-${safeSeed}`;
+  }
+  return `${stem}-${suffix}.z64`;
+}
+
+async function bootRuntime() {
+  try {
+    runtimeStatus.textContent = "Loading Pyodide…";
+    pyodide = await loadPyodide();
+
+    runtimeStatus.textContent = "Loading MKMSZR core…";
+    await pyodide.loadPackage("micropip");
+    const wheelUrl = new URL("./mkmszr.whl", window.location.href).href;
+    pyodide.globals.set("web_wheel_url", wheelUrl);
+    await pyodide.runPythonAsync(`
+import micropip
+await micropip.install(str(web_wheel_url))
+`);
+
+    runtimeStatus.dataset.state = "ready";
+    runtimeStatus.textContent = "Patcher ready";
+    patchButton.disabled = false;
+  } catch (error) {
+    console.error(error);
+    runtimeStatus.dataset.state = "error";
+    runtimeStatus.textContent = "Runtime failed";
+    setLog(`Could not initialize browser patcher: ${error.message ?? error}`, true);
+  }
+}
+
+async function patchRom() {
+  resultPanel.hidden = true;
+  outputBytes = null;
+
+  const file = romFile.files?.[0];
+  if (!file) {
+    setLog("Choose a clean MKMSZ USA .z64 ROM first.", true);
+    return;
+  }
+
+  const mode = outfitMode.value;
+  const seedValue = seed.value.trim();
+
+  if (mode === "seeded" && !seedValue) {
+    setLog("Seed-derived outfit mode requires a seed.", true);
+    return;
+  }
+
+  patchButton.disabled = true;
+  patchButton.textContent = "Patching…";
+  setLog("Reading ROM locally…");
+
+  try {
+    const inputBytes = new Uint8Array(await file.arrayBuffer());
+    pyodide.FS.writeFile("/tmp/input.z64", inputBytes);
+
+    try { pyodide.FS.unlink("/tmp/output.z64"); } catch (_) {}
+
+    pyodide.globals.set("web_outfit_mode", mode);
+    pyodide.globals.set("web_seed", seedValue || null);
+    pyodide.globals.set("web_rgb", customColor.value);
+    pyodide.globals.set("web_reserve_runtime", runtimeReservation.checked);
+
+    setLog("Validating clean ROM and applying patches…");
+
+    await pyodide.runPythonAsync(`
+from pathlib import Path
+from mkmszr.config import OutfitConfig, RandomizerConfig
+from mkmszr.patcher import patch_file
+
+_mode = str(web_outfit_mode)
+_seed = None if web_seed is None else str(web_seed)
+_rgb_hex = str(web_rgb).lstrip("#")
+_rgb = tuple(int(_rgb_hex[i:i+2], 16) for i in (0, 2, 4))
+
+_config = RandomizerConfig(
+    seed=_seed,
+    reserve_runtime_memory=bool(web_reserve_runtime),
+    outfit=OutfitConfig(mode=_mode, rgb=_rgb if _mode == "rgb" else None),
+)
+_result = patch_file(Path("/tmp/input.z64"), Path("/tmp/output.z64"), _config)
+web_patch_result = {
+    "crc1": f"{_result.crc1:08X}",
+    "crc2": f"{_result.crc2:08X}",
+    "sha256": _result.output_sha256,
+    "patches": [patch.name for patch in _result.patches],
+}
+`);
+
+    const proxy = pyodide.globals.get("web_patch_result");
+    const metadata = proxy.toJs({ dict_converter: Object.fromEntries });
+    proxy.destroy();
+
+    outputBytes = pyodide.FS.readFile("/tmp/output.z64");
+    outputName = outputFilename(file.name, mode, seedValue);
+
+    outputSha.textContent = metadata.sha256;
+    outputCrc.textContent = `${metadata.crc1} / ${metadata.crc2}`;
+    patchList.textContent = metadata.patches.length ? metadata.patches.join(", ") : "CRC refresh only";
+
+    resultPanel.hidden = false;
+    setLog(`Success. Patched ${(outputBytes.byteLength / 1024 / 1024).toFixed(1)} MiB locally; no ROM data was uploaded.`);
+  } catch (error) {
+    console.error(error);
+    const message = error.message ?? String(error);
+    setLog(message.replace(/^PythonError:\s*/, ""), true);
+  } finally {
+    patchButton.disabled = false;
+    patchButton.textContent = "Patch ROM";
+  }
+}
+
+function downloadOutput() {
+  if (!outputBytes) return;
+  const blob = new Blob([outputBytes], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = outputName;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+outfitMode.addEventListener("change", updateModeUi);
+customColor.addEventListener("input", () => { colorValue.value = customColor.value.toUpperCase(); });
+patchButton.addEventListener("click", patchRom);
+downloadButton.addEventListener("click", downloadOutput);
+
+updateModeUi();
+bootRuntime();
