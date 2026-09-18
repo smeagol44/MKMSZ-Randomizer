@@ -17,7 +17,7 @@ completion before returning.
 
 ## Promoted implementation pieces
 
-NativePayloadPatch now owns the reusable low-level mechanics:
+NativePayloadPatch owns the reusable low-level mechanics:
 
 - guard and populate file-table entry 0x1B;
 - place a raw payload in the confirmed trailing-ROM region beginning at
@@ -30,16 +30,15 @@ NativePayloadPatch now owns the reusable low-level mechanics:
 
 The MIPS encoding helpers used to construct the stub live in mkmszr.mips.
 
-## Deliberate boundary
+Runtime layout V1 now builds on this bootstrap with a 0x200-byte code image and
+a separate 0x200-byte persistent state region. See docs/runtime-v1.md.
 
-The native bootstrap is **not enabled in the user-facing patch pipeline yet**.
-Research must first define the versioned layout of the reserved 1 KiB block and
-prove the first persistent collected-pickup bitset. Until then, the module is
-infrastructure for the next native-runtime step rather than a shipping randomizer
-feature.
+## User-facing boundary
 
-The exact execution-proof marker is reproduced in tests only. It is not a
-user-facing runtime feature and is not installed by the normal browser/CLI build.
+The native bootstrap and V1 persistence modules remain **disabled in the normal
+CLI/browser pipeline**. The current persistence proof covers only Fire Temple's
+starting Potion. Multi-stage identity/capture/restore must be generalized before
+the native runtime becomes a normal randomizer feature.
 
 ## Confirmed addresses
 
