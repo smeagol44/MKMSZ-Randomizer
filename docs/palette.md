@@ -18,5 +18,10 @@ mkmszr clean.z64 test-custom.z64 --outfit rgb --rgb FF4FA3
 mkmszr clean.z64 test-seeded.z64 --seed BCBDBF --outfit seeded
 ```
 
-Generalized hue/RGB/seeded modes still need visual gameplay testing. Only the exact
-red and green transforms currently have runtime confirmation.
+All currently exposed browser color modes have now been visually tested in BizHawk:
+red, green, purple, orange, yellow, cyan, pink, seed-derived hue, and custom RGB.
+The recolored clothing renders correctly while preserving the intended shading ramp
+and leaving skin/black clothing regions unaffected.
+
+This validates the exposed transformation modes, not every possible arbitrary RGB
+value or every hue in the continuous color space.
