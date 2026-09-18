@@ -12,6 +12,7 @@ The current codebase is being rebuilt around a modular Python patching core. ROM
 - preserve known-good native patches while the Lua-era randomizer logic is progressively replaced;
 - include the runtime-confirmed compact safe eight-stage selector in every patched ROM;
 - reserve the runtime-tested 1 KiB MKMSZR native memory block in every patched ROM;
+- persist all 84 catalogued ordinary pickup locations across the eight main stages;
 - deterministic Sub-Zero outfit recoloring, including seed-derived colors.
 
 ## Development status
