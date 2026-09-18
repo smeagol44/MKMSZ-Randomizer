@@ -102,8 +102,9 @@ class SafeStageSelectorPatch:
         rom.write_u32(COUNT_ROM, PATCHED_COUNT)
         rom.write_bytes(MENU_TABLE_ROM, words_blob(SAFE_MENU_POINTERS))
 
-        rom.write_u32(STAGE_LOADER_PROLOGUE_ROM, jump(GATE_VA))
-        rom.write_u32(STAGE_LOADER_PROLOGUE_ROM + 4, NOP)
+        # Experimental lifecycle variant: keep the stage-loader prologue
+        # vanilla so normal stage completion/transition flow cannot be
+        # redirected into the selector. The proven title A-route remains.
         rom.write_bytes(GATE_ROM, gate)
 
         rom.write_u32(SELECTION_LOAD_ROM, jal(MAPPER_VA))
