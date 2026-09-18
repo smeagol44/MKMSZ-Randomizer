@@ -140,16 +140,8 @@ def build_generalized_capture_helper() -> bytes:
     emitter.beq("t3", "zero", "return")
     emitter.emit(NOP)
 
-    # The same count guard used by restore also protects capture from an
-    # unexpected manager layout.
-    emitter.emit(*address_words("t4", PICKUP_MANAGER_CONTEXT_PTR_VA))
-    emitter.emit(lw("t4", 0, "t4"))
-    emitter.beq("t4", "zero", "return")
-    emitter.emit(NOP)
-    emitter.emit(lw("t5", 0x6F4, "t4"))
-    emitter.bne("t5", "t3", "return")
-    emitter.emit(NOP)
-
+    # Capture needs only the manager-provided ordinal. The canonical design's
+    # live-count equality guard is applied by restore before touching records.
     emitter.emit(sltu("t5", "s2", "t3"))
     emitter.beq("t5", "zero", "return")
     emitter.emit(NOP)
@@ -353,7 +345,7 @@ class GeneralizedPickupPersistencePatch:
 
         return (
             "84 catalogued ordinary pickups covered across 8 main stages",
-            "manager-count mismatch fails closed for both capture and restore",
+            "restore fails closed on manager-count mismatch before touching records",
             "Fire ordinals 3/4/5 remain excluded through the v38 translation map",
             "scripted/special stage mechanisms are intentionally outside this bitset",
         )
