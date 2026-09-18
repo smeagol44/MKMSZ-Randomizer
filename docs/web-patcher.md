@@ -24,8 +24,12 @@ duplicated in JavaScript.
 
 ## Always-applied patches
 
-Every browser-generated ROM includes the runtime-confirmed compact safe eight-stage
-selector. It is part of the randomizer rather than an optional setting.
+Every browser-generated ROM includes both core native prerequisites:
+
+- the runtime-confirmed compact safe eight-stage selector;
+- the runtime-tested 1 KiB MKMSZR arena-prefix reservation.
+
+Both are implementation infrastructure for the randomizer, not user-facing options.
 
 ## Current browser options
 
@@ -33,14 +37,14 @@ selector. It is part of the randomizer rather than an optional setting.
 - purple / orange / yellow / cyan / pink named colors;
 - seed-derived outfit color;
 - custom RGB tint;
-- runtime-tested 1 KiB MKMSZR arena reservation.
 
 All currently exposed recolor modes have been visually validated in BizHawk through
 ROMs produced by the browser patcher. Custom RGB mode has been validated as a mode;
 this does not imply exhaustive testing of every possible RGB input.
 
 The browser uses the same shared Python pipeline as the CLI, so the always-on stage
-selector and all selected options are applied by one implementation path. The Python
+selector, arena reservation, and all selected options are applied by one implementation
+path. The Python
 core still performs clean-ROM SHA-256 validation and CIC-6102 checksum recalculation.
 
 ## Publishing

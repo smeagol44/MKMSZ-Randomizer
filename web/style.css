@@ -29,10 +29,6 @@ input[type="file"] { padding: .5rem; }
 input[type="color"] { width: 4.5rem; height: 2.8rem; border: 1px solid #343b4a; border-radius: .65rem; padding: .2rem; background: #0c0f15; }
 .color-field output { margin-left: .7rem; color: #b9c0cf; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .hint { margin: .4rem 0 0; color: #7f889a; font-size: .82rem; line-height: 1.45; }
-.check-row { display: flex; gap: .75rem; align-items: flex-start; margin: 1.35rem 0; padding: 1rem; border: 1px solid #292f3c; border-radius: .75rem; background: #0c1017; }
-.check-row input { margin-top: .25rem; }
-.check-row strong, .check-row small { display: block; }
-.check-row small { margin-top: .2rem; color: #858fa1; font-weight: 400; }
 button { border: 0; border-radius: .7rem; padding: .8rem 1.1rem; font-weight: 750; cursor: pointer; background: #f0f3ff; color: #111522; }
 button:disabled { cursor: not-allowed; opacity: .45; }
 button:not(:disabled):hover { filter: brightness(.92); }

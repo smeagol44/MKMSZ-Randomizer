@@ -20,10 +20,8 @@ class BuildResult:
 
 
 def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
-    # The compact safe stage selector is a core randomizer feature, not an option.
-    patches = [SafeStageSelectorPatch()]
-    if config.reserve_runtime_memory:
-        patches.append(ArenaReservationPatch())
+    # Core native infrastructure is always installed in randomizer ROMs.
+    patches = [SafeStageSelectorPatch(), ArenaReservationPatch()]
     if config.outfit.mode.lower() != "vanilla":
         patches.append(
             SubZeroPalettePatch(

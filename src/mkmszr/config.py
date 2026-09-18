@@ -13,5 +13,4 @@ class OutfitConfig:
 @dataclass(frozen=True)
 class RandomizerConfig:
     seed: str | None = None
-    reserve_runtime_memory: bool = True
     outfit: OutfitConfig = field(default_factory=OutfitConfig)

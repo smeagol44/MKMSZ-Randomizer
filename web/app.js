@@ -6,7 +6,6 @@ const seedField = document.querySelector("#seedField");
 const colorField = document.querySelector("#colorField");
 const customColor = document.querySelector("#customColor");
 const colorValue = document.querySelector("#colorValue");
-const runtimeReservation = document.querySelector("#runtimeReservation");
 const patchButton = document.querySelector("#patchButton");
 const resultPanel = document.querySelector("#result");
 const outputSha = document.querySelector("#outputSha");
@@ -103,7 +102,6 @@ async function patchRom() {
     pyodide.globals.set("web_outfit_mode", mode);
     pyodide.globals.set("web_seed", seedValue || null);
     pyodide.globals.set("web_rgb", customColor.value);
-    pyodide.globals.set("web_reserve_runtime", runtimeReservation.checked);
 
     setLog("Validating clean ROM and applying patches…");
 
@@ -119,7 +117,6 @@ _rgb = tuple(int(_rgb_hex[i:i+2], 16) for i in (0, 2, 4))
 
 _config = RandomizerConfig(
     seed=_seed,
-    reserve_runtime_memory=bool(web_reserve_runtime),
     outfit=OutfitConfig(mode=_mode, rgb=_rgb if _mode == "rgb" else None),
 )
 _result = patch_file(Path("/tmp/input.z64"), Path("/tmp/output.z64"), _config)
