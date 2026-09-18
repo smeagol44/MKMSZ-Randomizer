@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Client-side test patcher for MKMSZ True Randomizer.">
+  <title>MKMSZ True Randomizer — Test Patcher</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Experimental browser patcher</p>
+        <h1>MKMSZ True Randomizer</h1>
+        <p class="lede">
+          Patch your own clean USA <code>.z64</code> locally in the browser.
+          Your ROM is never uploaded or sent to a server.
+        </p>
+      </div>
+      <div id="runtimeStatus" class="runtime-status" data-state="loading">
+        Loading Python patcher…
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="field">
+        <label for="romFile">Clean MKMSZ USA ROM</label>
+        <input id="romFile" type="file" accept=".z64,.n64,.v64,application/octet-stream">
+        <p class="hint">The patcher verifies the clean ROM SHA-256 before changing anything.</p>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="outfitMode">Sub-Zero outfit</label>
+          <select id="outfitMode">
+            <option value="vanilla">Vanilla</option>
+            <option value="red">Red</option>
+            <option value="green">Green</option>
+            <option value="purple">Purple (experimental)</option>
+            <option value="orange">Orange (experimental)</option>
+            <option value="yellow">Yellow (experimental)</option>
+            <option value="cyan">Cyan (experimental)</option>
+            <option value="pink">Pink (experimental)</option>
+            <option value="seeded">Random from seed (experimental)</option>
+            <option value="rgb">Custom color (experimental)</option>
+          </select>
+        </div>
+
+        <div class="field" id="seedField">
+          <label for="seed">Seed</label>
+          <input id="seed" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="e.g. BCBDBF">
+          <p class="hint">Currently used by the seed-derived outfit color.</p>
+        </div>
+
+        <div class="field color-field" id="colorField" hidden>
+          <label for="customColor">Custom color</label>
+          <input id="customColor" type="color" value="#a64dff">
+          <output id="colorValue" for="customColor">#A64DFF</output>
+        </div>
+      </div>
+
+      <label class="check-row">
+        <input id="runtimeReservation" type="checkbox" checked>
+        <span>
+          <strong>Reserve MKMSZR runtime memory</strong>
+          <small>Applies the runtime-tested 1 KiB arena-prefix reservation.</small>
+        </span>
+      </label>
+
+      <button id="patchButton" type="button" disabled>Patch ROM</button>
+
+      <div id="result" class="result" hidden>
+        <h2>Patch complete</h2>
+        <dl>
+          <div><dt>Output SHA-256</dt><dd id="outputSha"></dd></div>
+          <div><dt>CRC1 / CRC2</dt><dd id="outputCrc"></dd></div>
+          <div><dt>Applied patches</dt><dd id="patchList"></dd></div>
+        </dl>
+        <button id="downloadButton" type="button">Save patched ROM</button>
+      </div>
+
+      <pre id="log" class="log" aria-live="polite"></pre>
+    </section>
+
+    <footer>
+      <p>This project does not distribute game ROMs. You must provide your own legally obtained copy.</p>
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

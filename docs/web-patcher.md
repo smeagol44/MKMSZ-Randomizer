@@ -1,0 +1,43 @@
+# Browser patcher
+
+The test web UI in `web/` is a static GitHub Pages application. It uses Pyodide
+to execute the same `mkmszr` Python wheel used by the CLI.
+
+The ROM never leaves the browser:
+
+```text
+local file picker
+      |
+      v
+Pyodide virtual filesystem
+      |
+      v
+mkmszr Python core
+      |
+      v
+patched bytes -> local browser download
+```
+
+The Pages workflow builds a pure-Python wheel, publishes it next to the static web
+assets, and installs that wheel inside Pyodide at page load. No patch logic is
+duplicated in JavaScript.
+
+## Current browser options
+
+- vanilla / red / green outfit;
+- experimental named colors;
+- experimental seed-derived outfit color;
+- experimental custom RGB tint;
+- runtime-tested 1 KiB MKMSZR arena reservation.
+
+The Python core still performs clean-ROM SHA-256 validation and CIC-6102 checksum
+recalculation.
+
+## Publishing
+
+GitHub Pages deploys from `main` through `.github/workflows/pages.yml`.
+
+For GitHub Free, the repository must be public. After changing visibility to public,
+enable **Settings -> Pages -> Source: GitHub Actions** if GitHub has not already
+selected the Actions publishing source. Merging the web-enabled branch to `main`
+then triggers deployment.
