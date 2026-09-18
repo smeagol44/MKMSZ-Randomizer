@@ -1,9 +1,8 @@
 """Low-level native payload registration and execution bootstrap.
 
 This module promotes the runtime-confirmed file-ID 0x1B loader/execution path into
-reusable implementation infrastructure. It is intentionally not enabled by the
-user-facing patch pipeline yet; a versioned 1 KiB runtime layout must be defined
-before the real randomizer runtime is installed by default.
+reusable implementation infrastructure. It remains separate from the user-facing
+patch pipeline; runtime layout V1 builds on it in runtime_v1.py.
 """
 
 from __future__ import annotations
@@ -54,9 +53,8 @@ def build_loader_and_call_stub(
 ) -> bytes:
     """Build the confirmed arena-reset -> loader -> uncached-call bootstrap.
 
-    Supplying clear_word_rdram reproduces the execution proof's marker clear.
-    Production state layout is deliberately left undefined until the next research
-    checkpoint.
+    Supplying clear_word_rdram reproduces the earlier execution proof's marker clear.
+    Runtime V1 normally leaves persistent state untouched by loading only its code half.
     """
 
     arena_high, arena_low = split_address(RESERVED_RDRAM_END_EXCLUSIVE)
