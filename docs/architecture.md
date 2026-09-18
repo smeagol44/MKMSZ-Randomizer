@@ -39,7 +39,7 @@ same configuration and call the same Python core.
 - Safe stage selector: the runtime-confirmed compact eight-stage selector is a core
   randomizer feature and is applied to every patched ROM.
 - Arena reservation: moves the allocator start from 0x801AF420 to
-  0x801AF820, reserving the runtime-tested 1 KiB prefix when enabled.
+  0x801AF820, reserving the runtime-tested 1 KiB prefix in every patched ROM.
 - Sub-Zero palette: operates only on confirmed clothing entries 0x21..0x3F.
   All currently exposed browser recolor modes have been visually validated in
   BizHawk.
@@ -77,7 +77,8 @@ lives in patches/manager_persistence.py.
 
 ## User-facing boundary
 
-The safe stage selector is always installed by the normal CLI/browser patch pipeline.
+The safe stage selector and 1 KiB runtime-memory reservation are always installed by
+the normal CLI/browser patch pipeline.
 
 Manager-level persistent pickup handling is not yet installed by the normal pipeline.
 Its mechanism is runtime-confirmed for the Fire starting Potion, but all-stage
