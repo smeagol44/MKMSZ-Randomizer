@@ -1,4 +1,4 @@
-from mkmszr.mips import jal, jump, words_blob
+from mkmszr.mips import jal, words_blob
 from mkmszr.patches.base import PatchContext
 from mkmszr.patches.stage_selector import (
     A_ROUTE_JAL_ROM,
@@ -10,7 +10,6 @@ from mkmszr.patches.stage_selector import (
     EXPECTED_STAGE_LOADER_PROLOGUE,
     EXPECTED_WRAP_LAST,
     GATE_ROM,
-    GATE_VA,
     MAPPER_ROM,
     MAPPER_VA,
     MENU_TABLE_ROM,
