@@ -18,7 +18,8 @@ class ArenaReservationPatch:
             rom.expect_u32(offset, expected)
             rom.write_u32(offset, replacement)
 
-        return (
+        note = (
             f"reserved RDRAM 0x{RESERVED_RDRAM_START:08X}.."
-            f"0x{RESERVED_RDRAM_END_EXCLUSIVE - 1:08X}",
+            f"0x{RESERVED_RDRAM_END_EXCLUSIVE - 1:08X}"
         )
+        return (note,)
