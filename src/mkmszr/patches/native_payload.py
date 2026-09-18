@@ -27,7 +27,7 @@ from ..data.addresses import (
     RESERVED_RDRAM_START,
 )
 from ..errors import PatchError
-from ..mips import addiu, jal, jalr, jr, jump, lui, lw, split_address, sw, words_blob
+from ..mips import addiu, jal, jalr, jump, lui, lw, split_address, sw, words_blob
 from ..rom import RomImage
 from .base import PatchContext
 
@@ -111,6 +111,8 @@ class NativePayloadSpec:
             raise ValueError("native payload must not be empty")
         if self.rom_start & 3 or self.rdram_start & 3 or len(self.payload) & 3:
             raise ValueError("native payload ROM/RDRAM addresses and size must be 4-byte aligned")
+        if not 0 <= self.rom_start < self.rom_start + len(self.payload) <= 0x01000000:
+            raise ValueError("native payload must fit inside the 16 MiB ROM")
         if not (
             RESERVED_RDRAM_START
             <= self.rdram_start
@@ -119,6 +121,8 @@ class NativePayloadSpec:
         ):
             raise ValueError("native payload must fit entirely inside the reserved 1 KiB block")
         if self.clear_word_rdram is not None:
+            if self.clear_word_rdram & 3:
+                raise ValueError("clear word address must be 4-byte aligned")
             if not (
                 RESERVED_RDRAM_START
                 <= self.clear_word_rdram
@@ -126,7 +130,8 @@ class NativePayloadSpec:
             ):
                 raise ValueError("clear word must be inside the reserved 1 KiB block")
             payload_end = self.rdram_start + len(self.payload)
-            if self.rdram_start <= self.clear_word_rdram < payload_end:
+            clear_end = self.clear_word_rdram + 4
+            if self.clear_word_rdram < payload_end and clear_end > self.rdram_start:
                 raise ValueError("clear word must not overlap the loaded payload")
 
 
