@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mkmszr"
+version = "0.1.0.dev0"
+description = "Native ROM patching core for the MKMSZ True Randomizer"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "smeagol44" }]
+dependencies = []
+
+[project.scripts]
+mkmszr = "mkmszr.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mkmszr"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
