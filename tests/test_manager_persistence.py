@@ -27,22 +27,6 @@ from mkmszr.patches.manager_persistence import (
     manager_persistence_fire_patches,
 )
 from mkmszr.patches.runtime_v1 import CODE_SIZE, LOADER_STUB
-from mkmszr.patches.stage_selector import (
-    A_ROUTE_JAL_ROM,
-    COUNT_ROM,
-    EXPECTED_A_ROUTE_JAL,
-    EXPECTED_COUNT,
-    EXPECTED_SELECTION_LOAD,
-    EXPECTED_STAGE_LOADER_PROLOGUE,
-    EXPECTED_WRAP_LAST,
-    GATE_ROM,
-    MENU_TABLE_ROM,
-    ORIGINAL_MENU_POINTERS,
-    SELECTION_LOAD_ROM,
-    STAGE_CODE_CAVE_END,
-    STAGE_LOADER_PROLOGUE_ROM,
-    WRAP_LAST_ROM,
-)
 from mkmszr.rom import RomImage
 
 
@@ -69,18 +53,6 @@ def _clean_shape() -> RomImage:
         FIRE_POTION_CALLBACK_FIELD_ROM : FIRE_POTION_CALLBACK_FIELD_ROM + 4
     ] = FIRE_POTION_CALLBACK_EXPECTED.to_bytes(4, "big")
     data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] = b"\xFF" * CODE_SIZE
-
-    data[A_ROUTE_JAL_ROM : A_ROUTE_JAL_ROM + 4] = EXPECTED_A_ROUTE_JAL.to_bytes(4, "big")
-    data[WRAP_LAST_ROM : WRAP_LAST_ROM + 4] = EXPECTED_WRAP_LAST.to_bytes(4, "big")
-    data[COUNT_ROM : COUNT_ROM + 4] = EXPECTED_COUNT.to_bytes(4, "big")
-    data[MENU_TABLE_ROM : MENU_TABLE_ROM + 48] = b"".join(
-        value.to_bytes(4, "big") for value in ORIGINAL_MENU_POINTERS
-    )
-    data[SELECTION_LOAD_ROM : SELECTION_LOAD_ROM + 8] = EXPECTED_SELECTION_LOAD
-    data[
-        STAGE_LOADER_PROLOGUE_ROM : STAGE_LOADER_PROLOGUE_ROM + 8
-    ] = EXPECTED_STAGE_LOADER_PROLOGUE
-    data[GATE_ROM:STAGE_CODE_CAVE_END] = bytes(STAGE_CODE_CAVE_END - GATE_ROM)
 
     return RomImage(data=data, _original=bytes(data))
 
@@ -115,10 +87,9 @@ def test_manager_persistence_installs_hooks_and_keeps_callback_vanilla() -> None
     )
 
     assert [result.name for result in results] == [
-        "safe-stage-selector",
         "arena-reservation",
         "native-payload-bootstrap",
-        "manager-persistence-fire-experiment",
+        "manager-persistence-fire",
     ]
 
     assert rom.data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] == (
