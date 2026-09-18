@@ -25,10 +25,14 @@ duplicated in JavaScript.
 ## Current browser options
 
 - vanilla / red / green outfit;
-- experimental named colors;
-- experimental seed-derived outfit color;
-- experimental custom RGB tint;
+- purple / orange / yellow / cyan / pink named colors;
+- seed-derived outfit color;
+- custom RGB tint;
 - runtime-tested 1 KiB MKMSZR arena reservation.
+
+All currently exposed recolor modes have been visually validated in BizHawk through
+ROMs produced by the browser patcher. Custom RGB mode has been validated as a mode;
+this does not imply exhaustive testing of every possible RGB input.
 
 The Python core still performs clean-ROM SHA-256 validation and CIC-6102 checksum
 recalculation.
