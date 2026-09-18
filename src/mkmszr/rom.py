@@ -74,6 +74,14 @@ class RomImage:
     def read_u32(self, offset: int) -> int:
         return int.from_bytes(self.data[offset : offset + 4], "big")
 
+    def expect_bytes(self, offset: int, expected: bytes) -> None:
+        actual = bytes(self.data[offset : offset + len(expected)])
+        if actual != expected:
+            raise PatchError(
+                f"guard failed at ROM 0x{offset:08X}: "
+                f"expected {expected.hex().upper()}, got {actual.hex().upper()}"
+            )
+
     def expect_u16(self, offset: int, expected: int) -> None:
         actual = self.read_u16(offset)
         if actual != expected:
