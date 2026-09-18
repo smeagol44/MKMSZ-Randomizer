@@ -1,31 +1,29 @@
 -- BizHawk read-only verifier for the eight-stage ordinary-pickup persistence test.
 -- BizHawk 2.11.1 / Ares64. Use a fresh cold boot; do not load savestates.
+--
+-- The pickup-manager context at 0x802ECE20 is only meaningful during the
+-- manager setup/restore path, so do not poll it every frame as a gameplay
+-- readiness test. The old Lua randomizer already established 0x0B56D4 >= 0x10
+-- as the reliable gameplay gate used by all stage pickup checks.
 
 memory.usememorydomain("RDRAM")
 
+local GAMEPLAY = 0x0B56D4
+local STAGE = 0x09A913
+
 local STAGES = {
-    [0] = { name = "Temple",   expected = 4,  bits = 0x1AF644 },
-    [1] = { name = "Wind",     expected = 6,  bits = 0x1AF648 },
-    [2] = { name = "Water",    expected = 9,  bits = 0x1AF64C },
-    [3] = { name = "Earth",    expected = 20, bits = 0x1AF650 },
-    [4] = { name = "Prison",   expected = 10, bits = 0x1AF654 },
-    [5] = { name = "Fire",     expected = 19, bits = 0x1AF640 },
-    [8] = { name = "Bridge",   expected = 10, bits = 0x1AF658 },
-    [9] = { name = "Fortress", expected = 9,  bits = 0x1AF65C },
+    [0] = { name = "Temple",   bits = 0x1AF644 },
+    [1] = { name = "Wind",     bits = 0x1AF648 },
+    [2] = { name = "Water",    bits = 0x1AF64C },
+    [3] = { name = "Earth",    bits = 0x1AF650 },
+    [4] = { name = "Prison",   bits = 0x1AF654 },
+    [5] = { name = "Fire",     bits = 0x1AF640 },
+    [8] = { name = "Bridge",   bits = 0x1AF658 },
+    [9] = { name = "Fortress", bits = 0x1AF65C },
 }
 
 local function u32(addr)
     return memory.read_u32_be(addr)
-end
-
-local function rdram_offset(ptr)
-    if ptr >= 0x80000000 and ptr < 0x80800000 then
-        return ptr - 0x80000000
-    end
-    if ptr >= 0xA0000000 and ptr < 0xA0800000 then
-        return ptr - 0xA0000000
-    end
-    return nil
 end
 
 local function bitcount32(value)
@@ -47,53 +45,38 @@ while true do
         stateSize == 0x200 and
         headerSize == 0x20
 
-    local stage = u32(0x09A910)
+    local gameplay = u32(GAMEPLAY)
+    local inGameplay = gameplay >= 0x10
+    local stage = memory.readbyte(STAGE)
     local info = STAGES[stage]
-
-    local contextPtr = u32(0x2ECE20)
-    local contextOff = rdram_offset(contextPtr)
-    local liveCount = -1
-    local recordBase = 0
-    if contextOff ~= nil then
-        liveCount = u32(contextOff + 0x6F4)
-        recordBase = u32(contextOff + 0x6F8)
-    end
 
     gui.text(12, 12, "MKMSZR eight-stage pickup persistence")
     gui.text(12, 30, string.format(
         "V1 header: %s  magic=%08X ver=%d size=%X hdr=%X",
         headerOk and "YES" or "NO", magic, version, stateSize, headerSize
     ))
+    gui.text(12, 48, string.format(
+        "Gameplay=%08X  active=%s",
+        gameplay, inGameplay and "YES" or "NO"
+    ))
 
-    if info ~= nil then
+    if inGameplay and info ~= nil then
         local bits = u32(info.bits)
-        local managerReady = contextOff ~= nil and recordBase ~= 0 and liveCount >= 0
-        local guardText = "WAIT"
-        if managerReady then
-            guardText = (liveCount == info.expected) and "OK" or "FAIL"
-        end
-        gui.text(12, 48, string.format(
-            "Stage=%d %s  manager=%d/%d  guard=%s",
-            stage, info.name, liveCount, info.expected, guardText
-        ))
         gui.text(12, 66, string.format(
-            "Bits=%08X  collected ordinary bits=%d",
-            bits, bitcount32(bits)
+            "Stage=%d %s  Bits=%08X  collected ordinary bits=%d",
+            stage, info.name, bits, bitcount32(bits)
         ))
-        gui.text(12, 84, string.format(
-            "Manager ctx=%08X  records=%08X",
-            contextPtr, recordBase
+        gui.text(12, 84, "Test: collect ordinary pickup -> bit changes -> quit/re-enter -> item stays absent")
+    elseif info ~= nil then
+        gui.text(12, 66, string.format(
+            "Stage byte=%d (%s), but gameplay is not active yet",
+            stage, info.name
         ))
-        if not managerReady then
-            gui.text(12, 142, "Manager not initialized yet; WAIT is normal outside gameplay.")
-        end
+        gui.text(12, 84, "Waiting for gameplay; title/menu/transition states are ignored.")
     else
-        gui.text(12, 48, string.format(
-            "Stage=%d (not an ordinary-pickup descriptor stage)", stage
-        ))
         gui.text(12, 66, string.format(
-            "Manager ctx=%08X  live count=%d",
-            contextPtr, liveCount
+            "Stage byte=%d (no ordinary-pickup descriptor)",
+            stage
         ))
     end
 
