@@ -16,6 +16,7 @@ from mkmszr.data.addresses import (
 from mkmszr.mips import jal, jump
 from mkmszr.patches.arena import ArenaReservationPatch
 from mkmszr.patches.base import PatchContext, PatchPipeline
+from mkmszr.patches.native_payload import NativePayloadPatch, NativePayloadSpec
 from mkmszr.patches.pickup_persistence import (
     CAPTURE_HELPER,
     CAPTURE_HELPER_ROM,
@@ -32,7 +33,6 @@ from mkmszr.patches.pickup_persistence import (
     STAGE_DESCRIPTORS,
     PickupPersistencePatch,
 )
-from mkmszr.patches.native_payload import NativePayloadPatch, NativePayloadSpec
 from mkmszr.patches.runtime_v1 import CODE_SIZE, LOADER_STUB
 from mkmszr.rom import RomImage
 
