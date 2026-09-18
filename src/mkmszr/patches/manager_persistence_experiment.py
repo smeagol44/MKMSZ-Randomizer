@@ -59,6 +59,7 @@ from .runtime_v1 import (
     STATE_VERSION,
     build_init,
 )
+from .stage_selector import SafeStageSelectorPatch
 
 NOP = 0
 
@@ -251,13 +252,15 @@ class ManagerPersistenceFireExperimentPatch:
 
 
 def manager_persistence_fire_experiment_patches() -> tuple[
+    SafeStageSelectorPatch,
     ArenaReservationPatch,
     NativePayloadPatch,
     ManagerPersistenceFireExperimentPatch,
 ]:
-    """Return the experimental patch sequence for manual BizHawk validation."""
+    """Return the test build, including the proven selector needed to reach Fire."""
 
     return (
+        SafeStageSelectorPatch(),
         ArenaReservationPatch(),
         NativePayloadPatch(NativePayloadSpec(payload=EXPERIMENT_PAYLOAD)),
         ManagerPersistenceFireExperimentPatch(),
