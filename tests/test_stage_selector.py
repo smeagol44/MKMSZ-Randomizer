@@ -1,4 +1,4 @@
-from mkmszr.mips import jal, jump, words_blob
+from mkmszr.mips import jal, words_blob
 from mkmszr.patches.base import PatchContext
 from mkmszr.patches.stage_selector import (
     A_ROUTE_JAL_ROM,
@@ -10,7 +10,6 @@ from mkmszr.patches.stage_selector import (
     EXPECTED_STAGE_LOADER_PROLOGUE,
     EXPECTED_WRAP_LAST,
     GATE_ROM,
-    GATE_VA,
     MAPPER_ROM,
     MAPPER_VA,
     MENU_TABLE_ROM,
@@ -53,8 +52,9 @@ def test_safe_stage_selector_is_guarded_and_exact() -> None:
     assert rom.read_u32(WRAP_LAST_ROM) == PATCHED_WRAP_LAST
     assert rom.read_u32(COUNT_ROM) == PATCHED_COUNT
     assert rom.data[MENU_TABLE_ROM : MENU_TABLE_ROM + 48] == words_blob(SAFE_MENU_POINTERS)
-    assert rom.read_u32(STAGE_LOADER_PROLOGUE_ROM) == jump(GATE_VA)
-    assert rom.read_u32(STAGE_LOADER_PROLOGUE_ROM + 4) == 0
+    assert rom.data[
+        STAGE_LOADER_PROLOGUE_ROM : STAGE_LOADER_PROLOGUE_ROM + 8
+    ] == EXPECTED_STAGE_LOADER_PROLOGUE
     assert rom.data[GATE_ROM : GATE_ROM + len(build_loader_gate())] == build_loader_gate()
     assert rom.read_u32(SELECTION_LOAD_ROM) == jal(MAPPER_VA)
     assert rom.read_u32(SELECTION_LOAD_ROM + 4) == 0
