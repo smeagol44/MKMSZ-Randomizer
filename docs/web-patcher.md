@@ -24,12 +24,15 @@ duplicated in JavaScript.
 
 ## Always-applied patches
 
-Every browser-generated ROM includes both core native prerequisites:
+Every browser-generated ROM includes the core native infrastructure:
 
 - the runtime-confirmed compact safe eight-stage selector;
-- the runtime-tested 1 KiB MKMSZR arena-prefix reservation.
+- the runtime-tested 1 KiB MKMSZR arena-prefix reservation;
+- the native payload bootstrap and V1 state block;
+- runtime-confirmed persistence for all 84 catalogued ordinary pickup locations
+  across the eight main stages.
 
-Both are implementation infrastructure for the randomizer, not user-facing options.
+These are implementation infrastructure for the randomizer, not user-facing options.
 
 ## Current browser options
 
@@ -43,9 +46,9 @@ ROMs produced by the browser patcher. Custom RGB mode has been validated as a mo
 this does not imply exhaustive testing of every possible RGB input.
 
 The browser uses the same shared Python pipeline as the CLI, so the always-on stage
-selector, arena reservation, and all selected options are applied by one implementation
-path. The Python
-core still performs clean-ROM SHA-256 validation and CIC-6102 checksum recalculation.
+selector, arena reservation, pickup persistence, and all selected options are applied
+by one implementation path. The Python core still performs clean-ROM SHA-256
+validation and CIC-6102 checksum recalculation.
 
 ## Publishing
 

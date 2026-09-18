@@ -14,7 +14,11 @@ REGISTERS = {
     "t2": 10,
     "t3": 11,
     "t4": 12,
+    "t5": 13,
+    "t6": 14,
+    "t7": 15,
     "s2": 18,
+    "t8": 24,
     "t9": 25,
     "sp": 29,
     "ra": 31,
@@ -33,6 +37,10 @@ def andi(rt: str, rs: str, imm: int) -> int:
     return (0x0C << 26) | (_reg(rs) << 21) | (_reg(rt) << 16) | (imm & 0xFFFF)
 
 
+def sltiu(rt: str, rs: str, imm: int) -> int:
+    return (0x0B << 26) | (_reg(rs) << 21) | (_reg(rt) << 16) | (imm & 0xFFFF)
+
+
 def ori(rt: str, rs: str, imm: int) -> int:
     return (0x0D << 26) | (_reg(rs) << 21) | (_reg(rt) << 16) | (imm & 0xFFFF)
 
@@ -47,6 +55,36 @@ def sw(rt: str, offset: int, base: str) -> int:
 
 def lw(rt: str, offset: int, base: str) -> int:
     return (0x23 << 26) | (_reg(base) << 21) | (_reg(rt) << 16) | (offset & 0xFFFF)
+
+
+def lbu(rt: str, offset: int, base: str) -> int:
+    return (0x24 << 26) | (_reg(base) << 21) | (_reg(rt) << 16) | (offset & 0xFFFF)
+
+
+def addu(rd: str, rs: str, rt: str) -> int:
+    return (_reg(rs) << 21) | (_reg(rt) << 16) | (_reg(rd) << 11) | 0x21
+
+
+def and_(rd: str, rs: str, rt: str) -> int:
+    return (_reg(rs) << 21) | (_reg(rt) << 16) | (_reg(rd) << 11) | 0x24
+
+
+def or_(rd: str, rs: str, rt: str) -> int:
+    return (_reg(rs) << 21) | (_reg(rt) << 16) | (_reg(rd) << 11) | 0x25
+
+
+def sll(rd: str, rt: str, shamt: int) -> int:
+    if not 0 <= shamt <= 31:
+        raise ValueError("shift amount is out of range")
+    return (_reg(rt) << 16) | (_reg(rd) << 11) | (shamt << 6)
+
+
+def sllv(rd: str, rt: str, rs: str) -> int:
+    return (_reg(rs) << 21) | (_reg(rt) << 16) | (_reg(rd) << 11) | 0x04
+
+
+def sltu(rd: str, rs: str, rt: str) -> int:
+    return (_reg(rs) << 21) | (_reg(rt) << 16) | (_reg(rd) << 11) | 0x2B
 
 
 def jal(address: int) -> int:
