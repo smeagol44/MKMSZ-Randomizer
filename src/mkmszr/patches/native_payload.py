@@ -27,7 +27,7 @@ from ..data.addresses import (
     RESERVED_RDRAM_START,
 )
 from ..errors import PatchError
-from ..mips import addiu, jal, jalr, jump, lui, lw, split_address, sw, words_blob
+from ..mips import addiu, jal, jalr, jr, jump, lui, lw, split_address, sw, words_blob
 from ..rom import RomImage
 from .base import PatchContext
 
