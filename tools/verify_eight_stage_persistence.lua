@@ -67,10 +67,14 @@ while true do
 
     if info ~= nil then
         local bits = u32(info.bits)
-        local guardOk = liveCount == info.expected
+        local managerReady = contextOff ~= nil and recordBase ~= 0 and liveCount >= 0
+        local guardText = "WAIT"
+        if managerReady then
+            guardText = (liveCount == info.expected) and "OK" or "FAIL"
+        end
         gui.text(12, 48, string.format(
             "Stage=%d %s  manager=%d/%d  guard=%s",
-            stage, info.name, liveCount, info.expected, guardOk and "OK" or "FAIL"
+            stage, info.name, liveCount, info.expected, guardText
         ))
         gui.text(12, 66, string.format(
             "Bits=%08X  collected ordinary bits=%d",
@@ -80,6 +84,9 @@ while true do
             "Manager ctx=%08X  records=%08X",
             contextPtr, recordBase
         ))
+        if not managerReady then
+            gui.text(12, 142, "Manager not initialized yet; WAIT is normal outside gameplay.")
+        end
     else
         gui.text(12, 48, string.format(
             "Stage=%d (not an ordinary-pickup descriptor stage)", stage
