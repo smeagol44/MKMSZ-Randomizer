@@ -29,11 +29,6 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--outfit", choices=modes, default="vanilla")
     parser.add_argument("--hue", type=float, help="hue in degrees for --outfit hue")
     parser.add_argument("--rgb", type=_parse_rgb, help="RRGGBB color for --outfit rgb")
-    parser.add_argument(
-        "--no-runtime-reservation",
-        action="store_true",
-        help="skip the confirmed 0x400-byte arena-prefix reservation",
-    )
     return parser
 
 
@@ -50,7 +45,6 @@ def main(argv: list[str] | None = None) -> int:
 
     config = RandomizerConfig(
         seed=args.seed,
-        reserve_runtime_memory=not args.no_runtime_reservation,
         outfit=OutfitConfig(mode=args.outfit, hue_degrees=args.hue, rgb=args.rgb),
     )
 
