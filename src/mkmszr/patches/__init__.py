@@ -19,11 +19,11 @@ from .runtime_v1 import (
 from .stage_selector import SafeStageSelectorPatch
 
 __all__ = [
+    "PICKUP_PERSISTENCE_PAYLOAD",
     "ArenaReservationPatch",
     "ManagerPersistenceFirePatch",
     "NativePayloadPatch",
     "NativePayloadSpec",
-    "PICKUP_PERSISTENCE_PAYLOAD",
     "PickupPersistencePatch",
     "RuntimeV1FirePersistencePatch",
     "SafeStageSelectorPatch",
