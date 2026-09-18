@@ -1,7 +1,7 @@
 """Minimal big-endian MIPS instruction encoders for MKMSZR native stubs."""
 
-from dataclasses import dataclass
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 REGISTERS = {
     "zero": 0,
