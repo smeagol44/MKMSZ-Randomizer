@@ -46,7 +46,15 @@ async function bootRuntime() {
 
     runtimeStatus.textContent = "Loading MKMSZR core…";
     await pyodide.loadPackage("micropip");
-    const wheelUrl = new URL("./mkmszr.whl", window.location.href).href;
+    const wheelNameResponse = await fetch("./wheel-name.txt", { cache: "no-store" });
+    if (!wheelNameResponse.ok) {
+      throw new Error(`Could not resolve MKMSZR wheel name (HTTP ${wheelNameResponse.status})`);
+    }
+    const wheelName = (await wheelNameResponse.text()).trim();
+    if (!wheelName.endsWith(".whl")) {
+      throw new Error(`Invalid MKMSZR wheel manifest: ${wheelName || "(empty)"}`);
+    }
+    const wheelUrl = new URL(`./${wheelName}`, window.location.href).href;
     pyodide.globals.set("web_wheel_url", wheelUrl);
     await pyodide.runPythonAsync(`
 import micropip
