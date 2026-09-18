@@ -41,7 +41,8 @@ same configuration and call the same Python core.
 ## Current promoted modules
 
 - Safe stage selector: the runtime-confirmed compact eight-stage selector is a core
-  randomizer feature and is applied to every patched ROM.
+  randomizer feature and is applied to every patched ROM. It is entered only through
+  the verified title-menu A-button route; the normal stage-loader path is left vanilla.
 - Arena reservation: moves the allocator start from 0x801AF420 to
   0x801AF820, reserving the runtime-tested 1 KiB prefix in every patched ROM.
 - Native payload bootstrap: reusable infrastructure for the runtime-confirmed
@@ -95,9 +96,12 @@ pipeline.
 Scripted/special mechanisms such as Temple's Map and stage machinery remain outside
 the ordinary-pickup bitset unless separately researched and promoted.
 
-## Remaining lifecycle checks
+## Lifecycle behavior
 
 The all-stage ordinary-pickup path is runtime-confirmed for quit-to-title and stage
-reconstruction. Normal stage completion, death/game-over, and other lifecycle routes
-can still be exercised separately without changing the confirmed pickup identity
-design.
+reconstruction. Temple completion has also been runtime-tested end to end: the normal
+cinematic/next-stage flow proceeds correctly and previously collected Temple pickups
+remain suppressed after later re-entry. Death/checkpoint reload behaves normally.
+
+Game Over is intentionally not treated as a persistence requirement because it is a
+candidate boundary for resetting randomizer run state.
