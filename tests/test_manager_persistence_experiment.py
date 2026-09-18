@@ -87,6 +87,7 @@ def test_experiment_installs_manager_hooks_and_keeps_callback_vanilla() -> None:
     )
 
     assert [result.name for result in results] == [
+        "safe-stage-selector",
         "arena-reservation",
         "native-payload-bootstrap",
         "manager-persistence-fire-experiment",
