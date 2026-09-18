@@ -29,7 +29,20 @@ from ..data.addresses import (
     RUNTIME_V1_STATE_START,
 )
 from ..errors import PatchError
-from ..mips import Emitter, addiu, address_words, andi, jr, jump, lui, lw, ori, sw, words_blob
+from ..mips import (
+    Emitter,
+    addiu,
+    address_words,
+    andi,
+    jalr,
+    jr,
+    jump,
+    lui,
+    lw,
+    ori,
+    sw,
+    words_blob,
+)
 from ..rom import RomImage
 from .arena import ArenaReservationPatch
 from .base import PatchContext
@@ -109,7 +122,7 @@ def build_capture() -> bytes:
     emitter = Emitter()
     emitter.emit(addiu("sp", "sp", -0x18), sw("ra", 0x10, "sp"))
     emitter.emit(*address_words("t9", FIRE_POTION_CALLBACK_VA))
-    emitter.emit(0x0320F809, NOP)  # jalr t9
+    emitter.emit(jalr("t9"), NOP)
     emitter.emit(*address_words("t0", STATE_UNCACHED_BASE))
     emitter.emit(lw("t1", FIRE_BITSET_OFFSET, "t0"))
     emitter.emit(ori("t1", "t1", 1 << FIRE_STARTING_POTION_BIT))
