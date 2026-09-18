@@ -1,3 +1,5 @@
+import hashlib
+
 import pytest
 
 from mkmszr.data.addresses import (
@@ -69,11 +71,21 @@ def test_runtime_v1_layout_matches_confirmed_memory_map() -> None:
     assert FIRE_STARTING_POTION_BIT == 0
 
 
-def test_runtime_v1_payload_matches_confirmed_sizes() -> None:
+def test_runtime_v1_payload_matches_confirmed_reference() -> None:
     assert len(RUNTIME_V1_PAYLOAD) == 0x200
     assert RUNTIME_V1_ACTUAL_CODE_SIZE == 0x198
+    assert hashlib.sha256(RUNTIME_V1_PAYLOAD).hexdigest() == (
+        "2cff837b6d9980a25264ad441054495c20e138665ffed282bcd817f072547981"
+    )
     assert len(LOADER_STUB) == 84
+    assert LOADER_STUB.hex() == (
+        "27bdffe83c02801b2442f820afbf00103c04800fac82ecd0"
+        "0c0198e4000000002404001b3c05801b24a5f4200c019759"
+        "000000003c19a01b2739f4200320f809000000008fbf0010"
+        "27bd001803e0000800000000"
+    )
     assert len(RESTORE_TRAMPOLINE) == 16
+    assert RESTORE_TRAMPOLINE.hex() == "3c19a01b2739f5200320000800000000"
     assert RESTORE_TRAMPOLINE_ROM == 0x0009ADD8
     assert RESTORE_TRAMPOLINE_VA == 0x8009A1D8
 
