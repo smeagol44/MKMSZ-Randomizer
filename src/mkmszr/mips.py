@@ -61,6 +61,14 @@ def lbu(rt: str, offset: int, base: str) -> int:
     return (0x24 << 26) | (_reg(base) << 21) | (_reg(rt) << 16) | (offset & 0xFFFF)
 
 
+def lhu(rt: str, offset: int, base: str) -> int:
+    return (0x25 << 26) | (_reg(base) << 21) | (_reg(rt) << 16) | (offset & 0xFFFF)
+
+
+def sh(rt: str, offset: int, base: str) -> int:
+    return (0x29 << 26) | (_reg(base) << 21) | (_reg(rt) << 16) | (offset & 0xFFFF)
+
+
 def addu(rd: str, rs: str, rt: str) -> int:
     return (_reg(rs) << 21) | (_reg(rt) << 16) | (_reg(rd) << 11) | 0x21
 
@@ -73,6 +81,10 @@ def or_(rd: str, rs: str, rt: str) -> int:
     return (_reg(rs) << 21) | (_reg(rt) << 16) | (_reg(rd) << 11) | 0x25
 
 
+def subu(rd: str, rs: str, rt: str) -> int:
+    return (_reg(rs) << 21) | (_reg(rt) << 16) | (_reg(rd) << 11) | 0x23
+
+
 def sll(rd: str, rt: str, shamt: int) -> int:
     if not 0 <= shamt <= 31:
         raise ValueError("shift amount is out of range")
@@ -81,6 +93,12 @@ def sll(rd: str, rt: str, shamt: int) -> int:
 
 def sllv(rd: str, rt: str, rs: str) -> int:
     return (_reg(rs) << 21) | (_reg(rt) << 16) | (_reg(rd) << 11) | 0x04
+
+
+def srl(rd: str, rt: str, shamt: int) -> int:
+    if not 0 <= shamt <= 31:
+        raise ValueError("shift amount is out of range")
+    return (_reg(rt) << 16) | (_reg(rd) << 11) | (shamt << 6) | 0x02
 
 
 def sltu(rd: str, rs: str, rt: str) -> int:
