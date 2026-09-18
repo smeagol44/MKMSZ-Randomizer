@@ -66,7 +66,7 @@ def make_rgb_tint(word: int, rgb: tuple[int, int, int]) -> int:
 
 
 def seeded_hue(seed: str) -> float:
-    digest = hashlib.sha256(f"mkmszr:subzero-outfit:{seed}".encode("utf-8")).digest()
+    digest = hashlib.sha256(f"mkmszr:subzero-outfit:{seed}".encode()).digest()
     value = int.from_bytes(digest[:8], "big")
     return (value / 2**64) * 360.0
 
@@ -120,7 +120,8 @@ class SubZeroPalettePatch:
         elif self.mode == "rgb" and self.rgb is not None:
             detail += f" rgb=#{self.rgb[0]:02X}{self.rgb[1]:02X}{self.rgb[2]:02X}"
 
-        return (
+        note = (
             f"Sub-Zero clothing entries 0x{SUBZERO_CLOTHING_FIRST:02X}.."
-            f"0x{SUBZERO_CLOTHING_LAST:02X}: {detail}",
+            f"0x{SUBZERO_CLOTHING_LAST:02X}: {detail}"
         )
+        return (note,)
