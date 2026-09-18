@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
+from dataclasses import dataclass
 from pathlib import Path
 
 from .checksum import calculate_crc_6102
@@ -39,7 +39,7 @@ class RomImage:
     _original: bytes
 
     @classmethod
-    def from_bytes(cls, source: bytes, *, require_clean: bool = True) -> "RomImage":
+    def from_bytes(cls, source: bytes, *, require_clean: bool = True) -> RomImage:
         if len(source) != EXPECTED_SIZE:
             raise RomValidationError(
                 f"expected a {EXPECTED_SIZE}-byte ROM, got {len(source)} bytes"
@@ -57,7 +57,7 @@ class RomImage:
         return cls(bytearray(source), source)
 
     @classmethod
-    def load(cls, path: Path, *, require_clean: bool = True) -> "RomImage":
+    def load(cls, path: Path, *, require_clean: bool = True) -> RomImage:
         return cls.from_bytes(path.read_bytes(), require_clean=require_clean)
 
     @property
