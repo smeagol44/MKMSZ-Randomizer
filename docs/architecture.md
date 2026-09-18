@@ -39,11 +39,12 @@ same configuration and call the same Python core.
 - Sub-Zero palette: operates only on confirmed clothing entries 0x21..0x3F.
   All currently exposed browser recolor modes have been visually validated in
   BizHawk.
-- Native payload bootstrap: low-level infrastructure for the runtime-confirmed
-  file-ID 0x1B load-and-execute path. It is not enabled by the default
-  user-facing build until the versioned 1 KiB code/state layout is defined.
+- Native payload bootstrap: reusable infrastructure for the runtime-confirmed
+  file-ID 0x1B load-and-execute path.
+- Runtime V1 persistence: defines the confirmed 0x200-byte code / 0x200-byte
+  state split and reproduces the first native Fire-Potion collected-state proof.
 
-## Native payload path
+## Native runtime path
 
 Research has runtime-confirmed:
 
@@ -51,32 +52,34 @@ Research has runtime-confirmed:
 trailing ROM
   -> file-table ID 0x1B
   -> FUN_80065D64
-  -> 0x801AF420
-  -> execute through KSEG1 0xA01AF420
-  -> normal return
+  -> reloadable code at 0x801AF420..0x801AF61F
+  -> execute through KSEG1
+  -> persistent V1 state at 0x801AF620..0x801AF81F
 ~~~
 
-The harmless proof wrote MKEX to the separate reserved word 0x801AF440 and
-continued normally. Static analysis confirmed the raw loader waits for DMA completion
-before returning, and KSEG1 instruction fetch avoids requiring explicit cache
-maintenance for this bounded bootstrap.
+The V1 header is MKSV / version 1 / state size 0x200 / header size 0x20.
+Fire Temple's starting Potion is the first proven persistent pickup: collection
+sets bit 0 at 0x801AF640, and the pickup-manager restore hook reapplies the
+native collected flag before actor construction after stage reconstruction.
 
-Reusable file-table registration, payload placement, MIPS stub construction, hook
-guards, and uncached execution are now implemented in patches/native_payload.py.
-See docs/native-payload.md.
+Reusable payload registration and loading live in patches/native_payload.py.
+The V1 layout and bounded Fire persistence path live in patches/runtime_v1.py.
+See docs/native-payload.md and docs/runtime-v1.md.
+
+## User-facing boundary
+
+The browser and CLI do not install runtime V1 persistence yet. The confirmed
+scope is one pickup in one stage; exposing it as a normal randomizer feature
+would imply broader support than has been proven.
 
 ## Next research checkpoint
 
-Before enabling a real runtime payload by default:
-
-1. define a versioned layout for the reserved 1 KiB block;
-2. separate executable code from persistent state explicitly;
-3. prove a one-stage collected-pickup bitset using that layout;
-4. only then generalize persistent pickup identity/state across stages.
+Generalize stable pickup identities and collected-bitset capture/restore across
+all eight catalogued main stages, without adding expanded inventory, seed logic,
+or item randomization in the same research step.
 
 ## Migration order
 
-After the runtime layout and first persistent-state proof, migrate the next known-good
-native systems such as the compact safe stage selector and two-box inventory proof.
-Each migration should reproduce its established behavior before the old one-off
-patcher is considered superseded.
+After generalized pickup persistence is proven, promote that result into the
+runtime module and then continue migrating other known-good native systems such
+as the compact safe stage selector and two-box inventory proof.
