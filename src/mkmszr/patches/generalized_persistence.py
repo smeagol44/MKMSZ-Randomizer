@@ -124,6 +124,19 @@ def build_generalized_capture_helper() -> bytes:
 
     emitter = Emitter()
 
+    # This is a mid-function hook rather than an ABI call site. Preserve the
+    # temporaries used by the helper so the native manager sees its original
+    # register values after the hook returns.
+    emitter.emit(
+        addiu("sp", "sp", -0x20),
+        sw("t0", 0x00, "sp"),
+        sw("t1", 0x04, "sp"),
+        sw("t2", 0x08, "sp"),
+        sw("t3", 0x0C, "sp"),
+        sw("t4", 0x10, "sp"),
+        sw("t5", 0x14, "sp"),
+    )
+
     # Reproduce the displaced native store. The original following LUI executes
     # as the JAL delay slot, so V0 is no longer usable here.
     emitter.emit(addiu("t0", "zero", 1), sw("t0", 0x2C, "a1"))
@@ -131,17 +144,15 @@ def build_generalized_capture_helper() -> bytes:
     # Resolve direct-index stage descriptor and fail closed outside 0..9.
     emitter.emit(*address_words("t0", CURRENT_STAGE_VA))
     emitter.emit(lw("t0", 0, "t0"), sltiu("t1", "t0", len(STAGE_DESCRIPTORS)))
-    emitter.beq("t1", "zero", "return")
-    emitter.emit(NOP)
 
-    emitter.emit(*address_words("t2", DESCRIPTOR_TABLE_VA))
+    descriptor_address = address_words("t2", DESCRIPTOR_TABLE_VA)
+    emitter.beq("t1", "zero", "return")
+    emitter.emit(descriptor_address[0])
+    emitter.emit(descriptor_address[1])
+
     emitter.emit(sll("t3", "t0", 2), addu("t2", "t2", "t3"))
     emitter.emit(lbu("t3", 0, "t2"))
     emitter.beq("t3", "zero", "return")
-    emitter.emit(NOP)
-
-    # Capture needs only the manager-provided ordinal. The canonical design's
-    # live-count equality guard is applied by restore before touching records.
     emitter.emit(sltu("t5", "s2", "t3"))
     emitter.beq("t5", "zero", "return")
     emitter.emit(NOP)
@@ -171,7 +182,17 @@ def build_generalized_capture_helper() -> bytes:
     emitter.emit(or_("t1", "t1", "t3"), sw("t1", 0, "t0"))
 
     emitter.label("return")
-    emitter.emit(jr("ra"), NOP)
+    emitter.emit(
+        lw("t0", 0x00, "sp"),
+        lw("t1", 0x04, "sp"),
+        lw("t2", 0x08, "sp"),
+        lw("t3", 0x0C, "sp"),
+        lw("t4", 0x10, "sp"),
+        lw("t5", 0x14, "sp"),
+        addiu("sp", "sp", 0x20),
+        jr("ra"),
+        NOP,
+    )
     return emitter.finish()
 
 
