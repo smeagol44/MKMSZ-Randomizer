@@ -180,6 +180,12 @@ class Emitter:
         self.fixups.append(BranchFixup(len(self.words), 0x04, rs, rt, label))
         self.words.append(0)
 
+    def bnel(self, rs: str, rt: str, label: str) -> None:
+        """Emit MIPS III BNE-likely; the delay slot is annulled when not taken."""
+
+        self.fixups.append(BranchFixup(len(self.words), 0x15, rs, rt, label))
+        self.words.append(0)
+
     def finish(self) -> bytes:
         for fixup in self.fixups:
             if fixup.label not in self.labels:
