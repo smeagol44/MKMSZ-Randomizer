@@ -6,10 +6,12 @@ Left/Right switches boxes outside the inventory menu using remapping-aware
 semantic input.
 
 Stage-specific key items that do not belong to the current stage are exposed
-in LIVE as item 0x08 (Glass), while the true item ID remains in the backing
-box. Glass is reserved as the non-consumable masking placeholder. Saves ignore
-Glass slots; loads reconstruct LIVE from the backing box and apply the current
-stage mask. This preserves the accepted no-spillover/no-global-scan design.
+in LIVE as item 0x24 (Tablet of Truth), while the true item ID remains in the
+backing box. The legacy Lua already used 0x24 as its generic inventory dummy;
+this experiment validates it as the native masking placeholder. Saves ignore
+placeholder slots; loads reconstruct LIVE from the backing box and apply the
+current stage mask. This preserves the accepted no-spillover/no-global-scan
+design.
 """
 
 from __future__ import annotations
@@ -77,9 +79,9 @@ RAW_LIVE_INV = words_blob(
     [0x00000004, 0x00000004, 0x00000001] + [0x00000004] * 7
 )
 
-# Glass is deliberately reserved as the LIVE-only placeholder for a stage key
-# that exists in the authoritative backing box but must not be usable here.
-GLASS_ITEM = 0x08
+# Tablet of Truth was the legacy Lua's generic page-padding dummy. Use it as
+# the LIVE-only masking candidate; runtime testing must confirm native USE is inert.
+MASK_ITEM = 0x24
 KEY_FIRST = 0x0D
 KEY_LAST = 0x22
 
@@ -205,7 +207,7 @@ def build_mask_copy_routine() -> bytes:
     e.emit(addu("t5", "t1", "t3"))
     e.emit(lbu("t5", 0, "t5"))
     e.bnel("t5", "t0", "store")
-    e.emit(addiu("t2", "zero", GLASS_ITEM))
+    e.emit(addiu("t2", "zero", MASK_ITEM))
     e.label("store")
     e.emit(sw("t2", 0, "a1"), addiu("a0", "a0", 4))
     e.bne("a0", "t7", "loop")
@@ -256,7 +258,7 @@ def build_transition_save_wrapper() -> bytes:
         addu("a1", "a1", "t2"),
         *address_words("t9", SAVE_FILTERED_UNCACHED_VA),
         jr("t9"),
-        addiu("t5", "zero", GLASS_ITEM),
+        addiu("t5", "zero", MASK_ITEM),
     ]
     blob = words_blob(words)
     if len(blob) != LOAD_DEFAULT_END - LOAD_DEFAULT_ROM:
@@ -501,7 +503,7 @@ class FourBoxInventoryPatch:
             rom.write_u32(call_rom, NOP)
 
         # Leaving-stage/default-loader routes now commit LIVE through a filtered
-        # saver. Glass slots are placeholders and therefore never overwrite the
+        # saver. placeholder slots are placeholders and therefore never overwrite the
         # real key IDs held by the authoritative backing box.
         rom.write_bytes(LOAD_DEFAULT_ROM, TRANSITION_SAVE_WRAPPER)
         rom.write_bytes(PERSISTENCE_SAVE_ROM, SAVE_FILTERED_ROUTINE)
@@ -516,7 +518,7 @@ class FourBoxInventoryPatch:
             "4 native boxes x 10 slots; backing boxes remain authoritative",
             "Block + Use + Right/Left cycles using remapped actions",
             "switching is rejected while the inventory menu is open",
-            "Glass (0x08) masks key items outside their originating stage",
+            "Tablet of Truth (0x24) masks key items outside their originating stage",
             "stage transitions and box loads reconstruct masked LIVE from backing state",
         )
 
