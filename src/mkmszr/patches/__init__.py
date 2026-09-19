@@ -1,6 +1,8 @@
 """Composable native ROM patch modules."""
 
 from .arena import ArenaReservationPatch
+from .boot_branding import BootBrandingPatch
+from .box_indicator import BoxIndicatorPatch
 from .inventory_boxes import FourBoxInventoryPatch
 from .manager_persistence import (
     ManagerPersistenceFirePatch,
@@ -22,6 +24,8 @@ from .stage_selector import SafeStageSelectorPatch
 __all__ = [
     "PICKUP_PERSISTENCE_PAYLOAD",
     "ArenaReservationPatch",
+    "BootBrandingPatch",
+    "BoxIndicatorPatch",
     "FourBoxInventoryPatch",
     "ManagerPersistenceFirePatch",
     "NativePayloadPatch",

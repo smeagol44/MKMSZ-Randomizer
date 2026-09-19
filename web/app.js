@@ -11,6 +11,7 @@ const resultPanel = document.querySelector("#result");
 const outputSha = document.querySelector("#outputSha");
 const outputCrc = document.querySelector("#outputCrc");
 const patchList = document.querySelector("#patchList");
+const bootPhrase = document.querySelector("#bootPhrase");
 const downloadButton = document.querySelector("#downloadButton");
 const log = document.querySelector("#log");
 
@@ -25,13 +26,13 @@ function setLog(message, error = false) {
 
 function updateModeUi() {
   colorField.hidden = outfitMode.value !== "rgb";
-  seedField.style.opacity = outfitMode.value === "seeded" ? "1" : ".72";
+  seedField.style.opacity = "1";
 }
 
 function outputFilename(inputName, mode, seedValue) {
   const stem = inputName.replace(/\.(z64|n64|v64)$/i, "");
   let suffix = mode === "vanilla" ? "mkmszr" : `mkmszr-${mode}`;
-  if (mode === "seeded" && seedValue) {
+  if (seedValue) {
     const safeSeed = seedValue.replace(/[^a-z0-9_-]/gi, "").slice(0, 24);
     if (safeSeed) suffix += `-${safeSeed}`;
   }
@@ -108,12 +109,14 @@ async function patchRom() {
     await pyodide.runPythonAsync(`
 from pathlib import Path
 from mkmszr.config import OutfitConfig, RandomizerConfig
+from mkmszr.data.boot_phrases import select_boot_phrase
 from mkmszr.patcher import patch_file
 
 _mode = str(web_outfit_mode)
 _seed = None if web_seed is None else str(web_seed)
 _rgb_hex = str(web_rgb).lstrip("#")
 _rgb = tuple(int(_rgb_hex[i:i+2], 16) for i in (0, 2, 4))
+_boot_phrase = select_boot_phrase(_seed)
 
 _config = RandomizerConfig(
     seed=_seed,
@@ -125,6 +128,7 @@ web_patch_result = {
     "crc2": f"{_result.crc2:08X}",
     "sha256": _result.output_sha256,
     "patches": [patch.name for patch in _result.patches],
+    "boot_phrase": " / ".join(part for part in _boot_phrase if part),
 }
 `);
 
@@ -138,6 +142,7 @@ web_patch_result = {
     outputSha.textContent = metadata.sha256;
     outputCrc.textContent = `${metadata.crc1} / ${metadata.crc2}`;
     patchList.textContent = metadata.patches.length ? metadata.patches.join(", ") : "CRC refresh only";
+    bootPhrase.textContent = metadata.boot_phrase;
 
     resultPanel.hidden = false;
     setLog(`Success. Patched ${(outputBytes.byteLength / 1024 / 1024).toFixed(1)} MiB locally; no ROM data was uploaded.`);
