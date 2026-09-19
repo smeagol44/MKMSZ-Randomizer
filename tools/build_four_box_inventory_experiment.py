@@ -8,7 +8,6 @@ from pathlib import Path
 from mkmszr.config import RandomizerConfig
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.base import PatchContext, PatchPipeline
-from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
 from mkmszr.rom import RomImage
 
 
