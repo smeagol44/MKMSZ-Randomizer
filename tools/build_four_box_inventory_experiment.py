@@ -1,4 +1,4 @@
-"""Build the disposable four-box inventory switching experiment."""
+"""Build a disposable ROM containing the promoted four-box inventory."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 from mkmszr.config import RandomizerConfig
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.base import PatchContext, PatchPipeline
-from mkmszr.patches.inventory_boxes import FourBoxInventoryExperimentPatch
+from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
 from mkmszr.rom import RomImage
 
 
@@ -25,7 +25,7 @@ def main() -> int:
 
     rom = RomImage.load(args.source, require_clean=True)
     core = build_pipeline(RandomizerConfig())
-    patches = (*core.patches, FourBoxInventoryExperimentPatch())
+    patches = core.patches
     results = PatchPipeline(patches).apply(rom, PatchContext())
     crc1, crc2 = rom.update_header_crc()
 
