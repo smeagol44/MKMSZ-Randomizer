@@ -161,4 +161,4 @@ def test_four_box_patch_installs_stage_masking_and_filtered_sync() -> None:
         PERSISTENCE_SAVE_ROM + len(SAVE_FILTERED_ROUTINE)
     ] == SAVE_FILTERED_ROUTINE
 
-    assert "Glass (0x08)" in notes[-2]
+    assert "Tablet of Truth (0x24)" in notes[-2]
