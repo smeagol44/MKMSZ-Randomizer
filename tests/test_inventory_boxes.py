@@ -9,6 +9,9 @@ from mkmszr.patches.inventory_boxes import (
     DEFAULT_INV,
     DEFAULT_INV_ROM,
     EXPECTED_DEFAULT_LOADER,
+    CONSUME_USE_STUB_VA,
+    GLASS_USE_ENTRY_ROM,
+    INERT_USE_STUB_VA,
     EXPECTED_PERSISTENCE_RESUME,
     EXPECTED_SANITIZER,
     INITIAL_BOX_DATA,
@@ -73,6 +76,7 @@ def _post_core_shape() -> RomImage:
     data[LIVE_INV_ROM : LIVE_INV_ROM + len(RAW_LIVE_INV)] = RAW_LIVE_INV
     data[SANITIZE_ROM:SANITIZE_END] = EXPECTED_SANITIZER
     data[LOAD_DEFAULT_ROM:LOAD_DEFAULT_END] = EXPECTED_DEFAULT_LOADER
+    data[GLASS_USE_ENTRY_ROM:GLASS_USE_ENTRY_ROM + 4] = CONSUME_USE_STUB_VA.to_bytes(4, "big")
     for call_rom in SANITIZE_CALL_ROMS:
         data[call_rom : call_rom + 4] = jal(SANITIZE_VA).to_bytes(4, "big")
     data[
@@ -160,5 +164,6 @@ def test_four_box_patch_installs_stage_masking_and_filtered_sync() -> None:
         PERSISTENCE_SAVE_ROM :
         PERSISTENCE_SAVE_ROM + len(SAVE_FILTERED_ROUTINE)
     ] == SAVE_FILTERED_ROUTINE
+    assert rom.read_u32(GLASS_USE_ENTRY_ROM) == INERT_USE_STUB_VA
 
-    assert "Tablet of Truth (0x24)" in notes[-2]
+    assert "Glass (0x08)" in notes[-2]
