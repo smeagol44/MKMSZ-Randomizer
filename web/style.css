@@ -41,7 +41,9 @@ dt { color: #858fa1; }
 dd { margin: 0; min-width: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .log { min-height: 2.5rem; margin: 1.3rem 0 0; white-space: pre-wrap; color: #aeb7c8; font-size: .85rem; line-height: 1.5; }
 .log:empty { display: none; }
-footer { padding: 1rem .25rem 0; color: #687184; font-size: .8rem; }
+footer { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; padding: 1rem .25rem 0; color: #687184; font-size: .8rem; }
+footer p { margin: 0; }
+.build-version { flex: none; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; opacity: .72; white-space: nowrap; }
 @media (max-width: 680px) {
   .shell { padding-top: 2rem; }
   .hero { align-items: flex-start; flex-direction: column; }
