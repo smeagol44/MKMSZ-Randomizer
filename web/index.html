@@ -49,8 +49,8 @@
         <div class="field" id="seedField">
           <label for="seed">Seed</label>
           <input id="seed" type="text" autocomplete="off" spellcheck="false"
-                 placeholder="e.g. BCBDBF">
-          <p class="hint">Chooses the boot message and any other seed-derived options.</p>
+                 placeholder="Leave blank for a random seed">
+          <p class="hint">Leave blank to generate one automatically. Enter a seed to replay or share it.</p>
         </div>
 
         <div class="field color-field" id="colorField" hidden>
@@ -65,6 +65,7 @@
       <div id="result" class="result" hidden>
         <h2>Patch complete</h2>
         <dl>
+          <div><dt>Seed</dt><dd id="resultSeed"></dd></div>
           <div><dt>Output SHA-256</dt><dd id="outputSha"></dd></div>
           <div><dt>CRC1 / CRC2</dt><dd id="outputCrc"></dd></div>
           <div><dt>Applied patches</dt><dd id="patchList"></dd></div>
@@ -78,6 +79,7 @@
 
     <footer>
       <p>This project does not distribute game ROMs. You must provide your own legally obtained copy.</p>
+      <span class="build-version">v0.DEV</span>
     </footer>
   </main>
 
