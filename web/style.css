@@ -13,8 +13,9 @@ body {
 button, input, select { font: inherit; }
 .shell { width: min(900px, calc(100% - 2rem)); margin: 0 auto; padding: 4rem 0 3rem; }
 .hero { display: flex; justify-content: space-between; gap: 2rem; align-items: flex-end; margin-bottom: 1.5rem; }
-.eyebrow { margin: 0 0 .45rem; color: #8fa6ff; text-transform: uppercase; letter-spacing: .14em; font-size: .76rem; font-weight: 700; }
 h1 { margin: 0; font-size: clamp(2rem, 6vw, 3.7rem); line-height: .98; letter-spacing: -.045em; }
+.title-lockup { display: inline-flex; align-items: flex-start; gap: .6rem; }
+.beta-badge { color: #8fa6ff; text-transform: uppercase; letter-spacing: .14em; font-size: .76rem; font-weight: 700; transform: translateY(-.45rem); white-space: nowrap; }
 .flavor-quote { margin: .7rem 0 0; color: #8d96aa; font-family: Georgia, "Times New Roman", serif; font-size: .95rem; font-style: italic; letter-spacing: .01em; }
 code { color: #dbe2ff; background: #171b25; padding: .08rem .3rem; border-radius: .35rem; }
 .runtime-status { flex: none; border: 1px solid #323a4c; border-radius: 999px; padding: .55rem .8rem; font-size: .82rem; color: #c5ccda; background: #11151d; }
