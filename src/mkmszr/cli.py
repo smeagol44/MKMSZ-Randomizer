@@ -7,6 +7,7 @@ from .config import OutfitConfig, RandomizerConfig
 from .errors import MKMSZRError
 from .patcher import patch_file
 from .patches.palette import PRESET_HUES
+from .seed import generate_seed
 
 
 def _parse_rgb(value: str) -> tuple[int, int, int]:
@@ -25,7 +26,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="MKMSZ Randomizer native ROM patcher")
     parser.add_argument("source", type=Path, help="clean MKMSZ USA Rev. 0 .z64 ROM")
     parser.add_argument("output", type=Path, help="new disposable output .z64")
-    parser.add_argument("--seed", help="seed string; controls boot message and seeded features")
+    parser.add_argument(
+        "--seed",
+        help="seed string; omit to generate a random 64-bit hexadecimal seed",
+    )
     parser.add_argument("--outfit", choices=modes, default="vanilla")
     parser.add_argument("--hue", type=float, help="hue in degrees for --outfit hue")
     parser.add_argument("--rgb", type=_parse_rgb, help="RRGGBB color for --outfit rgb")
@@ -40,11 +44,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--outfit hue requires --hue")
     if args.outfit == "rgb" and args.rgb is None:
         parser.error("--outfit rgb requires --rgb")
-    if args.outfit == "seeded" and args.seed is None:
-        parser.error("--outfit seeded requires --seed")
 
+    effective_seed = args.seed.strip() if args.seed and args.seed.strip() else generate_seed()
     config = RandomizerConfig(
-        seed=args.seed,
+        seed=effective_seed,
         outfit=OutfitConfig(mode=args.outfit, hue_degrees=args.hue, rgb=args.rgb),
     )
 
@@ -54,6 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.exit(2, f"error: {exc}\n")
 
     print(f"wrote: {args.output}")
+    print(f"seed: {effective_seed}")
     for patch in result.patches:
         print(f"patch: {patch.name}")
         for note in patch.notes:
