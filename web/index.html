@@ -3,16 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Client-side test patcher for MKMSZ True Randomizer.">
-  <title>MKMSZ True Randomizer — Test Patcher</title>
+  <meta name="description" content="Client-side patcher for MKMSZ Randomizer.">
+  <title>MKMSZ Randomizer</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <main class="shell">
     <section class="hero">
       <div>
-        <p class="eyebrow">Experimental browser patcher</p>
-        <h1>MKMSZ True Randomizer</h1>
+        <div class="title-lockup">
+          <h1>MKMSZ Randomizer</h1>
+          <span class="beta-badge">BETA</span>
+        </div>
         <p class="flavor-quote">"There is no knowledge that is not power"</p>
       </div>
       <div id="runtimeStatus" class="runtime-status" data-state="loading">
@@ -25,7 +27,6 @@
         <label for="romFile">Clean MKMSZ USA ROM</label>
         <input id="romFile" type="file" accept=".z64,.n64,.v64,application/octet-stream">
         <p class="hint">The patcher verifies the clean ROM SHA-256 before changing anything.</p>
-        <p class="hint">Built-in native systems include the safe stage selector, persistent ordinary pickups, and the four-box inventory.</p>
       </div>
 
       <div class="grid">
