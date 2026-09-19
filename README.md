@@ -13,6 +13,7 @@ The current codebase is being rebuilt around a modular Python patching core. ROM
 - include the runtime-confirmed compact safe eight-stage selector in every patched ROM;
 - reserve the runtime-tested 1 KiB MKMSZR native memory block in every patched ROM;
 - persist all 84 catalogued ordinary pickup locations across the eight main stages;
+- provide four native 10-slot inventory boxes with remapping-aware switching and title-menu transition persistence;
 - deterministic Sub-Zero outfit recoloring, including seed-derived colors.
 
 ## Development status
