@@ -1,24 +1,35 @@
-"""Runtime-confirmed four-box native inventory.
+"""Four-box native inventory with stage-local key-item masking.
 
 The game's native ten inventory slots remain the active window while four
-ten-word backing boxes retain the full inventory state. Block + Use + Left/Right
-switches boxes outside the inventory menu using remapping-aware semantic input.
+ten-word backing boxes retain authoritative inventory state. Block + Use +
+Left/Right switches boxes outside the inventory menu using remapping-aware
+semantic input.
 
-The stock default-inventory reload path is replaced with a LIVE -> active-box
-commit so title-menu stage changes do not destroy the current page. The raw
-main-image LIVE initializer is normalized to the stock inventory because the
-replacement loader no longer performs that cleanup on cold boot.
+Stage-specific key items that do not belong to the current stage are exposed
+in LIVE as item 0x08 (Glass), while the true item ID remains in the backing
+box. Glass is reserved as the non-consumable masking placeholder. Saves ignore
+Glass slots; loads reconstruct LIVE from the backing box and apply the current
+stage mask. This preserves the accepted no-spillover/no-global-scan design.
 """
 
 from __future__ import annotations
 
-from ..data.addresses import NATIVE_BOOTSTRAP_STUB_ROM, NATIVE_BOOTSTRAP_STUB_VA
+from ..data.addresses import (
+    CURRENT_STAGE_VA,
+    NATIVE_BOOTSTRAP_STUB_ROM,
+    NATIVE_BOOTSTRAP_STUB_VA,
+    PICKUP_MANAGER_RESUME_VA,
+    PROVEN_PAYLOAD_ROM,
+    RUNTIME_V1_CODE_START,
+)
 from ..mips import (
     Emitter,
     addiu,
+    address_words,
     addu,
     andi,
     jal,
+    jr,
     jump,
     lbu,
     lhu,
@@ -27,6 +38,7 @@ from ..mips import (
     ori,
     sh,
     sll,
+    sltiu,
     srl,
     subu,
     sw,
@@ -65,9 +77,52 @@ RAW_LIVE_INV = words_blob(
     [0x00000004, 0x00000004, 0x00000001] + [0x00000004] * 7
 )
 
+# Glass is deliberately reserved as the LIVE-only placeholder for a stage key
+# that exists in the authoritative backing box but must not be usable here.
+GLASS_ITEM = 0x08
+KEY_FIRST = 0x0D
+KEY_LAST = 0x22
+
+# Native key IDs 0x0D..0x22 -> the one stage where each key is exposed.
+# Temple's Map is explicitly stage 0; the legacy Lua omitted that entry even
+# though the accepted native rule is "originating stage only".
+KEY_STAGE_BY_ITEM = bytes(
+    [
+        0,        # 0D Map -> Temple
+        1, 1, 1, # 0E..10 Wind
+        3, 3, 3, # 11..13 Earth
+        2, 2, 2, # 14..16 Water
+        5, 5, 5, # 17..19 Fire
+        4, 4, 4, # 1A..1C Prison
+        8, 8, 8, # 1D..1F Bridge
+        9, 9, 9, # 20..22 Fortress crystals
+    ]
+)
+KEY_STAGE_TABLE = KEY_STAGE_BY_ITEM + bytes(len(DEFAULT_INV) - len(KEY_STAGE_BY_ITEM))
+if len(KEY_STAGE_BY_ITEM) != KEY_LAST - KEY_FIRST + 1:
+    raise AssertionError("stage-key table does not cover 0x0D..0x22 exactly")
+
+# The stock default inventory template is no longer read after the native
+# loader is replaced, so its uniquely-referenced 40-byte data area is reused as
+# the stage-key table. The live initializer remains separately normalized.
+KEY_STAGE_TABLE_VA = 0x800A5FE4
+
+# Native stock sanitizer and default loader. The sanitizer used to delete all
+# special/key IDs during transitions; stage-local masking replaces that role.
+SANITIZE_ROM = 0x0007B900
+SANITIZE_VA = 0x8007AD00
+SANITIZE_END = 0x0007B94C
+EXPECTED_SANITIZER = bytes.fromhex(
+    "00002821 2407000B 2406FFFF 3C03800A 2463600C 8C640000 2482FFF3 "
+    "2C420022 54400004 AC660000 54870003 24A50001 AC660000 24A50001 "
+    "28A2000A 1440FFF5 24630004 03E00008 00000000"
+)
+SANITIZE_CALL_ROMS = (0x0000DCF8, 0x00036C6C)
+
 # Native stock-default loader. Runtime testing showed this is the destructive
 # title-menu START lifecycle boundary for the live ten-slot window.
 LOAD_DEFAULT_ROM = 0x0007B94C
+LOAD_DEFAULT_VA = 0x8007AD4C
 LOAD_DEFAULT_END = 0x0007B980
 EXPECTED_DEFAULT_LOADER = bytes.fromhex(
     "00002821 3C04800A 2484600C 3C03800A 24635FE4 8C620000 24630004 "
@@ -109,65 +164,156 @@ RELOCATED_MAPPER_ROM = NATIVE_BOOTSTRAP_STUB_ROM + (
 
 ACTION_ROUTINE_VA = SECONDARY_CAVE_VA
 SWITCH_HELPER_VA = SELECTOR_CAVE_VA
+SWITCH_HELPER_SIZE = 0x44
+LOAD_MASK_WRAPPER_VA = SWITCH_HELPER_VA + SWITCH_HELPER_SIZE
+LOAD_MASK_WRAPPER_UNCACHED_VA = LOAD_MASK_WRAPPER_VA | 0x20000000
+
+# The confirmed pickup-persistence scanner ends with a 24-byte resume sequence
+# at payload offset 0x1BC and leaves a 44-byte tail at 0x1D4..0x1FF.
+# Inventory masking reuses that tail without changing the persistence scanner.
+PERSISTENCE_RESUME_OFFSET = 0x1BC
+PERSISTENCE_SAVE_OFFSET = 0x1D4
+PERSISTENCE_RESUME_ROM = PROVEN_PAYLOAD_ROM + PERSISTENCE_RESUME_OFFSET
+PERSISTENCE_SAVE_ROM = PROVEN_PAYLOAD_ROM + PERSISTENCE_SAVE_OFFSET
+PERSISTENCE_CODE_END_ROM = PROVEN_PAYLOAD_ROM + 0x200
+SAVE_FILTERED_CACHED_VA = RUNTIME_V1_CODE_START + PERSISTENCE_SAVE_OFFSET
+SAVE_FILTERED_UNCACHED_VA = SAVE_FILTERED_CACHED_VA | 0x20000000
 
 
 def _move(rd: str, rs: str) -> int:
     return addu(rd, rs, "zero")
 
 
-def build_copy10(copy_va: int) -> bytes:
-    """Copy ten 32-bit words from A0 to A1; clobbers T5/T6 and A0/A1."""
+def build_mask_copy_routine() -> bytes:
+    """Copy backing A0 -> LIVE A1 while masking foreign-stage key items."""
 
-    del copy_va
     e = Emitter()
-    e.emit(addiu("t5", "zero", 10))
+    e.emit(
+        lui("t0", (CURRENT_STAGE_VA + 0x8000) >> 16),
+        lw("t0", CURRENT_STAGE_VA & 0xFFFF, "t0"),
+        lui("t1", 0x800A),
+        addiu("t1", "t1", KEY_STAGE_TABLE_VA & 0xFFFF),
+        addiu("t7", "a0", 40),
+    )
     e.label("loop")
-    e.emit(lw("t6", 0, "a0"), sw("t6", 0, "a1"))
-    e.emit(addiu("a0", "a0", 4), addiu("t5", "t5", -1))
-    e.bne("t5", "zero", "loop")
+    e.emit(
+        lw("t2", 0, "a0"),
+        addiu("t3", "t2", -KEY_FIRST),
+        sltiu("t4", "t3", len(KEY_STAGE_BY_ITEM)),
+    )
+    e.beq("t4", "zero", "store")
+    e.emit(addu("t5", "t1", "t3"))
+    e.emit(lbu("t5", 0, "t5"))
+    e.bnel("t5", "t0", "store")
+    e.emit(addiu("t2", "zero", GLASS_ITEM))
+    e.label("store")
+    e.emit(sw("t2", 0, "a1"), addiu("a0", "a0", 4))
+    e.bne("a0", "t7", "loop")
     e.emit(addiu("a1", "a1", 4))
-    e.emit(0x03E00008, NOP)  # jr ra
-    return e.finish()
+    e.emit(jr("ra"), NOP)
+
+    blob = e.finish()
+    if len(blob) != SANITIZE_END - SANITIZE_ROM:
+        raise AssertionError("stage-key mask routine must exactly replace sanitizer")
+    return blob
 
 
-def build_switch_helper(base_va: int, copy_va: int, action_done_va: int) -> bytes:
-    """Save current box, select left/right neighbor, then load the new box.
+def build_save_filtered_routine() -> bytes:
+    """Copy LIVE A0 -> backing A1, preserving slots currently shown as Glass."""
 
-    Entry contract from the action hook:
-      T0 = STATE_VA
-      T1 = current state word
-      A0 = semantic direction mask (LEFT or RIGHT)
-    The routine intentionally jumps directly to the action hook's fixed done
-    label after the second copy; its incoming RA is not needed.
-    """
+    e = Emitter()
+    # T5=Glass is supplied by the transition-save wrapper.
+    e.emit(addiu("v0", "zero", 10))
+    e.label("loop")
+    e.emit(lw("t6", 0, "a0"))
+    e.beq("t6", "t5", "skip")
+    e.emit(addiu("a0", "a0", 4))
+    e.emit(sw("t6", 0, "a1"))
+    e.label("skip")
+    e.emit(addiu("v0", "v0", -1))
+    e.bne("v0", "zero", "loop")
+    e.emit(addiu("a1", "a1", 4))
+    e.emit(jr("ra"), NOP)
+
+    blob = e.finish()
+    if len(blob) > PERSISTENCE_CODE_END_ROM - PERSISTENCE_SAVE_ROM:
+        raise AssertionError("filtered inventory save exceeds persistence payload tail")
+    return blob
+
+
+def build_transition_save_wrapper() -> bytes:
+    """Compute the active backing pointer, then tail-call filtered LIVE save."""
+
+    words = [
+        lui("t0", 0x800A),
+        lw("t1", STATE_VA - 0x800A0000, "t0"),
+        andi("t1", "t1", 3),
+        sll("t2", "t1", 5),
+        sll("t3", "t1", 3),
+        addu("t2", "t2", "t3"),
+        addiu("a0", "t0", LIVE_INV_VA - 0x800A0000),
+        addiu("a1", "t0", BOX0_VA - 0x800A0000),
+        addu("a1", "a1", "t2"),
+        *address_words("t9", SAVE_FILTERED_UNCACHED_VA),
+        jr("t9"),
+        addiu("t5", "zero", GLASS_ITEM),
+    ]
+    blob = words_blob(words)
+    if len(blob) != LOAD_DEFAULT_END - LOAD_DEFAULT_ROM:
+        raise AssertionError("transition-save wrapper must exactly replace stock loader")
+    return blob
+
+
+def build_load_mask_wrapper() -> bytes:
+    """Reconstruct LIVE from the selected backing box and apply stage masking."""
+
+    return words_blob(
+        [
+            lui("t0", 0x800A),
+            lw("t1", STATE_VA - 0x800A0000, "t0"),
+            andi("t1", "t1", 3),
+            sll("t2", "t1", 5),
+            sll("t3", "t1", 3),
+            addu("t2", "t2", "t3"),
+            addiu("a0", "t0", BOX0_VA - 0x800A0000),
+            addu("a0", "a0", "t2"),
+            jump(SANITIZE_VA),
+            addiu("a1", "t0", LIVE_INV_VA - 0x800A0000),
+        ]
+    )
+
+
+def build_switch_helper(
+    base_va: int,
+    save_wrapper_va: int,
+    load_wrapper_va: int,
+    action_done_va: int,
+) -> bytes:
+    """Commit current LIVE, select a neighbor, then reconstruct masked LIVE."""
 
     del base_va
     e = Emitter()
 
-    # Preserve direction across the first copy and compute current box pointer:
-    # BOX0 + index*40 = BOX0 + index*(32+8).
-    e.emit(_move("t7", "a0"), andi("t2", "t1", 3))
-    e.emit(sll("t3", "t2", 5), sll("t4", "t2", 3), addu("t3", "t3", "t4"))
-    e.emit(addiu("a1", "t0", BOX0_VA - STATE_VA), addu("a1", "a1", "t3"))
-    e.emit(jal(copy_va), addiu("a0", "t0", LIVE_INV_VA - STATE_VA))
+    # Save the direction in T7. The transition-save path intentionally does not
+    # clobber T7, so it remains available after the filtered commit.
+    e.emit(jal(save_wrapper_va), _move("t7", "a0"))
 
-    # Right = +1, Left = -1, modulo four. Bit 15 is set only for Left after
-    # the action hook rejects the both-directions case.
+    # Reload state because the external save wrapper uses T0..T3.
+    e.emit(
+        lui("t0", 0x800A),
+        addiu("t0", "t0", STATE_VA & 0xFFFF),
+        lw("t1", 0, "t0"),
+        andi("t2", "t1", 3),
+    )
+
+    # Right = +1, Left = -1, modulo four.
     e.emit(srl("t4", "t7", 15), sll("t4", "t4", 1))
     e.emit(addiu("t2", "t2", 1), subu("t2", "t2", "t4"), andi("t2", "t2", 3))
 
-    # During an accepted held chord the state contains only index + latch.
     e.emit(ori("t1", "t2", LATCH_MASK), sw("t1", 0, "t0"))
-
-    # Compute selected box pointer and restore it into the native live window.
-    e.emit(sll("t3", "t2", 5), sll("t4", "t2", 3), addu("t3", "t3", "t4"))
-    e.emit(addiu("a0", "t0", BOX0_VA - STATE_VA), addu("a0", "a0", "t3"))
-    e.emit(jal(copy_va), addiu("a1", "t0", LIVE_INV_VA - STATE_VA))
-
-    # This helper is only called by the fixed action hook.
+    e.emit(jal(load_wrapper_va), NOP)
     e.emit(jump(action_done_va), NOP)
     return e.finish()
-
 
 def build_action_routine(base_va: int, helper_va: int) -> tuple[bytes, int]:
     """Build the remapping-aware four-box gameplay chord hook."""
@@ -215,31 +361,29 @@ def build_action_routine(base_va: int, helper_va: int) -> tuple[bytes, int]:
     return e.finish(), done_va
 
 
-def build_selector_cave() -> tuple[bytes, int, int]:
-    # Build once to get the fixed action done address used by the helper.
-    # The action routine has no PC-relative instructions outside Emitter
-    # branches, so its done address is deterministic from SECONDARY_CAVE_VA.
+def build_selector_cave() -> tuple[bytes, int]:
     placeholder_action, done_va = build_action_routine(
         SECONDARY_CAVE_VA, SWITCH_HELPER_VA
     )
     del placeholder_action
 
-    # The helper is immediately followed by its shared 10-word copier.
-    # Its expected 0x64-byte size is part of the packing contract.
-    provisional_copy_va = SWITCH_HELPER_VA + 0x64
-    helper = build_switch_helper(SWITCH_HELPER_VA, provisional_copy_va, done_va)
-    if len(helper) != 0x64:
+    helper = build_switch_helper(
+        SWITCH_HELPER_VA,
+        LOAD_DEFAULT_VA,
+        LOAD_MASK_WRAPPER_VA,
+        done_va,
+    )
+    if len(helper) != SWITCH_HELPER_SIZE:
         raise AssertionError(f"four-box helper size drifted: 0x{len(helper):X}")
 
-    copy_va = SWITCH_HELPER_VA + len(helper)
-    copy = build_copy10(copy_va)
-    blob = helper + copy
+    load_wrapper = build_load_mask_wrapper()
+    blob = helper + load_wrapper
     if len(blob) > SELECTOR_CAVE_SIZE:
-        raise AssertionError("four-box helper/copy exceeds reclaimed selector cave")
-    return blob, copy_va, done_va
+        raise AssertionError("four-box helper/load-mask wrapper exceeds selector cave")
+    return blob, done_va
 
 
-SELECTOR_CAVE_BLOB, COPY10_VA, ACTION_DONE_VA = build_selector_cave()
+SELECTOR_CAVE_BLOB, ACTION_DONE_VA = build_selector_cave()
 ACTION_ROUTINE, _ACTION_DONE_CHECK = build_action_routine(
     ACTION_ROUTINE_VA, SWITCH_HELPER_VA
 )
@@ -254,36 +398,30 @@ if len(RELOCATED_MAPPER) > 0x20:
     raise AssertionError("stage selector mapper unexpectedly exceeds 32 bytes")
 
 
-def build_transition_sync_wrapper(copy_va: int) -> bytes:
-    """Commit LIVE into the active box instead of reloading the stock template.
+MASK_COPY_ROUTINE = build_mask_copy_routine()
+SAVE_FILTERED_ROUTINE = build_save_filtered_routine()
+TRANSITION_SAVE_WRAPPER = build_transition_save_wrapper()
 
-    The native caller's RA is intentionally preserved. Tail-jumping into the
-    shared copy10 helper makes that helper return directly to the original
-    caller after copying ten words.
-    """
-
-    wrapper = words_blob(
-        [
-            lui("t0", 0x800A),
-            lw("t1", STATE_VA - 0x800A0000, "t0"),
-            andi("t1", "t1", 3),
-            sll("t2", "t1", 5),
-            sll("t3", "t1", 3),
-            addu("t2", "t2", "t3"),
-            addiu("a0", "t0", LIVE_INV_VA - 0x800A0000),
-            addiu("a1", "t0", BOX0_VA - 0x800A0000),
-            addu("a1", "a1", "t2"),
-            jump(copy_va),
-            NOP,
-        ]
-    )
-    capacity = LOAD_DEFAULT_END - LOAD_DEFAULT_ROM
-    if len(wrapper) > capacity:
-        raise AssertionError("four-box transition wrapper exceeds stock loader body")
-    return wrapper + bytes(capacity - len(wrapper))
-
-
-TRANSITION_SYNC_WRAPPER = build_transition_sync_wrapper(COPY10_VA)
+EXPECTED_PERSISTENCE_RESUME = words_blob(
+    [
+        lui("v1", 0x800A),
+        lw("v1", -0x56F0, "v1"),
+        *address_words("t9", PICKUP_MANAGER_RESUME_VA),
+        jr("t9"),
+        NOP,
+    ]
+)
+PERSISTENCE_RESUME_PATCH = words_blob(
+    [
+        jal(LOAD_MASK_WRAPPER_UNCACHED_VA),
+        lui("v1", 0x800A),
+        *address_words("t9", PICKUP_MANAGER_RESUME_VA),
+        jr("t9"),
+        lw("v1", -0x56F0, "v1"),
+    ]
+)
+if len(EXPECTED_PERSISTENCE_RESUME) != len(PERSISTENCE_RESUME_PATCH):
+    raise AssertionError("persistence resume patch changed scanner size")
 
 
 def initial_box_data() -> bytes:
@@ -325,14 +463,22 @@ class FourBoxInventoryPatch:
         rom.expect_bytes(BOX_DATA_ROM, bytes(BOX_DATA_SIZE))
         rom.expect_bytes(DEFAULT_INV_ROM, DEFAULT_INV)
         rom.expect_bytes(LIVE_INV_ROM, RAW_LIVE_INV)
+        rom.expect_bytes(SANITIZE_ROM, EXPECTED_SANITIZER)
         rom.expect_bytes(LOAD_DEFAULT_ROM, EXPECTED_DEFAULT_LOADER)
+        for call_rom in SANITIZE_CALL_ROMS:
+            rom.expect_u32(call_rom, jal(SANITIZE_VA))
+        rom.expect_bytes(PERSISTENCE_RESUME_ROM, EXPECTED_PERSISTENCE_RESUME)
+        rom.expect_bytes(
+            PERSISTENCE_SAVE_ROM,
+            bytes(PERSISTENCE_CODE_END_ROM - PERSISTENCE_SAVE_ROM),
+        )
 
         rom.write_bytes(RELOCATED_MAPPER_ROM, RELOCATED_MAPPER)
         rom.write_u32(SELECTION_LOAD_ROM, jal(RELOCATED_MAPPER_VA))
         rom.write_u32(SELECTION_LOAD_ROM + 4, NOP)
 
-        # The relocated mapper frees the entire previously researched selector
-        # cave for the switch helper + shared copy loop.
+        # The relocated mapper frees the former selector cave for the compact
+        # switch helper plus active-box load/mask wrapper.
         rom.write_bytes(SELECTOR_CAVE_ROM, bytes(SELECTOR_CAVE_SIZE))
         rom.write_bytes(SELECTOR_CAVE_ROM, SELECTOR_CAVE_BLOB)
 
@@ -340,21 +486,38 @@ class FourBoxInventoryPatch:
         rom.write_u32(ACTION_HOOK_ROM, jal(ACTION_ROUTINE_VA))
         rom.write_u32(ACTION_HOOK_ROM + 4, NOP)
 
-        # Seed box 1 with the stock inventory and boxes 2-4 empty. Normalize
-        # the raw LIVE initializer because the stock loader is replaced below.
+        # Seed box 1 with stock inventory and boxes 2-4 empty. LIVE starts from
+        # the same stock image. The now-dead stock template becomes the compact
+        # item-ID -> originating-stage table used by the mask routine.
         rom.write_bytes(BOX_DATA_ROM, INITIAL_BOX_DATA)
         rom.write_bytes(LIVE_INV_ROM, DEFAULT_INV)
+        rom.write_bytes(DEFAULT_INV_ROM, KEY_STAGE_TABLE)
 
-        # Preserve the active page across the title-menu START lifecycle by
-        # committing LIVE to the active backing box instead of replacing LIVE
-        # with the stock template.
-        rom.write_bytes(LOAD_DEFAULT_ROM, TRANSITION_SYNC_WRAPPER)
+        # Replace native special-item cleanup with stage-local masking. Existing
+        # sanitizer call sites are disabled; reconstruction happens explicitly
+        # when a box is selected and at the pickup-manager stage-init boundary.
+        rom.write_bytes(SANITIZE_ROM, MASK_COPY_ROUTINE)
+        for call_rom in SANITIZE_CALL_ROMS:
+            rom.write_u32(call_rom, NOP)
+
+        # Leaving-stage/default-loader routes now commit LIVE through a filtered
+        # saver. Glass slots are placeholders and therefore never overwrite the
+        # real key IDs held by the authoritative backing box.
+        rom.write_bytes(LOAD_DEFAULT_ROM, TRANSITION_SAVE_WRAPPER)
+        rom.write_bytes(PERSISTENCE_SAVE_ROM, SAVE_FILTERED_ROUTINE)
+
+        # The existing pickup-persistence restore scanner is left intact; only
+        # its fixed-size resume sequence is replaced so stage initialization
+        # reconstructs the selected box and applies the stage mask before the
+        # native manager resumes.
+        rom.write_bytes(PERSISTENCE_RESUME_ROM, PERSISTENCE_RESUME_PATCH)
 
         return (
-            "4 native boxes x 10 slots; native live inventory remains the active window",
-            "Block + Use + Right/Left cycles forward/backward using remapped actions",
+            "4 native boxes x 10 slots; backing boxes remain authoritative",
+            "Block + Use + Right/Left cycles using remapped actions",
             "switching is rejected while the inventory menu is open",
-            "title-menu stage transitions commit LIVE into the active backing box",
+            "Glass (0x08) masks key items outside their originating stage",
+            "stage transitions and box loads reconstruct masked LIVE from backing state",
         )
 
 
