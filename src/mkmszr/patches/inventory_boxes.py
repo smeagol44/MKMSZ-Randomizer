@@ -6,12 +6,12 @@ Left/Right switches boxes outside the inventory menu using remapping-aware
 semantic input.
 
 Stage-specific key items that do not belong to the current stage are exposed
-in LIVE as item 0x24 (Tablet of Truth), while the true item ID remains in the
-backing box. The legacy Lua already used 0x24 as its generic inventory dummy;
-this experiment validates it as the native masking placeholder. Saves ignore
-placeholder slots; loads reconstruct LIVE from the backing box and apply the
-current stage mask. This preserves the accepted no-spillover/no-global-scan
-design.
+in LIVE as item 0x08 (Glass), while the true item ID remains in the backing
+box. MKMSZR patches Glass's native USE dispatch from the consuming return-1
+stub to the inert return-0 stub, turning it into a dedicated safe placeholder.
+Saves ignore placeholder slots; loads reconstruct LIVE from the backing box
+and apply the current stage mask. This preserves the accepted
+no-spillover/no-global-scan design.
 """
 
 from __future__ import annotations
@@ -79,9 +79,14 @@ RAW_LIVE_INV = words_blob(
     [0x00000004, 0x00000004, 0x00000001] + [0x00000004] * 7
 )
 
-# Tablet of Truth was the legacy Lua's generic page-padding dummy. Use it as
-# the LIVE-only masking candidate; runtime testing must confirm native USE is inert.
-MASK_ITEM = 0x24
+# Glass is the LIVE-only masking item. Vanilla dispatch consumes it; MKMSZR
+# redirects only Glass's USE entry to the native return-0/no-consume stub.
+MASK_ITEM = 0x08
+
+ITEM_USE_TABLE_ROM = 0x000A6E68
+GLASS_USE_ENTRY_ROM = ITEM_USE_TABLE_ROM + MASK_ITEM * 4
+CONSUME_USE_STUB_VA = 0x80071F58
+INERT_USE_STUB_VA = 0x80071F50
 KEY_FIRST = 0x0D
 KEY_LAST = 0x22
 
@@ -474,6 +479,7 @@ class FourBoxInventoryPatch:
             PERSISTENCE_SAVE_ROM,
             bytes(PERSISTENCE_CODE_END_ROM - PERSISTENCE_SAVE_ROM),
         )
+        rom.expect_u32(GLASS_USE_ENTRY_ROM, CONSUME_USE_STUB_VA)
 
         rom.write_bytes(RELOCATED_MAPPER_ROM, RELOCATED_MAPPER)
         rom.write_u32(SELECTION_LOAD_ROM, jal(RELOCATED_MAPPER_VA))
@@ -514,11 +520,16 @@ class FourBoxInventoryPatch:
         # native manager resumes.
         rom.write_bytes(PERSISTENCE_RESUME_ROM, PERSISTENCE_RESUME_PATCH)
 
+        # Glass is a cut/placeholder-like inventory entry but vanilla still
+        # consumes it when USE returns 1. Redirect only Glass to the game's
+        # existing return-0 stub so the masked item cannot disappear.
+        rom.write_u32(GLASS_USE_ENTRY_ROM, INERT_USE_STUB_VA)
+
         return (
             "4 native boxes x 10 slots; backing boxes remain authoritative",
             "Block + Use + Right/Left cycles using remapped actions",
             "switching is rejected while the inventory menu is open",
-            "Tablet of Truth (0x24) masks key items outside their originating stage",
+            "Glass (0x08) masks key items outside their originating stage",
             "stage transitions and box loads reconstruct masked LIVE from backing state",
         )
 
