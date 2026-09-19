@@ -8,6 +8,7 @@ const customColor = document.querySelector("#customColor");
 const colorValue = document.querySelector("#colorValue");
 const patchButton = document.querySelector("#patchButton");
 const resultPanel = document.querySelector("#result");
+const resultSeed = document.querySelector("#resultSeed");
 const outputSha = document.querySelector("#outputSha");
 const outputCrc = document.querySelector("#outputCrc");
 const patchList = document.querySelector("#patchList");
@@ -29,13 +30,19 @@ function updateModeUi() {
   seedField.style.opacity = "1";
 }
 
+function generateSeed() {
+  const words = new Uint32Array(2);
+  crypto.getRandomValues(words);
+  return Array.from(words, (value) => value.toString(16).padStart(8, "0"))
+    .join("")
+    .toUpperCase();
+}
+
 function outputFilename(inputName, mode, seedValue) {
   const stem = inputName.replace(/\.(z64|n64|v64)$/i, "");
   let suffix = mode === "vanilla" ? "mkmszr" : `mkmszr-${mode}`;
-  if (seedValue) {
-    const safeSeed = seedValue.replace(/[^a-z0-9_-]/gi, "").slice(0, 24);
-    if (safeSeed) suffix += `-${safeSeed}`;
-  }
+  const safeSeed = seedValue.replace(/[^a-z0-9_-]/gi, "").slice(0, 24);
+  if (safeSeed) suffix += `-${safeSeed}`;
   return `${stem}-${suffix}.z64`;
 }
 
@@ -83,11 +90,10 @@ async function patchRom() {
   }
 
   const mode = outfitMode.value;
-  const seedValue = seed.value.trim();
-
-  if (mode === "seeded" && !seedValue) {
-    setLog("Seed-derived outfit mode requires a seed.", true);
-    return;
+  let seedValue = seed.value.trim();
+  if (!seedValue) {
+    seedValue = generateSeed();
+    seed.value = seedValue;
   }
 
   patchButton.disabled = true;
@@ -101,7 +107,7 @@ async function patchRom() {
     try { pyodide.FS.unlink("/tmp/output.z64"); } catch (_) {}
 
     pyodide.globals.set("web_outfit_mode", mode);
-    pyodide.globals.set("web_seed", seedValue || null);
+    pyodide.globals.set("web_seed", seedValue);
     pyodide.globals.set("web_rgb", customColor.value);
 
     setLog("Validating clean ROM and applying patches…");
@@ -113,7 +119,7 @@ from mkmszr.data.boot_phrases import select_boot_phrase
 from mkmszr.patcher import patch_file
 
 _mode = str(web_outfit_mode)
-_seed = None if web_seed is None else str(web_seed)
+_seed = str(web_seed)
 _rgb_hex = str(web_rgb).lstrip("#")
 _rgb = tuple(int(_rgb_hex[i:i+2], 16) for i in (0, 2, 4))
 _boot_phrase = select_boot_phrase(_seed)
@@ -124,6 +130,7 @@ _config = RandomizerConfig(
 )
 _result = patch_file(Path("/tmp/input.z64"), Path("/tmp/output.z64"), _config)
 web_patch_result = {
+    "seed": _seed,
     "crc1": f"{_result.crc1:08X}",
     "crc2": f"{_result.crc2:08X}",
     "sha256": _result.output_sha256,
@@ -137,8 +144,9 @@ web_patch_result = {
     proxy.destroy();
 
     outputBytes = pyodide.FS.readFile("/tmp/output.z64");
-    outputName = outputFilename(file.name, mode, seedValue);
+    outputName = outputFilename(file.name, mode, metadata.seed);
 
+    resultSeed.textContent = metadata.seed;
     outputSha.textContent = metadata.sha256;
     outputCrc.textContent = `${metadata.crc1} / ${metadata.crc2}`;
     patchList.textContent = metadata.patches.length ? metadata.patches.join(", ") : "CRC refresh only";
