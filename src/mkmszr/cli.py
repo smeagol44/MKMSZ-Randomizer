@@ -22,10 +22,10 @@ def _parse_rgb(value: str) -> tuple[int, int, int]:
 
 def _build_parser() -> argparse.ArgumentParser:
     modes = ["vanilla", "red", "green", "seeded", "hue", "rgb", *PRESET_HUES]
-    parser = argparse.ArgumentParser(description="MKMSZ True Randomizer native ROM patcher")
+    parser = argparse.ArgumentParser(description="MKMSZ Randomizer native ROM patcher")
     parser.add_argument("source", type=Path, help="clean MKMSZ USA Rev. 0 .z64 ROM")
     parser.add_argument("output", type=Path, help="new disposable output .z64")
-    parser.add_argument("--seed", help="seed string; currently used by seeded outfit color")
+    parser.add_argument("--seed", help="seed string; controls boot message and seeded features")
     parser.add_argument("--outfit", choices=modes, default="vanilla")
     parser.add_argument("--hue", type=float, help="hue in degrees for --outfit hue")
     parser.add_argument("--rgb", type=_parse_rgb, help="RRGGBB color for --outfit rgb")
