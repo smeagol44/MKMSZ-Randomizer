@@ -1,13 +1,13 @@
-"""Experimental four-box native inventory switcher.
+"""Runtime-confirmed four-box native inventory.
 
-This first four-box checkpoint deliberately proves only the runtime switching
-mechanism. It keeps the game's native ten live slots as the active window,
-stores four ten-word boxes in the already-researched 168-byte main-image data
-region, and uses the previously runtime-proven remapping-aware
-Block + Use + Left/Right chord outside the inventory menu.
+The game's native ten inventory slots remain the active window while four
+ten-word backing boxes retain the full inventory state. Block + Use + Left/Right
+switches boxes outside the inventory menu using remapping-aware semantic input.
 
-Transition synchronization/default-loader/sanitizer changes are intentionally
-deferred until this bounded switching proof succeeds.
+The stock default-inventory reload path is replaced with a LIVE -> active-box
+commit so title-menu stage changes do not destroy the current page. The raw
+main-image LIVE initializer is normalized to the stock inventory because the
+replacement loader no longer performs that cleanup on cold boot.
 """
 
 from __future__ import annotations
@@ -57,8 +57,21 @@ LIVE_INV_VA = 0x800A600C
 BOX_DATA_ROM = 0x000A6C48
 BOX_DATA_SIZE = 0xA8
 DEFAULT_INV_ROM = 0x000A6BE4
+LIVE_INV_ROM = 0x000A6C0C
 DEFAULT_INV = words_blob(
     [0x00000004, 0x00000004, 0x00000001] + [0xFFFFFFFF] * 7
+)
+RAW_LIVE_INV = words_blob(
+    [0x00000004, 0x00000004, 0x00000001] + [0x00000004] * 7
+)
+
+# Native stock-default loader. Runtime testing showed this is the destructive
+# title-menu START lifecycle boundary for the live ten-slot window.
+LOAD_DEFAULT_ROM = 0x0007B94C
+LOAD_DEFAULT_END = 0x0007B980
+EXPECTED_DEFAULT_LOADER = bytes.fromhex(
+    "00002821 3C04800A 2484600C 3C03800A 24635FE4 8C620000 24630004 "
+    "24A50001 AC820000 28A2000A 1440FFFA 24840004 03E00008"
 )
 
 # Common point immediately after both configurable-control paths converge.
@@ -241,8 +254,40 @@ if len(RELOCATED_MAPPER) > 0x20:
     raise AssertionError("stage selector mapper unexpectedly exceeds 32 bytes")
 
 
+def build_transition_sync_wrapper(copy_va: int) -> bytes:
+    """Commit LIVE into the active box instead of reloading the stock template.
+
+    The native caller's RA is intentionally preserved. Tail-jumping into the
+    shared copy10 helper makes that helper return directly to the original
+    caller after copying ten words.
+    """
+
+    wrapper = words_blob(
+        [
+            lui("t0", 0x800A),
+            lw("t1", STATE_VA - 0x800A0000, "t0"),
+            andi("t1", "t1", 3),
+            sll("t2", "t1", 5),
+            sll("t3", "t1", 3),
+            addu("t2", "t2", "t3"),
+            addiu("a0", "t0", LIVE_INV_VA - 0x800A0000),
+            addiu("a1", "t0", BOX0_VA - 0x800A0000),
+            addu("a1", "a1", "t2"),
+            jump(copy_va),
+            NOP,
+        ]
+    )
+    capacity = LOAD_DEFAULT_END - LOAD_DEFAULT_ROM
+    if len(wrapper) > capacity:
+        raise AssertionError("four-box transition wrapper exceeds stock loader body")
+    return wrapper + bytes(capacity - len(wrapper))
+
+
+TRANSITION_SYNC_WRAPPER = build_transition_sync_wrapper(COPY10_VA)
+
+
 def initial_box_data() -> bytes:
-    """ROM-initialized data for the first switching proof."""
+    """ROM-initialized backing state for the four-box inventory."""
 
     return (
         DEFAULT_INV
@@ -257,10 +302,10 @@ if len(INITIAL_BOX_DATA) != BOX_DATA_SIZE:
     raise AssertionError("four-box backing image is not exactly 168 bytes")
 
 
-class FourBoxInventoryExperimentPatch:
-    """Install the bounded four-box switching proof."""
+class FourBoxInventoryPatch:
+    """Install the runtime-confirmed four-box inventory."""
 
-    name = "four-box-inventory-experiment"
+    name = "four-box-inventory"
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
         del context
@@ -279,6 +324,8 @@ class FourBoxInventoryExperimentPatch:
         rom.expect_bytes(ACTION_HOOK_ROM, EXPECTED_ACTION_HOOK)
         rom.expect_bytes(BOX_DATA_ROM, bytes(BOX_DATA_SIZE))
         rom.expect_bytes(DEFAULT_INV_ROM, DEFAULT_INV)
+        rom.expect_bytes(LIVE_INV_ROM, RAW_LIVE_INV)
+        rom.expect_bytes(LOAD_DEFAULT_ROM, EXPECTED_DEFAULT_LOADER)
 
         rom.write_bytes(RELOCATED_MAPPER_ROM, RELOCATED_MAPPER)
         rom.write_u32(SELECTION_LOAD_ROM, jal(RELOCATED_MAPPER_VA))
@@ -293,13 +340,23 @@ class FourBoxInventoryExperimentPatch:
         rom.write_u32(ACTION_HOOK_ROM, jal(ACTION_ROUTINE_VA))
         rom.write_u32(ACTION_HOOK_ROM + 4, NOP)
 
-        # For this first proof only, seed box 1 with the stock inventory and
-        # boxes 2-4 empty directly in the main executable image.
+        # Seed box 1 with the stock inventory and boxes 2-4 empty. Normalize
+        # the raw LIVE initializer because the stock loader is replaced below.
         rom.write_bytes(BOX_DATA_ROM, INITIAL_BOX_DATA)
+        rom.write_bytes(LIVE_INV_ROM, DEFAULT_INV)
+
+        # Preserve the active page across the title-menu START lifecycle by
+        # committing LIVE to the active backing box instead of replacing LIVE
+        # with the stock template.
+        rom.write_bytes(LOAD_DEFAULT_ROM, TRANSITION_SYNC_WRAPPER)
 
         return (
             "4 native boxes x 10 slots; native live inventory remains the active window",
             "Block + Use + Right/Left cycles forward/backward using remapped actions",
             "switching is rejected while the inventory menu is open",
-            "phase 1 only: transition/default-loader synchronization is not patched yet",
+            "title-menu stage transitions commit LIVE into the active backing box",
         )
+
+
+# Compatibility for the disposable phase-1 builder retained on this branch.
+FourBoxInventoryExperimentPatch = FourBoxInventoryPatch
