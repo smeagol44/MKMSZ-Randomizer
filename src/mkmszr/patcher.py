@@ -7,6 +7,8 @@ from .config import RandomizerConfig
 from .patches import (
     PICKUP_PERSISTENCE_PAYLOAD,
     ArenaReservationPatch,
+    BootBrandingPatch,
+    BoxIndicatorPatch,
     FourBoxInventoryPatch,
     NativePayloadPatch,
     NativePayloadSpec,
@@ -36,6 +38,8 @@ def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
         NativePayloadPatch(NativePayloadSpec(payload=PICKUP_PERSISTENCE_PAYLOAD)),
         PickupPersistencePatch(),
         FourBoxInventoryPatch(),
+        BoxIndicatorPatch(),
+        BootBrandingPatch(),
     ]
     if config.outfit.mode.lower() != "vanilla":
         patches.append(
