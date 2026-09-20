@@ -31,7 +31,7 @@ Last consolidated: 2026-09-20.
 | Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
 | Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
 | Temple XP progression proof | Three proof pickups plus one vanilla Herbs control established no-combat-XP and pickup-driven tiers | Generalized into the production Diagnostic B architecture; full nine-tier coverage and final art remain |
-| Reverse Elbow host/action proof + genuine MKT import branch | v6 established repeatable scheduler/action stability; v08/A1.7 runtime-confirmed genuine SCCOMBO10; Sektor v10/v11 Idle, v14 Turn, v15 Walk F/B, and v16 composed Idle+Walk+Turn are runtime-confirmed clean | Runtime-test v17 isolating Sektor Crouch on the proven idle base; do not append it directly to v16 until the raw resource-size/storage problem that caused v12 is solved |
+| Reverse Elbow host/action proof + genuine MKT import branch | v6 established repeatable scheduler/action stability; v08/A1.7 runtime-confirmed genuine SCCOMBO10; Sektor direct replacements are runtime-confirmed through Idle, Walk F/B, Turn and Crouch, with v16 confirming multi-animation composition | Runtime-test v18 for Crouch Turn, Crouch Block and Crouch Hit; then continue direct-core crouch attacks/uppercut and standing combat while respecting the raw resource-size boundary |
 
 ## Latest runtime findings
 
