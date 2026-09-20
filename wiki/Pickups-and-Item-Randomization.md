@@ -31,6 +31,18 @@ Candidate layouts are rejected, up to 1,000 deterministic attempts, if the known
 
 These are implementation/CI-confirmed rules ported from legacy logic. A complete native runtime playthrough across arbitrary seeds remains pending.
 
+## Progression-reward overlay
+
+After the ordinary layout is accepted, production derives Herbs candidates from that exact generated assignment and selects exactly nine with a separate SHA-256 Fisher–Yates domain:
+
+```text
+MKMSZR:PROGRESSION:HERBS:V1\0
+```
+
+Only the callback word of each chosen generated Herbs identity is changed. Type, collision, stage-local resource selector and presentation remain Herbs. This keeps the ordinary shuffle byte-for-byte independent and avoids foreign-resource imports. Progression acquisition state is also separate from the 84 ordinary-pickup persistence bits.
+
+The initial production visual is therefore ordinary Herbs. Bright-blue-with-bronze-handle presentation is a pending visual-only refinement.
+
 ## Runtime milestone
 
 Seed `TEST153` predicted a Shield at Fire's first ordinary location. Runtime testing showed the Shield model and award behaving normally. The boot phrase for that build was `' OR 1==1 --`, independently selected from the phrase namespace. This confirms one generated location, not the full 84-location run.
