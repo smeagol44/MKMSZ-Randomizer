@@ -122,6 +122,6 @@ class PickupRandomizationPatch:
         return (
             f"{TOTAL_ORDINARY_PICKUPS} ordinary pickup locations processed across 8 stages",
             "mode=stage-local-v1; complete +0x10..+0x2B native item tuples shuffled",
-            "known stage progression rules rejection-tested; Temple Map/special mechanisms excluded",
+            "legacy stage access model rejection-tested; Temple Map/special mechanisms excluded",
             "layout attempts " + ", ".join(attempt_notes),
         )
