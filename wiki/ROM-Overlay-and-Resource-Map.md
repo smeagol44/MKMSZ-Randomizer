@@ -34,10 +34,12 @@ The foreign Prison-key pickup proof relocated Fire's `0x2530`-byte file to ROM `
 Addresses at or above the stage-overlay base describe the currently loaded stage overlay. Always name the stage and source artifact when recording an overlay function. Do not promote an overlay address to a global function merely because it appeared stable in one stage.
 
 
-## Global-randomizer materialization split
+## Global-randomizer exact visual materialization
 
-The runtime-confirmed foreign Prison-key import proves that exact foreign world art can be imported by relocating/expanding a stage resource file and rebasing a bundle. That remains the path for exact cross-stage visuals.
+For 1.0, cross-stage randomization requires the placed pickup to use the randomized item's real graphics/resource identity.
 
-For 1.0 logic, however, a lighter strategy is now under test: preserve each destination's native world-actor resource shell and change only the logical award callback/parameter. If runtime-confirmed, the global randomizer will not require resource-file expansion for every cross-stage placement. Resource importing then becomes optional per-item presentation work rather than the core logical-randomization dependency.
+The runtime-confirmed foreign Prison-key import establishes the required architecture: relocate/expand the destination stage resource file when necessary, append or deduplicate the source item's resource bundle, assign a destination-local selector, update file-table bounds/location, and patch the destination pickup to reference that selector together with the correct presentation/award semantics.
 
-Fortress and Prison still have no immediate free logical selectors, so this distinction materially reduces 1.0 allocation risk.
+Keeping a destination pickup's old graphics while changing only its logical reward is **Rejected for 1.0**. Resource importing/remapping is core randomizer infrastructure, not optional presentation polish.
+
+Stages with no free logical selector capacity, especially Fortress and Prison, therefore remain genuine planner cases. Their materialization policy must either create selector capacity safely, prove a reusable equivalent resident resource, or use another production-safe lookup design.
