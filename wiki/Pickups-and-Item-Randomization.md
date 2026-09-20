@@ -100,7 +100,25 @@ The native design will keep the useful randomizer concept but remove the per-fra
 
 Because every main stage already has native Herbs resources, this first progression-item design does not require cross-stage presentation-resource imports.
 
-This architecture is **static design / pending implementation** until a generated ROM is manually tested.
+### Temple proof — runtime-confirmed
+
+A bounded clean-ROM Temple proof replaced ordinary Temple Herbs #1, #3 and #4 with progression pickups while leaving Herbs #2 completely vanilla as a control.
+
+Observed manually:
+
+- progression pickups were present in the level and visually distinguishable from the normal Herbs;
+- normal Herbs remained available and behaved normally;
+- progression pickups did **not** add anything to inventory;
+- first collected progression pickup advanced XP to 85;
+- second collected progression pickup advanced XP to 258 and unlocked the second expected special-move tier;
+- fighting, enemy kills and combos awarded no XP before or after progression-item collection;
+- the combo HITS message remained;
+- the combo EXPERIENCE line was absent;
+- Temple's displayed max XP was 20000.
+
+The visual experiment reused the Herbs resource with the native Mana presentation descriptor. It successfully produced a distinct pale blue/grey Herbs-like pickup, but the preferred final art direction is brighter blue while retaining a bronze-looking handle. That styling refinement is pending and is independent of the progression logic.
+
+The proof callback used a temporary clean-ROM cave that conflicts with current production four-box code. The runtime behavior is confirmed; production integration must relocate the callback into compatible MKMSZR runtime space rather than shipping the proof layout verbatim.
 
 ## Next frontier
 

@@ -55,13 +55,21 @@ Static-confirmed:
 
 The legacy Lua used the same hexadecimal tier constants but rewrote current XP every frame according to Power Upgrade count and rewrote all main-stage caps to 9999 at startup. Its comment for `0x1CBA` says 7345; native static analysis confirms the actual value is **7354**.
 
-Planned native design, not yet runtime-confirmed:
+Runtime-confirmed Temple proof behavior:
 
-- disable ordinary/direct combat XP awards at their native award paths;
-- replace nine randomized Herbs with a synthetic progression pickup;
-- each progression pickup advances current XP once to the next native tier threshold and records that XP in MKMSZR persistent state;
-- restore the persistent XP once at stage reconstruction rather than continuously overwriting the game's XP value;
-- statically raise main-stage XP caps so any normal move tier can remain active in every selected stage.
+- mapped combat/kill XP award paths can be suppressed so normal fighting does not increase XP;
+- a synthetic ordinary pickup can advance current XP to the next native tier threshold without adding an inventory item;
+- one pickup advanced XP to 85; a second advanced it to 258 and unlocked the second expected special-move tier;
+- the combo HITS line remains while the EXPERIENCE label/value can be removed independently;
+- Temple's static stage cap can be raised to 20000 and is displayed as such in the status screen.
+
+Still pending for production:
+
+- replace exactly nine randomized Herbs across the normal generator;
+- store progression XP in MKMSZR persistent state and restore it once at stage reconstruction;
+- raise all supported main-stage XP caps statically;
+- integrate the callback into production-safe runtime space;
+- validate persistence across stage transitions, death/Game Over and a full seeded run.
 
 The save-slot/state loader at `0x80078A18` restores XP as part of a 0x7C-byte record; it is not the ordinary combat-award path. Title/new-game lifecycle resets still mean the production randomizer should keep its own persistent progression value and restore it at the existing stage-init reconstruction boundary.
 
@@ -72,6 +80,6 @@ Game Over is intentionally the full-run reset boundary.
 Still pending:
 
 - complete run-state reset implementation/runtime proof;
-- HP/lives/continues lifecycle policy and runtime validation of the new XP-progression design;
+- HP/lives/continues lifecycle policy and cross-stage/Game Over persistence validation of XP progression;
 - broader normal stage-completion coverage;
 - save-file/power-cycle persistence only if later desired.

@@ -19,7 +19,7 @@
 | punctuation-heavy seed `TEST153` | Runtime-confirmed | apostrophe, equals, hyphens rendered correctly |
 | Sub-Zero recolor | Runtime-confirmed | indexed palette |
 | stage-local seeded 84-pickup randomizer | Runtime-confirmed bounded proof | TEST153 Fire first pickup -> Shield; full seeded run pending |
-| pickup-driven XP progression | Static-confirmed design | XP/tier/cap/award/render paths mapped; implementation and runtime proof pending |
+| pickup-driven XP progression | Runtime-confirmed bounded proof | Temple: no combat/kill XP, progression pickups 85→258, second move tier unlocked, no inventory item, HITS retained/EXPERIENCE removed, max XP 20000; production persistence/generalization pending |
 | cross-stage ordinary enemy import | Runtime-confirmed | bounded Fire proof; death/despawn issue |
 | Reverse Elbow transplant | Static implementation design + failed early proofs | refined proof pending |
 | PS1 selector/overlay map | Static | runtime pending |
