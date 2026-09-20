@@ -168,9 +168,11 @@ The donor streams are not byte-consumable by MKMSZ:
 
 Codecs 22/24 decode deterministically to 5-bit palette indices `0..31`. They use the exact 0x100-byte male-ninja dictionary at ROM `0x6B8550..0x6B864F`.
 
-The donor decoded fighter buffer is row-major with **two transparent padding columns per row**: `height * (width+2)`. For SCCOMBO10 the 95 rows are 44 bytes each; columns 42 and 43 are transparent padding. The target raw proof path uses the corresponding target allocation convention `width * (height+2)`, so the compatibility conversion preserves the visible donor pixels, removes the two donor padding columns, and adds two transparent target padding rows. No visible pixel is redrawn or rescaled.
+The donor decoded SCCOMBO10 buffer is row-major with two transparent padding columns per row: `95 * 44 = height * align4(width)`. MKT's retail renderer aligns source width to four bytes, so the first 42 bytes of each 44-byte row are visible pixels and the last two are padding.
 
-MKMSZ decoder `0x8000322C` accepts types 0-5. Static recheck of the clean target shows type 0 returns `src+4` directly, so the current genuine-import plan is:
+MKMSZ decoder `0x8000322C` accepts types 0-5. Static recheck of the clean target shows that the compression type is read from **header byte +3** (the low byte of the big-endian word), masked with `0x3F`; type 0 returns `src+4` directly. Therefore a type-0 wrapper must keep that low byte zero. Writing a raw byte length such as `0x00000FEA` or `0x00001054` into the header is invalid and routes away from type 0.
+
+The current genuine-import plan is:
 
 ```text
 actual MKT codec-22/24 bytes
@@ -247,28 +249,37 @@ It also exposed and corrected three format-boundary mistakes.
 
 **A1.3 / ROM v04:** corrected opaque-black conversion was built but superseded before runtime testing when the dimension-order error was resolved. Do not use v04 as the current presentation proof.
 
-### Proof A1.4 / ROM v05 — corrected Y:X -> X:Y conversion
+### Proof A1.4/A1.5 — ROM v05/v06 raw-header failure
+
+**Rejected / failed.** Runtime testing of both v05 and v06 produced sparse/confetti-like pixels while stock Sub-Zero remained healthy.
+
+The 42x95 descriptor correction remains supported, but both builds accidentally encoded a raw byte count into the four-byte MKMSZ wrapper header:
+
+- v05: `00000FEA` -> decoder type byte `EA & 3F = 2A`;
+- v06: `00001054` -> decoder type byte `54 & 3F = 14`.
+
+Neither build therefore exercised MKMSZ type 0. Their confetti output does **not** reject the 42x95 donor dimensions or the packed visible-pixel conversion.
+
+### Proof A1.6 / ROM v07 — corrected type-0 header
 
 **Implementation/static-confirmed; runtime pending.**
 
-The corrected compatibility conversion uses the actual donor dimensions:
+v07 returns the wrapper header to `00000000`, while retaining:
 
-- SCCOMBO10 visible image: **42x95**;
-- donor packed size: `0x005F002A` (Y:X);
-- target packed size: `0x002A005F` (X:Y);
-- anchors remain X +15, Y -19.
-
-The exact donor decoded stream is treated as 95 rows x 44 bytes. The first 42 bytes of each row are preserved verbatim; the final two bytes are verified transparent padding. The target raw resource is rebuilt as 42 visible columns x 95 rows plus two transparent target padding rows, for `42 * (95+2) = 0x0FEA` bytes.
-
-The isolated palette path and corrected donor opacity conversion are retained. Stock Sub-Zero source palette remains byte-identical to clean.
+- target descriptor **42x95** (`0x002A005F`);
+- anchors `+15,-19`;
+- deterministic removal of the two transparent donor padding columns so the target receives contiguous 42x95 visible indices;
+- isolated native donor palette;
+- opaque-black preservation;
+- untouched stock Sub-Zero palette.
 
 Output identity:
 
-- file: `MKMSZR_mkt-scc10-import_global_proof_v05.z64`;
-- SHA-256 `79991b16ddfe874b1a1d5d9d9414a5fa81708f4a0c0b8c9b66e572002eaf5737`;
+- file: `MKMSZR_mkt-scc10-import_global_proof_v07.z64`;
+- SHA-256 `fb78581084358238fa31bd28cd8b9a4f071ed7734d24cea1c34ce9de3768b93c`;
 - CRC1/CRC2 `70135E41 / BB4C161F`.
 
-Success criterion: Back -> Forward + Low Kick should show an upright, fighter-proportioned genuine SCCOMBO10 pose using the isolated Reptile palette, then restore stock Sub-Zero cleanly.
+If v07 still renders incorrectly, the next bounded question is the downstream target texture-cache stride/packing path rather than decoder dispatch.
 
 ### Proof A2
 
@@ -295,7 +306,7 @@ After genuine animation rendering is runtime-confirmed:
 
 Pending runtime/static questions are intentionally narrow:
 
-- whether A1.4's corrected 42x95 dimension/padding conversion renders the genuine donor frame correctly;
+- whether A1.6/v07's valid type-0 wrapper plus 42x95 packed visible-pixel conversion renders the genuine donor frame correctly;
 - whether the corrected isolated palette plus opaque-black mapping completes donor palette fidelity;
 - the narrowest MKMSZ fighter-separation hook for a three-tick no-repel gate;
 - the best native victim-action primitives for exact donor reactions without bypassing interruption/cleanup.
