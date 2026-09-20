@@ -13,8 +13,8 @@ callbacks still require a destination-safe wrapper before production use.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 from .data.pickups import STAGE_PICKUPS
 from .errors import PatchError
