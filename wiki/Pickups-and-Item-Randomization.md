@@ -166,3 +166,27 @@ The runtime-confirmed Fire foreign Prison-key proof is the architectural precede
 For 1.0, that mechanism must be generalized across the complete randomized item pool with explicit allocation, deduplication, file-table updates, bounds checks, destination selector planning, and runtime validation.
 
 A temporary experiment that keeps the destination graphics while awarding a different logical item is **Rejected for 1.0** because it violates the randomizer's visual-identity requirement. It should not be used as the production materialization path.
+
+
+## Selector lookup breakthrough
+
+Static analysis of the ordinary pickup manager shows that `+0x24` is not range-checked against a stage's stock outer-table length.
+
+The manager computes:
+
+```text
+entry_ptr = stage_resource_base + (selector << 2)
+descriptor_ptr = stage_resource_base + *entry_ptr
+```
+
+and passes that resolved descriptor into the resource-backed actor path.
+
+Therefore a stage does not necessarily require physical insertion of new words at the beginning of its stock outer table. A relocated/expanded stage file can append an **extension selector table** elsewhere in the file; a pickup can reference one of those entries by using the corresponding word index in `+0x24`.
+
+This is materially different from the earlier nested-table idea: the vanilla loader does not recurse through tables, but it also does not enforce that selector indices stay within the original stock table.
+
+### Disposable Proof D
+
+Proof D changes no item art or callback semantics. It relocates Prison's stock resource file, appends one selector word at file offset `0x48F0`, points that word to the existing Herbs descriptor `0x255C`, and changes all six Prison Herbs records from selector `8` to selector `0x123C` (`0x48F0 / 4`).
+
+Expected result: Prison loads normally and all Herbs render/award exactly as stock while resolving through an appended selector entry. Success would runtime-confirm the extension-selector architecture before any foreign resource is added.

@@ -9,7 +9,9 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8000D0B8` | Debug stage-select menu | Runtime-confirmed | Production A-button title route |
 | `0x80015088` | Stage transition handler | Static-confirmed | Copies selection to current-stage state |
 | `0x80015B54` | Resume after four-box input hook | Implementation-confirmed | Common configured-control convergence |
-| `0x8001C528` | Pickup presentation/resource loader | Static/runtime-confirmed | Consumes descriptor selected by pickup |
+| `0x8001C528` | Pickup presentation loader | Static/runtime-confirmed | Called from pickup manager with record `+0x28` presentation pointer + 4; not the `+0x24` resource-selector lookup |
+| `0x800281A0` | Resource-entry resolver/actor setup wrapper | Static-confirmed | Receives pointer to one outer-selector entry, loads its file-relative descriptor offset, adds current stage resource base, then calls `0x80028128` |
+| `0x80028128` | Resource-backed actor constructor helper | Static-confirmed | Consumes direct descriptor pointer produced by `0x800281A0` |
 | `0x8001E578` | Context-specific render family | Static-confirmed | Not a universal gameplay-HUD API |
 | `0x8001EAE4` | Render-node submit | Runtime-confirmed | Existing HUD call displaced by box wrapper |
 | `0x8002018C` | Render-node allocator | Runtime-confirmed | Allocates `0x58`-byte node |

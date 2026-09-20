@@ -43,3 +43,39 @@ The runtime-confirmed foreign Prison-key import establishes the required archite
 Keeping a destination pickup's old graphics while changing only its logical reward is **Rejected for 1.0**. Resource importing/remapping is core randomizer infrastructure, not optional presentation polish.
 
 Stages with no free logical selector capacity, especially Fortress and Prison, therefore remain genuine planner cases. Their materialization policy must either create selector capacity safely, prove a reusable equivalent resident resource, or use another production-safe lookup design.
+
+
+## Static-confirmed ordinary-pickup selector lookup
+
+The exact ordinary-pickup construction path is now decoded.
+
+At pickup manager `0x80038ACC`, for each uncollected ordinary record:
+
+```text
+0x80038BE4  lw   v0, +0x24(s0)      ; selector from pickup record
+0x80038BE8  lui  a2, 0x802F
+0x80038BEC  lw   a2, 0x82B8(a2)     ; current stage resource-file base
+0x80038BF8  sll  v0, v0, 2
+0x80038BFC  addu s1, a2, v0         ; entry_ptr = base + selector*4
+0x80038C00  jal  0x800281A0
+0x80038C04  move a0, s1
+```
+
+`0x800281A0` then performs:
+
+```text
+lw   a0, 0(s3)       ; relative descriptor offset from selected entry
+...
+jal  0x80028128
+addu a0, a0, s2      ; direct descriptor pointer = base + relative offset
+```
+
+Later in the same pickup-manager iteration, the selected entry is read again and resolved as `base + *entry_ptr` before actor setup continues.
+
+**No selector-count or stock-table-size check exists on this path.** The selector is used directly as a 32-bit word index from the stage resource-file base.
+
+This creates a promising extension mechanism without patching the lookup code: relocate/expand a stage resource file, append one or more new selector words at an aligned file offset, and encode `pickup +0x24 = appended_entry_offset / 4`. The stock lookup will address that appended word directly. The appended entry can then point to an appended foreign descriptor/resource bundle.
+
+This is **Static-confirmed** from the clean USA N64 ROM. Runtime behavior of an out-of-stock-range selector is pending disposable Proof D.
+
+The current stage resource-file base is held at `0x802F82B8` on this path. Stage-loading code writes allocator/loader results there before the resource file is consumed.
