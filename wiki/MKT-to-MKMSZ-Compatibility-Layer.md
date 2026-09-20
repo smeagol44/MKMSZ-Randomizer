@@ -762,16 +762,53 @@ The two frames add `0x2D94` bytes of raw donor material. File ID `0x87` is now R
 
 The active and inactive old Sub-Zero turn scripts are no longer callable; their shape/sub-descriptor stubs are cleared. Old compressed image bytes may remain orphaned but are not retained as an intentional runtime backup.
 
+**Runtime-confirmed.**
+
+The user reported v14 as perfect. The stage loads normally; the genuine two-frame Sektor turn renders cleanly with the established donor palette; transitions remain stable; no ghosting, smear, palette artifact, or hang was observed in the tested route.
+
+This reconfirms the raw/type-0 fighter materialization path beyond idle and confirms primary slot `0x03` Turn as a direct graphical replacement.
+
+#### v15 — raw/type-0 shared walk-frame proof
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-walk_destructive-swap_proof_v15.z64`
+
+Identity:
+
+- SHA-256 `cd6d83c0d2ec1ae3e33f5ae1cd73bec383c7e3cb411caa930eb4337c5e9453ab`;
+- CRC1/CRC2 `DAA31E49 / 780D580B`.
+
+v15 returns to runtime-confirmed destructive v11 as its base and adds only primary slots `0x01` and `0x02`:
+
+- Sektor walk forward: `RBWALK1,2,3,5,7,8,9, ANI_JUMP, self`;
+- Sektor walk backward: the exact same seven frames in reverse order.
+
+Because forward/backward share the same seven retail frames, they require only one physical donor frame set. The materialized raw/type-0 frame block is copied exactly from the previously decoded v12 donor data, preserving:
+
+- MKT Y:X -> MKMSZ X:Y descriptor conversion;
+- 4-byte-aligned rows;
+- raw/type-0 wrapper;
+- v10 frame-setup-time palette switching;
+- false cave untouched;
+- no donor-rate hook.
+
+The donor walk block occupies resource `+0x4D7D0..+0x5AD7F`. The Sektor palette follows at color pointer `+0x5AD80`. File ID `0x87` is now ROM `0xF40000..0xF9ADCB`, size `0x5ADCC`, about 54 KiB larger than v11.
+
+This proof intentionally leaves Turn stock so that the seven-frame walk set is isolated from the already-confirmed v14 Turn composition.
+
 **Implementation/static-confirmed; runtime pending.**
 
 Primary test:
 
 1. stage reaches gameplay normally;
 2. idle remains perfect;
-3. turning left/right shows the genuine two-frame Sektor turn without ghosting/smear;
-4. transitions turn -> idle / walk / attack remain stable.
+3. forward walking uses genuine Sektor walk;
+4. backward walking uses the same genuine frames in reverse order;
+5. walk -> idle / attack / jump transitions remain stable;
+6. no ghosting/smear and no pre-stage-load regression.
 
-If v14 is clean, the raw fighter format is reconfirmed and the next work is to determine how much additional raw donor material can be hosted safely, or to reproduce MKMSZ's native fighter compression rather than reusing item type-4.
+If v15 is clean, walk forward/backward become runtime-confirmed direct mappings and the next composition test can combine the confirmed idle + walk + turn set before adding crouch.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
