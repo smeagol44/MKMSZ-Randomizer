@@ -282,18 +282,21 @@ with donor timing/geometry and isolated restoration.
 
 ### Cross-character generalization proof — Sektor idle
 
-**Static/implementation-confirmed; runtime pending.**
+**Genuine Sektor stance rendering is runtime-confirmed; transition-safe replacement remains pending.**
 
-A separate proof now tests whether the resource adapter generalizes beyond the male-ninja/Reptile family by replacing only MKMSZ Sub-Zero's native idle/stance with the genuine MKT Rev. 2 **Sektor** idle.
+This proof tests whether the resource adapter generalizes beyond the male-ninja/Reptile family by replacing only MKMSZ Sub-Zero's native idle/stance with the genuine MKT Rev. 2 **Sektor** idle.
 
 Retail donor facts:
 
 - MKT fighter `FT_ROBO1 = 7` is Sektor; robot heap base is donor ROM `0x8881C0`;
 - robot dictionary is the exact 0x100-byte block at ROM `0x906A90`;
 - primary Sektor palette `R1PAL1_P` is the 32-color record at ROM `0x0BC12C`;
+- `BHRDROB_P` at ROM `0x0BD798` is a separate red robot head/cut-up palette and is **not** the stance palette;
 - retail table-0/index-0 stance dispatcher is heap `+0x1D4`;
-- the Sektor branch in the retail CUT_FRAME build is `RBSTANCE1 -> 3 -> 5 -> 7 -> 9 -> ANI_JUMP`;
-- all five stance frames are codec 22 and independently obey `decoded_size = height * align4(width)`.
+- the retail CUT_FRAME build uses `RBSTANCE1 -> 3 -> 5 -> 7 -> 9 -> ANI_JUMP`; the even-numbered source stance frames are not part of the retail idle loop;
+- retail stance speed for `FT_ROBO1` is 8;
+- all five retail stance frames are codec 22 and independently obey `decoded_size = height * align4(width)`;
+- the retail stance shapes are already single flattened image records, so this proof does not require generic multipart/composite rendering.
 
 Exact imported frames:
 
@@ -310,11 +313,55 @@ Target facts used by the proof:
 - Sub-Zero's N64 character resource is global file ID `0x87`, clean ROM `0x748920..0x78E2FF`;
 - its table-0/index-0 stock stance pointer is resource `+0x2EC`;
 - the stock MKMSZ stance script uses command `1` + self-offset for looping, matching the donor animation grammar needed here;
-- target fighter type `4` is Sub-Zero at actor `+0x78`.
+- target fighter type `4` is Sub-Zero at actor `+0x78`;
+- target frame setup `0x8001BDA0` resolves the palette selector at actor `+0x9E` and writes the resolved active palette handle to actor `+0x80`.
 
-Disposable proof `MKMSZR_mkt-sektor-idle_subzero-swap_proof_v01.z64` relocates/expands file ID `0x87`, appends the five converted genuine Sektor frames and palette, and wraps target `select_animation` only to bind the donor palette and redirect the loaded table-0/index-0 word while Sub-Zero is actually in idle. Leaving idle restores the exact stock table word/palette before normal selection continues. No input command or special-move logic is involved.
+#### v01 — genuine Sektor rendering confirmed, transition cleanup failed
 
-Success criterion: standing neutral loops the actual Sektor stance; any non-idle action immediately uses stock Sub-Zero; returning to neutral resumes Sektor. This is intentionally a stronger generalization test than Reverse Elbow because it crosses into a different MKT fighter/resource family and replaces a native animation slot rather than invoking a custom special action.
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v01.z64`
+
+Runtime result reported by the user:
+
+- standing neutral visibly renders Sektor "in all its glory";
+- the genuine five-frame Sektor stance is therefore **Runtime-confirmed** in MKMSZ;
+- leaving idle can show a single corrupted/weird transition frame;
+- attempting to crouch from Sektor idle caused a whole-emulator/game hard hang immediately after Down was pressed.
+
+The donor decoding, dimensions, row stride, palette choice, and idle-script resource are therefore not the current failure. The failure is at the idle-exit ownership/lifecycle boundary.
+
+Static re-audit found a concrete v01 defect:
+
+1. v01 saved/restored actor palette selector `+0x9E`;
+2. it did **not** save/restore the resolved active palette handle at actor `+0x80`;
+3. on a non-idle selection it restored `+0x9E` and released the temporary Sektor palette immediately;
+4. until native frame setup rebound a stock palette, actor `+0x80` could still refer to the released donor palette slot.
+
+That is a real use-after-release window and is consistent with both the one-frame corruption and crouch hang. The structural defect is **Static-confirmed**; it remains a **strong inference** that this is the complete runtime cause until the corrected proof is tested.
+
+#### v02 — active-handle restoration fix
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v02.z64`
+
+Identity:
+
+- SHA-256 `d5df6193d6b942664ff02367037e55f58683a439d11f4926646c71ddd46a182c`;
+- CRC1/CRC2 `35B9266E / F0DB463F`.
+
+v02 is built from the clean supported target ROM. The imported Sektor resource block is byte-for-byte identical to v01. The isolated change is palette-transition bookkeeping:
+
+- save stock selector `actor+0x9E`;
+- save stock active palette handle `actor+0x80`;
+- on idle exit restore **both** fields;
+- only then release the temporary donor palette;
+- retain donor idle speed 8 only while the Sektor idle binding is active.
+
+**Implementation/static-confirmed; runtime pending.**
+
+Success criterion for v02: Sektor loops while neutral; walking/jumping/crouching/attacking switch immediately to stock Sub-Zero without a corrupt transition frame or hang; returning to neutral resumes Sektor with no stock-palette contamination.
 
 ### Later proofs
 
