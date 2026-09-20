@@ -1,0 +1,47 @@
+name: sync-wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wiki/**"
+      - ".github/workflows/wiki.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish Wiki mirror
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+          rm -rf .wiki-publish
+
+          if ! git clone "$remote" .wiki-publish; then
+            mkdir .wiki-publish
+            git -C .wiki-publish init
+            git -C .wiki-publish remote add origin "$remote"
+          fi
+
+          rsync -a --delete --exclude ".git" wiki/ .wiki-publish/
+
+          git -C .wiki-publish config user.name "github-actions[bot]"
+          git -C .wiki-publish config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C .wiki-publish add -A
+
+          if git -C .wiki-publish diff --cached --quiet; then
+            echo "Wiki is already up to date."
+            exit 0
+          fi
+
+          git -C .wiki-publish commit -m "Sync Wiki from repository documentation"
+          git -C .wiki-publish push origin HEAD:master
