@@ -6,7 +6,7 @@ Welcome to the working documentation for **MKMSZ Randomizer (MKMSZR)**, a native
 
 ## Current milestone
 
-The standalone browser/CLI patcher is live and the current deployed web build is **v0.18**.
+The standalone browser/CLI patcher is live. The current deployed build before this integration is **v0.19**; build numbers advance automatically on successful Pages deployments.
 
 Production/runtime foundations now include:
 
