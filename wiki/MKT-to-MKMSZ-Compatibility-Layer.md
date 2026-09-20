@@ -280,6 +280,42 @@ If A1 renders correctly, import the full genuine donor sequence:
 
 with donor timing/geometry and isolated restoration.
 
+### Cross-character generalization proof — Sektor idle
+
+**Static/implementation-confirmed; runtime pending.**
+
+A separate proof now tests whether the resource adapter generalizes beyond the male-ninja/Reptile family by replacing only MKMSZ Sub-Zero's native idle/stance with the genuine MKT Rev. 2 **Sektor** idle.
+
+Retail donor facts:
+
+- MKT fighter `FT_ROBO1 = 7` is Sektor; robot heap base is donor ROM `0x8881C0`;
+- robot dictionary is the exact 0x100-byte block at ROM `0x906A90`;
+- primary Sektor palette `R1PAL1_P` is the 32-color record at ROM `0x0BC12C`;
+- retail table-0/index-0 stance dispatcher is heap `+0x1D4`;
+- the Sektor branch in the retail CUT_FRAME build is `RBSTANCE1 -> 3 -> 5 -> 7 -> 9 -> ANI_JUMP`;
+- all five stance frames are codec 22 and independently obey `decoded_size = height * align4(width)`.
+
+Exact imported frames:
+
+| Frame | Geometry | Anchor | Donor texture ROM |
+|---|---:|---:|---:|
+| RBSTANCE1 | 55x113 | (+26,-8) | `0x88B6AC` |
+| RBSTANCE3 | 50x113 | (+22,-8) | `0x88BD5C` |
+| RBSTANCE5 | 53x113 | (+21,-8) | `0x88C3FC` |
+| RBSTANCE7 | 58x113 | (+26,-8) | `0x88CAD0` |
+| RBSTANCE9 | 57x113 | (+27,-8) | `0x88D194` |
+
+Target facts used by the proof:
+
+- Sub-Zero's N64 character resource is global file ID `0x87`, clean ROM `0x748920..0x78E2FF`;
+- its table-0/index-0 stock stance pointer is resource `+0x2EC`;
+- the stock MKMSZ stance script uses command `1` + self-offset for looping, matching the donor animation grammar needed here;
+- target fighter type `4` is Sub-Zero at actor `+0x78`.
+
+Disposable proof `MKMSZR_mkt-sektor-idle_subzero-swap_proof_v01.z64` relocates/expands file ID `0x87`, appends the five converted genuine Sektor frames and palette, and wraps target `select_animation` only to bind the donor palette and redirect the loaded table-0/index-0 word while Sub-Zero is actually in idle. Leaving idle restores the exact stock table word/palette before normal selection continues. No input command or special-move logic is involved.
+
+Success criterion: standing neutral loops the actual Sektor stance; any non-idle action immediately uses stock Sub-Zero; returning to neutral resumes Sektor. This is intentionally a stronger generalization test than Reverse Elbow because it crosses into a different MKT fighter/resource family and replaces a native animation slot rather than invoking a custom special action.
+
 ### Later proofs
 
 After genuine animation rendering is runtime-confirmed:
