@@ -3,6 +3,7 @@
 from .arena import ArenaReservationPatch
 from .boot_branding import BootBrandingPatch
 from .box_indicator import BoxIndicatorPatch
+from .flow_bypass import BootLogoBypassPatch, SafeStageSelectSkipAutoSavePatch
 from .inventory_boxes import FourBoxInventoryPatch
 from .manager_persistence import (
     ManagerPersistenceFirePatch,
@@ -26,6 +27,7 @@ __all__ = [
     "PICKUP_PERSISTENCE_PAYLOAD",
     "ArenaReservationPatch",
     "BootBrandingPatch",
+    "BootLogoBypassPatch",
     "BoxIndicatorPatch",
     "FourBoxInventoryPatch",
     "ManagerPersistenceFirePatch",
@@ -34,6 +36,7 @@ __all__ = [
     "PickupPersistencePatch",
     "PickupRandomizationPatch",
     "RuntimeV1FirePersistencePatch",
+    "SafeStageSelectSkipAutoSavePatch",
     "SafeStageSelectorPatch",
     "SubZeroPalettePatch",
     "manager_persistence_fire_patches",

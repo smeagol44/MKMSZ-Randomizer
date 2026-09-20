@@ -25,7 +25,8 @@
 - deterministic boot-message selection;
 - deterministic Sub-Zero recoloring;
 - browser build number `v0.<Pages run>`;
-- stage-local seeded randomization of all 84 ordinary pickup records.
+- stage-local seeded randomization of all 84 ordinary pickup records;
+- post-legal logo bypass and selector-local automatic-save bypass in the default production pipeline.
 
 The first generated layout is now runtime-confirmed at one Fire location; a full seeded run is still pending.
 

@@ -8,6 +8,7 @@ from .patches import (
     PICKUP_PERSISTENCE_PAYLOAD,
     ArenaReservationPatch,
     BootBrandingPatch,
+    BootLogoBypassPatch,
     BoxIndicatorPatch,
     FourBoxInventoryPatch,
     NativePayloadPatch,
@@ -15,6 +16,7 @@ from .patches import (
     PickupPersistencePatch,
     PickupRandomizationPatch,
     SafeStageSelectorPatch,
+    SafeStageSelectSkipAutoSavePatch,
     SubZeroPalettePatch,
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
@@ -40,8 +42,10 @@ def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
         PickupPersistencePatch(),
         PickupRandomizationPatch(),
         FourBoxInventoryPatch(),
+        SafeStageSelectSkipAutoSavePatch(),
         BoxIndicatorPatch(),
         BootBrandingPatch(),
+        BootLogoBypassPatch(),
     ]
     if config.outfit.mode.lower() != "vanilla":
         patches.append(
