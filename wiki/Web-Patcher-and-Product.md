@@ -12,7 +12,7 @@ The browser build compiles the Python package to a wheel and serves it with the 
 - A new output is produced; the CLI refuses in-place patching and existing-output overwrite.
 - Seed is trimmed; absent seed becomes a random 64-bit hex value.
 - Output reports applied modules, notes, CRC1/CRC2, and SHA-256.
-- Pickup layout, boot phrase, and seeded palette use independent deterministic domains.
+- Pickup layout, progression-reward selection, boot phrase, and seeded palette use independent deterministic domains.
 
 ## Current configuration surface
 
@@ -25,7 +25,7 @@ The browser build compiles the Python package to a wheel and serves it with the 
 | `hue` | Requires explicit degrees |
 | `rgb` | Requires `RRGGBB` or `#RRGGBB` |
 
-Core features such as selector, persistence, pickup shuffle, four-box inventory, indicator, branding, and flow bypasses are always installed. There is not yet a user-facing toggle for global item pooling, enemies, XP mode, or special moves because those systems are not production-ready.
+Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.
 
 ## Deployment
 
