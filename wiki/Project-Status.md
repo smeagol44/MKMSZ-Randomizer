@@ -31,7 +31,7 @@ Last consolidated: 2026-09-20.
 | Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
 | Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
 | Temple XP progression proof | Three proof pickups plus one vanilla Herbs control established no-combat-XP and pickup-driven tiers | Generalized into the production Diagnostic B architecture; full nine-tier coverage and final art remain |
-| Reverse Elbow host/action proof + genuine MKT import branch | v6 established repeatable scheduler/action stability; v08/A1.7 runtime-confirmed genuine SCCOMBO10; Sektor v10 and destructive v11 runtime-confirm a clean genuine idle replacement | Runtime-test v12, which adds exact retail Sektor walk forward/backward, turn and duck to primary slots 0x01..0x04; then continue through direct ground-combat/aerial slots while secondary Mythologies states are mapped semantically |
+| Reverse Elbow host/action proof + genuine MKT import branch | v6 established repeatable scheduler/action stability; v08/A1.7 runtime-confirmed genuine SCCOMBO10; Sektor v10 and destructive v11 runtime-confirm a clean genuine idle replacement; raw-expanded v12 hangs before gameplay | Runtime-test compact v13, which keeps the same walk/turn/duck mapping but uses native type-4 frame storage to reduce added resource growth; then continue direct-core mapping if stable |
 
 ## Latest runtime findings
 
