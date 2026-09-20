@@ -723,9 +723,55 @@ Resulting file ID `0x87`:
 - donor palette/frame-setup helper remains in the proven owned runtime block;
 - no donor-rate hook.
 
+**Rejected for fighter presentation; resource-load goal succeeded.**
+
+The user confirmed that v13 reaches gameplay, so compacting the resource removes v12's pre-stage-load failure. However, every newly type-4-stored locomotion animation shows severe visual corruption: repeated/dragged Sektor silhouettes and rectangular smear patterns. The original raw/type-0 Sektor idle remains the established clean presentation path.
+
+The screenshots also rule out the previously known 4-byte row-padding error as a complete explanation: the retail Sektor walk frames are 68 pixels wide, already naturally 4-byte aligned, yet still show the same ghosting. Therefore native type-4 materialization is **Rejected / failed for this fighter-frame path** in the tested form, even though type-4 remains runtime-confirmed for ordinary pickup visuals.
+
+#### v14 — raw/type-0 single-animation size isolation: Turn
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-turn_destructive-swap_proof_v14.z64`
+
+Identity:
+
+- SHA-256 `0136742245361c23c962dfb47d61609dc3b4726736b2c768a24f08113a0a6234`;
+- CRC1/CRC2 `DAACEFD9 / 6DF36782`.
+
+v14 returns to runtime-confirmed v11 as its base and adds only primary slot `0x03`, Sektor's exact retail turn:
+
+```text
+RBTURN1
+RB2VICTORY2
+ANI_FLIP
+RBTURN1
+0
+```
+
+Both donor frames use the already runtime-confirmed fighter conversion:
+
+- MKT Y:X -> MKMSZ X:Y;
+- 4-byte-aligned CI rows;
+- raw/type-0 wrapper `00000000`;
+- the v10 frame-setup-time donor palette switch;
+- false cave untouched.
+
+The two frames add `0x2D94` bytes of raw donor material. File ID `0x87` is now ROM `0xF40000..0xF905B3`, size `0x505B4`, only about 11.4 KiB larger than runtime-confirmed v11. The donor palette is moved to resource `+0x50568` so the proven helper's donor-range test still covers all foreign shapes.
+
+The active and inactive old Sub-Zero turn scripts are no longer callable; their shape/sub-descriptor stubs are cleared. Old compressed image bytes may remain orphaned but are not retained as an intentional runtime backup.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary gate: confirm the stage now gets past Mission Objective and reaches gameplay. If it does, test the four new Sektor locomotion animations and transitions. If it still hangs before gameplay, resource size alone is rejected and the next isolation should reduce the batch to one newly mapped animation.
+Primary test:
+
+1. stage reaches gameplay normally;
+2. idle remains perfect;
+3. turning left/right shows the genuine two-frame Sektor turn without ghosting/smear;
+4. transitions turn -> idle / walk / attack remain stable.
+
+If v14 is clean, the raw fighter format is reconfirmed and the next work is to determine how much additional raw donor material can be hosted safely, or to reproduce MKMSZ's native fighter compression rather than reusing item type-4.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
