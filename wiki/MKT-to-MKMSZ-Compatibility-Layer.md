@@ -687,16 +687,45 @@ Destructive policy is retained:
 
 The 0x148C0-byte ROM extension beyond v11's resource end was verified to occupy the existing all-`0xFF` disposable tail and does not overlap another global-file-table entry. File ID `0x1B` remains the proof runtime payload and file ID `0x87` alone owns the expanded fighter resource.
 
+**Rejected / failed at stage load.**
+
+The user reported that v12 hangs on the Mission Objective screen before stage music begins. Gameplay is never reached, so this result does not test the imported walk/turn/duck animation behavior itself.
+
+The primary structural difference from runtime-confirmed v11 is resource growth: materializing the twelve new locomotion frames as MKMSZ type-0/raw buffers expanded file ID `0x87` from `0x4D820` to `0x620E0`, an additional `0x148C0` bytes (~82 KiB). Because the failure occurs before gameplay and before music, resource-load/allocation pressure is the leading hypothesis rather than a frame-transition fault. This is **Hypothesis / strong inference**, not yet proven.
+
+#### v13 — compact native type-4 locomotion materialization
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-locomotion_compact-swap_proof_v13.z64`
+
+Identity:
+
+- SHA-256 `30170bed6011c1ba98c57e69b8a3b2532f56a57a4bf9f12652a041cbf5e19cad`;
+- CRC1/CRC2 `DAA36F59 / 4CB3375F`.
+
+v13 preserves the same direct animation mapping as v12:
+
+- slot `0x00` Sektor idle;
+- slot `0x01` Sektor walk forward;
+- slot `0x02` Sektor walk backward;
+- slot `0x03` Sektor turn;
+- slot `0x04` Sektor duck/crouch.
+
+The difference is storage only. The twelve added locomotion frames are decoded from the exact MKT Rev. 2 robot streams and then re-encoded into MKMSZ's native type-4 embedded-image format rather than stored as type-0/raw buffers. Software decode verification proves every v13 type-4 block reproduces the exact donor-decoded row-aligned pixel buffer used by v12.
+
+Resulting file ID `0x87`:
+
+- ROM `0xF40000..0xF9473F`;
+- size `0x54740`;
+- only `0x6F20` bytes larger than runtime-confirmed v11, versus v12's `0x148C0`-byte growth;
+- false cave remains exact stock;
+- donor palette/frame-setup helper remains in the proven owned runtime block;
+- no donor-rate hook.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary validation:
-
-1. idle remains visually identical to v10/v11;
-2. forward and backward walking show Sektor's genuine retail walk;
-3. turning shows Sektor's genuine retail turn;
-4. crouching shows Sektor's genuine retail duck;
-5. transitions among these states and back into stock attacks/jumps remain clean;
-6. no regression of the previously fixed hangs or one-frame palette corruption.
+Primary gate: confirm the stage now gets past Mission Objective and reaches gameplay. If it does, test the four new Sektor locomotion animations and transitions. If it still hangs before gameplay, resource size alone is rejected and the next isolation should reduce the batch to one newly mapped animation.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
