@@ -43,15 +43,29 @@ Diagnostic B then removed only the early tier-evaluator call from the restore he
 
 Reverse Elbow v8 did not visibly deliver the intended changes. Sub-Zero still does not pass through enemies, forward motion stops when attacking even though the `L 1` diagnostic remains unchanged, direction/jump/crouch are locked while attacks remain possible, the Y gate behaves normally against a jumping enemy, speed still appears very slow rather than four times faster, and the expanded HUD text did not appear. Treat v6 lifecycle stability as the durable result; v7/v8 movement and diagnostic claims are not confirmed.
 
+## 1.0 required scope
+
+The 1.0 randomizer is not considered complete with stage-local shuffling alone. Required before 1.0:
+
+1. **Global cross-stage item randomization.** Items must be able to appear in other main stages, requiring a production resource-import/materialization planner rather than copying stage-local resource selectors verbatim.
+2. **Global deterministic shuffling.** Keep the current stable seeded Fisher-Yates approach, but apply it to the global logical item pool rather than eight independent stage pools.
+3. **Whole-run solvability validation.** Reject seeds whose progression graph cannot reach the required end-state. Use current stage/location requirements as source of truth; the legacy Lua fixed-point solver is a useful design reference but its location rules are stale/incomplete.
+4. **Randomizer HUD/UI.** At minimum expose the run information needed to play the seed: check progress, progression/power requirement/status, inventory-box/page state, and useful pickup feedback. The legacy Lua overlay is a reference for semantics, not a native renderer implementation.
+5. **Run-resource lifecycle.** Determine and preserve HP, lives, and continues correctly across stage transitions and direct selector routes; define intended Game Over/new-run resets.
+6. **Difficulty hard-lock.** Very Hard must be enforced as a run invariant rather than only selected as a startup default.
+7. **Final runtime coverage.** Complete a representative full global seed, including all nine progression tiers and the major lifecycle boundaries.
+
+Open design point: the legacy Lua global pool included the scripted Temple Map as an 85th check. Current native production catalogs only the 84 ordinary records. Whether the Map joins the 1.0 global pool must be resolved explicitly rather than assumed.
+
 ## Pending priorities
 
-1. Full seeded native pickup playthrough and lifecycle edge coverage.
-2. Complete a full nine-reward/nine-tier progression runtime run and shared Game Over/new-run lifecycle validation.
-3. Build an explicit resource-import planner before cross-stage item or enemy pools.
-4. Trace imported-enemy death/despawn dependencies.
-5. Rework Reverse Elbow from confirmed scheduler/action primitives and observable diagnostics.
-6. Validate Game Over/new-game behavior for persistence and four-box state.
+1. Build the logical global item model and production cross-stage resource-import/materialization planner.
+2. Replace stage-local generation with a global deterministic shuffle plus whole-run solver.
+3. Build the native randomizer HUD around the finalized global-run state.
+4. Resolve HP/lives/continues persistence, Game Over/new-run reset, and Very Hard enforcement.
+5. Run full-seed 1.0 validation.
+6. Post-1.0: enemy randomization/resource compatibility, imported-enemy death/despawn, and Reverse Elbow.
 
 ## Explicit exclusions
 
-Bosses and scripted encounters are not ordinary-enemy entries. The Temple Map is not an ordinary pickup. Zero resource slots are logical selectors, not free physical storage. PS1 addresses are not N64 addresses. Proof ROM patches and archive handoffs are not silently part of the product pipeline.
+Bosses and scripted encounters are not ordinary-enemy entries. The Temple Map is not an ordinary pickup and needs an explicit 1.0 inclusion decision if it is to become a global check. Zero resource slots are logical selectors, not free physical storage. PS1 addresses are not N64 addresses. Proof ROM patches and archive handoffs are not silently part of the product pipeline. Enemy randomization and Reverse Elbow are not 1.0 blockers.
