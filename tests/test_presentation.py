@@ -29,6 +29,7 @@ from mkmszr.patches.box_indicator import (
     HUD_HOOK_ROM,
     BoxIndicatorPatch,
 )
+from mkmszr.patches.flow_bypass import BootLogoBypassPatch, SafeStageSelectSkipAutoSavePatch
 from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
 from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
 from mkmszr.rom import RomImage
@@ -103,5 +104,7 @@ def test_presentation_patches_follow_four_box_inventory() -> None:
     pipeline = build_pipeline(RandomizerConfig())
     assert isinstance(pipeline.patches[4], PickupRandomizationPatch)
     assert isinstance(pipeline.patches[5], FourBoxInventoryPatch)
-    assert isinstance(pipeline.patches[6], BoxIndicatorPatch)
-    assert isinstance(pipeline.patches[7], BootBrandingPatch)
+    assert isinstance(pipeline.patches[6], SafeStageSelectSkipAutoSavePatch)
+    assert isinstance(pipeline.patches[7], BoxIndicatorPatch)
+    assert isinstance(pipeline.patches[8], BootBrandingPatch)
+    assert isinstance(pipeline.patches[9], BootLogoBypassPatch)
