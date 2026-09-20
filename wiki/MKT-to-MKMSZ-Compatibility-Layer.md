@@ -488,12 +488,61 @@ v07 is byte-for-byte v06 except for restoring the clean stock first two instruct
 
 Expected presentation: the genuine Sektor stance geometry/animation should still render, but with Sub-Zero's stock palette, so colors may be wrong. That visual degradation is intentional.
 
+**Rejected / failed as a hang fix; palette presentation cause separated from hang cause.**
+
+The user confirmed that v07 still hard-hangs on the same forward movement, crouch, and airborne-forward inputs. The visible result changed substantially: all five Sektor stance frames now render with wrong/corrupted colors under Sub-Zero's stock palette. This establishes that the dynamic donor-palette path is required for correct Sektor presentation, but it is **not** the cause of the hard hang.
+
+This also separates the symptoms: the transition/frame color corruption is palette/render-state related, while the input-specific hard hang persists without any Sektor palette wrapper execution.
+
+#### Corrected false-cave finding
+
+Static re-audit found a more fundamental proof error common to v01-v07. The helper was placed at ROM `0xA1308..0xA1543` / VA `0x800A0708..0x800A0943` because the clean bytes were zero. That region is **not unowned free space**.
+
+A live pointer table begins at ROM `0xA15C4` / VA `0x800A09C4` and points to twelve 0x78-byte records:
+
+```text
+0  0x800A049C  callback +0x10 = 0x8003C870
+1  0x800A0514  callback +0x10 = 0x8003C9B4
+2  0x800A058C  callback +0x10 = 0x8003C984
+3  0x800A0604  callback +0x10 = 0x8003C848
+4  0x800A067C  callback +0x10 = 0x8003C94C
+5  0x800A0424  callback +0x10 = 0x8003C7E8
+6  0x800A06F4  callback +0x10 = 0x8003C7F0
+7  0x800A076C  stock record is all zero
+8  0x800A07E4  stock record is all zero
+9  0x800A085C  stock record is all zero
+10 0x800A08D4  stock record is all zero
+11 0x800A094C  stock record is all zero
+```
+
+The Sektor helper overwrote most of zero records 7-10 and part of the surrounding record area with executable instructions. Zero bytes here are therefore **semantic data, not a code cave**. An input/action scan that expects those records to remain zero can observe nonzero garbage fields or bogus callback values. This is a strong static explanation for why only selected inputs hard-hang.
+
+This supersedes every earlier statement treating `0x800A0708..` as free proof storage.
+
+#### v08 — restore the false cave to exact stock data
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v08.z64`
+
+Identity:
+
+- SHA-256 `d842c51bf1253ccd0fece0f255e804a4077907aa55fc759fb54b61dde6b1d9be`;
+- CRC1/CRC2 `C2435AAC / EBC131C0`.
+
+v08 is byte-for-byte v07 except for restoring ROM `0xA1308..0xA1543` to the clean ROM's exact stock zero-filled record data and recalculating the header CRC. Because v07 already restored the stock `select_animation` entry and removed the rate hook, no Sektor helper code is needed for this test.
+
+Active Sektor changes remaining in v08 are therefore only:
+
+- relocated/expanded file ID `0x87`;
+- native idle script frame pointers changed to the five appended genuine Sektor shapes;
+- appended donor frame/texture data.
+
+The palette remains intentionally stock Sub-Zero, so Sektor is expected to look color-corrupted exactly as in v07.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Interpretation:
-
-- if the hangs and transition corruption disappear together, the dynamic donor-palette/render-state path is strongly implicated as their shared cause;
-- if the hangs persist despite no palette wrapper execution, palette transition can be rejected and the next target becomes imported shape/render-record state itself.
+Primary result to observe: whether forward movement, crouch, and airborne forward drift still hard-hang. If those hangs disappear, the false-cave overwrite is established as the gameplay failure cause. If they persist, resource relocation/foreign frame state remains the next boundary.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
