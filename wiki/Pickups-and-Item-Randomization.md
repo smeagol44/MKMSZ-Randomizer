@@ -143,3 +143,35 @@ The Map is not one of the 84 ordinary records and currently couples several nati
 - **cross-stage persistence:** stock behavior removes the Map on Temple -> Wind. If the Map becomes a true randomized inventory item, that removal must be suppressed or replaced by explicit randomizer lifecycle handling.
 
 Until those are proven, the global solver should model the Map separately rather than pretending it is an ordinary 0x30-byte pickup.
+
+
+## Destination-shell logical materialization
+
+**Implementation/CI-confirmed; runtime proof pending.**
+
+The first 1.0 materialization strategy now separates the logical reward from the destination's world actor. This matches the useful part of the legacy Lua model without requiring Lua at runtime.
+
+For an ordinary destination, keep its known-good construction/presentation shell:
+
+- `+0x10` destination type/behavior;
+- `+0x1C/+0x20` destination extents;
+- `+0x24` destination-local resource selector;
+- `+0x28` destination presentation descriptor.
+
+For an inventory-bearing logical reward, replace only:
+
+- `+0x14` with the logical native inventory ID;
+- `+0x18` with an MKMSZR generic award callback.
+
+Static pickup-manager analysis supports this split: `+0x14` is loaded only on successful pickup immediately before the callback call, while construction uses the destination shell fields earlier. The callback ABI passes `record+0x14` as `a1`.
+
+This means a Fire Potion-shaped world pickup can, in principle, award a Prison key without importing the Prison key model. Exact shuffled world art becomes a presentation enhancement rather than a prerequisite for global logical randomization.
+
+The planner currently classifies all 84 ordinary stock rewards into:
+
+- fixed inventory rewards;
+- 21 stage/key/crystal logical inventory rewards (`0x0E..0x22`);
+- native-effect rewards such as Extra Life, Mana, and Strength;
+- Power Upgrade as a synthetic logical reward inserted later by the global generator.
+
+A 24-byte generic inventory-award callback fits in the unused tail of the current progression payload. It is intentionally **not** wired into the production pipeline until a disposable ROM confirms the ABI and cross-stage inventory behavior.

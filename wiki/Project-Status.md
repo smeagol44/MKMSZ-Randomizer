@@ -59,7 +59,7 @@ Open Temple Map work: the legacy Lua global pool included the scripted Map as an
 
 ## Pending priorities
 
-1. Build the logical global item model and production cross-stage resource-import/materialization planner.
+1. Runtime-validate the new destination-shell logical materializer (generic cross-stage award callback), then use it as the default global-item materialization path; keep exact foreign-resource importing as optional visual refinement.
 2. Replace stage-local generation with a global deterministic shuffle plus whole-run solver, including deterministic retry attempts and a deterministic per-seed required-Power-Upgrades target.
 3. Build the native randomizer HUD around the finalized global-run state.
 4. Resolve Temple Map trigger/item separation and cross-stage persistence; then HP/lives/continues persistence, Game Over/new-run reset, and Very Hard enforcement.
