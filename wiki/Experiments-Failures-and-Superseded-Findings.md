@@ -74,3 +74,11 @@ Historical proof offsets are evidence, not allocations. The Temple XP proof and 
 | V2 repartition + progression stage-entry restore combined in one production step | Failure source became ambiguous between the repartition and the new restore path | Change one runtime-critical variable at a time and validate with a disposable ROM |
 
 Current investigation order: first test the V2 allocation/reward callback **without** installing the progression stage-entry restore hook. If stage load succeeds, the restore path is isolated; if it still hangs, investigate the V2 repartition/state relocation itself.
+
+
+### XP Diagnostic A follow-up
+
+| Attempt | Result | Durable lesson |
+|---|---|---|
+| Diagnostic A: failed production build with only the progression stage-entry JAL redirected back to the existing four-box load/mask wrapper | Temple loaded and played normally; progression rewards at 85/258 worked; no combat XP; no EXPERIENCE combo text | V2 allocation and reward callback path are viable on the tested Temple route; failure is inside the progression restore-helper path |
+| Restore-helper review | The helper calls native tier evaluator `0x80074FBC` before normal stage gameplay is visible | Treat that evaluator call as the next bounded suspect; test it independently before any re-promotion |
