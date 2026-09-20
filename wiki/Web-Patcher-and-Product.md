@@ -53,7 +53,7 @@ Pages stamps:
 
 `v0.<deploy-pages workflow run number>`
 
-Current deployed build before the flow-bypass integration merge: **v0.19**. The next successful Pages deployment will increment this automatically.
+The runtime-confirmed flow-bypass integration first deployed as **v0.20**. Later documentation or product deployments continue incrementing the visible build number automatically.
 
 ## Current pickup mode
 
