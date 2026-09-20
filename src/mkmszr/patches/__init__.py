@@ -17,12 +17,12 @@ from .pickup_persistence import (
     pickup_persistence_patches,
 )
 from .pickup_randomization import PickupRandomizationPatch
-from .xp_progression import XPProgressionPatch
 from .runtime_v1 import (
     RuntimeV1FirePersistencePatch,
     runtime_v1_fire_patches,
 )
 from .stage_selector import SafeStageSelectorPatch
+from .xp_progression import XPProgressionPatch
 
 __all__ = [
     "PICKUP_PERSISTENCE_PAYLOAD",
@@ -36,11 +36,11 @@ __all__ = [
     "NativePayloadSpec",
     "PickupPersistencePatch",
     "PickupRandomizationPatch",
-    "XPProgressionPatch",
     "RuntimeV1FirePersistencePatch",
     "SafeStageSelectSkipAutoSavePatch",
     "SafeStageSelectorPatch",
     "SubZeroPalettePatch",
+    "XPProgressionPatch",
     "manager_persistence_fire_patches",
     "pickup_persistence_patches",
     "runtime_v1_fire_patches",
