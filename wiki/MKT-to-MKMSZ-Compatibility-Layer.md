@@ -467,9 +467,33 @@ Identity:
 
 v06 is byte-for-byte v05 except for restoring the clean stock bytes at ROM `0x32324..0x3232B` / VA `0x80031724..0x8003172B`, removing the proof's animation-rate interception entirely. Sektor therefore runs at MKMSZ's stock cadence rather than donor rate 8. No imported frame, resource, palette, select-animation, or state-storage bytes changed.
 
+**Rejected / failed as a hang fix.**
+
+The user reported that v06 still hard-hangs on the same forward movement, crouch, and airborne-forward inputs. Therefore the donor animation-rate hook is **not** the cause of the gameplay hang.
+
+At this point the persistent one-frame corruption on animation transitions can no longer be treated as confidently cosmetic. The strongest common remaining suspect is the temporary donor-palette/select-animation wrapper and its render-state transition, which is also the code path most directly associated with the visible corrupt transition frame.
+
+#### v07 — remove dynamic donor palette handling entirely
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v07.z64`
+
+Identity:
+
+- SHA-256 `aa989a2dc74fa577245c3d9895d2471035ad7cb9544b62487e4a8f8d85c2a8f8`;
+- CRC1/CRC2 `3884563E / AF3FDC3B`.
+
+v07 is byte-for-byte v06 except for restoring the clean stock first two instructions of target `select_animation` at ROM `0x30A54..0x30A5B` / VA `0x8002FE54..0x8002FE5B`. This completely bypasses the Sektor proof's dynamic palette wrapper and temporary owner/selector state while preserving the native-cursor idle script and imported Sektor frame resources.
+
+Expected presentation: the genuine Sektor stance geometry/animation should still render, but with Sub-Zero's stock palette, so colors may be wrong. That visual degradation is intentional.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary test: repeat forward movement, crouch, and airborne forward drift, plus one or two previously safe actions. Any behavioral difference can be attributed to the removed rate hook.
+Interpretation:
+
+- if the hangs and transition corruption disappear together, the dynamic donor-palette/render-state path is strongly implicated as their shared cause;
+- if the hangs persist despite no palette wrapper execution, palette transition can be rejected and the next target becomes imported shape/render-record state itself.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
