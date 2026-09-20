@@ -40,3 +40,15 @@ Promotion requires guarded stock bytes, explicit allocation/bounds, interaction 
 - Relevant stage catalog if a record/resource changed.
 - Failures/superseded page for a material rejected path.
 - Sidebar only when a new durable domain page is added.
+
+
+## Runtime-sensitive implementation gate
+
+For a new native code path, allocation change, lifecycle hook, or callback composition that has not already been runtime-confirmed in its production layout:
+
+1. build a disposable ROM directly from the clean supported ROM;
+2. give the user the smallest bounded manual test;
+3. record the observed result;
+4. only after successful runtime validation, integrate that behavior into the normal browser/CLI pipeline.
+
+Implementation/CI confirmation alone is not sufficient to promote a new runtime-sensitive path to the web patcher.
