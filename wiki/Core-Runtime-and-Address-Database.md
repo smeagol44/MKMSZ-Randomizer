@@ -10,7 +10,7 @@ Only the 16 MiB USA Rev. 0 big-endian ROM is supported: SHA-256 `9c18254abf6722b
 
 Two independent arena-start constructions must agree. At ROM `0x00066F64` and `0x00066FE8`, `addiu v0,v0,0xF420` (`0x2442F420`) becomes `addiu v0,v0,0xF820` (`0x2442F820`). The protected interval is `0x801AF420..0x801AF81F`; the game arena starts at `0x801AF820`.
 
-The runtime code/state split is versioned, not generic free space. Production V2 uses code `0x801AF420..0x801AF71F` (0x300) and persistent state `0x801AF720..0x801AF81F` (0x100). V1's former 0x200/0x200 split is retained only as historical proof context. Inventory still owns payload `+0x1D4..+0x1FF`; XP progression owns the new payload extension `+0x200..+0x2FF`.
+The runtime code and state halves are a versioned layout, not generic free space. Inventory later reuses the final `0x2C` bytes of the persistence code half for a filtered-save helper, so changes must be checked against emitted sizes.
 
 ## Payload registration and bootstrap
 
@@ -18,7 +18,7 @@ The runtime code/state split is versioned, not generic free space. Production V2
 |---|---:|---:|---:|
 | Global file table | `0xA5010` | `0x800A4410` | 12-byte entries |
 | MKMSZR file ID `0x1B` entry | `0xA5154` | — | guarded stock entry |
-| Payload bytes | `0xF10000` | `0x801AF420` / uncached `0xA01AF420` | production V2 code `0x300` |
+| Payload bytes | `0xF10000` | `0x801AF420` / uncached `0xA01AF420` | code half `0x200` |
 | Bootstrap hook | `0x66FE0` | `0x800663E0` | stage-load path |
 | Bootstrap stub | `0x9AD84` | `0x8009A184` | capacity `0x19C` |
 | Raw loader | — | `0x80065D64` | synchronous in proven path |
@@ -43,7 +43,6 @@ The manager context pointer is at effective address `0x802ECE20`; context `+0x6F
 | `0xAFA24..0xAFA97` / `0x800AEE24..` | Box-indicator wrapper and string |
 | `0xAF9BE..0xAFA23`, `0xAFA98..0xAFABB` | Boot branding/license strings |
 | payload `+0x1D4..+0x1FF` | Inventory filtered-save helper |
-| payload `+0x200..+0x2FF` | XP progression callback, threshold table, restore helper |
 
 Historical proof patches used some of these areas before production assigned them. Archive offsets are therefore not automatically safe in a current build.
 
