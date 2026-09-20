@@ -191,6 +191,21 @@ Proof D changes no item art or callback semantics. It relocates Prison's stock r
 
 Manual runtime result: Prison loaded normally; the first two early Herbs rendered exactly like vanilla Herbs, behaved normally, and appeared normally in inventory. Therefore the stock pickup resource lookup accepts an out-of-stock-range selector and resolves an appended selector entry without any loader hook.
 
-This removes the original outer-table-width limit as a blocker for pickup materialization. The remaining work is to place real imported resource bundles behind extension entries and handle each bundle format correctly.
+This removes the original outer-table-width limit as a blocker for pickup materialization.
 
-Expected result: Prison loads normally and all Herbs render/award exactly as stock while resolving through an appended selector entry. Success would runtime-confirm the extension-selector architecture before any foreign resource is added.
+### Disposable Proof F — runtime-confirmed foreign embedded-resource coexistence
+
+Proof F kept all stock Prison selectors untouched and appended an extension entry at file offset `0x48F0`, addressed by pickup selector `0x123C`. That entry points to a fully copied and file-relative-pointer-rebased Water Potion `embedded-data-bundle` appended after the stock Prison resource file.
+
+Only one early Prison Herbs record was changed to the imported Potion identity. The remaining five Herbs records stayed byte-for-byte stock and continued using Prison selector `8`.
+
+Manual runtime result:
+
+- the imported Potion rendered cleanly in Prison;
+- collecting it awarded Potion;
+- an untouched Herbs pickup still rendered and awarded normally in the same stage;
+- the inventory simultaneously showed both `POTION` and `HERBS` correctly.
+
+Therefore vanilla stage resources and appended foreign embedded-data resources can coexist through extension selectors without consuming/replacing the original selector slot.
+
+**Evidence limit:** this confirms the `embedded-data-bundle` case. Fire Potion's earlier external-resource-ID transplant produced corrupted graphics, so external-resource-ID dependency handling remains unresolved rather than being generalized from this success.

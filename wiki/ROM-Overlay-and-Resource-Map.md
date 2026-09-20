@@ -78,4 +78,6 @@ This creates a promising extension mechanism without patching the lookup code: r
 
 This is **Runtime-confirmed** through disposable Proof D. Prison's resource file was relocated/expanded by four bytes, an appended selector entry at file offset `0x48F0` pointed back to the stock Herbs descriptor `0x255C`, and all six Herbs records used selector `0x123C` (`0x48F0 / 4`). Two early Herbs were manually collected and were visually/functionally indistinguishable from vanilla, including normal inventory behavior.
 
+Disposable Proof F then confirmed the mechanism with a real foreign embedded resource. Prison's stock selectors `0..11` remained unchanged; an extension entry at `+0x48F0` used selector `0x123C` and pointed to an appended/rebased copy of Water's embedded Potion descriptor/records/model data. Only one early Prison Herbs location was changed to that Potion identity. Runtime testing showed the imported Potion rendered cleanly and awarded Potion, while another untouched Prison Herbs still rendered/awarded normally and both appeared correctly in inventory. This is **Runtime-confirmed coexistence of vanilla stage resources with an appended foreign embedded-data bundle**.
+
 The current stage resource-file base is held at `0x802F82B8` on this path. Stage-loading code writes allocator/loader results there before the resource file is consumed.
