@@ -78,3 +78,28 @@ The web/CLI production pipeline has been restored to the previously runtime-conf
 ### Required promotion discipline
 
 New native runtime behavior must now be validated in a disposable ROM supplied directly for manual testing **before** it is enabled in the normal browser/CLI patch pipeline. CI/static composition is not sufficient evidence that a new runtime hook is production-safe.
+
+
+## Diagnostic A runtime isolation — 2026-09-20
+
+**Runtime-confirmed:** disposable Diagnostic A using seed `BCBDBF` loaded Temple normally and exercised the production-style V2 progression generation/callback path without the new progression stage-entry restore helper.
+
+Observed:
+- Temple reached normal gameplay with no hang;
+- first generated progression Herbs awarded XP 85 and unlocked the first progression special move;
+- enemy combos showed `HITS` only, with no `EXPERIENCE` text;
+- combos and enemy kills awarded no XP;
+- the second Herbs was a normal Herbs pickup;
+- the third Herbs awarded XP 258 and unlocked the second progression special move;
+- all three Herbs used the same ordinary Herbs graphics;
+- no other issue was observed during this bounded test.
+
+Diagnostic A differs from the failed production integration at the stage-entry resume sequence only: the failed build JALs the progression restore helper, while Diagnostic A JALs the pre-existing four-box load/mask wrapper directly. V2 allocation, progression callbacks, reward generation, XP-store suppression, combo-text suppression and cap edits are otherwise unchanged.
+
+Therefore the V2 repartition and pickup callback path are no longer implicated by this bounded route. The failure is isolated to the progression restore-helper path executed during pickup-manager stage initialization.
+
+### Diagnostic B hypothesis
+
+The restore helper wrote persistent XP, called native tier evaluator `0x80074FBC`, then ran the existing four-box reconstruction. The leading hypothesis is that the tier evaluator is unsafe this early in stage initialization.
+
+Diagnostic B keeps the same restore helper entry and persistent-XP write but NOPs only the tier-evaluator setup/call. It then continues into the existing four-box reconstruction. This is a disposable proof ROM only and is not enabled in production.
