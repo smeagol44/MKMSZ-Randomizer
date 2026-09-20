@@ -82,3 +82,13 @@ Current investigation order: first test the V2 allocation/reward callback **with
 |---|---|---|
 | Diagnostic A: failed production build with only the progression stage-entry JAL redirected back to the existing four-box load/mask wrapper | Temple loaded and played normally; progression rewards at 85/258 worked; no combat XP; no EXPERIENCE combo text | V2 allocation and reward callback path are viable on the tested Temple route; failure is inside the progression restore-helper path |
 | Restore-helper review | The helper calls native tier evaluator `0x80074FBC` before normal stage gameplay is visible | Treat that evaluator call as the next bounded suspect; test it independently before any re-promotion |
+
+
+### XP Diagnostic B resolution
+
+| Attempt | Result | Durable lesson |
+|---|---|---|
+| Diagnostic B: restore persistent XP but omit native tier evaluator during stage initialization | Temple loaded; XP 85/258 rewards unlocked moves; Temple -> Wind retained XP/moves; title -> Fire retained XP/moves | Stage-entry XP restore is safe; native tier state already established at acquisition persists across tested routes |
+| Native tier evaluator `0x80074FBC` called from progression stage-init restore | Earlier production build hung before gameplay display | **Rejected at this timing**. Call the evaluator only from the runtime-confirmed progression-pickup acquisition path |
+
+Diagnostic B supersedes the failed restore-helper design and is the accepted production behavior.

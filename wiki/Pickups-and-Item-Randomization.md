@@ -31,6 +31,22 @@ Candidate layouts are rejected, up to 1,000 deterministic attempts, if the known
 
 These are implementation/CI-confirmed rules ported from legacy logic. A complete native runtime playthrough across arbitrary seeds remains pending.
 
+## Progression-reward overlay
+
+After the ordinary layout is accepted, production derives Herbs candidates from that exact assignment and selects exactly nine using a separate SHA-256 Fisher-Yates domain:
+
+```text
+MKMSZR:PROGRESSION:HERBS:V1\0
+```
+
+Only the callback word of each selected generated Herbs identity is changed. Type, collision, stage-local resource selector and presentation stay Herbs, so the ordinary pickup shuffle is unchanged and no cross-stage resource import is required.
+
+The progression callback advances to the next native XP threshold, evaluates the native tier at pickup acquisition, and does not insert an inventory item. Ordinary pickup persistence still records the physical location as collected. Progression count/XP are stored separately from the 84 ordinary-pickup bits.
+
+Diagnostic A runtime-confirmed the generated Temple pattern for seed `BCBDBF`: first and third Herbs were progression rewards, second Herbs remained normal, XP reached 85 then 258, combat XP stayed disabled, and all three shared ordinary Herbs graphics.
+
+The desired bright-blue Herbs body with bronze/gold-looking handle remains a presentation-only refinement.
+
 ## Runtime milestone
 
 Seed `TEST153` predicted a Shield at Fire's first ordinary location. Runtime testing showed the Shield model and award behaving normally. The boot phrase for that build was `' OR 1==1 --`, independently selected from the phrase namespace. This confirms one generated location, not the full 84-location run.

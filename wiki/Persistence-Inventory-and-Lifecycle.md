@@ -2,7 +2,7 @@
 
 ## Ordinary-pickup persistence
 
-The native game reconstructs stage pickup records, so a per-location runtime bitset is the production authority for randomizer collection state. State V1 lives at `0x801AF620..0x801AF81F`, begins with `MKSV`, and assigns one 32-bit word to each main stage. The exact header and word layout are in [Data structures and encodings](Data-Structures-and-Encodings).
+The native game reconstructs stage pickup records, so a per-location runtime bitset is the production authority for randomizer collection state. Production state V2 lives at `0x801AF720..0x801AF81F`, begins with `MKSV`, and assigns one 32-bit word to each main stage. The exact header and word layout are in [Data structures and encodings](Data-Structures-and-Encodings).
 
 Capture hooks the collected-flag store at `0x80039418`; `a1` is the record and `s2` is manager ordinal. Restore hooks `0x80038ACC` before the manager's first `+0x2C` read and walks the current record array using the effective context pointer at `0x802ECE20`, count `+0x6F4`, and base `+0x6F8`.
 
@@ -14,7 +14,13 @@ For seven stages, manager ordinal equals catalog bit. Fire has 19 manager entrie
 
 The three `FF` entries are special type-4 records and never enter the ordinary bitset.
 
-Runtime testing collected and restored at least one ordinary pickup in every main stage, multiple Fire items, and completed Temple coverage. That does not equal 84 individual tests. Game Over/new-game reset behavior is still pending.
+Runtime testing collected and restored at least one ordinary pickup in every main stage, multiple Fire items, and completed Temple coverage. That does not equal 84 individual tests.
+
+Progression state is separate: V2 state `+0x40` stores the number of progression rewards acquired and `+0x44` stores persistent XP. Diagnostic B runtime-confirmed XP 258 and two unlocked moves surviving Temple -> Wind and title-menu -> Fire.
+
+At the pickup-manager stage-init boundary, the progression restore helper writes only persistent XP before continuing into the established four-box reconstruction. It does not call the native tier evaluator. Calling that evaluator at this boundary is rejected because it caused the pre-gameplay hang in the first production attempt.
+
+Game Over/new-game reset behavior is still pending.
 
 ## Four-box inventory
 
@@ -50,3 +56,14 @@ The stage mapping is Temple Map `0x0D`; Wind `0x0E..0x10`; Earth `0x11..0x13`; W
 - Title-menu START was the destructive live-window boundary in stock behavior and is explicitly intercepted.
 
 Normal save logic is preserved. Only selector-triggered immediate stage-entry save is suppressed, as documented in [Flow bypasses](Flow-Bypasses).
+
+
+## Progression lifecycle evidence
+
+**Runtime-confirmed on seed `BCBDBF`:**
+
+- progression acquisition established native move tiers at XP 85 and 258;
+- a normal Temple -> Wind transition preserved XP 258 and both unlocked moves;
+- quitting to the title menu and directly entering Fire also preserved XP 258 and both moves.
+
+This shows that, on the tested routes, the move-tier state established at acquisition survives without re-running the tier evaluator during stage initialization.

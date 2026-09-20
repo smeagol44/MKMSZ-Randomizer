@@ -1,6 +1,6 @@
 # XP and progression
 
-XP progression is a runtime-confirmed proof and proposed mode, not a production feature.
+XP progression is a production feature built from the runtime-confirmed Temple proof and Diagnostic B lifecycle validation. The full nine-tier generated-run coverage is still pending.
 
 ## Native XP system
 
@@ -45,17 +45,26 @@ The disposable proof changed Temple ordinary Herbs #1, #3, and #4 into progressi
 
 The experimental progression model is pale blue-grey and visually Herbs-like. The intended final presentation is a bright-blue Herbs body while retaining the bronze/gold-looking handle. That visual refinement is separate from the confirmed progression logic.
 
-## Intended production semantics
+## Production semantics
 
 The proposed mode has exactly nine rewards and uses a dedicated RNG namespace. Each reward advances to the next native threshold rather than adding an arbitrary fixed amount. A custom award callback avoids inventory insertion, evaluates/clamps the native tier, caps at the ninth value, and restores progression state once per appropriate lifecycle boundary.
 
 Normal ordinary-pickup randomization must remain independent: progression rewards need their own catalog/state and must not consume ordinary pickup RNG or persistence bits.
 
-## Blockers
+## Production allocation and state
 
-The proof's temporary cave conflicts with current production ownership. Its resource placement and presentation are not production-safe, the final visual is not built, and save/new-game/Game Over behavior needs a defined versioned state contract. Do not copy the proof offsets directly into the patch pipeline.
+Production does not reuse the disposable proof cave. Runtime V2 keeps the existing 1 KiB reservation but repartitions it as:
 
-A production change must allocate code/data through the native runtime layout, guard every hook, separate nine progression flags from the 84 ordinary pickup flags, preserve native save behavior, add deterministic tests, and complete a full nine-tier runtime run.
+- reloadable payload code: `0x801AF420..0x801AF71F` (0x300 bytes);
+- persistent state: `0x801AF720..0x801AF81F` (0x100 bytes).
+
+Progression uses state `+0x40` for acquired reward count and `+0x44` for persistent XP, separate from the 84 ordinary-pickup persistence bits at `+0x20..+0x3C`.
+
+Nine rewards are selected only after the ordinary 84-location layout is finalized, using the independent domain `MKMSZR:PROGRESSION:HERBS:V1\0`. Only generated Herbs locations are eligible and only their callback word is replaced, so the ordinary shuffle is not perturbed and no foreign resource import is required.
+
+The acquisition callback advances to the next threshold, stores count/XP, writes current XP, and calls native tier evaluator `0x80074FBC` at the safe pickup-acquisition point. It does not add an inventory item.
+
+At stage initialization, production restores the persistent XP value and then performs the existing four-box reconstruction. It deliberately **does not** call the native tier evaluator there.
 
 
 ## Failed productionization attempt — 2026-09-20
@@ -98,8 +107,25 @@ Diagnostic A differs from the failed production integration at the stage-entry r
 
 Therefore the V2 repartition and pickup callback path are no longer implicated by this bounded route. The failure is isolated to the progression restore-helper path executed during pickup-manager stage initialization.
 
-### Diagnostic B hypothesis
+## Diagnostic B runtime confirmation — 2026-09-20
 
-The restore helper wrote persistent XP, called native tier evaluator `0x80074FBC`, then ran the existing four-box reconstruction. The leading hypothesis is that the tier evaluator is unsafe this early in stage initialization.
+**Runtime-confirmed:** Diagnostic B removed only the tier-evaluator call from the stage-entry restore helper while keeping persistent-XP restoration and the normal four-box reconstruction.
 
-Diagnostic B keeps the same restore helper entry and persistent-XP write but NOPs only the tier-evaluator setup/call. It then continues into the existing four-box reconstruction. This is a disposable proof ROM only and is not enabled in production.
+Observed with seed `BCBDBF`:
+
+- Temple loaded normally;
+- first and third generated progression Herbs reached XP 85 and 258 and unlocked the first two special-move tiers;
+- Temple completed normally;
+- Wind loaded with XP still at 258 and both unlocked moves retained;
+- after quitting to the title menu and entering Fire directly, XP remained 258 and both moves were still available;
+- no issue was detected on this bounded route.
+
+This isolates the original hang to invoking native tier evaluator `0x80074FBC` during pickup-manager stage initialization. That call is **Rejected / failed at stage-init timing**. The evaluator remains valid and runtime-confirmed on the progression-pickup acquisition path.
+
+Diagnostic B behavior is the production design.
+
+## Remaining limits
+
+- All nine generated progression rewards are implementation/CI-confirmed, but a full nine-tier runtime run is still pending.
+- Production progression pickups currently retain ordinary Herbs graphics. Bright-blue Herbs body with a bronze/gold-looking handle remains a visual refinement.
+- Game Over/new-run reset behavior remains pending as part of the shared MKMSZR lifecycle work.
