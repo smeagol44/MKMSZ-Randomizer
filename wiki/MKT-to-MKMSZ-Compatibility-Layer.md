@@ -359,9 +359,35 @@ v02 is built from the clean supported target ROM. The imported Sektor resource b
 - only then release the temporary donor palette;
 - retain donor idle speed 8 only while the Sektor idle binding is active.
 
+**Rejected / failed as a complete fix; donor rendering remains runtime-confirmed.**
+
+Further user runtime testing showed the same single-frame corruption and hard hangs. The trigger is selective rather than simply "any animation change": block, punches, kicks, turning, walking backward, and ordinary jumping can work, while crouching, walking forward, and adding forward drift during an already-running jump can hard-hang immediately. The supplied 12.7-second capture is especially constraining because the final failure occurs after a stock jump is already visibly underway; adding forward movement freezes the game without a visible animation change first.
+
+The capture also shows the transient corrupt frame when returning from stock actions to Sektor idle (approximately 4.5 s and 7.0 s in that recording). This narrows that artifact separately to the idle-entry presentation boundary.
+
+#### v03 — restore the stock resource table; redirect only the idle cursor
+
+Static re-audit found a stronger structural problem in v01/v02. The relocated Sub-Zero resource was copied intact except that its actual table-0/index-0 word was permanently changed from stock `+0x2EC` to appended Sektor script `+0x459E0`. This means the proof globally replaced the resource's stance entry, rather than limiting the foreign animation to the `select_animation(0,0)` call. Static target code contains resource-table reads outside `0x8002FE54`, so a permanent table mutation can affect stock state/locomotion code even when no visibly new animation has been selected.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v03.z64`
+
+Identity:
+
+- SHA-256 `222fb08985f30f78b2628e74ea24b21c2ac26701f4bc81450be574a21be908ca`;
+- CRC1/CRC2 `40543A98 / EE1442F8`.
+
+v03 is built from the clean supported ROM and keeps the donor frames/palette/timing identical to v02. Its isolated change is:
+
+- the relocated first `0x459E0` bytes of Sub-Zero's resource are byte-for-byte identical to the clean stock file, including table-0/index-0 = `+0x2EC`;
+- the appended Sektor data remains outside that stock range;
+- only an exact Sub-Zero idle request `(table 0,index 0)`, while the isolated donor palette is owned by the same actor, writes controller `+0x6E4 = resource_base + 0x459E0`;
+- all non-idle calls continue through the stock `select_animation` tail and all other resource-table consumers see stock data.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Success criterion for v02: Sektor loops while neutral; walking/jumping/crouching/attacking switch immediately to stock Sub-Zero without a corrupt transition frame or hang; returning to neutral resumes Sektor with no stock-palette contamination.
+This proof intentionally does not change the separate one-frame idle-entry palette artifact. If v03 removes the hangs while leaving that frame, the locomotion/resource-table defect and palette/shape ordering artifact are cleanly separated.
 
 ### Later proofs
 
