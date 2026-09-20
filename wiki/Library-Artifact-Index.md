@@ -1,33 +1,18 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# Historical artifact index
 
-# Library Artifact Index
+Current technical facts are reproduced in this Wiki. The external `MKMSZR Research` collection remains the audit trail for original reports, captures, scripts, patchers, and archived analysis projects.
 
-The Wiki owns the current synthesis; specialist evidence and historical research records remain in the Library.
+| Historical collection | What it preserves | Current Wiki owner |
+|---|---|---|
+| Start-here and synthesis reports | Former routing and consolidated conclusions | [Home](Home), [research synthesis](Complete-Research-Synthesis) |
+| Core runtime/address database | Disassembly traces, bootstrap experiments, address provenance | [Core runtime](Core-Runtime-and-Address-Database), registries |
+| Pickup/resource reports | Original callback tests, cross-stage import proof, parser outputs | [Pickups](Pickups-and-Item-Randomization), [stage catalogs](Stage-Catalogs) |
+| Persistence/inventory handoffs | Bitset and four-box proof history | [Persistence and inventory](Persistence-Inventory-and-Lifecycle) |
+| UI reports | Node/text experiments and screenshots | [Native UI](Native-UI-and-Presentation) |
+| Enemy reports | Stream decompilation and foreign fighter import | [Enemy randomization](Enemy-Randomization) |
+| Stage flow reports | Selector and bypass traces | [Stage selector](Stage-Flow-and-Selector), [flow bypasses](Flow-Bypasses) |
+| PS1 reports/filesystem inventory | Executable, files, save and structure analysis | [PS1 research](PS1-Research) |
+| Specialist handoffs | Narrow chronological experiment detail | Owning domain plus [failures](Experiments-Failures-and-Superseded-Findings) |
+| Ghidra N64 archive | Reconstructed clean-ROM analysis project | Address/function provenance |
 
-## Folder map
-
-| Folder | Purpose |
-|---|---|
-| `01 - Original Sources` | immutable inputs, reference material, save states |
-| `02 - Research Reports` | historical canonical reports and focused handoffs |
-| `03 - Patchers and Automation` | experiment tooling |
-| `04 - Stage Catalogs` | pickup/resource datasets |
-| `05 - Static Analysis` | Ghidra exports, manifests, loader evidence |
-| `06 - Screenshots and Evidence` | visual runtime proof |
-| `07 - RAM Diffs and Experiment Data` | runtime logs and machine-readable evidence |
-| `08 - Archives` | preserved workspaces and analysis archives |
-
-## Important preserved artifacts
-
-- `GHIDRA_PROJECT_MANIFEST.md`
-- `MKMSZR-Ghidra-N64-Project-2026-09-17.zip`
-- eight-stage pickup/resource catalogs
-- pickup-persistence runtime/static evidence
-- four-box inventory experiments
-- native UI screenshots/evidence
-- enemy resource-import handoffs
-- flow-bypass complete documentation
-- PS1 executable/overlay analysis
-- MKT Reverse Elbow investigation handoffs
-
-Historical reports and handoffs are durable evidence/history, not additional current-documentation owners.
+The archive may contain older claims that are deliberately superseded here. In particular, prefer the corrected `0x802ECE20` context pointer and `0x8002B1EC` player velocity helper over older handoffs.

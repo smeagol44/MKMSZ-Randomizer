@@ -1,64 +1,34 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# Web patcher and product behavior
 
-# Web Patcher and Product
+## Shared core
 
-Implementation source of truth:
+The browser frontend and developer CLI are configuration shells around `src/mkmszr/patcher.py`. The same `RandomizerConfig`, ROM validation, patch modules, output CRC update, deterministic seed behavior, and byte guards apply in both environments.
 
-`smeagol44/MKMSZ-Randomizer`
+The browser build compiles the Python package to a wheel and serves it with the static `web/` application. The user supplies the ROM locally; the repository and deployed site do not contain copyrighted ROM data.
 
-## Architecture
+## Inputs and output guarantees
 
-A modular Python patching core is shared by:
+- Clean USA Rev. 0 big-endian `.z64` only.
+- A new output is produced; the CLI refuses in-place patching and existing-output overwrite.
+- Seed is trimmed; absent seed becomes a random 64-bit hex value.
+- Output reports applied modules, notes, CRC1/CRC2, and SHA-256.
+- Pickup layout, boot phrase, and seeded palette use independent deterministic domains.
 
-- CLI;
-- browser frontend through Pyodide;
-- automated tests/CI.
+## Current configuration surface
 
-ROMs are patched locally and are never distributed by the project.
+| Option | Behavior |
+|---|---|
+| Seed | Drives stage-local pickup layouts, boot phrase, and seeded palette through isolated namespaces |
+| Outfit `vanilla` | Leaves source TLUT untouched |
+| Presets / red / green | Applies fixed hue behavior |
+| `seeded` | Deterministic seed-derived clothing color |
+| `hue` | Requires explicit degrees |
+| `rgb` | Requires `RRGGBB` or `#RRGGBB` |
 
-## Current default pipeline
+Core features such as selector, persistence, pickup shuffle, four-box inventory, indicator, branding, and flow bypasses are always installed. There is not yet a user-facing toggle for global item pooling, enemies, XP mode, or special moves because those systems are not production-ready.
 
-1. Safe Stage Select
-2. arena reservation
-3. native payload bootstrap
-4. ordinary-pickup persistence
-5. seeded ordinary-pickup randomization
-6. four-box inventory
-7. Safe Stage Select one-shot automatic-save bypass
-8. `BOX n OF 4`
-9. boot branding
-10. post-legal company/logo bypass
-11. optional Sub-Zero palette patch
+## Deployment
 
-Both flow bypasses are now part of the default browser/CLI build. The save patch only arms the game's native one-shot bypass from Safe Stage Select; generic, manual, and later post-stage save flows remain untouched.
+`.github/workflows/pages.yml` runs on `main`, builds the wheel, copies the static frontend to `_site`, substitutes the run number into the displayed version, and deploys GitHub Pages. `.github/workflows/wiki.yml` independently mirrors `wiki/` to the GitHub Wiki.
 
-## Seed behavior
-
-Browser:
-
-- blank seed -> cryptographically generated 16-digit uppercase hex seed;
-- generated seed is inserted into the input;
-- result panel shows the effective seed;
-- output filename includes it;
-- manual seed can replay/share a layout.
-
-Subsystems use separate deterministic domains, including:
-
-- `MKMSZR:BOOT-PHRASE:V1`
-- `MKMSZR:PICKUPS:STAGE-LOCAL:V1`
-
-## Build number
-
-Pages stamps:
-
-`v0.<deploy-pages workflow run number>`
-
-The runtime-confirmed flow-bypass integration first deployed as **v0.20**. Later documentation or product deployments continue incrementing the visible build number automatically.
-
-## Current pickup mode
-
-Browser output reports:
-
-`Stage-local ordinary pickups (84)`
-
-The first `TEST153` generated Fire pickup runtime check passed.
+This separation matters: product deployment does not package research artifacts, ROMs, proof patches, or emulator state.

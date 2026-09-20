@@ -1,33 +1,29 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# Stage catalogs
 
-# Stage Catalogs
+These eight pages reproduce the decoded ordinary-pickup tables, outer resource slots, pickup-to-slot usage, stage notes, and every recognized per-frame resource record. They are the working catalogs; no external CSV or archive is required.
 
-Full machine-readable catalogs remain specialist evidence in the Library:
+| Compact selector | Native ID | Stage | Pickups | Catalog |
+|---:|---:|---|---:|---|
+| 0 | 0 | Temple | 4 | [Temple](Stage-Catalog-Temple) |
+| 1 | 1 | Wind | 6 | [Wind](Stage-Catalog-Wind) |
+| 2 | 2 | Water | 9 | [Water](Stage-Catalog-Water) |
+| 3 | 3 | Earth | 20 | [Earth](Stage-Catalog-Earth) |
+| 4 | 4 | Prison | 10 | [Prison](Stage-Catalog-Prison) |
+| 5 | 5 | Fire | 16 | [Fire](Stage-Catalog-Fire) |
+| 6 | 8 | Bridge | 10 | [Bridge](Stage-Catalog-Bridge) |
+| 7 | 9 | Fortress | 9 | [Fortress](Stage-Catalog-Fortress) |
+|  |  | **Total** | **84** |  |
 
-`MKMSZR Research/04 - Stage Catalogs/`
+## What is complete
 
-## Ordinary pickup counts
+- All 84 ordinary `0x30`-byte records and every raw word are listed.
+- Production progression tokens and location requirements are shown alongside native bytes.
+- All eight resource-file ROM ranges and verified runtime bases are recorded.
+- Every outer selector is classified as empty, recognized, or explicitly unknown/nonstandard.
+- Recognized bundle/list records include frame, descriptor offset, storage kind, data/resource value, inferred end, and dimension words.
 
-| Stage | Count |
-|---|---:|
-| Temple | 4 |
-| Wind | 6 |
-| Water | 9 |
-| Earth | 20 |
-| Prison | 10 |
-| Fire | 16 |
-| Bridge | 10 |
-| Fortress | 9 |
-| **Total** | **84** |
+## What “complete catalog” does not mean
 
-Catalog artifacts include:
+The tables are static-confirmed and the resource files were byte-matched in runtime captures. They do not claim that every occupied resource slot's gameplay owner is known or that every one of the 84 records has been collected individually. A slot with no ordinary-pickup user remains protected because another actor or script may own it. Zero outer entries are logical capacity, never proof of free physical bytes.
 
-- `*-pickup-records.csv`
-- `*-resource-catalog.md`
-- `*-resource-catalog.json`
-- `*-resource-records.csv`
-- `*-resource-slots.csv`
-
-These datasets back exact record identities, stage-local resource selectors, callback/presentation pairing and progression-sensitive key analysis.
-
-The v0.18 product embeds the researched ordinary-record catalog for patch generation, while the Library catalogs remain the evidence owner.
+The Temple Map is a scripted/special actor and is intentionally absent from the four ordinary Temple records. Boss items and Shinnok's Amulet likewise use separate paths.

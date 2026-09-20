@@ -1,57 +1,50 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# Project status
 
-# Project Status
+Last consolidated: 2026-09-20.
 
-## Runtime-confirmed foundations
+## Production pipeline
 
-- Safe compact eight-stage selector.
-- Reserved 1 KiB MKMSZR arena prefix and native file-ID `0x1B` loading/execution.
-- Eight-stage ordinary-pickup persistence architecture.
-- Four isolated native 10-slot inventory boxes.
-- Stage-local foreign-key masking with inert placeholder `0x08`.
-- Native gameplay geometry and arbitrary native ASCII text.
-- `BOX n OF 4` gameplay indicator.
-- Boot/legal branding.
-- Post-legal logo bypass.
-- Safe Stage Select one-shot automatic-save bypass.
-- Same-stage and bounded cross-stage pickup/resource proofs.
-- Ordinary-enemy stream architecture and bounded cross-stage fighter import.
-- First generated native item layout: `TEST153` produced the expected Shield at Fire's first pickup.
-- `TEST153` boot message `' OR 1==1 --` rendered correctly, adding punctuation-font evidence.
+| System | Status | Evidence and limit |
+|---|---|---|
+| Clean-ROM validation and separate output | Production | Implementation/CI-confirmed; exact USA Rev. 0 hash only |
+| Header checksum update | Production | Implementation/CI-confirmed |
+| Compact eight-stage selector | Production | Runtime-confirmed A-button route; compact index maps to native `0,1,2,3,4,5,8,9` |
+| 1 KiB arena reservation and native payload | Production | Runtime-confirmed load/execute; guarded bounds and tests |
+| Ordinary-pickup persistence | Production beta | All eight stages runtime-confirmed at representative locations; all 84 are statically cataloged, not individually exhausted |
+| Stage-local pickup randomization | Production beta | All 84 implemented and tested over 250 seeds; seed `TEST153` first Fire location predicted/rendered/awarded Shield; full run pending |
+| Four inventory boxes | Production beta | Runtime-confirmed switching, transition preservation, stage-key masking; Game Over/reset edge still pending |
+| `BOX n OF 4` HUD text | Production | Runtime-confirmed native text path |
+| Boot branding and seed phrase | Production | Guarded and CI-confirmed; phrase uses a dedicated deterministic namespace |
+| Logo and selector-save bypasses | Production | Runtime-confirmed, legal screen and later/manual saves preserved |
+| Outfit recoloring | Production | Runtime-confirmed palette modes; static TLUT source transform |
+| Browser/CLI shared patch core | Production beta | CI builds/tests; release UX continues to mature |
 
-## Production / implementation-confirmed
+## Confirmed proofs, not product features
 
-- deterministic seed handling in browser and CLI;
-- deterministic boot-message selection;
-- deterministic Sub-Zero recoloring;
-- browser build number `v0.<Pages run>`;
-- stage-local seeded randomization of all 84 ordinary pickup records;
-- post-legal logo bypass and selector-local automatic-save bypass in the default production pipeline.
+| Proof | Result | Remaining work |
+|---|---|---|
+| Same-stage pickup substitution | Full identity tuple changes award and art | Generalized in current stage-local mode |
+| Fire foreign Prison-key import | Relocated/expanded resource file plus dedicated callback works | Production resource planner, allocation policy, compatibility matrix |
+| Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
+| Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
+| Temple XP progression | Nine Herbs-like rewards, no combat XP, XP `85` then `258`, second tier, no inventory award, normal and progression pickups coexist | Production-safe storage, final art, seed integration, persistence/lifecycle design |
+| Reverse Elbow v6 | Repeated execution without whole-game hang | Movement, exclusivity, hit behavior, animation, pass-through, and UI diagnostics remain incomplete |
 
-The first generated layout is now runtime-confirmed at one Fire location; a full seeded run is still pending.
+## Latest runtime findings
 
-## Functionally viable / beta
+The Temple XP proof is confirmed: combat does not award XP; collecting the proof rewards sets XP to `85` and then `258`; the second threshold activates the next tier; nothing is added to inventory; ordinary pickups and progression rewards coexist. The proof model appears pale blue-grey and Herbs-like. The desired final presentation is a bright-blue body with a bronze handle. Its temporary cave conflicts with production allocations and must not be merged as-is.
 
-### XP progression items
+Reverse Elbow v8 did not visibly deliver the intended changes. Sub-Zero still does not pass through enemies, forward motion stops when attacking even though the `L 1` diagnostic remains unchanged, direction/jump/crouch are locked while attacks remain possible, the Y gate behaves normally against a jumping enemy, speed still appears very slow rather than four times faster, and the expanded HUD text did not appear. Treat v6 lifecycle stability as the durable result; v7/v8 movement and diagnostic claims are not confirmed.
 
-The Temple proof is runtime-confirmed: mapped combat/kill XP awards are suppressed, combo HITS remains while the EXPERIENCE line is removed, progression pickups advance to the next stock XP tier without entering inventory, the second pickup reached the second special-move tier, and Temple's max XP displayed as 20000. A normal brown Herbs pickup and progression pickups coexisted and were distinguishable. The current experimental progression-item recolor works but is paler/greyer than the desired bright-blue-with-bronze-handle presentation. Production integration and visual refinement remain pending.
+## Pending priorities
 
-### Enemy randomization
+1. Full seeded native pickup playthrough and lifecycle edge coverage.
+2. Productionize the Temple XP mode without cave conflicts.
+3. Build an explicit resource-import planner before cross-stage item or enemy pools.
+4. Trace imported-enemy death/despawn dependencies.
+5. Rework Reverse Elbow from confirmed scheduler/action primitives and observable diagnostics.
+6. Validate Game Over/new-game behavior for persistence and four-box state.
 
-Cross-stage ordinary-enemy resource import works in the bounded Fire proof. Imported Temple monks render, move, fight and are killable, but normal death/despawn presentation is missing. Mixed rosters, broad compatibility and bosses/minibosses remain unresolved.
+## Explicit exclusions
 
-### Foreign moves
-
-MKT Reptile's Reverse Elbow has an implementation-ready MKMSZ-side static design. The first proof-ROM experiment is separate from the production randomizer.
-
-## Main remaining randomizer work
-
-1. Broaden runtime validation of generated item layouts toward a complete seeded run.
-2. Design production **global cross-stage** item placement/resource import.
-3. Productionize the runtime-confirmed pickup-driven XP/move progression architecture and refine its visual presentation.
-4. Add full Game Over run-state reset.
-5. Define/preserve HP, lives and continues across intended lifecycle routes.
-6. Add richer randomizer HUD/status text.
-7. Build a production enemy randomization planner.
-8. Resolve imported-enemy death/despawn presentation and compatibility.
-9. Expand optional move/character replacement if Reverse Elbow succeeds.
+Bosses and scripted encounters are not ordinary-enemy entries. The Temple Map is not an ordinary pickup. Zero resource slots are logical selectors, not free physical storage. PS1 addresses are not N64 addresses. Proof ROM patches and archive handoffs are not silently part of the product pipeline.

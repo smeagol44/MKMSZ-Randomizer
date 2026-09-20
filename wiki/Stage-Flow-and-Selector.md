@@ -1,93 +1,36 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# Stage flow and selector
 
-# Stage Flow and Selector
+## Production title route
 
-## Supported stage mapping
+The title-screen A-button route originally calls `0x8002830C`; production changes the JAL at ROM `0xE028` to the native debug selector at `0x8000D0B8`. The normal stage-loader path remains stock, preserving cinematics, overlay initialization, and progression behavior after a stage is chosen.
 
-| Compact index | Native ID | Stage |
-|---:|---:|---|
-| 0 | 0 | Temple |
-| 1 | 1 | Wind |
-| 2 | 2 | Water |
-| 3 | 3 | Earth |
-| 4 | 4 | Prison |
-| 5 | 5 | Fire |
-| 6 | 8 | Bridge |
-| 7 | 9 | Fortress |
+The selector's wrap/count instructions at ROM `0xDD60` and `0xDD64` are bounded to eight entries. The pointer table at ROM `0x9B7DC` / VA `0x8009ABDC` is rewritten to retain only:
 
-Native IDs 6/7 are unsafe/non-main entries, so compact 6/7 map to 8/9.
+| Compact index | Label | Native stage |
+|---:|---|---:|
+| 0 | Temple | 0 |
+| 1 | Wind | 1 |
+| 2 | Water | 2 |
+| 3 | Earth | 3 |
+| 4 | Prison | 4 |
+| 5 | Fire | 5 |
+| 6 | Bridge | 8 |
+| 7 | Fortress | 9 |
 
-## Selector state
+Stock entries excluded from production are Unused, Fire God Room, and Test Characters. The original eleven-label order was Temple, Wind, Water, Earth, Prison, Fire, Unused, Fire God Room, Bridge, Fortress, Test Characters.
 
-- stock selector contains 11 entries;
-- selected index: `0x800C11E0`;
-- native stage value: `0x8009A910`;
-- title-menu A-route is confirmed;
-- experimental controller-Start interception remains intermittent.
+## Selection mapping
 
-## Production mapper + automatic-save bypass
+The debug menu writes selection at `0x800C11E0`. The transition path at `0x80015088` ultimately stores the native stage at `0x8009A910`. Production replaces the stock selection load at ROM `0x15CD0` with a JAL to a small mapper: compact values below 6 pass through; values 6 and 7 gain 2.
 
-Production mapper:
+The initial mapper occupied ROM `0x9A700` / VA `0x80099B00`. Four-box integration relocates it to ROM `0x9AEFC` / VA `0x8009A2FC`, because the former selector cave is repurposed for inventory code. Tests enforce this relocation and the selection hook.
 
-- RAM `0x8009A2FC`
-- ROM `0x0009AEFC`
-- 0x20 bytes
+## Runtime evidence
 
-Previous mapper:
+The A-button route is runtime-confirmed for all eight safe stages. An attempted Start-button shortcut behaved intermittently and is rejected from production; no documentation should imply that Start is an alternate supported selector entry.
 
-```text
-3C03800C
-8C6311E0
-2C610006
-14200002
-00000000
-24630002
-03E00008
-00000000
-```
+## Selector-specific save bypass
 
-Current mapper:
+The relocated mapper also writes nonzero byte `0x15` to `0x80291C0C`, the game's native one-shot stage-entry bypass. This suppresses only the immediate automatic save prompt caused by jumping directly into a stage. It does not patch the save routine at `0x800798A8`, and manual/later/post-stage saves remain normal.
 
-```text
-3C03800C
-8C6311E0
-2C610006
-50200001
-24630002
-3C028029
-03E00008
-A0441C0C
-```
-
-It preserves compact mapping and stores a nonzero byte at:
-
-`0x80291C0C`
-
-Main-stage entry callbacks already use that byte as a one-shot automatic-save bypass. The generic save entry `FUN_800798A8` is left untouched.
-
-Runtime-confirmed route:
-
-`Safe Stage Select -> Temple -> no entry save -> normal Temple -> completion -> normal later save prompt`
-
-This is not a global save-disable patch. Validation is bounded to the tested route.
-
-## Boot logo bypass
-
-The legal/branding screen stays intact. At ROM `0x0007A3F4` / RAM `0x800797F4`:
-
-```text
-original:    0C01F113   jal 0x8007C44C
-replacement: 10000003   beq zero,zero,0x80079804
-```
-
-Guarded surrounding sequence:
-
-```text
-0C01F113 00000000
-0C01F143 00000000
-0C018576 24040080
-```
-
-This skips the two synchronous post-legal splash calls while preserving `FUN_800615D8(0x80)` fade normalization and continuation to the normal title/menu controller `FUN_80078C40`.
-
-Cold-boot legal -> title is runtime-confirmed.
+See [Flow bypasses](Flow-Bypasses) for the exact bytes and boot-flow branch.

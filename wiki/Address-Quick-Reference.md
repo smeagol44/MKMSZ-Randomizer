@@ -1,77 +1,34 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# Address quick reference
 
-# Address Quick Reference
+Use this page for orientation; owning registries contain scope and caveats.
 
-Convenience index only. Current shared ownership is [[Core Runtime and Address Database]]; the Library Core Runtime report preserves the archival research record.
-
-## Runtime/loading
-
-| Item | Address |
+| Purpose | N64 address |
 |---|---:|
-| global file table | `0x800A4410` / ROM `0x000A5010` |
-| generic loader | `0x80065D64` |
-| gameplay overlay base | `0x802ECE30` |
-| reserved block | `0x801AF420..0x801AF81F` |
-| V1 code | `0x801AF420..0x801AF61F` |
-| V1 state | `0x801AF620..0x801AF81F` |
-| current stage | `0x8009A910` |
-| selector index | `0x800C11E0` |
-| physical input | `0x8009A5A0` |
+| Global file table | VA `0x800A4410`; ROM `0x000A5010` |
+| Raw file loader | `0x80065D64` |
+| Stage-overlay base | `0x802ECE30` |
+| Current process/context pointer | `0x802ECE20` |
+| Reserved runtime block | `0x801AF420..0x801AF81F` |
+| Runtime code/state split | code `0x801AF420..0x801AF61F`; state `0x801AF620..0x801AF81F` |
+| Current native stage | `0x8009A910` |
+| Selector index | `0x800C11E0` |
+| Normalized action input | `0x800BF2EE` |
+| Live inventory | `0x800A600C..0x800A6033` |
+| Four backing boxes | `0x800A6048..0x800A60E7` |
+| Box state/magic | `0x800A60E8`, `0x800A60EC` |
+| Pickup manager | `0x80038ACC` |
+| Pickup capture hook | VA `0x80039418`; ROM `0x0003A018` |
+| Pickup renderer/loader | `0x8001C528` |
+| Inventory insertion | `0x80075448` |
+| Native text | `0x80073E74` |
+| Text width | `0x80074084` |
+| HUD function / hook | `0x8005BFB0`; hook ROM `0x0005D9CC` |
+| Render-node allocator / submit | `0x8002018C`; `0x8001EAE4` |
+| XP word / central award | `0x8011200C`; `0x8002E104` |
+| Enemy stream interpreter | `0x80071500` |
+| Enemy spawn/constructor/allocator | `0x800719F0`; `0x80071B20`; `0x8002FCDC` |
+| Player velocity helper | `0x8002B1EC` |
+| Special-action installer | `0x80032CD4` |
+| Special scheduler transfer shim | `0x8004AA4C` |
 
-## UI
-
-| Item | Address |
-|---|---:|
-| HUD callback | `0x8005BFB0` |
-| render submit | `0x8001EAE4` |
-| render allocator | `0x8002018C` |
-| MKMSZR HUD hook | `0x8005CDCC` / ROM `0x0005D9CC` |
-| native text | `0x80073E74` |
-| string width | `0x80074084` |
-| font descriptor | `0x800B1E20` |
-
-## Stage flow
-
-| Item | Address |
-|---|---:|
-| production selector mapper | `0x8009A2FC` / ROM `0x0009AEFC` |
-| one-shot auto-save bypass | `0x80291C0C` |
-| automatic stage-entry save | `0x800798A8` |
-| post-legal logo bypass | ROM `0x0007A3F4` |
-
-## XP / progression
-
-| Item | Address |
-|---|---:|
-| current XP | `0x8011200C` |
-| central XP award helper | `0x8002E104` / ROM `0x0002ED04` |
-| XP tier evaluator / clamp | `0x80074FBC` / ROM `0x00075BBC` |
-| stage XP-cap table | `0x800A63FC` / ROM `0x000A6FFC` |
-| direct XP award store 1 | `0x800540E8` / ROM `0x00054CE8` |
-| direct XP award store 2 | `0x80057160` / ROM `0x00057D60` |
-| direct XP award store 3 | `0x8005722C` / ROM `0x00057E2C` |
-| combo EXPERIENCE label render call | ROM `0x00063704` |
-| combo EXPERIENCE value render call | ROM `0x00063724` |
-
-## Special moves
-
-| Item | Address |
-|---|---:|
-| Low Kick callback | `0x80014C60` |
-| event handler | `0x8003C94C` |
-| descriptor parser | `0x8004A0E0` |
-| matcher | `0x80049E60` |
-| transfer dispatcher | `0x80049D14` |
-| Low Kick table | `0x800B0F68` / ROM `0x000B1B68` |
-
-## Inventory
-
-| Item | Address |
-|---|---:|
-| LIVE | `0x800A600C..0x800A6033` |
-| Box 1 | `0x800A6048..0x800A606F` |
-| Box 2 | `0x800A6070..0x800A6097` |
-| Box 3 | `0x800A6098..0x800A60BF` |
-| Box 4 | `0x800A60C0..0x800A60E7` |
-| box state | `0x800A60E8` |
-| `MKBX` magic | `0x800A60EC` |
+Important correction: a signed `0xCE20` low immediate paired with `lui 0x802F` resolves to `0x802ECE20`, not `0x802FCE20`. Also, `0x8004CC14` is projectile setup, not player movement.

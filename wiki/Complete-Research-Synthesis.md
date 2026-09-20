@@ -1,47 +1,43 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# Complete research synthesis
 
-# Complete Research Synthesis
+## What exists now
 
-This page is the current concise cross-project synthesis. Detailed technical ownership stays with the topic pages; the Library preserves the deeper historical/evidentiary record.
+MKMSZR has moved from Lua-era experiments to a guarded native patcher. Its production architecture validates one clean ROM, composes modular patches, reserves a versioned native block, persists and stage-locally shuffles all 84 ordinary pickups, keeps four native inventory boxes, exposes a safe eight-stage selector, integrates with native text and palettes, and preserves normal save/progression flow outside two narrow bypasses.
 
-## N64 architecture
+## Why stage-local randomization came first
 
-- Main stage overlays share a common gameplay overlay base at `0x802ECE30`.
-- A global 12-byte-entry file table at ROM `0x000A5010` / VA `0x800A4410` feeds native loading.
-- MKMSZR reserves `0x801AF420..0x801AF81F` by moving the game's arena start to `0x801AF820`.
-- Runtime Layout V1 splits that 1 KiB into 0x200 bytes of reloadable code and 0x200 bytes of persistent state.
-- Ordinary pickups are data-driven 0x30-byte records with understood callbacks, resource selectors, presentation descriptors and collected flags.
-- Ordinary enemies are stage command-stream driven and share fighter construction/resource infrastructure.
-- Native gameplay HUD geometry and native ASCII text are available to MKMSZR.
+Pickup resource selector `+0x24` is local to the loaded stage resource file. Same-stage identities can move as a unit. Cross-stage placement requires importing resource bundles, creating selector capacity, updating file bounds, preserving presentation/callback behavior, and budgeting the arena. A Fire/Prison-key proof established feasibility, but a general planner does not exist. The production boundary therefore remains a separate permutation per stage.
 
-## Major milestones
+## Persistence and lifecycle conclusion
 
-| Milestone | State |
+Ordinary collection state is best owned by a versioned runtime bitset rather than trusting reconstructed stage records. Inventory capacity is extended without replacing the game's ten-slot consumers: four backing boxes feed one live window. Foreign keys are masked in the live view and preserved in backing storage. These systems have representative runtime coverage across stages, but Game Over/new-game edges remain an explicit gap.
+
+## Enemy conclusion
+
+Ordinary encounters are stream-driven and share a constructor. Type-only substitution works when the destination stage already has the resource. Missing residency freezes construction. A bounded Temple-monk import into Fire proved foreign allocation and spawning, but missing death presentation shows that model residency is not the entire compatibility contract. Bosses use distinct scripts/constructors and are excluded.
+
+## Progression conclusion
+
+Native XP thresholds and award/save paths are mapped. A Temple proof showed nine independent non-inventory rewards can coexist with ordinary pickups and advance thresholds (`85`, `258`, …, `7354`) while combat XP remains disabled. The proof is not production-safe because of cave conflicts, state ownership, and unfinished art.
+
+## Player-action conclusion
+
+Reverse Elbow research exposed critical corrections: player velocity is `0x8002B1EC`; `0x8004B82C/0x8004CC14` are projectile paths; action callbacks installed through `0x80032CD4` cannot return normally; `0x8004AA4C` is a scheduler transfer shim; native action roots use lock `0x800BF308`. v6 achieved repeatable lifecycle stability. v8 did not achieve intended speed, pass-through, or diagnostics.
+
+## Portability conclusion
+
+PS1 shares the 84-record pickup boundary, `0x30` grammar, ten-slot inventory concept, enemy-stream architecture, and several fighter descriptor offsets. It has different functions, files, overlays, save layout, and free-space constraints. N64 discoveries are search signatures, not patches.
+
+## Current decision boundaries
+
+| Safe to build on | Requires a new bounded proof/planner |
 |---|---|
-| clean N64 target + preserved Ghidra project | Confirmed |
-| safe eight-stage selector | Runtime-confirmed A-route |
-| all eight pickup/resource catalogs | Complete |
-| same-stage + bounded cross-stage item-resource proofs | Runtime-confirmed |
-| file-ID `0x1B` loading and code execution | Runtime-confirmed |
-| eight-stage ordinary-pickup persistence | Runtime-confirmed architecture |
-| four-box native inventory | Runtime-confirmed |
-| foreign-key LIVE masking / inert `0x08` | Runtime-confirmed |
-| native gameplay rectangles + arbitrary text | Runtime-confirmed |
-| boot logo bypass | Runtime-confirmed |
-| selector-entry automatic-save bypass | Runtime-confirmed on Temple route |
-| stage-local seeded ordinary-pickup randomization | Runtime-confirmed on first generated TEST153 route; broader playthrough coverage pending |
-| cross-stage ordinary-enemy import | Runtime-confirmed bounded Fire proof |
-| PS1 executable/overlay/selector map | Strong static baseline |
+| Guarded clean-ROM pipeline | Cross-stage/global item pool |
+| Eight-stage selector and scoped flow bypasses | Enemy mixed-roster production |
+| All 84 stage-local pickup records | Boss randomization |
+| V1 pickup persistence and four-box backing | XP production allocation/state/art |
+| Native text and source-palette transform | General textured UI |
+| Corrected player-action primitives | Finished foreign special move |
+| PS1 static architecture | PS1 runtime port |
 
-## Main unresolved areas
-
-- full Game Over run-state reset;
-- player-stat lifecycle policy;
-- global cross-stage item resource planning;
-- richer randomizer HUD;
-- custom textured-image rendering;
-- production enemy planner and compatibility matrix;
-- imported-enemy death/despawn presentation;
-- bosses/minibosses;
-- PS1 runtime activation/memory validation;
-- optional foreign-move / character replacement.
+Use the sidebar registries and stage catalogs for exact values; this page is the cross-domain model, not a substitute for their caveats.

@@ -1,88 +1,51 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# Core runtime and address database
 
-# Core Runtime and Address Database
+This page explains the production native foundation. For flat lookups use [Function registry](Function-Registry), [patch-site registry](Address-and-Patch-Site-Registry), and [runtime map](Runtime-and-Memory-Map).
 
-## Clean target
+## Clean target and invariants
 
-- platform: Nintendo 64
-- USA `NMYE`, revision 0
-- size: 16 MiB
-- SHA-256: `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`
+Only the 16 MiB USA Rev. 0 big-endian ROM is supported: SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`. Every stock edit uses an expected-byte guard. A patch failure stops the build before output, and the clean input is never modified in place.
 
-## File loading
+## Arena reservation
 
-Global file table:
+Two independent arena-start constructions must agree. At ROM `0x00066F64` and `0x00066FE8`, `addiu v0,v0,0xF420` (`0x2442F420`) becomes `addiu v0,v0,0xF820` (`0x2442F820`). The protected interval is `0x801AF420..0x801AF81F`; the game arena starts at `0x801AF820`.
 
-- VA: `0x800A4410`
-- ROM: `0x000A5010`
-- entry size: 12 bytes — ROM start, ROM end, format flag
+The runtime code and state halves are a versioned layout, not generic free space. Inventory later reuses the final `0x2C` bytes of the persistence code half for a filtered-save helper, so changes must be checked against emitted sizes.
 
-Shared loader:
+## Payload registration and bootstrap
 
-`FUN_80065D64`
+| Component | ROM | VA/RDRAM | Limit |
+|---|---:|---:|---:|
+| Global file table | `0xA5010` | `0x800A4410` | 12-byte entries |
+| MKMSZR file ID `0x1B` entry | `0xA5154` | — | guarded stock entry |
+| Payload bytes | `0xF10000` | `0x801AF420` / uncached `0xA01AF420` | code half `0x200` |
+| Bootstrap hook | `0x66FE0` | `0x800663E0` | stage-load path |
+| Bootstrap stub | `0x9AD84` | `0x8009A184` | capacity `0x19C` |
+| Raw loader | — | `0x80065D64` | synchronous in proven path |
+| Arena pointer global | — | `0x800EECD0` | synchronized by bootstrap |
+| Arena sync helper | — | `0x80066390` | native routine |
 
-MKMSZR uses file ID `0x1B` for native payload loading.
+The bootstrap loads file `0x1B`, synchronizes the arena pointer, and transfers to the payload through the uncached alias where required. Tests assert file-table contents, emitted MIPS words, hook/stub capacity, and arena consistency.
 
-## Runtime reservation
+## Pickup persistence integration
 
-MKMSZR moves the original arena start from `0x801AF420` to `0x801AF820`, reserving exactly 1 KiB:
+Capture at VA `0x80039418` / ROM `0x3A018` preserves the displaced `sw v0,0x2C(a1)`, with `a1` as the record and `s2` as manager ordinal. Restore hooks the manager at VA `0x80038ACC` / ROM `0x396CC`, before the first collected-flag read, then resumes at `0x80038AD4`.
 
-`0x801AF420..0x801AF81F`
+The manager context pointer is at effective address `0x802ECE20`; context `+0x6F4` is record count and `+0x6F8` is base. This corrects the superseded `0x802FCE20` reading.
 
-Runtime Layout V1:
+## Cave ownership
 
-| Cached range | KSEG1 alias | Size | Purpose |
-|---|---|---:|---|
-| `0x801AF420..0x801AF61F` | `0xA01AF420..0xA01AF61F` | 0x200 | reloadable native code |
-| `0x801AF620..0x801AF81F` | `0xA01AF620..0xA01AF81F` | 0x200 | persistent `MKSV` state |
+| ROM/VA | Current production owner |
+|---|---|
+| `0x9AD84` / `0x8009A184` | Bootstrap stub and relocated selector mapper tail |
+| `0x9A6C8` / `0x80099AC8` | Four-box switch/mask helper |
+| `0x8F6E8` / `0x8008EAE8` | Four-box action routine |
+| `0xAFA24..0xAFA97` / `0x800AEE24..` | Box-indicator wrapper and string |
+| `0xAF9BE..0xAFA23`, `0xAFA98..0xAFABB` | Boot branding/license strings |
+| payload `+0x1D4..+0x1FF` | Inventory filtered-save helper |
 
-## Shared runtime addresses
+Historical proof patches used some of these areas before production assigned them. Archive offsets are therefore not automatically safe in a current build.
 
-| Symbol | Address | Role |
-|---|---:|---|
-| current stage | `0x8009A910` | native stage |
-| selector index | `0x800C11E0` | selector choice |
-| normalized physical input | `0x8009A5A0` | input mirror |
-| gameplay overlay base | `0x802ECE30` | shared stage overlay VA |
-| HUD callback | `0x8005BFB0` | recurring gameplay HUD |
-| render submit | `0x8001EAE4` | native render queue |
-| render allocator | `0x8002018C` | custom geometry |
-| MKMSZR UI hook | `0x8005CDCC` | stock HUD + MKMSZR work |
-| native text | `0x80073E74` | gameplay ASCII |
-| string width | `0x80074084` | matching measurement |
-| one-shot stage-entry save bypass | `0x80291C0C` | consumed by entry callbacks |
-| automatic stage-entry save | `FUN_800798A8` | generic save UI entry |
-| current XP | `0x8011200C` | native 32-bit player EXP total |
-| central XP award helper | `0x8002E104` / ROM `0x0002ED04` | ordinary scaled XP award/tier-update path |
-| XP tier evaluator / stage clamp | `0x80074FBC` / ROM `0x00075BBC` | clamps to stage cap and returns power tier 0..9 |
-| per-stage XP-cap table | `0x800A63FC` / ROM `0x000A6FFC` | signed-halfword cap indexed by native stage ID |
+## Preserved analysis project
 
-## XP tier thresholds
-
-Static evaluation of the native tier helper gives the exact first XP value for each nonzero tier:
-
-`85, 258, 834, 1410, 2323, 3315, 4503, 5911, 7354`
-
-The final value corresponds to hexadecimal `0x1CBA`.
-
-Three additional direct XP-add/store paths outside the central helper are at:
-
-- `0x800540E8` / ROM `0x00054CE8`
-- `0x80057160` / ROM `0x00057D60`
-- `0x8005722C` / ROM `0x00057E2C`
-
-These are relevant to the planned no-combat-XP progression-item patch.
-
-## Player special-move seam
-
-Low Kick descriptor path:
-
-- callback `0x80014C60`
-- event handler `0x8003C94C`
-- parser `0x8004A0E0`
-- matcher `0x80049E60`
-- transfer dispatcher `0x80049D14`
-- table `0x800B0F68` / ROM `0x000B1B68`
-- record size `0x2C`
-
-See [[Foreign Moves and Reptile]].
+The canonical N64 Ghidra program was reconstructed from the clean ROM rather than an old RDRAM dump. The archived project hash is SHA-256 `fbe071…`; it is provenance, not needed to use the address tables in this Wiki.

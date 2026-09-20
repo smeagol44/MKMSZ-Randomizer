@@ -1,125 +1,66 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# Pickups and item randomization
 
-# Pickups and Item Randomization
+## Native record model
 
-## Native ordinary pickup record
+All eight main stages use ordinary `0x30`-byte records. The production catalog contains exactly 84. The movable identity is the seven-word slice `+0x10..+0x2B`: type, callback parameter, callback, two extents, stage-local resource slot, and presentation descriptor. Position/metadata `+0x00..+0x0F` and collected flag `+0x2C` remain attached to the location.
 
-Ordinary pickups use 0x30-byte stage records.
+Same-stage Fire Potion-to-Herbs testing established why the entire identity must move: callback changes the award, while type/resource/presentation fields control visible and collision behavior. Copying the complete tuple produced correct Herbs behavior and art at the Potion location.
 
-| Offset | Meaning |
-|---:|---|
-| `+0x00..+0x0F` | world position / destination metadata |
-| `+0x10` | behavior/type |
-| `+0x14` | callback parameter / flags |
-| `+0x18` | native award callback |
-| `+0x1C` | extent A |
-| `+0x20` | extent B |
-| `+0x24` | **stage-local resource selector** |
-| `+0x28` | presentation descriptor |
-| `+0x2C` | collected flag |
+## Production shuffle
 
-The complete movable native item identity is `+0x10..+0x2B`.
+For each stage, the generator uses a stable SHA-256-based Fisher–Yates shuffle with domain:
 
-## Ordinary catalog
+```text
+MKMSZR:PICKUPS:STAGE-LOCAL:V1\0
+```
 
-| Stage | Locations |
-|---|---:|
-| Temple | 4 |
-| Wind | 6 |
-| Water | 9 |
-| Earth | 20 |
-| Prison | 10 |
-| Fire | 16 |
-| Bridge | 10 |
-| Fortress | 9 |
-| **Total** | **84** |
+The input includes seed bytes, native stage ID, deterministic attempt number, and counter. RNG is isolated from boot phrases, palettes, and future features. A seedless configuration leaves pickup layout unchanged.
 
-The scripted Temple Map and other scripted/special mechanisms are outside this catalog.
+Candidate layouts are rejected, up to 1,000 deterministic attempts, if the known access model cannot obtain stage progression tokens before their required locations. CI exercises 250 seeds and asserts catalog integrity, tuple preservation, determinism, namespace isolation, and constraints.
 
-## Runtime-confirmed resource facts
+## Access model
 
-- Native callback substitution changes the actual awarded item.
-- Same-stage Fire Potion -> Herbs works when compatible native fields move together.
-- Cross-stage item import is possible when the foreign resource is explicitly resident.
-- Empty logical selectors do not imply physical storage.
-- `+0x24` is stage-local.
+| Stage | Modeled dependencies |
+|---|---|
+| Temple | Four ordinary locations free; scripted Map excluded |
+| Wind | fifth location requires `wind-circle`; sixth requires `wind-triangle` |
+| Water | second requires `water-moon`; eighth requires `water-triangle`; ninth requires `water-three-bars` |
+| Earth | first three yield Square, Four Squares, Triangle; later locations require Square or Four Squares as listed in the Earth catalog |
+| Prison | staged Level 1/2/3 dependencies as listed in the Prison catalog |
+| Fire, Bridge, Fortress | Current ordinary locations treated as free by the ported access model |
 
-## v0.18 seeded native randomization
+These are implementation/CI-confirmed rules ported from legacy logic. A complete native runtime playthrough across arbitrary seeds remains pending.
 
-PR #16 introduced the first production native item randomizer.
+## Runtime milestone
 
-It:
+Seed `TEST153` predicted a Shield at Fire's first ordinary location. Runtime testing showed the Shield model and award behaving normally. The boot phrase for that build was `' OR 1==1 --`, independently selected from the phrase namespace. This confirms one generated location, not the full 84-location run.
 
-- processes all 84 ordinary locations;
-- preserves each destination's position/metadata and collected flag;
-- shuffles the complete `+0x10..+0x2B` tuple;
-- keeps each stage's native resource pool within that stage;
-- uses domain `MKMSZR:PICKUPS:STAGE-LOCAL:V1`;
-- guards all researched clean tuples before writing;
-- preserves stage item-pool multisets.
+## Callbacks and fixed IDs
 
-The generator ports the legacy Lua access model for Wind, Earth, Water and Prison. Candidate layouts that fail the model are rejected deterministically. CI checks 250 generated seeds across all eight stages.
+| Callback | Decoded item | Native ID where fixed |
+|---:|---|---:|
+| `0x800388FC` | Potion | `0x01` |
+| `0x8003898C` | Formula | `0x02` |
+| `0x8003895C` | Eye | `0x03` |
+| `0x800389BC` | Herbs | `0x04` |
+| `0x800389EC` | Health urn | `0x05` |
+| `0x8003892C` | Shield | `0x06` |
+| `0x80038A1C` | Extra life | non-inventory lifecycle effect |
+| `0x80038A58` | Mana | native mana behavior |
+| `0x80038A90` | Strength urn | `0x0B` |
+| `0x80038770` | Key/crystal | stage and parameter dependent |
+| `0x800490CC` | Shinnok Amulet | `0x23`; separate special path |
 
-## First generated-layout runtime proof
+## Cross-stage import proof
 
-Seed:
+A pickup's `+0x24` is stage-local, so copying a Prison identity into Fire initially produced no usable item. The successful proof relocated and expanded Fire's resource file, appended a Prison-key bundle under Fire slot 5, and used a dedicated callback to award item `0x1A`. It rendered and awarded correctly. This proves that cross-stage items are feasible only as a coordinated resource, callback, file-table, storage, and arena operation.
 
-`TEST153`
+Production does not yet have a resource-import planner. Global item pooling remains disabled. See [ROM and resource map](ROM-Overlay-and-Resource-Map) and the per-stage catalogs.
 
-Expected Fire first ordinary location:
+## Explicit exclusions
 
-`Shield`
-
-Manual result:
-
-- Fire's first ordinary pickup was visibly a Shield;
-- collecting/encountering the generated location behaved as expected;
-- the same seed also produced the expected boot phrase `' OR 1==1 --`;
-- that punctuation-heavy phrase rendered correctly in the native boot font.
-
-This is the first runtime confirmation that the production seeded pickup generator changes a real native pickup as designed.
-
-**Validation boundary:** one generated Fire location is confirmed. A complete seeded run and broader arbitrary-layout coverage remain pending.
-
-## Native-vs-Lua difference
-
-The old Lua randomizer substituted Herbs for some native mana pickups. The native ROM randomizer preserves real native mana tuples.
-
-## Planned XP progression pickups
-
-The legacy Lua replaces nine Herbs with virtual `Power Upgrade` items and continuously rewrites XP from the number collected.
-
-The native design will keep the useful randomizer concept but remove the per-frame override:
-
-- exactly nine ordinary Herbs identities will be deterministically replaced after the normal pickup layout is generated;
-- the synthetic pickup will reuse the destination stage's own Herbs behavior/resource/presentation tuple, changing only the award callback to a native MKMSZR progression callback;
-- the callback will not consume an inventory slot;
-- each collection advances XP to the next native threshold: `85, 258, 834, 1410, 2323, 3315, 4503, 5911, 7354`;
-- normal combat XP will be disabled, so XP remains at the acquired progression tier between pickups;
-- selection should use a separate deterministic RNG namespace so it does not perturb the base 84-location shuffle.
-
-Because every main stage already has native Herbs resources, this first progression-item design does not require cross-stage presentation-resource imports.
-
-### Temple proof — runtime-confirmed
-
-A bounded clean-ROM Temple proof replaced ordinary Temple Herbs #1, #3 and #4 with progression pickups while leaving Herbs #2 completely vanilla as a control.
-
-Observed manually:
-
-- progression pickups were present in the level and visually distinguishable from the normal Herbs;
-- normal Herbs remained available and behaved normally;
-- progression pickups did **not** add anything to inventory;
-- first collected progression pickup advanced XP to 85;
-- second collected progression pickup advanced XP to 258 and unlocked the second expected special-move tier;
-- fighting, enemy kills and combos awarded no XP before or after progression-item collection;
-- the combo HITS message remained;
-- the combo EXPERIENCE line was absent;
-- Temple's displayed max XP was 20000.
-
-The visual experiment reused the Herbs resource with the native Mana presentation descriptor. It successfully produced a distinct pale blue/grey Herbs-like pickup, but the preferred final art direction is brighter blue while retaining a bronze-looking handle. That styling refinement is pending and is independent of the progression logic.
-
-The proof callback used a temporary clean-ROM cave that conflicts with current production four-box code. The runtime behavior is confirmed; production integration must relocate the callback into compatible MKMSZR runtime space rather than shipping the proof layout verbatim.
-
-## Next frontier
-
-Global cross-stage placement needs a production resource planner that can load/reuse foreign presentation resources safely and deterministically.
+- Temple Map and other scripted/special actors.
+- Boss or cutscene rewards.
+- Cross-stage resource imports.
+- Legacy Lua substitutions such as replacing native mana with Herbs.
+- Treating empty logical slots as storage.

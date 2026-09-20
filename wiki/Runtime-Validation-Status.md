@@ -1,29 +1,26 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# Runtime validation status
 
-# Runtime Validation Status
+This matrix states the narrowest claim supported by evidence. “Runtime-confirmed” never means exhaustive unless the scope says so.
 
-| Area | Status | Scope / caveat |
-|---|---|---|
-| reserved runtime block | Runtime-confirmed | bounded lifecycle routes |
-| file-ID `0x1B` loading/execution | Runtime-confirmed | bounded payloads |
-| safe selector | Runtime-confirmed | A-route/mapping; Start shortcut intermittent |
-| post-legal logo bypass | Runtime-confirmed | cold boot legal -> title |
-| selector automatic-save bypass | Runtime-confirmed | Temple route through later normal save |
-| pickup persistence | Runtime-confirmed architecture | one+ pickup in each main stage; not all 84 exhausted |
-| four-box inventory | Runtime-confirmed | tested switching/consumption/transitions |
-| key masking + inert `0x08` | Runtime-confirmed | tested routes |
-| native HUD geometry | Runtime-confirmed | solid nodes |
-| arbitrary native gameplay text | Runtime-confirmed | custom ASCII |
-| `BOX n OF 4` | Runtime-confirmed | production |
-| boot branding | Runtime-confirmed | production baseline |
-| punctuation-heavy seed `TEST153` | Runtime-confirmed | apostrophe, equals, hyphens rendered correctly |
-| Sub-Zero recolor | Runtime-confirmed | indexed palette |
-| stage-local seeded 84-pickup randomizer | Runtime-confirmed bounded proof | TEST153 Fire first pickup -> Shield; full seeded run pending |
-| pickup-driven XP progression | Runtime-confirmed bounded proof | Temple: no combat/kill XP, progression pickups 85→258, second move tier unlocked, no inventory item, HITS retained/EXPERIENCE removed, max XP 20000; production persistence/generalization pending |
-| cross-stage ordinary enemy import | Runtime-confirmed | bounded Fire proof; death/despawn issue |
-| Reverse Elbow transplant | Static implementation design + failed early proofs | refined proof pending |
-| PS1 selector/overlay map | Static | runtime pending |
+| Domain | Runtime-confirmed scope | Static/CI scope | Not yet established |
+|---|---|---|---|
+| Selector | A-button title route; all eight compact destinations | Guards, table, range, mapper | Intermittent Start shortcut is not production |
+| Arena/bootstrap | Reserved block loads and executes | Both arena sites, file-table entry, hook/stub bounds | Expansion beyond the 1 KiB contract |
+| Pickup persistence | At least one ordinary pickup in every stage; multiple Fire records; Temple completion | All 84 records and bit mappings | Every record individually; Game Over reset |
+| Pickup randomization | `TEST153` first Fire location became predicted Shield and behaved normally | All 84 identities; deterministic namespaces; 250-seed access-model tests | Full seeded playthrough; broad arbitrary-layout runtime coverage |
+| Four-box inventory | Switching, live/backing copies, transition survival, foreign-key masking | Input/remap hooks and lifecycle routines | Every save/load/Game Over edge |
+| Native UI | Arbitrary custom text and persistent box indicator | Node structure, hook, string/cave guards | General textured-image API |
+| Flow bypasses | Logos skipped; selector entry avoids only immediate auto-save | Exact owning routine and branch guards | No known open item |
+| Palette | Multiple modes visibly recolor clothing | 64-entry source TLUT and BGR555 transform | Dynamic non-Sub-Zero palettes |
+| Enemy substitution | Fire `0x0A -> 0x09`; imported Temple monk in Fire | Stream formats, constructor/resource tables | Death presentation; arbitrary mixes; bosses |
+| XP progression | Nine-reward Temple proof; no combat XP; thresholds `85`, `258`; tier advance; no inventory; coexistence | Central award, direct stores, cap table, save field | Production storage/persistence, final art, full nine-tier run |
+| Reverse Elbow | v6 repeats without global hang; v7 airborne gate appears safe | Corrected velocity/scheduler/action paths | Intended v8 speed/pass-through/diagnostic behavior |
+| PS1 | No new runtime test in this consolidation | Executable/resource/save/pickup/enemy mappings | Fire type substitution, UI hook, playable Scorpion moves |
 
-## Promotion rule
+## Runtime environment lineage
 
-Do not promote a subsystem from static/implementation evidence to runtime-confirmed without a bounded manual test and recorded result.
+Historical N64 proof runs used BizHawk `2.11.1`, Ares64, CPU emulation `1`, and P1 controller `2` where explicitly recorded. State-specific observations remain bound to their ROM and save-state identity. The Wiki reproduces conclusions and exact addresses, while hashes and original captures remain historical provenance.
+
+## Production vs proof
+
+“Production” requires current guarded code and tests. “Proof” may intentionally use a temporary cave, a one-off record edit, or a narrow replacement. For example, the Temple XP result is runtime-confirmed but its cave conflicts with production, and the Temple-monk import proves resource residency but lacks the monk's normal death presentation.

@@ -1,5 +1,3 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
-
 # Milestone Timeline
 
 ## 2026-09-17
@@ -38,3 +36,5 @@
 - After the final Library-canonical synchronization, the Wiki became the living/current documentation source and the Library became the durable evidence/archive source.
 - Runtime-confirmed logo and selector-save bypasses productionized in PR #18; first shipped in web build **v0.20**.
 - Temple XP-progression proof runtime-confirmed: combat/kill XP suppressed, combo EXPERIENCE text removed while HITS remains, progression pickups advanced XP 85→258 and unlocked the second move tier, max XP displayed as 20000, and progression pickups remained inventory-free.
+- Reverse Elbow v6 established a repeatable non-hanging scheduler/action lifecycle with the corrected player-velocity helper. Later v8 runtime testing did not confirm intended speed, pass-through, or expanded diagnostics.
+- The Wiki was consolidated into a self-contained technical knowledge base with all 84 ordinary pickup records, all eight decoded resource catalogs, and dedicated function, patch-site, memory, structure, failure, and N64/PS1 registries.

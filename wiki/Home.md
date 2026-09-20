@@ -1,56 +1,47 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# MKMSZR technical knowledge base
 
-# MKMSZ Randomizer Wiki
-
-Welcome to the working documentation for **MKMSZ Randomizer (MKMSZR)**, a native-ROM randomizer project for *Mortal Kombat Mythologies: Sub-Zero*.
-
-## Current milestone
-
-The standalone browser/CLI patcher is live. The runtime-confirmed logo/save bypasses first shipped in web build **v0.20**; build numbers continue to advance automatically on successful Pages deployments.
-
-Production/runtime foundations now include:
-
-- safe eight-stage selector;
-- 1 KiB MKMSZR native runtime/state reservation;
-- ordinary-pickup persistence across all eight main stages;
-- four native 10-slot inventory boxes;
-- stage-local foreign-key masking with inert placeholder `0x08`;
-- native `BOX n OF 4` HUD text;
-- boot/legal branding and deterministic seeded messages;
-- optional deterministic Sub-Zero recoloring;
-- post-legal company-logo bypass;
-- Safe Stage Select automatic-save bypass;
-- **native seeded ordinary-pickup randomization across all 84 catalogued ordinary locations**.
-
-The first generated-layout runtime check also passed: seed `TEST153` produced the expected Shield at Fire's first ordinary pickup and the expected SQL-injection boot joke rendered correctly.
+This Wiki is the current, self-contained technical reference for the native-ROM **Mortal Kombat Mythologies: Sub-Zero Randomizer**. The versioned repository and this `wiki/` tree are the product/documentation source of truth. The research archive is evidence and history; a contributor should not need it to understand the current system.
 
 ## Start here
 
-| Area | Wiki page |
+- [Contributor start here](Contributor-Start-Here): build, test, and research order.
+- [Project status](Project-Status): what is production, proof-only, pending, or rejected.
+- [Architecture overview](Architecture-Overview): ROM validation, patch pipeline, runtime reservation, and feature boundaries.
+- [Complete research synthesis](Complete-Research-Synthesis): one-page domain map.
+- [Runtime validation status](Runtime-Validation-Status): the exact scope of runtime, static, and CI evidence.
+
+## Current product
+
+The Python patcher accepts only the clean USA Rev. 0 big-endian ROM, writes a separate output, installs a native eight-stage selector and 1 KiB runtime block, persists and stage-locally randomizes all 84 ordinary pickups, provides four ten-slot inventory boxes, draws a native box indicator, brands and shortens the boot flow, and optionally recolors Sub-Zero. The browser and CLI use the same patching core.
+
+The product is **beta**. Production means a guarded implementation is in the repository and covered by CI; it does not imply that every generated seed has completed a full hardware/emulator playthrough. Global cross-stage item placement, production enemy randomization, XP progression mode, and a finished foreign special move are not product features yet.
+
+## Technical domains
+
+| Domain | Canonical page |
 |---|---|
-| Current project state | [[Project Status]] |
-| Research rules / source of truth | [[Research Workflow]] |
-| Cross-project synthesis | [[Complete Research Synthesis]] |
-| N64 runtime, memory, loaders, shared addresses | [[Core Runtime and Address Database]] |
-| Stage IDs, selector, transitions, save bypass | [[Stage Flow and Selector]] |
-| Pickups, resources, native item randomization | [[Pickups and Item Randomization]] |
-| Persistence, inventory boxes, Game Over | [[Persistence Inventory and Lifecycle]] |
-| HUD, native text, boot presentation | [[Native UI and Presentation]] |
-| Enemy streams and cross-stage fighter import | [[Enemy Randomization]] |
-| PlayStation research | [[PS1 Research]] |
-| MKT donor work / Reptile Reverse Elbow | [[Foreign Moves and Reptile]] |
-| Browser/CLI/product architecture | [[Web Patcher and Product]] |
-| Important addresses | [[Address Quick Reference]] |
-| Runtime/static evidence matrix | [[Runtime Validation Status]] |
-| Stage catalog navigation | [[Stage Catalogs]] |
-| Major milestones | [[Milestone Timeline]] |
+| Runtime allocation and bootstrapping | [Core runtime and address database](Core-Runtime-and-Address-Database) |
+| ROM/RDRAM/overlay/resource layout | [Runtime and memory map](Runtime-and-Memory-Map), [ROM and resource map](ROM-Overlay-and-Resource-Map) |
+| Functions and patch sites | [Function registry](Function-Registry), [address and patch-site registry](Address-and-Patch-Site-Registry) |
+| Native structures and encodings | [Data structures and encodings](Data-Structures-and-Encodings) |
+| Pickups and seeded placement | [Pickups and item randomization](Pickups-and-Item-Randomization) |
+| Persistence and four-box inventory | [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle) |
+| Stage resources and all 84 records | [Stage catalogs](Stage-Catalogs) |
+| Stage selection and frontend flow | [Stage flow and selector](Stage-Flow-and-Selector), [flow bypasses](Flow-Bypasses) |
+| Enemies and resource import | [Enemy randomization](Enemy-Randomization) |
+| XP proof and proposed mode | [XP and progression](XP-and-Progression) |
+| HUD, text, and presentation | [Native UI and presentation](Native-UI-and-Presentation) |
+| Player actions and Reverse Elbow | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| N64/PS1 comparison | [N64–PS1 comparison](N64-PS1-Comparison), [PS1 research](PS1-Research) |
+| Product frontend and release behavior | [Web patcher and product](Web-Patcher-and-Product), [testing and CI](Testing-and-CI) |
 
-## Target
+## Evidence labels
 
-Primary target:
+- **Runtime-confirmed:** observed in an emulator run or supplied runtime capture.
+- **Static-confirmed:** established from the clean ROM, disassembly/decompilation, or byte-identical memory mapping.
+- **Implementation/CI-confirmed:** guarded in current code and covered by automated tests.
+- **Hypothesis:** plausible interpretation that is not yet proven.
+- **Rejected:** tested or analyzed and shown unsuitable.
+- **Pending:** defined work or validation that has not happened.
 
-- **Nintendo 64, USA, NMYE, revision 0**
-- 16 MiB big-endian `.z64`
-- clean SHA-256: `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`
-
-The clean ROM is never modified in place. Experiments and generated ROMs use verified disposable copies and corrected N64 CRC1/CRC2.
+These labels describe evidence, not desirability. A runtime proof patch can be confirmed without being production-safe; a production implementation can be CI-confirmed while still awaiting exhaustive playthrough coverage.

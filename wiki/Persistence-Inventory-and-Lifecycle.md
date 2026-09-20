@@ -1,85 +1,52 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
-
-# Persistence, Inventory and Lifecycle
-
-## Runtime Layout V1
-
-Persistent state:
-
-`0x801AF620..0x801AF81F`
-
-Header identifies `MKSV`, version 1, 0x200-byte state region and 0x20-byte header.
+# Persistence, inventory, and lifecycle
 
 ## Ordinary-pickup persistence
 
-Production capture/restore operates at the shared pickup-manager path.
+The native game reconstructs stage pickup records, so a per-location runtime bitset is the production authority for randomizer collection state. State V1 lives at `0x801AF620..0x801AF81F`, begins with `MKSV`, and assigns one 32-bit word to each main stage. The exact header and word layout are in [Data structures and encodings](Data-Structures-and-Encodings).
 
-- all 84 ordinary locations are represented;
-- at least one pickup in every main stage has been tested through the persistence architecture;
-- scripted/special mechanisms remain separate.
+Capture hooks the collected-flag store at `0x80039418`; `a1` is the record and `s2` is manager ordinal. Restore hooks `0x80038ACC` before the manager's first `+0x2C` read and walks the current record array using the effective context pointer at `0x802ECE20`, count `+0x6F4`, and base `+0x6F8`.
 
-## Four native inventory boxes
+For seven stages, manager ordinal equals catalog bit. Fire has 19 manager entries for 16 ordinary records, so production uses this explicit translation:
 
-| Storage | RDRAM |
-|---|---|
-| LIVE | `0x800A600C..0x800A6033` |
-| Box 1 | `0x800A6048..0x800A606F` |
-| Box 2 | `0x800A6070..0x800A6097` |
-| Box 3 | `0x800A6098..0x800A60BF` |
-| Box 4 | `0x800A60C0..0x800A60E7` |
-| state | `0x800A60E8` |
-| magic | `0x800A60EC` |
+```text
+[2, 5, 4, FF, FF, FF, 9, 14, 0, 1, 8, 11, 12, 3, 7, 6, 10, 13, 15]
+```
 
-The backing box is authoritative; LIVE is a window.
+The three `FF` entries are special type-4 records and never enter the ordinary bitset.
 
-Switching uses the remapping-aware Block + Use + Left/Right semantic chord and is rejected while the inventory UI is open.
+Runtime testing collected and restored at least one ordinary pickup in every main stage, multiple Fire items, and completed Temple coverage. That does not equal 84 individual tests. Game Over/new-game reset behavior is still pending.
 
-## Stage-local foreign-key masking
+## Four-box inventory
 
-Foreign-stage keys remain as their true IDs in backing storage but are represented in LIVE as reserved placeholder ID `0x08`.
+The game continues to see its stock ten-word live array at `0x800A600C`. Four backing arrays are authoritative:
 
-Vanilla Glass `0x08` was consumable, so MKMSZR patches its USE dispatch to the no-consume return. Repeated USE was runtime-confirmed inert.
+| Box | Range |
+|---:|---:|
+| 1 | `0x800A6048..0x800A606F` |
+| 2 | `0x800A6070..0x800A6097` |
+| 3 | `0x800A6098..0x800A60BF` |
+| 4 | `0x800A60C0..0x800A60E7` |
 
-## XP and move progression
+State at `0x800A60E8` stores active index bits `0..1` and input latch `0x100`; magic `MKBX` at `0x800A60EC` distinguishes initialized backing data. The design deliberately has no auto-spill and no global item scan: only the active backing box is copied into the live window.
 
-Focused static analysis has now mapped the native XP/move-progression path sufficiently for a pickup-driven randomizer design.
+## Switching input
 
-Static-confirmed:
+Outside the inventory menu, hold **Block + Use + Right/Left** to advance or reverse the active box. The hook reads normalized semantic action state at `0x800BF2EE`, so control remapping is respected. A latch prevents repeated switching while the chord remains held.
 
-- current XP is the 32-bit word at `0x8011200C`;
-- the central ordinary XP-award helper is `0x8002E104` / ROM `0x0002ED04`;
-- three additional direct XP award stores exist at `0x800540E8`, `0x80057160`, and `0x8005722C`;
-- the native tier evaluator/stage clamp is `0x80074FBC` / ROM `0x00075BBC`;
-- the signed-halfword per-stage XP-cap table is `0x800A63FC` / ROM `0x000A6FFC`;
-- the exact first XP values for native power tiers 1..9 are `85, 258, 834, 1410, 2323, 3315, 4503, 5911, 7354`.
+The native HUD displays `BOX n OF 4` at `(230,210)`. It reads the existing state byte and introduces no new lifecycle state.
 
-The legacy Lua used the same hexadecimal tier constants but rewrote current XP every frame according to Power Upgrade count and rewrote all main-stage caps to 9999 at startup. Its comment for `0x1CBA` says 7345; native static analysis confirms the actual value is **7354**.
+## Stage-local key masking
 
-Runtime-confirmed Temple proof behavior:
+Keys should be usable only in their origin stage. When backing data is copied to live inventory, foreign-stage IDs `0x0D..0x22` are represented as Glass `0x08`; the backing word remains unchanged. Production changes Glass's item-use dispatch from consuming stub `0x80071F58` to inert return-zero stub `0x80071F50`, making the placeholder safe. The Tablet (`0x24`) was rejected because its use path is consumable.
 
-- mapped combat/kill XP award paths can be suppressed so normal fighting does not increase XP;
-- a synthetic ordinary pickup can advance current XP to the next native tier threshold without adding an inventory item;
-- one pickup advanced XP to 85; a second advanced it to 258 and unlocked the second expected special-move tier;
-- the combo HITS line remains while the EXPERIENCE label/value can be removed independently;
-- Temple's static stage cap can be raised to 20000 and is displayed as such in the status screen.
+The stage mapping is Temple Map `0x0D`; Wind `0x0E..0x10`; Earth `0x11..0x13`; Water `0x14..0x16`; Fire `0x17..0x19`; Prison `0x1A..0x1C`; Bridge `0x1D..0x1F`; Fortress `0x20..0x22`.
 
-Still pending for production:
+## Lifecycle hooks
 
-- replace exactly nine randomized Herbs across the normal generator;
-- store progression XP in MKMSZR persistent state and restore it once at stage reconstruction;
-- raise all supported main-stage XP caps statically;
-- integrate the callback into production-safe runtime space;
-- validate persistence across stage transitions, death/Game Over and a full seeded run.
+- The stock sanitizer at `0x8007AD00` is replaced by a fixed-size mask-copy routine rather than deleting special IDs.
+- The stock default loader at `0x8007AD4C` becomes an initialization/reconstruction boundary for live/backing state.
+- Transition wrappers commit non-placeholder live items back to the active backing box; Glass slots are skipped so hidden true keys survive.
+- Saves serialize the filtered live view through the established game path; loads rebuild live state from authoritative backing data and current-stage masking.
+- Title-menu START was the destructive live-window boundary in stock behavior and is explicitly intercepted.
 
-The save-slot/state loader at `0x80078A18` restores XP as part of a 0x7C-byte record; it is not the ordinary combat-award path. Title/new-game lifecycle resets still mean the production randomizer should keep its own persistent progression value and restore it at the existing stage-init reconstruction boundary.
-
-## Game Over
-
-Game Over is intentionally the full-run reset boundary.
-
-Still pending:
-
-- complete run-state reset implementation/runtime proof;
-- HP/lives/continues lifecycle policy and cross-stage/Game Over persistence validation of XP progression;
-- broader normal stage-completion coverage;
-- save-file/power-cycle persistence only if later desired.
+Normal save logic is preserved. Only selector-triggered immediate stage-entry save is suppressed, as documented in [Flow bypasses](Flow-Bypasses).

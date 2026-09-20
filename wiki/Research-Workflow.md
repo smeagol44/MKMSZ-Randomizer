@@ -1,81 +1,42 @@
-> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
+# Research workflow
 
-# Research Workflow
+## Source-of-truth order
 
-## Sources of truth
+1. Current repository implementation and tests.
+2. Versioned `wiki/` owning page, registries, and stage catalogs.
+3. Historical research reports and exact artifacts for provenance or unresolved detail.
+4. New bounded static or runtime investigation.
 
-- **GitHub repository: `smeagol44/MKMSZ-Randomizer`** — implementation/product source of truth: reusable patch code, CLI, browser frontend, tests, CI, packaging, release-facing documentation, and version-controlled Wiki source.
-- **This Wiki (`wiki/` + published GitHub Wiki)** — living/current documentation source of truth for project status, synthesized research conclusions, architecture, confirmed addresses, runtime-validation status, milestones, pending work, and research routing.
-- **Library: `MKMSZR Research`** — durable research/evidence/archive source of truth: preserved Ghidra analysis, static-analysis exports, catalogs/manifests, screenshots, RAM evidence, experiment logs, handoffs, historical canonical reports, archives, and specialist datasets.
+The research archive is not a second current manual. When archive evidence changes a conclusion, update the owning Wiki page and preserve the superseded statement where it explains a failure or safety rule.
 
-The Wiki is the current synthesis. The Library preserves the evidence and historical research record behind it.
+## Before an experiment
 
-## Research routing
+- Name the clean ROM/revision and verify its hash.
+- State whether the task is static analysis, implementation, or runtime validation.
+- Define one hypothesis and the smallest guarded change that can distinguish it.
+- Resolve ROM versus VA/RDRAM addressing, overlay scope, endianness, signed-immediate effects, and cave ownership.
+- Check [Address and patch-site registry](Address-and-Patch-Site-Registry) for production conflicts.
+- Keep the clean ROM immutable and write a disposable output.
 
-Before new MKMSZR reverse engineering or research:
+## Evidence recording
 
-1. Read [[Research Workflow]].
-2. Read [[Project Status]].
-3. Read only the relevant owning Wiki topic page.
-4. Then consult only the Library reports/evidence/static-analysis artifacts referenced by that topic or otherwise necessary.
+Use the narrow evidence labels defined on [Home](Home). Record expected bytes, replacements, addresses, relevant structure offsets, configuration/seed, exact route/state, positive observations, negative controls, and remaining ambiguity. If a result contradicts a prior interpretation, explain the mechanism of correction.
 
-Do **not** read the whole Library by default and do not repeat completed research.
+Examples of good corrections:
 
-Owning Wiki topics:
+- `lui 0x802F` plus signed low `0xCE20` resolves to `0x802ECE20`.
+- Projectile callbacks at `0x8004B82C/0x8004CC14` cannot be used as player movement evidence; player velocity is `0x8002B1EC`.
+- A top-level special callback returning through its entry `$ra` self-reenters.
 
-| Topic | Current Wiki owner | Library evidence / historical report |
-|---|---|---|
-| Core runtime, loader, memory, Ghidra | [[Core Runtime and Address Database]] | `MKMSZR_CORE_RUNTIME_AND_ADDRESS_DATABASE.md` |
-| Stage flow and selector | [[Stage Flow and Selector]] | `MKMSZR_STAGE_FLOW_AND_SELECTOR.md` |
-| Pickups/resources/randomization | [[Pickups and Item Randomization]] | `MKMSZR_PICKUPS_AND_RESOURCE_LOADING.md` + Stage Catalogs |
-| Persistence/inventory/lifecycle | [[Persistence Inventory and Lifecycle]] | `MKMSZR_PERSISTENCE_INVENTORY_AND_LIFECYCLE.md` |
-| Native HUD/text/presentation | [[Native UI and Presentation]] | `MKMSZR_NATIVE_UI_RENDERING_AND_TEXT.md` |
-| Enemy randomization | [[Enemy Randomization]] | `MKMSZR_ENEMY_RANDOMIZATION.md` |
-| PlayStation | [[PS1 Research]] | `MKMSZR_PS1_RESEARCH.md` |
-| Cross-project synthesis | [[Complete Research Synthesis]] | `06-MKMSZR_COMPLETE_RESEARCH_REPORT.md` |
+## Promotion to production
 
-## Documentation cutover note
+Promotion requires guarded stock bytes, explicit allocation/bounds, interaction with existing pipeline order, deterministic behavior where seeded, unit tests, clean-output checksum handling, documentation updates, and runtime coverage proportional to gameplay risk. Temporary proof caves must be reallocated; runtime success does not waive ownership conflicts.
 
-The Library's `START_HERE_MKMSZR_RESEARCH.md` and historical canonical reports were the project router/current documentation owners before the 2026-09-20 Wiki cutover. Their evidence and historical conclusions remain valuable, but any governance wording saying that the Library itself is still the current canonical documentation owner is now **superseded by the project instructions and this Wiki**.
+## Documentation update checklist
 
-Do not rewrite archival history merely to erase that earlier workflow. Use the Wiki for current conclusions and routing.
-
-## Evidence labels
-
-- **Runtime-confirmed** — manually observed in the game/emulator on a bounded identified route.
-- **Static-confirmed** — established from ROM, Ghidra, symbolic source, or equivalent static analysis.
-- **Implementation/CI-confirmed** — established by deterministic patch/generator code and automated tests, but not necessarily exercised in game runtime.
-- **Hypothesis / strong inference** — supported but not confirmed.
-- **Rejected / failed** — tested/analyzed and shown unsuitable.
-- **Pending** — unresolved.
-
-## Preserved Ghidra project
-
-- manifest: `MKMSZR Research/05 - Static Analysis/GHIDRA_PROJECT_MANIFEST.md`
-- archive: `MKMSZR Research/08 - Archives/MKMSZR-Ghidra-N64-Project-2026-09-17.zip`
-
-Use the preserved analyzed project. Do not rebuild/re-import the ROM unless it is genuinely unusable.
-
-## After new findings
-
-When verified findings materially change project knowledge:
-
-- update the owning Wiki page in the same normal chat when practical;
-- update [[Project Status]], [[Runtime Validation Status]], [[Milestone Timeline]], or [[Address Quick Reference]] only when the change materially affects them;
-- preserve evidence-status distinctions;
-- do not create a new Wiki page for every experiment.
-
-A Work chat is **not required solely to update documentation**.
-
-Create/update Library material when new work produces durable evidence worth preserving: important static/Ghidra material, machine-readable catalogs, screenshots, RAM evidence, significant experiment logs, major proof-ROM documentation, important failed approaches, or major cross-domain research.
-
-## Preservation rules
-
-- never modify the clean ROM;
-- use hash-verified disposable copies;
-- guard known patch inputs/ranges;
-- recompute N64 CRC1/CRC2;
-- do not infer free memory from zero bytes alone;
-- retain stage context for overlay addresses;
-- do not silently erase superseded conclusions;
-- do not run emulator automation unless a task explicitly calls for it.
+- Owning domain page.
+- Function/address/data registry if an exact fact changed.
+- Project and runtime status if maturity changed.
+- Relevant stage catalog if a record/resource changed.
+- Failures/superseded page for a material rejected path.
+- Sidebar only when a new durable domain page is added.
