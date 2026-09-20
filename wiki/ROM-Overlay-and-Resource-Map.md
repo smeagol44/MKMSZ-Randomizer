@@ -76,6 +76,6 @@ Later in the same pickup-manager iteration, the selected entry is read again and
 
 This creates a promising extension mechanism without patching the lookup code: relocate/expand a stage resource file, append one or more new selector words at an aligned file offset, and encode `pickup +0x24 = appended_entry_offset / 4`. The stock lookup will address that appended word directly. The appended entry can then point to an appended foreign descriptor/resource bundle.
 
-This is **Static-confirmed** from the clean USA N64 ROM. Runtime behavior of an out-of-stock-range selector is pending disposable Proof D.
+This is **Runtime-confirmed** through disposable Proof D. Prison's resource file was relocated/expanded by four bytes, an appended selector entry at file offset `0x48F0` pointed back to the stock Herbs descriptor `0x255C`, and all six Herbs records used selector `0x123C` (`0x48F0 / 4`). Two early Herbs were manually collected and were visually/functionally indistinguishable from vanilla, including normal inventory behavior.
 
 The current stage resource-file base is held at `0x802F82B8` on this path. Stage-loading code writes allocator/loader results there before the resource file is consumed.
