@@ -19,25 +19,29 @@
 
 The production identity is the contiguous 28-byte slice `+0x10..+0x2B`. Copying only callback/type is insufficient for correct art and behavior. There are exactly 84 ordinary records: Temple 4, Wind 6, Water 9, Earth 20, Prison 10, Fire 16, Bridge 10, Fortress 9.
 
-## Persistence state V1 (`0x200` bytes)
+## Persistence state V2 (`0x100` bytes)
+
+Production V2 lives at `0x801AF720..0x801AF81F`.
 
 | Offset | Meaning |
 |---:|---|
 | `+0x00` | Magic `MKSV` = `0x4D4B5356` |
-| `+0x04` | Version `1` |
-| `+0x08` | Total size `0x200` |
+| `+0x04` | Version `2` |
+| `+0x08` | Total size `0x100` |
 | `+0x0C` | Header size `0x20` |
 | `+0x10` | Flags |
 | `+0x14..+0x1F` | Reserved |
-| `+0x20` | Temple bitset, 4 used bits |
-| `+0x24` | Wind, 6 bits |
-| `+0x28` | Water, 9 bits |
-| `+0x2C` | Earth, 20 bits |
-| `+0x30` | Prison, 10 bits |
-| `+0x34` | Fire, 16 bits |
-| `+0x38` | Bridge, 10 bits |
-| `+0x3C` | Fortress, 9 bits |
-| `+0x40..+0x1FF` | Reserved for later versions |
+| `+0x20` | Temple ordinary-pickup bitset |
+| `+0x24` | Wind |
+| `+0x28` | Water |
+| `+0x2C` | Earth |
+| `+0x30` | Prison |
+| `+0x34` | Fire |
+| `+0x38` | Bridge |
+| `+0x3C` | Fortress |
+| `+0x40` | Progression rewards acquired, 0..9 |
+| `+0x44` | Persistent progression XP |
+| `+0x48..+0xFF` | Reserved |
 
 Fire's 19 manager ordinals translate to catalog bits as:
 
@@ -45,7 +49,7 @@ Fire's 19 manager ordinals translate to catalog bits as:
 [2, 5, 4, FF, FF, FF, 9, 14, 0, 1, 8, 11, 12, 3, 7, 6, 10, 13, 15]
 ```
 
-`FF` ordinals `3`, `4`, and `5` are special type-4 records and intentionally excluded.
+`FF` ordinals `3`, `4`, and `5` are special type-4 records and intentionally excluded. Progression count/XP are separate from these 84 ordinary-pickup persistence bits.
 
 ## Four-box inventory layout
 
