@@ -637,7 +637,66 @@ v11 starts from runtime-confirmed v10 but deliberately discards the replaced Sub
 
 The donor conversion still uses relocated/extra physical storage because the decoded row-aligned type-0 Sektor frames are substantially larger than the original compressed Sub-Zero idle bundle. This is a storage-format constraint, not an attempt to preserve runtime switching.
 
-**Implementation/static-confirmed; runtime pending.** Expected behavior is identical to v10.
+**Runtime-confirmed.** The user tested v11 and reported behavior identical to the perfect v10 result. This confirms that preserving a recoverable in-ROM copy of the replaced idle animation is unnecessary for the current build-time graphics-swap goal.
+
+#### v12 — destructive idle + locomotion replacement
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-locomotion_destructive-swap_proof_v12.z64`
+
+Identity:
+
+- SHA-256 `bf02b4ba3fca25a9e6a2362ec6e84e18a2550d9a2f54182fe5b3fe94ad693094`;
+- CRC1/CRC2 `DAA12659 / 3F399A9B`.
+
+v12 extends the runtime-confirmed destructive v11 architecture to the next direct primary-table block:
+
+- slot `0x00`: Sektor stance/idle, unchanged from v11;
+- slot `0x01`: Sektor walk forward;
+- slot `0x02`: Sektor walk backward;
+- slot `0x03`: Sektor turn;
+- slot `0x04`: Sektor duck/crouch.
+
+Exact retail donor scripts used:
+
+```text
+walk forward: RBWALK1,2,3,5,7,8,9, ANI_JUMP, self
+walk backward: RBWALK9,8,7,5,3,2,1, ANI_JUMP, self
+turn: RBTURN1, RB2VICTORY2, ANI_FLIP, RBTURN1, 0
+duck: RBDUCK1, RBDUCK2, RBDUCK3, 0
+```
+
+The N64 retail CUT_FRAME branch is therefore preserved. Twelve unique Sektor frames are decoded from donor codecs 22/24 with the exact robot dictionary, converted to MKMSZ type-0 row-aligned indexed buffers, and appended to the relocated Sub-Zero file.
+
+The expanded target resource is now:
+
+- ROM `0xF40000..0xFA20DF`;
+- size `0x620E0`;
+- donor frame materialization begins at resource `+0x4D7D0`;
+- the converted Sektor palette moved to resource color pointer `+0x6209C`;
+- the runtime-confirmed frame-setup helper's donor upper bound and palette pointer were updated to that new value.
+
+The old false cave remains stock. No donor-rate hook is enabled.
+
+Destructive policy is retained:
+
+- the inactive original-ROM copies of the replaced walk/turn/duck scripts and frame bundles are erased;
+- in the active relocated file, the old walk and turn bundles plus duck frames 1/2 are erased after their scripts are replaced;
+- stock duck frame 3 remains because unswapped crouch-derived actions still reference it. It is shared live data, not a backup.
+
+The 0x148C0-byte ROM extension beyond v11's resource end was verified to occupy the existing all-`0xFF` disposable tail and does not overlap another global-file-table entry. File ID `0x1B` remains the proof runtime payload and file ID `0x87` alone owns the expanded fighter resource.
+
+**Implementation/static-confirmed; runtime pending.**
+
+Primary validation:
+
+1. idle remains visually identical to v10/v11;
+2. forward and backward walking show Sektor's genuine retail walk;
+3. turning shows Sektor's genuine retail turn;
+4. crouching shows Sektor's genuine retail duck;
+5. transitions among these states and back into stock attacks/jumps remain clean;
+6. no regression of the previously fixed hangs or one-frame palette corruption.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
