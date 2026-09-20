@@ -32,8 +32,10 @@ together while leaving the destination position and collected flag intact.
 
 The layout is deterministic from the run seed and uses a dedicated pickup RNG
 namespace, so unrelated seeded features do not consume its random state.
-Known Wind, Earth, Water, and Prison progression requirements are checked and
-unsafe layouts are deterministically rejected before the ROM is written.
+The legacy randomizer's Wind, Earth, Water, and Prison access rules are ported
+into the generator and layouts that fail that model are deterministically
+rejected before the ROM is written. Those access rules still need a native
+runtime playthrough validation in this implementation.
 
 Current scope is intentionally conservative:
 
