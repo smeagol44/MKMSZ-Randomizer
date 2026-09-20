@@ -15,8 +15,8 @@ from .patches import (
     NativePayloadSpec,
     PickupPersistencePatch,
     PickupRandomizationPatch,
-    SafeStageSelectSkipAutoSavePatch,
     SafeStageSelectorPatch,
+    SafeStageSelectSkipAutoSavePatch,
     SubZeroPalettePatch,
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
