@@ -33,7 +33,16 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x000AFA24..0xAFA97` | `0x800AEE24..` | Box indicator | guarded legal-text region | Wrapper and `BOX 1 OF 4` |
 | `0x000AFA98..0xAFABB` | boot strings | Branding | guarded license text | Preserved Nintendo attribution |
 | `0x0078E16C..` | palette data | Outfit | 64 BGR555 colors | Clothing indices `0x21..0x3F` transformed |
-| `0x00F10000..` | `0x801AF420` | Native payload | output expansion | Code/state payload source |
+| `0x0002EDA8` | `0x8002E1A8` | XP progression | `AC24200C` | NOP central XP store |
+| `0x00054CE8` | `0x800540E8` | XP progression | `AC23200C` | NOP direct XP store |
+| `0x00057D60` | `0x80057160` | XP progression | `AC23200C` | NOP direct XP store |
+| `0x00057E2C` | `0x8005722C` | XP progression | `AC23200C` | NOP direct XP store |
+| `0x00063704` | — | XP progression UI | JAL native text renderer | Suppress combo EXPERIENCE label |
+| `0x00063724` | — | XP progression UI | JAL native text renderer | Suppress combo EXPERIENCE value |
+| `0x000A6FFC..` | `0x800A63FC` | XP progression | guarded signed stage caps | Main stages -> 20000 |
+| `0x00F10000..` | `0x801AF420` | Native payload | output expansion | V2 code payload source, 0x300 bytes |
+| payload `+0x200` | cached `0x801AF620` / uncached `0xA01AF620` | XP progression | zero extension before overlay | Progression callback; threshold table/restore helper follow |
+| state V2 `+0x40/+0x44` | cached `0x801AF760/0x801AF764` | XP progression state | initialized/validated by MKSV V2 | Acquired count / persistent XP |
 
 Boot string pointer instructions live at ROM `0x7A22C`, `0x7A250`, `0x7A274`, `0x7A298`, `0x7A2BC`, `0x7A2E0`, `0x7A304`, `0x7A328`, `0x7A34C`, `0x7A370`, and `0x7A394`; every instruction is guarded before replacement.
 
