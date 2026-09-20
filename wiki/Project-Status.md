@@ -49,20 +49,20 @@ The 1.0 randomizer is not considered complete with stage-local shuffling alone. 
 
 1. **Global cross-stage item randomization.** Items must be able to appear in other main stages, requiring a production resource-import/materialization planner rather than copying stage-local resource selectors verbatim.
 2. **Global deterministic shuffling.** Keep the current stable seeded Fisher-Yates approach, but apply it to the global logical item pool rather than eight independent stage pools.
-3. **Whole-run solvability validation.** Reject seeds whose progression graph cannot reach the required end-state. Use current stage/location requirements as source of truth; the legacy Lua fixed-point solver is a useful design reference but its location rules are stale/incomplete.
-4. **Randomizer HUD/UI.** At minimum expose the run information needed to play the seed: check progress, progression/power requirement/status, inventory-box/page state, and useful pickup feedback. The legacy Lua overlay is a reference for semantics, not a native renderer implementation.
+3. **Whole-run solvability validation.** Reject seeds whose progression graph cannot reach the required end-state. Use current stage/location requirements as source of truth; the legacy Lua fixed-point solver is a useful design reference but its location rules are stale/incomplete. Rejected attempts must be derived deterministically from the original seed plus an explicit attempt index, so regenerating the same seed always produces the same accepted layout even when several attempts are required.
+4. **Randomizer HUD/UI.** At minimum expose the run information needed to play the seed: check progress, required Power Upgrades/current progression status, inventory-box/page state, and useful pickup feedback. The legacy Lua overlay is a reference for semantics, not a native renderer implementation.
 5. **Run-resource lifecycle.** Determine and preserve HP, lives, and continues correctly across stage transitions and direct selector routes; define intended Game Over/new-run resets.
 6. **Difficulty hard-lock.** Very Hard must be enforced as a run invariant rather than only selected as a startup default.
 7. **Final runtime coverage.** Complete a representative full global seed, including all nine progression tiers and the major lifecycle boundaries.
 
-Open design point: the legacy Lua global pool included the scripted Temple Map as an 85th check. Current native production catalogs only the 84 ordinary records. Whether the Map joins the 1.0 global pool must be resolved explicitly rather than assumed.
+Open Temple Map work: the legacy Lua global pool included the scripted Map as an 85th check. For 1.0, investigate separating the Map inventory reward from the Temple elevator/exit trigger so the elevator can still be raised correctly even when the Map item itself is shuffled elsewhere. Also prevent the Map item from being removed on the Temple -> Wind transition, which is stock behavior today.
 
 ## Pending priorities
 
 1. Build the logical global item model and production cross-stage resource-import/materialization planner.
-2. Replace stage-local generation with a global deterministic shuffle plus whole-run solver.
+2. Replace stage-local generation with a global deterministic shuffle plus whole-run solver, including deterministic retry attempts and a deterministic per-seed required-Power-Upgrades target.
 3. Build the native randomizer HUD around the finalized global-run state.
-4. Resolve HP/lives/continues persistence, Game Over/new-run reset, and Very Hard enforcement.
+4. Resolve Temple Map trigger/item separation and cross-stage persistence; then HP/lives/continues persistence, Game Over/new-run reset, and Very Hard enforcement.
 5. Run full-seed 1.0 validation.
 6. Post-1.0: enemy randomization/resource compatibility, imported-enemy death/despawn, and Reverse Elbow.
 
