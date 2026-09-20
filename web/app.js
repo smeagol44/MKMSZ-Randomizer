@@ -136,13 +136,9 @@ web_patch_result = {
     "crc2": f"{_result.crc2:08X}",
     "sha256": _result.output_sha256,
     "patches": [patch.name for patch in _result.patches],
-    "pickup_mode": (
-        "Stage-local ordinary pickups (84) + 9 XP progression rewards"
-        if any(patch.name == "xp-progression" for patch in _result.patches)
-        else "Stage-local ordinary pickups (84)"
-        if any(patch.name == "pickup-randomization" for patch in _result.patches)
-        else "Off"
-    ),
+    "pickup_mode": "Stage-local ordinary pickups (84)" if any(
+        patch.name == "pickup-randomization" for patch in _result.patches
+    ) else "Off",
     "boot_phrase": " / ".join(part for part in _boot_phrase if part),
 }
 `);

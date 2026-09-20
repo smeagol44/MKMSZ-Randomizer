@@ -2,7 +2,7 @@
 
 ## Ordinary-pickup persistence
 
-The native game reconstructs stage pickup records, so a per-location runtime bitset is the production authority for randomizer collection state. Production state V2 lives at `0x801AF720..0x801AF81F`, begins with `MKSV`, and assigns one 32-bit word to each main stage. The exact header and word layout are in [Data structures and encodings](Data-Structures-and-Encodings).
+The native game reconstructs stage pickup records, so a per-location runtime bitset is the production authority for randomizer collection state. State V1 lives at `0x801AF620..0x801AF81F`, begins with `MKSV`, and assigns one 32-bit word to each main stage. The exact header and word layout are in [Data structures and encodings](Data-Structures-and-Encodings).
 
 Capture hooks the collected-flag store at `0x80039418`; `a1` is the record and `s2` is manager ordinal. Restore hooks `0x80038ACC` before the manager's first `+0x2C` read and walks the current record array using the effective context pointer at `0x802ECE20`, count `+0x6F4`, and base `+0x6F8`.
 
@@ -14,9 +14,7 @@ For seven stages, manager ordinal equals catalog bit. Fire has 19 manager entrie
 
 The three `FF` entries are special type-4 records and never enter the ordinary bitset.
 
-Runtime testing collected and restored at least one ordinary pickup in every main stage, multiple Fire items, and completed Temple coverage under the preceding production layout. That does not equal 84 individual tests. The V2 relocation of state within the same reserved 1 KiB block is Implementation/CI-confirmed and needs a bounded production runtime revalidation.
-
-Progression state is deliberately separate: V2 state `+0x40` stores acquired reward count and `+0x44` stores XP. Stage reconstruction restores XP and native tier state before preserving the existing four-box live-window reconstruction.
+Runtime testing collected and restored at least one ordinary pickup in every main stage, multiple Fire items, and completed Temple coverage. That does not equal 84 individual tests. Game Over/new-game reset behavior is still pending.
 
 ## Four-box inventory
 
@@ -52,8 +50,3 @@ The stage mapping is Temple Map `0x0D`; Wind `0x0E..0x10`; Earth `0x11..0x13`; W
 - Title-menu START was the destructive live-window boundary in stock behavior and is explicitly intercepted.
 
 Normal save logic is preserved. Only selector-triggered immediate stage-entry save is suppressed, as documented in [Flow bypasses](Flow-Bypasses).
-
-
-## Run reset boundary
-
-Game Over is still the intended full-run reset boundary, but no production-safe shared MKMSZR reset hook has yet been established. Production V2 clears state only when its magic/version/size/header is invalid, which safely prevents old runtime layouts from being reused. It does **not** pretend that Game Over has been solved. A future shared lifecycle hook must clear ordinary pickup bits, progression count/XP, and any other run-scoped MKMSZR state together without affecting normal stage transitions or selector routes.

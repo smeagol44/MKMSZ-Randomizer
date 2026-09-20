@@ -12,7 +12,6 @@ Last consolidated: 2026-09-20.
 | 1 KiB arena reservation and native payload | Production | Runtime-confirmed load/execute; guarded bounds and tests |
 | Ordinary-pickup persistence | Production beta | All eight stages runtime-confirmed at representative locations; all 84 are statically cataloged, not individually exhausted |
 | Stage-local pickup randomization | Production beta | All 84 implemented and tested over 250 seeds; seed `TEST153` first Fire location predicted/rendered/awarded Shield; full run pending |
-| Pickup-driven XP progression | Production beta | Bounded Temple behavior runtime-confirmed; production V2 allocation, nine deterministic Herbs rewards, XP suppression/caps and persistence composition are Implementation/CI-confirmed; manual production runtime validation pending |
 | Four inventory boxes | Production beta | Runtime-confirmed switching, transition preservation, stage-key masking; Game Over/reset edge still pending |
 | `BOX n OF 4` HUD text | Production | Runtime-confirmed native text path |
 | Boot branding and seed phrase | Production | Guarded and CI-confirmed; phrase uses a dedicated deterministic namespace |
@@ -28,23 +27,25 @@ Last consolidated: 2026-09-20.
 | Fire foreign Prison-key import | Relocated/expanded resource file plus dedicated callback works | Production resource planner, allocation policy, compatibility matrix |
 | Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
 | Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
-| Temple XP progression proof | Three proof pickups plus one vanilla Herbs control; no combat XP; tested pickups reached `85` then `258`; second tier unlocked; no inventory award | Generalized into production; final art and full nine-tier runtime coverage pending |
+| Temple XP progression | Three proof pickups plus one vanilla Herbs control; no combat XP; tested pickups reached `85` then `258`; second tier unlocked; no inventory award; normal and progression pickups coexist | Production-safe storage, nine-reward generation, final art, seed integration, persistence/lifecycle design |
 | Reverse Elbow v6 | Repeated execution without whole-game hang | Movement, exclusivity, hit behavior, animation, pass-through, and UI diagnostics remain incomplete |
 
 ## Latest runtime findings
 
-The Temple XP proof remains the runtime basis: combat does not award XP; collecting proof rewards sets XP to 85 then 258; the second threshold activates the next tier; nothing enters inventory. Production no longer uses the proof cave. Runtime V2 stays inside the existing 1 KiB reservation, adds exactly nine deterministic post-shuffle Herbs rewards in an isolated RNG namespace, stores progression separately from ordinary pickup bits, raises main-stage caps to 20000, and composes XP restore with four-box stage reconstruction. The initial production rewards retain normal Herbs presentation; bright-blue-with-bronze-handle art remains pending.
+The Temple XP proof is confirmed: combat does not award XP; collecting the proof rewards sets XP to `85` and then `258`; the second threshold activates the next tier; nothing is added to inventory; ordinary pickups and progression rewards coexist. The proof model appears pale blue-grey and Herbs-like. The desired final presentation is a bright-blue body with a bronze handle.
+
+A first production-layout attempt was **Rejected / failed** on 2026-09-20: Temple reached the Mission Objective screen and loaded stage music, then hung just before gameplay appeared. The failure happened before any progression pickup callback ran. Production has been rolled back to the prior runtime V1 path; XP progression remains a proof feature pending isolated disposable-ROM validation.
 
 Reverse Elbow v8 did not visibly deliver the intended changes. Sub-Zero still does not pass through enemies, forward motion stops when attacking even though the `L 1` diagnostic remains unchanged, direction/jump/crouch are locked while attacks remain possible, the Y gate behaves normally against a jumping enemy, speed still appears very slow rather than four times faster, and the expanded HUD text did not appear. Treat v6 lifecycle stability as the durable result; v7/v8 movement and diagnostic claims are not confirmed.
 
 ## Pending priorities
 
 1. Full seeded native pickup playthrough and lifecycle edge coverage.
-2. Manually runtime-validate the production V2 XP progression path across one normal stage transition.
+2. Isolate the failed XP productionization with disposable ROMs; do not re-enable it in browser/CLI until manual runtime validation passes.
 3. Build an explicit resource-import planner before cross-stage item or enemy pools.
 4. Trace imported-enemy death/despawn dependencies.
 5. Rework Reverse Elbow from confirmed scheduler/action primitives and observable diagnostics.
-6. Establish and validate one shared Game Over/new-run reset hook for pickup persistence, progression and four-box/run state.
+6. Validate Game Over/new-game behavior for persistence and four-box state.
 
 ## Explicit exclusions
 
