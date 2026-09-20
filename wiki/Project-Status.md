@@ -59,7 +59,7 @@ Open Temple Map work: the legacy Lua global pool included the scripted Map as an
 
 ## Pending priorities
 
-1. Runtime-validate the new destination-shell logical materializer (generic cross-stage award callback), then use it as the default global-item materialization path; keep exact foreign-resource importing as optional visual refinement.
+1. Build the production cross-stage item materializer so every randomized pickup uses the actual randomized item's graphics/resource bundle and award behavior. Generalize the runtime-confirmed Fire foreign Prison-key import into a guarded per-stage resource planner; destination-shell visual substitution is not acceptable for 1.0.
 2. Replace stage-local generation with a global deterministic shuffle plus whole-run solver, including deterministic retry attempts and a deterministic per-seed required-Power-Upgrades target.
 3. Build the native randomizer HUD around the finalized global-run state.
 4. Resolve Temple Map trigger/item separation and cross-stage persistence; then HP/lives/continues persistence, Game Over/new-run reset, and Very Hard enforcement.
