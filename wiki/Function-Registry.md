@@ -7,6 +7,8 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | Address | Function | Evidence | Notes |
 |---:|---|---|---|
 | `0x8000D0B8` | Debug stage-select menu | Runtime-confirmed | Production A-button title route |
+| `0x8000322C` | Embedded image decompression dispatcher | Static-confirmed | Reads compression type from byte 3; type 4 dispatches to `0x80003428`; used by resource-backed render path |
+| `0x80003428` | Type-4 embedded image decoder | Static-confirmed | Separate control/token streams with a 1024-byte ring buffer; exact decode reproduced Water embedded Potion frames byte-for-byte against Fire external Potion payloads |
 | `0x80015088` | Stage transition handler | Static-confirmed | Copies selection to current-stage state |
 | `0x80015B54` | Resume after four-box input hook | Implementation-confirmed | Common configured-control convergence |
 | `0x8001C528` | Pickup presentation loader | Static/runtime-confirmed | Called from pickup manager with record `+0x28` presentation pointer + 4; not the `+0x24` resource-selector lookup |

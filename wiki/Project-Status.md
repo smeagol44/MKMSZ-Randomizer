@@ -26,7 +26,8 @@ Last consolidated: 2026-09-20.
 |---|---|---|
 | Same-stage pickup substitution | Full identity tuple changes award and art | Generalized in current stage-local mode |
 | Fire foreign Prison-key import | Relocated/expanded resource file plus dedicated callback works | Production resource planner, allocation policy, compatibility matrix |
-| Prison extension-selector Potion coexistence | Out-of-stock-range selector resolves appended Water Potion bundle while vanilla Herbs remain resident and functional | Generalize into guarded production planner; external-resource-ID bundles still unresolved |
+| Prison extension-selector Potion coexistence | Out-of-stock-range selector resolves appended Water Potion bundle while vanilla Herbs remain resident and functional | Generalize into guarded production planner |
+| Health urn external-to-embedded conversion | Proof G showed external IDs `0x28F..0x292` glitch in Prison; native type-4 conversion is now static-confirmed and Proof H is built | Manual runtime validation of Proof H |
 | Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
 | Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
 | Temple XP progression proof | Three proof pickups plus one vanilla Herbs control established no-combat-XP and pickup-driven tiers | Generalized into the production Diagnostic B architecture; full nine-tier coverage and final art remain |
@@ -60,7 +61,7 @@ Open Temple Map work: the legacy Lua global pool included the scripted Map as an
 
 ## Pending priorities
 
-1. Generalize the runtime-confirmed extension-selector materializer into the production cross-stage resource planner. Proof F imported Water's self-contained Potion bundle into Prison through selector `0x123C` while leaving five vanilla Herbs on selector `8`; both Potion and Herbs rendered/awarded correctly. Embedded-data coexistence is confirmed. External-resource-ID bundle dependencies remain the next resource-format problem.
+1. Runtime-validate disposable Proof H, which converts Health urn's unavoidable external IDs `0x28F..0x292` into self-contained native type-4 embedded image blocks and imports one Health urn into Prison through extension selector `0x123C` while five vanilla Herbs remain untouched. If confirmed, generalize the extension-selector + canonical-embedded-donor materializer into the production cross-stage planner.
 2. Replace stage-local generation with a global deterministic shuffle plus whole-run solver, including deterministic retry attempts and a deterministic per-seed required-Power-Upgrades target.
 3. Build the native randomizer HUD around the finalized global-run state.
 4. Resolve Temple Map trigger/item separation and cross-stage persistence; then HP/lives/continues persistence, Game Over/new-run reset, and Very Hard enforcement.

@@ -81,3 +81,21 @@ This is **Runtime-confirmed** through disposable Proof D. Prison's resource file
 Disposable Proof F then confirmed the mechanism with a real foreign embedded resource. Prison's stock selectors `0..11` remained unchanged; an extension entry at `+0x48F0` used selector `0x123C` and pointed to an appended/rebased copy of Water's embedded Potion descriptor/records/model data. Only one early Prison Herbs location was changed to that Potion identity. Runtime testing showed the imported Potion rendered cleanly and awarded Potion, while another untouched Prison Herbs still rendered/awarded normally and both appeared correctly in inventory. This is **Runtime-confirmed coexistence of vanilla stage resources with an appended foreign embedded-data bundle**.
 
 The current stage resource-file base is held at `0x802F82B8` on this path. Stage-loading code writes allocator/loader results there before the resource file is consumed.
+
+
+## External-resource IDs and embedded-image conversion
+
+**Static-confirmed, 2026-09-20.**
+
+The stage resource record format supports two materially different storage forms:
+
+- embedded: record `+0x04 = 0`, record `+0x08 = stage-file-relative compressed-image offset`;
+- external-resource ID: record `+0x04 = cache resource ID`, record `+0x08 = 0`.
+
+Water/Fire/Bridge Health urn records use external IDs `0x28F..0x292`. Disposable Proof G copied Water's Health descriptor/records into Prison through the already-confirmed extension selector but left those IDs external. Runtime result: the Health urn rendered corrupted. Therefore the numeric external IDs are not self-sufficient in Prison; their cache dependencies are stage/package dependent.
+
+The raw image payloads behind `0x28F..0x292` were statically extracted from Water's compressed package file ID `0x73`. Their raw byte lengths are `340, 272, 272, 272`. Fire and Bridge contain matching Health-urn image payloads for the same IDs.
+
+The native embedded-image path calls `0x8000322C`. Compression type 4 dispatches to `0x80003428`, which uses a 1024-byte ring buffer and separate MSB-first control/token streams. Correcting the back-reference loop to the native inclusive count `(low6 + 2)` reproduces every Water embedded Potion frame byte-for-byte against the corresponding Fire external Potion payload IDs `0x27F..0x286`.
+
+This establishes a static conversion path: an external raw image payload can be encoded as a self-contained type-4 block and referenced through the normal embedded record form. A deterministic literal-only type-4 encoder was round-trip checked against all four Health-urn payloads. Disposable Proof H applies exactly that conversion to one Health urn imported into Prison; runtime validation is pending.
