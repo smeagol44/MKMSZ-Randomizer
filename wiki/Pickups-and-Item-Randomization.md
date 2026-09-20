@@ -185,8 +185,12 @@ Therefore a stage does not necessarily require physical insertion of new words a
 
 This is materially different from the earlier nested-table idea: the vanilla loader does not recurse through tables, but it also does not enforce that selector indices stay within the original stock table.
 
-### Disposable Proof D
+### Disposable Proof D — runtime-confirmed
 
 Proof D changes no item art or callback semantics. It relocates Prison's stock resource file, appends one selector word at file offset `0x48F0`, points that word to the existing Herbs descriptor `0x255C`, and changes all six Prison Herbs records from selector `8` to selector `0x123C` (`0x48F0 / 4`).
+
+Manual runtime result: Prison loaded normally; the first two early Herbs rendered exactly like vanilla Herbs, behaved normally, and appeared normally in inventory. Therefore the stock pickup resource lookup accepts an out-of-stock-range selector and resolves an appended selector entry without any loader hook.
+
+This removes the original outer-table-width limit as a blocker for pickup materialization. The remaining work is to place real imported resource bundles behind extension entries and handle each bundle format correctly.
 
 Expected result: Prison loads normally and all Herbs render/award exactly as stock while resolving through an appended selector entry. Success would runtime-confirm the extension-selector architecture before any foreign resource is added.
