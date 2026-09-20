@@ -27,7 +27,7 @@ Last consolidated: 2026-09-20.
 | Fire foreign Prison-key import | Relocated/expanded resource file plus dedicated callback works | Production resource planner, allocation policy, compatibility matrix |
 | Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
 | Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
-| Temple XP progression | Nine Herbs-like rewards, no combat XP, XP `85` then `258`, second tier, no inventory award, normal and progression pickups coexist | Production-safe storage, final art, seed integration, persistence/lifecycle design |
+| Temple XP progression | Three proof pickups plus one vanilla Herbs control; no combat XP; tested pickups reached `85` then `258`; second tier unlocked; no inventory award; normal and progression pickups coexist | Production-safe storage, nine-reward generation, final art, seed integration, persistence/lifecycle design |
 | Reverse Elbow v6 | Repeated execution without whole-game hang | Movement, exclusivity, hit behavior, animation, pass-through, and UI diagnostics remain incomplete |
 
 ## Latest runtime findings
