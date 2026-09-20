@@ -11,6 +11,7 @@ from ..data.pickups import (
     TOTAL_ORDINARY_PICKUPS,
     StagePickupSpec,
 )
+from ..errors import PatchError
 from ..rom import RomImage
 from .base import PatchContext
 
@@ -48,6 +49,8 @@ def layout_is_progression_safe(stage: StagePickupSpec, assignment: tuple[int, ..
 
     if len(assignment) != len(stage.records):
         return False
+    if set(assignment) != set(range(len(stage.records))):
+        return False
 
     inventory: set[str] = set()
     reached: set[int] = set()
@@ -75,7 +78,7 @@ def build_stage_assignment(stage: StagePickupSpec, seed: str) -> tuple[tuple[int
         if layout_is_progression_safe(stage, assignment):
             return assignment, attempt + 1
 
-    raise RuntimeError(
+    raise PatchError(
         f"{stage.title}: no progression-safe pickup layout after {MAX_LAYOUT_ATTEMPTS} attempts"
     )
 
