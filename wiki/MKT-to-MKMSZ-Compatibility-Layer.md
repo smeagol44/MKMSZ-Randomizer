@@ -608,9 +608,36 @@ On the first stock frame after Sektor:
 
 This removes the v09 interval in which palette ownership changed before the new shape was installed. The false cave remains exact stock data; the donor-rate hook remains disabled so cadence is still the MKMSZ stock rate for this proof.
 
-**Implementation/static-confirmed; runtime pending.**
+**Runtime-confirmed.**
 
-Primary success criterion: all v09 movement/action stability and correct Sektor colors remain, while the one-frame transition corruption disappears.
+The user reported v10 as fully correct: genuine Sektor idle renders with the proper donor palette, normal movement/actions remain stable, and the last one-frame transition corruption is gone. This runtime-confirms frame-setup-time palette switching as the correct boundary for the tested Sektor idle replacement.
+
+The current strongest bounded claim is therefore:
+
+> **Runtime-confirmed:** a genuine five-frame MKT Rev. 2 Sektor idle animation can cleanly replace MKMSZ Sub-Zero's ordinary idle state, with correct donor colors, both stock action transitions and locomotion remaining stable, and no visible transition corruption in the user's tested route.
+
+#### Animation-table mapping milestone
+
+Static analysis now catalogs the complete MKMSZ Sub-Zero animation tables and MKT robot-family tables. The inherited primary table aligns semantically through slots `0x00..0x25` (stance through dizzy), giving a direct first-pass mapping for ordinary locomotion, attacks, aerials, reactions, getups, and throw. MKMSZ table 1 has 43 entries and must be mapped semantically; MKT robot table 2 has 27 family-special entries and must not be matched by numeric slot.
+
+See [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping).
+
+#### v11 — destructive idle replacement proof
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_destructive-swap_proof_v11.z64`
+
+Identity:
+
+- SHA-256 `37faf7fe07cd6dfe84cd65f39cdd67482a601135ad9342f6dd927a49cf98b128`;
+- CRC1/CRC2 `DAAD01D9 / BED5AF87`.
+
+v11 starts from runtime-confirmed v10 but deliberately discards the replaced Sub-Zero idle assets instead of keeping a recoverable in-ROM backup. The active relocated resource's unreachable old idle-script tail and stock idle-frame bundles that are no longer referenced are zeroed; the inactive original ROM copy's complete stock idle script/frame region is also zeroed. One stock frame that is still referenced elsewhere is retained.
+
+The donor conversion still uses relocated/extra physical storage because the decoded row-aligned type-0 Sektor frames are substantially larger than the original compressed Sub-Zero idle bundle. This is a storage-format constraint, not an attempt to preserve runtime switching.
+
+**Implementation/static-confirmed; runtime pending.** Expected behavior is identical to v10.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
