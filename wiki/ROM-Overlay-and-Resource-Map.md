@@ -32,3 +32,12 @@ The foreign Prison-key pickup proof relocated Fire's `0x2530`-byte file to ROM `
 ## Overlay identity warning
 
 Addresses at or above the stage-overlay base describe the currently loaded stage overlay. Always name the stage and source artifact when recording an overlay function. Do not promote an overlay address to a global function merely because it appeared stable in one stage.
+
+
+## Global-randomizer materialization split
+
+The runtime-confirmed foreign Prison-key import proves that exact foreign world art can be imported by relocating/expanding a stage resource file and rebasing a bundle. That remains the path for exact cross-stage visuals.
+
+For 1.0 logic, however, a lighter strategy is now under test: preserve each destination's native world-actor resource shell and change only the logical award callback/parameter. If runtime-confirmed, the global randomizer will not require resource-file expansion for every cross-stage placement. Resource importing then becomes optional per-item presentation work rather than the core logical-randomization dependency.
+
+Fortress and Prison still have no immediate free logical selectors, so this distinction materially reduces 1.0 allocation risk.
