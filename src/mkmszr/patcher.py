@@ -18,7 +18,6 @@ from .patches import (
     SafeStageSelectorPatch,
     SafeStageSelectSkipAutoSavePatch,
     SubZeroPalettePatch,
-    XPProgressionPatch,
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
 from .rom import RomImage
@@ -43,7 +42,6 @@ def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
         PickupPersistencePatch(),
         PickupRandomizationPatch(),
         FourBoxInventoryPatch(),
-        XPProgressionPatch(),
         SafeStageSelectSkipAutoSavePatch(),
         BoxIndicatorPatch(),
         BootBrandingPatch(),
