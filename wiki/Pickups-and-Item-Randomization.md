@@ -235,3 +235,16 @@ Only one early Prison Herbs location becomes the Health urn. The other five Herb
 Manual runtime result: the first changed Prison pickup rendered as a clean Urn of Vitality and awarded the urn correctly; the next untouched Herbs pickup rendered and awarded normally. Both appeared correctly in inventory. This confirms that the external Health-urn resource family can be converted into self-contained embedded type-4 blocks and can coexist with stock stage resources through an extension selector.
 
 **Runtime-confirmed scope:** one converted Health urn in Prison plus one untouched Herbs control. This establishes the previously missing ordinary-item resource format needed by the cross-stage visual materializer; production generalization still requires guarded planner implementation, deduplication/allocation policy, and broader runtime coverage.
+
+
+### Composed five-visual stress proof — Prison runtime-confirmed, Fortress pending
+
+A later disposable stress ROM exercised the generalized materialization architecture with five distinct imported visuals in both Prison and Fortress at once. In each target stage, the first five stock Herbs records were replaced with canonical **Potion, Urn of Vitality, Formula, Eye, and Shield** identities; the sixth Herbs record remained byte-for-byte vanilla.
+
+The resource planner created five contiguous extension-selector entries per stage and appended self-contained descriptor/record/image bundles. Normal embedded donors and external-resource-ID donors converted to native type-4 embedded blocks were composed in the same expanded stage file.
+
+**Prison runtime result:** all five imported items were manually collected. Their models rendered correctly, each awarded the expected item, and inventory entries were correct. The untouched Herbs control also rendered and awarded correctly. This is **Runtime-confirmed** for simultaneous five-visual composition in Prison.
+
+**Fortress status:** the same ROM contains the equivalent five-import stress construction for Fortress, but it has not yet been manually runtime-tested. Do not generalize the Prison observation into Fortress runtime confirmation.
+
+The pure planner implementation is merged but remains disconnected from the normal browser/CLI patch pipeline pending completion of this composed runtime gate and the separate destination-safe key/crystal award-callback work.

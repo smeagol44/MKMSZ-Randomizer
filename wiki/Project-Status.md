@@ -27,7 +27,7 @@ Last consolidated: 2026-09-20.
 | Same-stage pickup substitution | Full identity tuple changes award and art | Generalized in current stage-local mode |
 | Fire foreign Prison-key import | Relocated/expanded resource file plus dedicated callback works | Production resource planner, allocation policy, compatibility matrix |
 | Prison extension-selector Potion coexistence | Out-of-stock-range selector resolves appended Water Potion bundle while vanilla Herbs remain resident and functional | Generalize into guarded production planner |
-| Health urn external-to-embedded conversion | Runtime-confirmed: Proof H converted `0x28F..0x292` to self-contained native type-4 blocks; imported Urn of Vitality rendered/awarded correctly in Prison while vanilla Herbs remained correct | Generalize into guarded production materializer |
+| Health urn external-to-embedded conversion | Runtime-confirmed: Proof H converted `0x28F..0x292` to self-contained native type-4 blocks; imported Urn of Vitality rendered/awarded correctly in Prison while vanilla Herbs remained correct | Generalized in the pure resource planner; production pipeline integration still gated |\n| Composed five-visual Prison import | Runtime-confirmed: Potion, Urn of Vitality, Formula, Eye and Shield all rendered/awarded correctly together through five extension selectors; untouched Herbs control also remained correct | Fortress half of the same stress ROM still pending; token/key callback path still separate |
 | Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
 | Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
 | Temple XP progression proof | Three proof pickups plus one vanilla Herbs control established no-combat-XP and pickup-driven tiers | Generalized into the production Diagnostic B architecture; full nine-tier coverage and final art remain |
@@ -61,7 +61,7 @@ Open Temple Map work: the legacy Lua global pool included the scripted Map as an
 
 ## Pending priorities
 
-1. Generalize the now runtime-confirmed extension-selector + canonical-embedded-donor architecture into the production cross-stage resource planner. Proof H confirmed that the unavoidable external Health-urn family can be converted to self-contained native type-4 blocks and coexist with untouched vanilla Herbs in Prison.
+1. Finish composed runtime validation of the pipeline-disconnected cross-stage resource planner: Prison is confirmed with five distinct simultaneous imports plus vanilla Herbs; Fortress in the same stress ROM is still pending. Then add destination-safe key/crystal award wrappers and run a guarded disposable integration proof before enabling global materialization in browser/CLI.
 2. Replace stage-local generation with a global deterministic shuffle plus whole-run solver, including deterministic retry attempts and a deterministic per-seed required-Power-Upgrades target.
 3. Build the native randomizer HUD around the finalized global-run state.
 4. Resolve Temple Map trigger/item separation and cross-stage persistence; then HP/lives/continues persistence, Game Over/new-run reset, and Very Hard enforcement.
