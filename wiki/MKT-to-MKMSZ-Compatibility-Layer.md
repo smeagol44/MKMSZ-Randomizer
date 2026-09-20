@@ -540,9 +540,41 @@ Active Sektor changes remaining in v08 are therefore only:
 
 The palette remains intentionally stock Sub-Zero, so Sektor is expected to look color-corrupted exactly as in v07.
 
+**Runtime-confirmed.**
+
+The user confirmed that v08 no longer hard-hangs: forward movement, crouch, and airborne forward drift all work. The Sektor stance still renders with intentionally wrong colors because the donor palette wrapper remains disabled.
+
+Because v08 differs from v07 only by restoring the falsely claimed cave to its exact stock zero-filled dispatch records (plus header CRC), this establishes the root cause of the input-specific hard hangs as the overwritten live action/dispatch data. The failure is therefore **Runtime-confirmed**, not merely inferred.
+
+The durable safety rule is: ROM `0xA1308..` / VA `0x800A0708..` is not generic free space. In particular, the zero-filled 0x78-byte records referenced by the live table at VA `0x800A09C4` are semantic dispatch data and must remain stock unless deliberately decoded and modified.
+
+#### v09 — re-home palette helper into owned reserved runtime memory
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v09.z64`
+
+Identity:
+
+- SHA-256 `8d702002ef5b5ac8b8a9289e7b4f059ad92fd28c64a425bb240d86a6b6bf0829`;
+- CRC1/CRC2 `2A920945 / 02213D28`.
+
+v09 is built from the runtime-confirmed v08 behavior and reintroduces only the corrected dynamic Sektor palette path in explicitly owned proof memory:
+
+- the existing 1 KiB arena reservation `0x801AF420..0x801AF81F` is enabled through the current proven two-site reservation;
+- file ID `0x1B` loads a bounded 0x300-byte proof payload from ROM `0xF10000` to RDRAM `0x801AF420`;
+- the existing runtime-confirmed stage-load bootstrap loads that payload before gameplay;
+- the palette helper is at `0x801AF440`;
+- its temporary state is at `0x801AF700`, inside the same explicitly reserved proof payload;
+- target `select_animation` redirects only its first two instructions to that owned helper, which then resumes at stock `0x8002FE5C`;
+- the false cave `0x800A0708..` remains byte-for-byte stock;
+- the donor animation-rate hook remains disabled, so this proof uses MKMSZ's stock idle cadence.
+
+The helper retains the corrected v02 palette bookkeeping: save stock selector and active palette handle, allocate/bind the genuine Sektor palette for exact idle selection, restore both stock fields before release on exit.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary result to observe: whether forward movement, crouch, and airborne forward drift still hard-hang. If those hangs disappear, the false-cave overwrite is established as the gameplay failure cause. If they persist, resource relocation/foreign frame state remains the next boundary.
+Primary success criterion: Sektor regains correct red/black donor colors while forward movement, crouch, airborne forward drift, attacks, blocking, turning, and jumping remain stable. The previously observed single-frame transition artifact may still remain; v09 intentionally does not change its ordering so palette re-homing is tested independently.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
