@@ -59,7 +59,7 @@ Open Temple Map work: the legacy Lua global pool included the scripted Map as an
 
 ## Pending priorities
 
-1. Runtime-validate the newly static-confirmed extension-selector lookup: ordinary pickup `+0x24` is used as an unchecked word index from the stage resource base. Proof D appends a Prison selector entry outside the stock 12-entry table and routes Herbs through it without changing art/award behavior. If confirmed, use this mechanism for the production cross-stage resource planner.
+1. Build the production cross-stage resource planner around the now runtime-confirmed extension-selector mechanism. Proof D showed Prison can use selector `0x123C` to resolve an appended selector entry beyond the stock 12-entry table with vanilla Herbs art/behavior unchanged. Next proof: place an actual imported self-contained Water Potion bundle behind an extension selector without touching any vanilla Prison selector.
 2. Replace stage-local generation with a global deterministic shuffle plus whole-run solver, including deterministic retry attempts and a deterministic per-seed required-Power-Upgrades target.
 3. Build the native randomizer HUD around the finalized global-run state.
 4. Resolve Temple Map trigger/item separation and cross-stage persistence; then HP/lives/continues persistence, Game Over/new-run reset, and Very Hard enforcement.
