@@ -797,18 +797,40 @@ The donor walk block occupies resource `+0x4D7D0..+0x5AD7F`. The Sektor palette 
 
 This proof intentionally leaves Turn stock so that the seven-frame walk set is isolated from the already-confirmed v14 Turn composition.
 
+**Runtime-confirmed.**
+
+The user reported v15 as perfect: stage load is normal; both forward and backward walking remain genuine Sektor throughout; the walk graphics look correct; and no transition, palette, smear, or hang regression was observed in the tested route.
+
+This runtime-confirms primary slots `0x01` Walk Forward and `0x02` Walk Backward as direct graphical replacements using one shared seven-frame raw/type-0 donor set.
+
+#### v16 — compose confirmed Idle + Walk + Turn
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle-walk-turn_destructive-swap_proof_v16.z64`
+
+Identity:
+
+- SHA-256 `c9f68e965c6e6cdcc716ea11944829d61d09fda28d3adc5c896200ea9782771a`;
+- CRC1/CRC2 `DAA30759 / 664C0B43`.
+
+v16 is a composition proof only. It begins from runtime-confirmed v15 and adds the already runtime-confirmed v14 Sektor Turn block without introducing a new decoder, palette strategy, or animation semantic:
+
+- `0x00` Idle — runtime-confirmed v10/v11;
+- `0x01` Walk Forward — runtime-confirmed v15;
+- `0x02` Walk Backward — runtime-confirmed v15;
+- `0x03` Turn — runtime-confirmed v14;
+- `0x04` Crouch remains stock.
+
+The shared seven-frame walk block remains resource `+0x4D7D0..+0x5AD7F`. The exact v12 raw/type-0 Turn materialization, whose isolated behavior was proven in v14, is placed at `+0x5AD80..+0x5DB13`. The donor palette moves immediately after it to `+0x5DB14`, and the frame-setup helper's donor upper bound / palette pointer are updated accordingly.
+
+File ID `0x87` is ROM `0xF40000..0xF9DB5F`, size `0x5DB60`, which is `0x10340` bytes (~64.8 KiB) larger than runtime-confirmed v11. This remains substantially below rejected v12's `0x620E0` size.
+
+The false cave remains exact stock; no donor-rate hook is enabled. The already runtime-confirmed destructive Turn cleanup is also retained.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary test:
-
-1. stage reaches gameplay normally;
-2. idle remains perfect;
-3. forward walking uses genuine Sektor walk;
-4. backward walking uses the same genuine frames in reverse order;
-5. walk -> idle / attack / jump transitions remain stable;
-6. no ghosting/smear and no pre-stage-load regression.
-
-If v15 is clean, walk forward/backward become runtime-confirmed direct mappings and the next composition test can combine the confirmed idle + walk + turn set before adding crouch.
+Primary validation: confirm the stage still loads and that Idle, Walk Forward, Walk Backward, and Turn can be exercised repeatedly in the same session with clean transitions among them and into untouched stock attacks/jumps. If v16 is clean, this establishes the first multi-animation composition boundary and Crouch can be added next as a separate three-frame increment.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
