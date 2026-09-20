@@ -56,3 +56,25 @@ Normal ordinary-pickup randomization must remain independent: progression reward
 The proof's temporary cave conflicts with current production ownership. Its resource placement and presentation are not production-safe, the final visual is not built, and save/new-game/Game Over behavior needs a defined versioned state contract. Do not copy the proof offsets directly into the patch pipeline.
 
 A production change must allocate code/data through the native runtime layout, guard every hook, separate nine progression flags from the 84 ordinary pickup flags, preserve native save behavior, add deterministic tests, and complete a full nine-tier runtime run.
+
+
+## Failed productionization attempt — 2026-09-20
+
+**Rejected / failed:** the first attempted production integration (runtime-layout V2) was merged before manual runtime validation and was immediately rolled back.
+
+The attempted layout expanded the reloadable payload from `0x200` to `0x300` bytes and moved persistent state from `0x801AF620` to `0x801AF720`, then added a progression restore call at the pickup-manager stage reconstruction boundary.
+
+Manual Temple validation failed before gameplay became visible:
+
+- the Mission Objective screen completed;
+- Temple music loaded;
+- the game then hung as the stage was about to be displayed;
+- no progression pickup was collected, so the failure occurs before the new pickup callback is exercised.
+
+The exact failing component is not yet established. The leading bounded candidates are the new stage-entry progression restore path versus the V2 code/state repartition itself. Do not treat either as confirmed until isolated by disposable proof ROMs.
+
+The web/CLI production pipeline has been restored to the previously runtime-confirmed V1 allocation while this is investigated.
+
+### Required promotion discipline
+
+New native runtime behavior must now be validated in a disposable ROM supplied directly for manual testing **before** it is enabled in the normal browser/CLI patch pipeline. CI/static composition is not sufficient evidence that a new runtime hook is production-safe.
