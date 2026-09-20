@@ -168,7 +168,7 @@ The donor streams are not byte-consumable by MKMSZ:
 
 Codecs 22/24 decode deterministically to 5-bit palette indices `0..31`. They use the exact 0x100-byte male-ninja dictionary at ROM `0x6B8550..0x6B864F`.
 
-The donor decoded SCCOMBO10 buffer is row-major with two transparent padding columns per row: `95 * 44 = height * align4(width)`. MKT's retail renderer aligns source width to four bytes, so the first 42 bytes of each 44-byte row are visible pixels and the last two are padding.
+The donor decoded SCCOMBO10 buffer is row-major with two transparent padding columns per row: `95 * 44 = height * align4(width)`. MKT's retail renderer aligns source width to four bytes, so the first 42 bytes of each 44-byte row are visible pixels and the last two are padding. Runtime proof v08 establishes that MKMSZ's target render path requires the same 4-byte-aligned CI row stride for this imported frame. Removing those two bytes and tightly packing 42-byte rows produces a deterministic staircase/shear; preserving 44-byte rows renders the coherent donor fighter.
 
 MKMSZ decoder `0x8000322C` accepts types 0-5. Static recheck of the clean target shows that the compression type is read from **header byte +3** (the low byte of the big-endian word), masked with `0x3F`; type 0 returns `src+4` directly. Therefore a type-0 wrapper must keep that low byte zero. Writing a raw byte length such as `0x00000FEA` or `0x00001054` into the header is invalid and routes away from type 0.
 
@@ -230,56 +230,45 @@ The old behavioral Reverse Elbow v6-v8.3 branch is frozen as a host-action proof
 
 ### Proof A1 — SCCOMBO10 single frame
 
-**Runtime-confirmed partial success; corrected dimension conversion pending runtime.**
+**Runtime-confirmed genuine foreign-sprite import.**
 
-The proof branch established these durable facts:
+Proof v08 / A1.7 is the first successful runtime rendering of a genuine MKT fighter frame inside MKMSZ. On **Back -> Forward + Low Kick**, MKMSZ displays the actual MKT Rev. 2 SCCOMBO10 Reptile/male-ninja frame, using the donor pixel indices and donor Reptile palette through deterministic format conversion, then restores stock Sub-Zero correctly.
 
-- selector-3 action entry and restoration are stable;
-- a temporary actor resource-base swap can drive MKMSZ's native frame renderer from imported donor data;
-- genuine donor indexed pixels can be decoded deterministically from MKT codecs 22/24;
-- an isolated temporary donor palette can be allocated/bound/released through native MKMSZ palette machinery without contaminating stock Sub-Zero colors.
+This confirms all of the following for this resource family:
 
-It also exposed and corrected three format-boundary mistakes.
+- the selector-3 custom action can safely swap the actor to a foreign resource block and restore it;
+- MKT codec-22/24 indexed fighter graphics can be decoded deterministically;
+- MKT packed frame dimensions are Y:X and must be converted to MKMSZ X:Y;
+- SCCOMBO10 is **42x95**, anchors **(+15,-19)**;
+- the donor CI buffer uses a 4-byte-aligned row pitch: **44 bytes per 42-pixel row**;
+- MKMSZ must receive that aligned stride; tightly packed 42-byte rows produce the rejected v07 staircase/shear;
+- MKT RGBA5551 palette colors can be converted to MKMSZ BGR555 source words;
+- donor opaque black must remain nonzero in the target source palette;
+- a temporary native MKMSZ palette can be allocated/bound/released without contaminating Sub-Zero's stock palette.
 
-**A1 direct:** feeding the donor decoded buffer under the wrong 95x42 interpretation produced a stable striped rectangle. This was deterministic format mismatch, not pointer instability.
+Proof lineage:
 
-**A1.1:** transposing the 95x44 decoded buffer produced a recognizable but absurdly horizontal fighter-like image. That was initially misclassified as the genuine SCCOMBO10 pose. This interpretation is now **Rejected / failed**: the underlying donor size word had been read backwards.
+**A1 direct:** wrong 95x42 interpretation produced a stable striped rectangle. **Rejected / failed.**
 
-**A1.2 / ROM v03:** native isolated palette ownership was runtime-confirmed. Stock Sub-Zero colors were correct before and after the imported frame. This remains valid. It also exposed opaque-black handling: donor opaque black had been converted to target zero and therefore became transparent.
+**A1.1:** transposed 95x44 data produced a recognizable but absurdly horizontal fighter. **Rejected / failed** because MKT Y:X dimensions were read backwards.
 
-**A1.3 / ROM v04:** corrected opaque-black conversion was built but superseded before runtime testing when the dimension-order error was resolved. Do not use v04 as the current presentation proof.
+**A1.2 / v03:** isolated donor-palette ownership was runtime-confirmed; stock Sub-Zero remained correct before/after. Opaque black was still incorrectly transparent.
 
-### Proof A1.4/A1.5 — ROM v05/v06 raw-header failure
+**A1.3 / v04:** opaque-black conversion corrected, but superseded before runtime testing by the dimension-order correction.
 
-**Rejected / failed.** Runtime testing of both v05 and v06 produced sparse/confetti-like pixels while stock Sub-Zero remained healthy.
+**A1.4/A1.5 / v05-v06:** sparse/confetti output. **Rejected / failed** because the supposed raw-length word changed the MKMSZ compression-type byte and left type 0.
 
-The 42x95 descriptor correction remains supported, but both builds accidentally encoded a raw byte count into the four-byte MKMSZ wrapper header:
+**A1.6 / v07:** valid type-0 and true 42x95 descriptor produced an upright but progressively sheared/stair-stepped image. **Rejected / failed** as a tightly-packed-row conversion; it established the remaining problem as row stride.
 
-- v05: `00000FEA` -> decoder type byte `EA & 3F = 2A`;
-- v06: `00001054` -> decoder type byte `54 & 3F = 14`.
+**A1.7 / v08:** preserves **44-byte rows = 42 visible CI pixels + 2 padding bytes** while retaining the true 42x95 descriptor, isolated palette, opaque-black mapping, and valid type-0 wrapper. The user runtime test shows a coherent upright Reptile fighter frame with correct stock Sub-Zero restoration. **Runtime-confirmed.**
 
-Neither build therefore exercised MKMSZ type 0. Their confetti output does **not** reject the 42x95 donor dimensions or the packed visible-pixel conversion.
+v08 identity:
 
-### Proof A1.6 / ROM v07 — corrected type-0 header
-
-**Implementation/static-confirmed; runtime pending.**
-
-v07 returns the wrapper header to `00000000`, while retaining:
-
-- target descriptor **42x95** (`0x002A005F`);
-- anchors `+15,-19`;
-- deterministic removal of the two transparent donor padding columns so the target receives contiguous 42x95 visible indices;
-- isolated native donor palette;
-- opaque-black preservation;
-- untouched stock Sub-Zero palette.
-
-Output identity:
-
-- file: `MKMSZR_mkt-scc10-import_global_proof_v07.z64`;
-- SHA-256 `fb78581084358238fa31bd28cd8b9a4f071ed7734d24cea1c34ce9de3768b93c`;
+- file: `MKMSZR_mkt-scc10-import_global_proof_v08.z64`;
+- SHA-256 `1ea40452cdf6e8866b48544fc57f27b065dace75fa0416d52fb4987db61f936d`;
 - CRC1/CRC2 `70135E41 / BB4C161F`.
 
-If v07 still renders incorrectly, the next bounded question is the downstream target texture-cache stride/packing path rather than decoder dispatch.
+This is a **genuine donor import**, not a redraw or behavioral approximation: the visible fighter art is derived from the actual MKT retail texture stream and palette, with only deterministic codec/palette/descriptor/stride conversion required by the target engine.
 
 ### Proof A2
 
@@ -306,9 +295,9 @@ After genuine animation rendering is runtime-confirmed:
 
 Pending runtime/static questions are intentionally narrow:
 
-- whether A1.6/v07's valid type-0 wrapper plus 42x95 packed visible-pixel conversion renders the genuine donor frame correctly;
-- whether the corrected isolated palette plus opaque-black mapping completes donor palette fidelity;
-- the narrowest MKMSZ fighter-separation hook for a three-tick no-repel gate;
-- the best native victim-action primitives for exact donor reactions without bypassing interruption/cleanup.
+- import and runtime-confirm the complete donor `SCCOMBO10 -> 11 -> 12 -> 11 -> 10` sequence using the now-confirmed frame-conversion rules;
+- confirm those rules on SCCOMBO11 (50x102) and SCCOMBO12 (82x106), including their row strides and codec-24 conversion;
+- identify the narrowest MKMSZ fighter-separation hook for a three-tick no-repel gate;
+- identify the best native victim-action primitives for exact donor reactions without bypassing interruption/cleanup.
 
 Do not spend effort polishing the old forced-crossover imitation while these genuine-port proofs are pending.
