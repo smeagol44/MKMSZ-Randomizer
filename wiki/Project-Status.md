@@ -26,6 +26,7 @@ Last consolidated: 2026-09-20.
 |---|---|---|
 | Same-stage pickup substitution | Full identity tuple changes award and art | Generalized in current stage-local mode |
 | Fire foreign Prison-key import | Relocated/expanded resource file plus dedicated callback works | Production resource planner, allocation policy, compatibility matrix |
+| Prison extension-selector Potion coexistence | Out-of-stock-range selector resolves appended Water Potion bundle while vanilla Herbs remain resident and functional | Generalize into guarded production planner; external-resource-ID bundles still unresolved |
 | Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
 | Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
 | Temple XP progression proof | Three proof pickups plus one vanilla Herbs control established no-combat-XP and pickup-driven tiers | Generalized into the production Diagnostic B architecture; full nine-tier coverage and final art remain |
@@ -59,7 +60,7 @@ Open Temple Map work: the legacy Lua global pool included the scripted Map as an
 
 ## Pending priorities
 
-1. Build the production cross-stage resource planner around the now runtime-confirmed extension-selector mechanism. Proof D showed Prison can use selector `0x123C` to resolve an appended selector entry beyond the stock 12-entry table with vanilla Herbs art/behavior unchanged. Next proof: place an actual imported self-contained Water Potion bundle behind an extension selector without touching any vanilla Prison selector.
+1. Generalize the runtime-confirmed extension-selector materializer into the production cross-stage resource planner. Proof F imported Water's self-contained Potion bundle into Prison through selector `0x123C` while leaving five vanilla Herbs on selector `8`; both Potion and Herbs rendered/awarded correctly. Embedded-data coexistence is confirmed. External-resource-ID bundle dependencies remain the next resource-format problem.
 2. Replace stage-local generation with a global deterministic shuffle plus whole-run solver, including deterministic retry attempts and a deterministic per-seed required-Power-Upgrades target.
 3. Build the native randomizer HUD around the finalized global-run state.
 4. Resolve Temple Map trigger/item separation and cross-stage persistence; then HP/lives/continues persistence, Game Over/new-run reset, and Very Hard enforcement.
