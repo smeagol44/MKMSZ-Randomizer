@@ -145,33 +145,24 @@ The Map is not one of the 84 ordinary records and currently couples several nati
 Until those are proven, the global solver should model the Map separately rather than pretending it is an ordinary 0x30-byte pickup.
 
 
-## Destination-shell logical materialization
+## Exact cross-stage visual materialization requirement
 
-**Implementation/CI-confirmed; runtime proof pending.**
+**Required for 1.0.**
 
-The first 1.0 materialization strategy now separates the logical reward from the destination's world actor. This matches the useful part of the legacy Lua model without requiring Lua at runtime.
+A randomized pickup must visually represent the item it actually awards. A Fire Potion location that contains a Prison key must look like the Prison key, not like a Potion.
 
-For an ordinary destination, keep its known-good construction/presentation shell:
+The logical-item catalog remains useful for global shuffle/solver semantics, but physical materialization must carry the randomized item's actual visual identity into the destination stage:
 
-- `+0x10` destination type/behavior;
-- `+0x1C/+0x20` destination extents;
-- `+0x24` destination-local resource selector;
-- `+0x28` destination presentation descriptor.
+- source item type/behavior where required for correct pickup presentation;
+- source extents/collision dimensions;
+- source presentation descriptor;
+- the source item's resource/model bundle, remapped into a destination-local selector;
+- destination-safe award callback/parameter semantics.
 
-For an inventory-bearing logical reward, replace only:
+Because `+0x24` is stage-local, the source selector cannot simply be copied. The destination stage must already contain an equivalent resource or receive an imported copy of the source bundle under a safe destination-local selector.
 
-- `+0x14` with the logical native inventory ID;
-- `+0x18` with an MKMSZR generic award callback.
+The runtime-confirmed Fire foreign Prison-key proof is the architectural precedent: Fire's resource file was relocated/expanded, the Prison-key bundle was appended and assigned to a Fire selector, and the pickup then rendered as the Prison key and awarded the Prison key.
 
-Static pickup-manager analysis supports this split: `+0x14` is loaded only on successful pickup immediately before the callback call, while construction uses the destination shell fields earlier. The callback ABI passes `record+0x14` as `a1`.
+For 1.0, that mechanism must be generalized across the complete randomized item pool with explicit allocation, deduplication, file-table updates, bounds checks, destination selector planning, and runtime validation.
 
-This means a Fire Potion-shaped world pickup can, in principle, award a Prison key without importing the Prison key model. Exact shuffled world art becomes a presentation enhancement rather than a prerequisite for global logical randomization.
-
-The planner currently classifies all 84 ordinary stock rewards into:
-
-- fixed inventory rewards;
-- 21 stage/key/crystal logical inventory rewards (`0x0E..0x22`);
-- native-effect rewards such as Extra Life, Mana, and Strength;
-- Power Upgrade as a synthetic logical reward inserted later by the global generator.
-
-A 24-byte generic inventory-award callback fits in the unused tail of the current progression payload. It is intentionally **not** wired into the production pipeline until a disposable ROM confirms the ABI and cross-stage inventory behavior.
+A temporary experiment that keeps the destination graphics while awarding a different logical item is **Rejected for 1.0** because it violates the randomizer's visual-identity requirement. It should not be used as the production materialization path.
