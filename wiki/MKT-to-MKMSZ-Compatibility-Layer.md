@@ -161,7 +161,31 @@ This is deterministic format conversion, not redrawing or behavioral recreation.
 
 MKT Reptile primary palette record is ROM `0xBE864..0xBE8A7`: u32 count 32 followed by 32 big-endian RGBA5551 colors. The move does not switch palettes.
 
-MKMSZ Sub-Zero's source palette is a 64-entry RGBA5551 container. For the disposable A1 proof, donor entries 0..31 are copied into the existing Sub-Zero palette container while preserving its 64-entry count. This is a proof-only binding method; a general compatibility layer still needs an isolated dynamic palette/resource binding design.
+A1/A1.1 established that copying those words into Sub-Zero's stock source palette is **not** an acceptable binding design. A1.1 runtime footage showed ordinary Sub-Zero frames inheriting donor colors.
+
+Static target tracing now identifies the native isolated palette path:
+
+| Target item | Address / field | Meaning |
+|---|---:|---|
+| palette find/allocate | `0x8001C528` | Finds or allocates a cached palette from a source pointer; native callers receive handles in the `0x140..0x23F` family |
+| actor palette selector | actor `+0x9E` | Stores palette handle minus `0x80` |
+| frame setup | `0x8001BDA0` | Resolves the selector through the palette-slot table and binds the active handle to actor `+0x80` |
+| palette release | `0x8001C64C` | Native refcount/release path; native callers pass `actor+0x9E + 0x80` |
+| source-to-hardware upload | `0x8001D9B4..0x8001DA58` | Converts source BGR555 to hardware RGBA5551; source word zero becomes transparent |
+
+Therefore the compatibility-layer palette conversion is now:
+
+```text
+MKT RGBA5551 donor palette
+-> preserve exact 5-bit RGB channels
+-> convert to MKMSZ BGR555 source words
+-> donor alpha=0 becomes source zero
+-> allocate temporary native MKMSZ palette
+-> bind only the imported actor/frame
+-> restore stock selector and release the temporary handle
+```
+
+This is the design used by proof A1.2/v03; runtime validation is pending.
 
 ## ABI incompatibility
 
@@ -179,27 +203,48 @@ The old behavioral Reverse Elbow v6-v8.3 branch is frozen as a host-action proof
 
 ### Proof A1 — SCCOMBO10 single frame
 
-**Implementation-confirmed; runtime pending.**
+**Runtime-confirmed partial success.**
 
-A disposable ROM has been built from the verified clean MKMSZ input. It:
+A1 and A1.1 established several separate facts.
 
-- expands the proof-only reserved prefix to 0x2000 bytes;
-- loads file ID `0x1B` from ROM `0xF10000..0xF11FFF`;
-- keeps the runtime-confirmed selector-3 special-action bridge;
-- on Back -> Forward + Low Kick, temporarily points actor resource base `+0x98` to an imported resource block;
-- uses the genuine decoded SCCOMBO10 bytes and donor geometry;
-- wraps the donor pixel stream as MKMSZ type-0/raw;
-- uses the exact donor Reptile palette entries 0..31 in the target palette container;
-- calls target frame setup `0x8001BDA0`;
-- holds the frame for 60 ticks;
-- restores the stock resource base and native control.
+**A1:** the selector-3 action, temporary actor resource-base swap, genuine donor shape/descriptor traversal, render submission, timed hold, and restoration all ran without a whole-game hang. Passing the exact donor decoder output directly to MKMSZ type-0 produced a stable horizontal stripe rectangle. That failure was deterministic, not random corruption.
 
-A1 deliberately contains **no movement, strike, collision, victim reaction, no-repel shim, or Reverse Elbow choreography**. It tests only foreign-resource rendering.
+**A1.1:** the donor decoded bytes were deterministically transposed from donor X-major/column-major storage into MKMSZ row-major raw storage. Runtime testing then produced a coherent SCCOMBO10 male-ninja pose. The visible horizontal lunge silhouette matches the offline reconstruction of the exact donor frame; SCCOMBO10 is a transition/mid-lunge pose and looks unnatural when held for about one second.
+
+A1.1 also exposed a separate palette-scoping failure: replacing part of Sub-Zero's shared source palette made his ordinary frames inherit Reptile colors. The imported frame's colors were recognizable, but global source-palette replacement is **Rejected** as the compatibility design.
+
+Current evidence:
+
+- actor/resource pointer integration: **Runtime-confirmed**;
+- genuine donor shape/descriptor structure accepted by MKMSZ: **Runtime-confirmed**;
+- direct donor decoded scan order as MKMSZ raw: **Rejected / failed**;
+- donor X-major -> target row-major deterministic index reorder: **Runtime-confirmed** to produce a coherent frame;
+- donor RGBA5551 -> target BGR555 channel conversion: **Runtime-supported**, but A1.1 bound it globally and therefore polluted stock Sub-Zero;
+- exact isolated donor palette binding: **Pending A1.2 runtime test**.
+
+A1.1 screenshot evidence also means the single-frame proof is no longer blocked on texture-codec conversion. The remaining A1 issue is palette ownership/isolation, not whether genuine MKT fighter pixels can pass through the MKMSZ renderer.
+
+#### Proof A1.2 / ROM v03 — isolated native palette
+
+**Implementation/static-confirmed; runtime pending.**
+
+The next disposable proof keeps the same genuine SCCOMBO10 resource and adds the native isolated palette lifecycle discovered above:
+
+1. save stock actor resource base, palette selector, and shape;
+2. allocate a temporary 32-color donor palette through `0x8001C528`;
+3. set actor `+0x9E = handle - 0x80`;
+4. render the same genuine donor SCCOMBO10 resource through `0x8001BDA0`;
+5. restore stock resource base, stock palette selector, and exact prior shape;
+6. release the donor palette through `0x8001C64C`;
+7. restore normal control.
+
+The clean Sub-Zero source palette at ROM `0x78E16C..` is left byte-identical to stock. The proof retains the safe diagnostic HUD and does not add movement, collision, strike, no-repel, or victim-reaction behavior.
 
 Output identity:
 
-- SHA-256 `4fd1af63d4e25bde0ef5aa30dc8116755c60931701f855fa2126206a6c52ae7b`;
-- CRC1/CRC2 `00165F37 / CF51079E`.
+- file: `MKMSZR_mkt-scc10-import_global_proof_v03.z64`;
+- SHA-256 `98e46b0eaed48fc1016a8a322c61e06961c877f7f57a91ff0b1dca442f00d8d9`;
+- CRC1/CRC2 `70135E41 / BB4C161F`.
 
 ### Proof A2
 
@@ -226,8 +271,8 @@ After genuine animation rendering is runtime-confirmed:
 
 Pending runtime/static questions are intentionally narrow:
 
-- whether MKMSZ type-0 consumes the decoded donor column-major one-byte index stream exactly as wrapped;
-- whether the proof-only 32-entry donor palette substitution binds with the expected colors;
+- whether A1.2's isolated native palette binding reproduces donor colors while leaving stock Sub-Zero untouched;
+- whether the donor frame's grounding/anchor needs an explicit host-origin translation once it is animated rather than held as a still;
 - the narrowest MKMSZ fighter-separation hook for a three-tick no-repel gate;
 - the best native victim-action primitives for exact donor reactions without bypassing interruption/cleanup.
 
