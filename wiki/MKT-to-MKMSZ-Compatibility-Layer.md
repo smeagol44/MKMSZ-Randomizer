@@ -185,7 +185,7 @@ MKT RGBA5551 donor palette
 -> restore stock selector and release the temporary handle
 ```
 
-This is the design used by proof A1.2/v03; runtime validation is pending.
+This is the design used by proof A1.2/v03. Runtime testing confirmed that this isolated binding preserves stock Sub-Zero colors before and after the imported frame.
 
 ## ABI incompatibility
 
@@ -220,15 +220,16 @@ Current evidence:
 - direct donor decoded scan order as MKMSZ raw: **Rejected / failed**;
 - donor X-major -> target row-major deterministic index reorder: **Runtime-confirmed** to produce a coherent frame;
 - donor RGBA5551 -> target BGR555 channel conversion: **Runtime-supported**, but A1.1 bound it globally and therefore polluted stock Sub-Zero;
-- exact isolated donor palette binding: **Pending A1.2 runtime test**.
+- exact isolated donor palette binding: **Runtime-confirmed** to preserve stock Sub-Zero colors before/after the proof;
+- A1.2 opaque-black conversion: **Rejected / failed** because donor opaque black (`RGB=0, A=1`) was converted to target source word zero, which MKMSZ treats as transparent.
 
 A1.1 screenshot evidence also means the single-frame proof is no longer blocked on texture-codec conversion. The remaining A1 issue is palette ownership/isolation, not whether genuine MKT fighter pixels can pass through the MKMSZ renderer.
 
 #### Proof A1.2 / ROM v03 — isolated native palette
 
-**Implementation/static-confirmed; runtime pending.**
+**Runtime-confirmed partial success.**
 
-The next disposable proof keeps the same genuine SCCOMBO10 resource and adds the native isolated palette lifecycle discovered above:
+The proof used the native isolated palette lifecycle:
 
 1. save stock actor resource base, palette selector, and shape;
 2. allocate a temporary 32-color donor palette through `0x8001C528`;
@@ -238,12 +239,44 @@ The next disposable proof keeps the same genuine SCCOMBO10 resource and adds the
 6. release the donor palette through `0x8001C64C`;
 7. restore normal control.
 
-The clean Sub-Zero source palette at ROM `0x78E16C..` is left byte-identical to stock. The proof retains the safe diagnostic HUD and does not add movement, collision, strike, no-repel, or victim-reaction behavior.
+Runtime testing confirmed that ordinary Sub-Zero colors remain stock before activation and restore correctly afterward. The imported SCCOMBO10 frame remains stable and recognizable.
+
+A separate palette-semantics bug was exposed: MKT opaque-black entries such as indices 15, 16, and 31 have `RGB=0, A=1`. v03 converted them to target source word `0x0000`, but MKMSZ palette upload treats source zero as transparent. Those black portions therefore disappeared.
 
 Output identity:
 
 - file: `MKMSZR_mkt-scc10-import_global_proof_v03.z64`;
 - SHA-256 `98e46b0eaed48fc1016a8a322c61e06961c877f7f57a91ff0b1dca442f00d8d9`;
+- CRC1/CRC2 `70135E41 / BB4C161F`.
+
+#### Proof A1.3 / ROM v04 — preserve donor opaque black
+
+**Implementation/static-confirmed; runtime pending.**
+
+Target palette upload `0x8001D9B4..0x8001DA58` converts the lower 15 BGR bits to hardware RGBA5551 and sets output alpha for any **nonzero** source word. Therefore donor opacity must survive even when RGB is black.
+
+The corrected conversion is:
+
+```text
+donor alpha=0 -> target 0x0000
+donor alpha=1 -> target 0x8000 | BGR555
+```
+
+This makes donor opaque black map to target `0x8000`, preserving black while remaining nonzero/opaque.
+
+The exact donor geometry is intentionally unchanged:
+
+- width 95;
+- height 42;
+- X anchor +15;
+- Y anchor -19.
+
+Static recheck of target frame setup `0x8001BDA0` confirms that the packed donor width/height is copied directly into actor/render state and the donor X/Y offsets are applied according to flip flags. No scaling is applied there. The apparent fragmentation/stretch in v03 is therefore first attributed to missing opaque-black silhouette, not missing dimensions.
+
+Output identity:
+
+- file: `MKMSZR_mkt-scc10-import_global_proof_v04.z64`;
+- SHA-256 `9a0b923dcfe4baf85a8a3e507dc9fb0373764c4f93c223b8477b8efa809e515a`;
 - CRC1/CRC2 `70135E41 / BB4C161F`.
 
 ### Proof A2
@@ -271,8 +304,8 @@ After genuine animation rendering is runtime-confirmed:
 
 Pending runtime/static questions are intentionally narrow:
 
-- whether A1.2's isolated native palette binding reproduces donor colors while leaving stock Sub-Zero untouched;
-- whether the donor frame's grounding/anchor needs an explicit host-origin translation once it is animated rather than held as a still;
+- whether A1.3's corrected opaque-black mapping completes donor palette fidelity;
+- after opacity is corrected, whether any remaining presentation mismatch comes from actor/world scaling or another host-origin convention rather than the already-verified 95x42 donor descriptor;
 - the narrowest MKMSZ fighter-separation hook for a three-tick no-repel gate;
 - the best native victim-action primitives for exact donor reactions without bypassing interruption/cleanup.
 
