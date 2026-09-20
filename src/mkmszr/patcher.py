@@ -15,10 +15,10 @@ from .patches import (
     NativePayloadSpec,
     PickupPersistencePatch,
     PickupRandomizationPatch,
-    XPProgressionPatch,
     SafeStageSelectorPatch,
     SafeStageSelectSkipAutoSavePatch,
     SubZeroPalettePatch,
+    XPProgressionPatch,
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
 from .rom import RomImage
