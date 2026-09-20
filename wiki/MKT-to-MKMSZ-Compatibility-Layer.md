@@ -828,9 +828,50 @@ File ID `0x87` is ROM `0xF40000..0xF9DB5F`, size `0x5DB60`, which is `0x10340` b
 
 The false cave remains exact stock; no donor-rate hook is enabled. The already runtime-confirmed destructive Turn cleanup is also retained.
 
+**Runtime-confirmed.**
+
+The user reported v16 as perfect. Idle, Walk Forward, Walk Backward, and Turn all coexist in the same session with correct Sektor graphics, correct donor palette, clean transitions, and no hang or smear regression. This is the first runtime-confirmed multi-animation Sektor composition beyond idle.
+
+#### v17 — isolate raw/type-0 Crouch
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-crouch_destructive-swap_proof_v17.z64`
+
+Identity:
+
+- SHA-256 `d28cc5705357503fcb1629e538ad48a569ff5ce55f8e4f878a67408cef3fd8e7`;
+- CRC1/CRC2 `DAA31FD9 / 17C86690`.
+
+v17 intentionally returns to the runtime-confirmed destructive v11 idle base rather than appending Crouch onto v16. Adding all three raw Crouch frames to v16 would recreate the rejected v12 file-ID-`0x87` size `0x620E0`, so repeating that known-bad composition is avoided.
+
+Primary slot `0x04` now uses the exact retail Sektor crouch sequence:
+
+```text
+RBDUCK1
+RBDUCK2
+RBDUCK3
+0
+```
+
+The three raw/type-0 frames are compactly relocated immediately after the v11 donor-idle region:
+
+- RBDUCK1 shape `+0x4D7D0`;
+- RBDUCK2 shape `+0x4F498`;
+- RBDUCK3 shape `+0x50D08`;
+- donor palette `+0x51D58`.
+
+File ID `0x87` becomes ROM `0xF40000..0xF91DA3`, size `0x51DA4`, keeping this proof far below the rejected v12 size while preserving the already-proven raw fighter format and frame-setup-time palette switching.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary validation: confirm the stage still loads and that Idle, Walk Forward, Walk Backward, and Turn can be exercised repeatedly in the same session with clean transitions among them and into untouched stock attacks/jumps. If v16 is clean, this establishes the first multi-animation composition boundary and Crouch can be added next as a separate three-frame increment.
+Primary validation:
+
+1. stage reaches gameplay normally;
+2. idle remains perfect;
+3. crouching shows the genuine three-frame Sektor duck;
+4. crouch -> idle / attack / jump transitions remain stable;
+5. no ghosting, palette artifact, or hang occurs.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
