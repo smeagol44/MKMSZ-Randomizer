@@ -40,3 +40,18 @@ The resource selector in a pickup record is stage-local; its presentation descri
 - An inline wrapper that allocates and submits multiple nodes works; an over-generalized helper layer did not.
 - General textured-image rendering remains unresolved.
 - The Temple XP proof currently reuses a pale blue-grey Herbs-like model. Desired final art is a bright-blue body with bronze handle and still needs a production resource path.
+
+
+## 1.0 randomizer HUD requirement
+
+The legacy Lua overlay is the behavioral reference for the information a player needs while hunting a seed. It displayed:
+
+- progression/power requirement;
+- inventory page number;
+- current-stage checks collected / total;
+- key-item progress by stage;
+- temporary `Picked up: <item>` feedback.
+
+The native product currently implements only `BOX n OF 4`. 1.0 requires a native randomizer HUD that exposes equivalent useful run-state information. Exact visual parity with the emulator overlay is not required, but the gameplay information is.
+
+The runtime-confirmed native text path at `0x80073E74` is the preferred basis for text elements. Geometric key-progress icons may use native render nodes only after a bounded proof; a text-first representation is acceptable if it conveys the same state reliably.

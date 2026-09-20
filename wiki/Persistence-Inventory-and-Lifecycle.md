@@ -67,3 +67,16 @@ Normal save logic is preserved. Only selector-triggered immediate stage-entry sa
 - quitting to the title menu and directly entering Fire also preserved XP 258 and both moves.
 
 This shows that, on the tested routes, the move-tier state established at acquisition survives without re-running the tier evaluator during stage initialization.
+
+
+## 1.0 HP / lives / continues requirement
+
+The legacy Lua is only a clue here, not a solution. It writes startup configuration values once:
+
+- difficulty RDRAM offset `0x0A5FA9` = `0x04` (Very Hard);
+- lives RDRAM offset `0x0A5FAB` = `0x06`;
+- continues RDRAM offset `0x0A5FAD` = `0x04`.
+
+It also names `0x0F1057` as a life-related address, but does not use it for stage-transition preservation. There is no Lua logic that carries current HP, current lives, or current continues between stages.
+
+Therefore 1.0 needs a focused native lifecycle trace for the actual current-run values and the writers that reset them on stage entry/direct selector routes. Preserve/reset policy must be established from runtime/static evidence rather than inferred from the Lua startup configuration.

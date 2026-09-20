@@ -32,3 +32,8 @@ Core features such as selector, persistence, pickup shuffle, pickup-driven XP pr
 `.github/workflows/pages.yml` runs on `main`, builds the wheel, copies the static frontend to `_site`, substitutes the run number into the displayed version, and deploys GitHub Pages. `.github/workflows/wiki.yml` independently mirrors `wiki/` to the GitHub Wiki.
 
 This separation matters: product deployment does not package research artifacts, ROMs, proof patches, or emulator state.
+
+
+## 1.0 release boundary
+
+The current stage-local pickup mode is not the final 1.0 randomizer. 1.0 requires the global cross-stage item pool, whole-run solvability validation, native randomizer HUD, HP/lives/continues lifecycle handling, and a Very Hard difficulty invariant before full-seed release validation.
