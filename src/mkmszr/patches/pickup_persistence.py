@@ -51,7 +51,7 @@ from ..rom import RomImage
 from .arena import ArenaReservationPatch
 from .base import PatchContext
 from .native_payload import NativePayloadPatch, NativePayloadSpec, kseg1_alias
-from .runtime_v1 import (
+from .runtime_v2 import (
     CODE_SIZE,
     LOADER_STUB,
     STATE_HEADER_SIZE,
@@ -198,7 +198,7 @@ def build_restore_scanner() -> bytes:
 
     emitter = Emitter()
 
-    # Preserve the confirmed V1 validation contract before trusting state.
+    # Preserve the versioned runtime validation contract before trusting state.
     emitter.emit(*address_words("t0", STATE_UNCACHED_BASE))
     emitter.emit(lw("t1", 0x00, "t0"))
     _emit_u32(emitter, "t2", STATE_MAGIC)
@@ -286,11 +286,11 @@ def build_pickup_persistence_payload() -> tuple[bytes, int]:
     restore = build_restore_scanner()
 
     if len(init) > RESTORE_OFFSET:
-        raise AssertionError("V1 init overlaps generalized restore scanner")
+        raise AssertionError("runtime init overlaps generalized restore scanner")
 
     actual_size = RESTORE_OFFSET + len(restore)
     if actual_size > CODE_SIZE:
-        raise AssertionError("generalized persistence exceeds V1 code region")
+        raise AssertionError("generalized persistence exceeds production code region")
 
     payload = bytearray(CODE_SIZE)
     payload[: len(init)] = init
