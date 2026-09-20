@@ -37,3 +37,4 @@
 - GitHub Wiki introduced with automatic repository-to-Wiki synchronization.
 - After the final Library-canonical synchronization, the Wiki became the living/current documentation source and the Library became the durable evidence/archive source.
 - Runtime-confirmed logo and selector-save bypasses productionized in PR #18; first shipped in web build **v0.20**.
+- Temple XP-progression proof runtime-confirmed: combat/kill XP suppressed, combo EXPERIENCE text removed while HITS remains, progression pickups advanced XP 85→258 and unlocked the second move tier, max XP displayed as 20000, and progression pickups remained inventory-free.
