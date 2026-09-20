@@ -30,7 +30,7 @@ Last consolidated: 2026-09-20.
 | Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
 | Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
 | Temple XP progression proof | Three proof pickups plus one vanilla Herbs control established no-combat-XP and pickup-driven tiers | Generalized into the production Diagnostic B architecture; full nine-tier coverage and final art remain |
-| Reverse Elbow v6 | Repeated execution without whole-game hang | Movement, exclusivity, hit behavior, animation, pass-through, and UI diagnostics remain incomplete |
+| Reverse Elbow host/action proof + genuine MKT import branch | v6 established repeatable scheduler/action stability; A1/A1.1 then drove genuine MKT SCCOMBO10 resource data through MKMSZ, with A1.1 producing a coherent donor-frame silhouette after deterministic scan-order conversion | A1.2 isolated donor-palette validation; full donor animation sequence; real no-repel shim; translated donor strikes/reactions; complete move port |
 
 ## Latest runtime findings
 
@@ -42,7 +42,7 @@ Follow-up Diagnostic A is **Runtime-confirmed**: with the progression stage-entr
 
 Diagnostic B then removed only the early tier-evaluator call from the restore helper. It is **Runtime-confirmed** through Temple completion, Temple -> Wind with XP 258/two moves retained, and title-menu -> Fire with the same XP/moves retained. The original hang is therefore attributed to calling the native tier evaluator too early during stage initialization. Production now uses Diagnostic B behavior: restore XP at stage entry, but evaluate tiers only when a progression pickup is collected.
 
-Reverse Elbow v8 did not visibly deliver the intended changes. Sub-Zero still does not pass through enemies, forward motion stops when attacking even though the `L 1` diagnostic remains unchanged, direction/jump/crouch are locked while attacks remain possible, the Y gate behaves normally against a jumping enemy, speed still appears very slow rather than four times faster, and the expanded HUD text did not appear. Treat v6 lifecycle stability as the durable result; v7/v8 movement and diagnostic claims are not confirmed.
+The behavioral Reverse Elbow branch is now historical host-action evidence rather than the intended final implementation. Later v8.1-v8.3 tests established usable high-speed directional motion and a proof-only forced crossover, but also exposed collision/jitter and freeze/strike mismatches that are inherent to recreating donor behavior with native approximations. The project has pivoted to a genuine MKT→MKMSZ compatibility layer. A1/A1.1 runtime testing confirms stable traversal/rendering of imported SCCOMBO10 donor resource data; deterministic donor X-major → target row-major conversion produces a coherent donor pose. A1.1's global palette substitution polluted stock Sub-Zero colors and is rejected; A1.2 uses the native isolated palette allocator and is pending runtime validation.
 
 ## 1.0 required scope
 
