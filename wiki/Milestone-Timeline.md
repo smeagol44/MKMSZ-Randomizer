@@ -1,4 +1,4 @@
-> **Mirror notice:** This Wiki is a navigation-friendly adaptation of MKMSZR documentation. The ChatGPT Library folder `MKMSZR Research` remains the reverse-engineering/research source of truth; this repository remains the implementation/product source of truth. If the Wiki conflicts with an owning source, the owning source wins.
+> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
 
 # Milestone Timeline
 
@@ -34,5 +34,6 @@
 - Production native stage-local item randomization merged in PR #16; web build **v0.18**.
 - Seed `TEST153` runtime-confirmed: Fire's first ordinary pickup became Shield as predicted.
 - `TEST153` boot phrase `' OR 1==1 --` rendered correctly.
-- GitHub Wiki mirror introduced for easier navigation and automatic repository-to-Wiki synchronization completed successfully.
+- GitHub Wiki introduced with automatic repository-to-Wiki synchronization.
+- After the final Library-canonical synchronization, the Wiki became the living/current documentation source and the Library became the durable evidence/archive source.
 - Runtime-confirmed logo and selector-save bypasses productionized in PR #18; first shipped in web build **v0.20**.
