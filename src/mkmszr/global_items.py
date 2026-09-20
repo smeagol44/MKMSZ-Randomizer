@@ -1,9 +1,12 @@
 """Logical item model for the future global MKMSZR pickup pool.
 
-This module deliberately separates *what a pickup awards* from *what the world
-actor looks like*.  The latter is destination-stage data in the first 1.0
-materialization strategy, matching the legacy Lua's logical-reward semantics
-without requiring a foreign resource import for every cross-stage placement.
+The logical catalog is separate from physical placement, but 1.0 requires the
+placed pickup to use the *actual visual identity of the randomized item*.
+
+Cross-stage materialization therefore must import/remap the source item's
+resource bundle into the destination stage when that visual is not already
+resident.  Keeping a destination pickup's old graphics while awarding a
+different logical item is explicitly not an acceptable 1.0 strategy.
 """
 
 from __future__ import annotations
@@ -11,14 +14,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from .data.pickups import IDENTITY_SIZE, STAGE_PICKUPS, PickupSpec
-from .mips import addiu, addu, jal, jump, sw, words_blob
+from .data.pickups import STAGE_PICKUPS, PickupSpec
 
 AwardKind = Literal["inventory", "native-effect", "power-upgrade"]
 
 
 @dataclass(frozen=True)
 class LogicalItem:
+    """A stage-independent randomized reward backed by an exact source visual."""
+
     key: str
     display_name: str
     award_kind: AwardKind
@@ -54,7 +58,7 @@ TOKEN_ITEMS: dict[str, tuple[str, int, int]] = {
     "crystal-sareena": ("Crystal (Sareena)", 0x22, 9),
 }
 
-# Global callbacks whose behavior is not derived from the current stage.
+# Global callbacks whose reward semantics are not tied to a stage overlay.
 FIXED_CALLBACK_ITEMS: dict[int, tuple[str, str, AwardKind, int | None]] = {
     0x800388FC: ("potion", "Potion", "inventory", 0x01),
     0x8003898C: ("formula", "Formula", "inventory", 0x02),
@@ -64,13 +68,16 @@ FIXED_CALLBACK_ITEMS: dict[int, tuple[str, str, AwardKind, int | None]] = {
     0x8003892C: ("shield", "Shield", "inventory", 0x06),
     0x80038A1C: ("extra-life", "Urn (Extra Life)", "native-effect", None),
     0x80038A58: ("mana", "Mana", "native-effect", None),
-    # Strength must retain its native callback because it does more than insert ID 0x0B.
+    # Strength does more than merely insert inventory ID 0x0B.
     0x80038A90: ("strength-urn", "Urn (Strength)", "native-effect", None),
 }
 
 
-def _words(identity: bytes) -> tuple[int, ...]:
-    return tuple(int.from_bytes(identity[i : i + 4], "big") for i in range(0, 0x1C, 4))
+def _identity_words(identity: bytes) -> tuple[int, ...]:
+    return tuple(
+        int.from_bytes(identity[index : index + 4], "big")
+        for index in range(0, len(identity), 4)
+    )
 
 
 def logical_item_from_record(
@@ -78,6 +85,8 @@ def logical_item_from_record(
     record_index: int,
     record: PickupSpec,
 ) -> LogicalItem:
+    """Decode one researched ordinary record into a logical reward."""
+
     if record.progression_token is not None:
         name, item_id, origin_stage = TOKEN_ITEMS[record.progression_token]
         return LogicalItem(
@@ -91,7 +100,7 @@ def logical_item_from_record(
             origin_stage_id=origin_stage,
         )
 
-    callback = _words(record.identity)[2]
+    callback = _identity_words(record.identity)[2]
     try:
         key, name, award_kind, inventory_id = FIXED_CALLBACK_ITEMS[callback]
     except KeyError as exc:
@@ -112,17 +121,22 @@ def logical_item_from_record(
 
 
 def build_stock_logical_pool() -> tuple[LogicalItem, ...]:
-    """Return the 84 ordinary stock rewards as logical items.
+    """Return all 84 ordinary stock rewards as logical items.
 
-    The Temple Map is intentionally absent because it is not an ordinary record.
-    Power Upgrades are also absent here; the global generator will deterministically
-    replace nine Herbs logical rewards before shuffling.
+    Source stage/record are retained because exact 1.0 materialization must be
+    able to recover the source item's native type/extents/resource/presentation
+    and import that visual bundle when placed in another stage.
+
+    Temple Map is intentionally absent because it is not an ordinary record.
+    Power Upgrades are synthetic and are introduced by the global generator.
     """
 
     result: list[LogicalItem] = []
     for stage in STAGE_PICKUPS:
         for record_index, record in enumerate(stage.records):
-            result.append(logical_item_from_record(stage.stage_id, record_index, record))
+            result.append(
+                logical_item_from_record(stage.stage_id, record_index, record)
+            )
     return tuple(result)
 
 
@@ -133,84 +147,3 @@ POWER_UPGRADE = LogicalItem(
     source_stage_id=-1,
     source_record_index=-1,
 )
-
-
-@dataclass(frozen=True)
-class MaterializationPlan:
-    logical_item: LogicalItem
-    identity: bytes
-    keeps_destination_visual: bool
-    requires_foreign_resource: bool
-
-
-def _decode(identity: bytes) -> list[int]:
-    if len(identity) != IDENTITY_SIZE:
-        raise ValueError(f"pickup identity must be {IDENTITY_SIZE} bytes")
-    return [int.from_bytes(identity[i : i + 4], "big") for i in range(0, IDENTITY_SIZE, 4)]
-
-
-def _encode(words: list[int]) -> bytes:
-    return b"".join(word.to_bytes(4, "big") for word in words)
-
-
-def materialize_destination_shell(
-    destination_identity: bytes,
-    logical_item: LogicalItem,
-    *,
-    generic_inventory_callback: int,
-    power_upgrade_callback: int,
-) -> MaterializationPlan:
-    """Materialize a logical reward while keeping destination-stage actor resources.
-
-    Word layout is type, parameter, callback, extent A, extent B, resource slot,
-    presentation.  Type/extents/resource/presentation stay destination-native.
-    """
-
-    words = _decode(destination_identity)
-
-    if logical_item.award_kind == "inventory":
-        if logical_item.inventory_id is None:
-            raise ValueError(f"{logical_item.key}: inventory reward has no item ID")
-        words[1] = logical_item.inventory_id
-        words[2] = generic_inventory_callback
-    elif logical_item.award_kind == "native-effect":
-        if logical_item.native_callback is None:
-            raise ValueError(f"{logical_item.key}: native effect has no callback")
-        words[1] = 0
-        words[2] = logical_item.native_callback
-    elif logical_item.award_kind == "power-upgrade":
-        words[1] = 0
-        words[2] = power_upgrade_callback
-    else:  # pragma: no cover - defensive against future bad literal expansion
-        raise ValueError(f"unsupported award kind: {logical_item.award_kind}")
-
-    return MaterializationPlan(
-        logical_item=logical_item,
-        identity=_encode(words),
-        keeps_destination_visual=True,
-        requires_foreign_resource=False,
-    )
-
-
-def build_generic_inventory_award_callback(*, inventory_add_va: int, sound_and_return_tail_va: int) -> bytes:
-    """Build the compact generic logical-inventory callback for proof use.
-
-    Pickup-manager ABI is a0=record+0x10 and a1=record+0x14. The logical
-    inventory ID is supplied through a1. The callback uses the same stack
-    layout as the existing progression callback and tail-jumps to an existing
-    sound+epilogue block after native inventory insertion.
-
-    This helper is implementation/static-only until a disposable ROM confirms
-    the callback at runtime.
-    """
-
-    return words_blob(
-        [
-            addiu("sp", "sp", -0x18),
-            sw("ra", 0x10, "sp"),
-            jal(inventory_add_va),
-            addu("a0", "a1", "zero"),
-            jump(sound_and_return_tail_va),
-            0,
-        ]
-    )
