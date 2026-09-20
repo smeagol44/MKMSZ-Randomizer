@@ -24,11 +24,13 @@ ROMs are patched locally and are never distributed by the project.
 4. ordinary-pickup persistence
 5. seeded ordinary-pickup randomization
 6. four-box inventory
-7. `BOX n OF 4`
-8. boot branding
-9. optional Sub-Zero palette patch
+7. Safe Stage Select one-shot automatic-save bypass
+8. `BOX n OF 4`
+9. boot branding
+10. post-legal company/logo bypass
+11. optional Sub-Zero palette patch
 
-The logo/save-flow bypasses have been researched and runtime-confirmed; production GitHub integration should be kept visible in the normal patch pipeline when landed.
+Both flow bypasses are now part of the default browser/CLI build. The save patch only arms the game's native one-shot bypass from Safe Stage Select; generic, manual, and later post-stage save flows remain untouched.
 
 ## Seed behavior
 
@@ -51,7 +53,7 @@ Pages stamps:
 
 `v0.<deploy-pages workflow run number>`
 
-Current build after native item randomization: **v0.18**.
+Current deployed build before the flow-bypass integration merge: **v0.19**. The next successful Pages deployment will increment this automatically.
 
 ## Current pickup mode
 
