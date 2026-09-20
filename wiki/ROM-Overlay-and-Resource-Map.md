@@ -43,3 +43,16 @@ The runtime-confirmed foreign Prison-key import establishes the required archite
 Keeping a destination pickup's old graphics while changing only its logical reward is **Rejected for 1.0**. Resource importing/remapping is core randomizer infrastructure, not optional presentation polish.
 
 Stages with no free logical selector capacity, especially Fortress and Prison, therefore remain genuine planner cases. Their materialization policy must either create selector capacity safely, prove a reusable equivalent resident resource, or use another production-safe lookup design.
+
+
+## Recyclable pickup selectors
+
+A stage catalog's "Empty logical slots" count describes the **stock file**, not the final capacity available to a shuffled layout.
+
+Selectors owned exclusively by pickup visuals can become recyclable when the finalized global assignment no longer needs that visual in the destination stage. For example, all six stock Prison Herbs share selector `8`; if no assigned Prison location needs Herbs, selector `8` can potentially be repurposed for an imported item visual after reference checks.
+
+Production resource planning should operate on distinct required visuals after assignment, not allocate one resource selector per pickup location.
+
+## External-resource import caution
+
+Task 1 Prison Proof B attempted to transplant Fire Potion's external-resource-ID descriptor/records into Prison. The pickup awarded Potion correctly, but its graphics were corrupted. This shows that the external-ID bundle is not self-contained under the attempted local-copy/rebase operation. Do not generalize embedded-data import behavior to external-resource-ID bundles without resolving their external dependency semantics.

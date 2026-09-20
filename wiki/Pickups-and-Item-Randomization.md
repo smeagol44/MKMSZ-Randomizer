@@ -166,3 +166,38 @@ The runtime-confirmed Fire foreign Prison-key proof is the architectural precede
 For 1.0, that mechanism must be generalized across the complete randomized item pool with explicit allocation, deduplication, file-table updates, bounds checks, destination selector planning, and runtime validation.
 
 A temporary experiment that keeps the destination graphics while awarding a different logical item is **Rejected for 1.0** because it violates the randomizer's visual-identity requirement. It should not be used as the production materialization path.
+
+
+## Task 1 Prison import Proof B — runtime result
+
+**Runtime-confirmed partial / visual failure.**
+
+A disposable Prison proof replaced all six ordinary Herbs records with Potion award semantics and attempted to import Fire's Potion resource bundle. Runtime result:
+
+- collecting the tested pickup awarded a real Potion;
+- the world pickup graphics were visibly corrupted/glitched;
+- no award-path failure was observed.
+
+Two important corrections follow.
+
+### Recyclable selector slots versus stock-empty slots
+
+"Prison has no empty logical slots" means only that its stock outer table contains no zero entries. It does **not** mean a global shuffle can never free a selector.
+
+Prison's six Herbs locations all share pickup resource selector `8`. If a finalized shuffled layout places no Herbs visual in Prison, selector `8` is no longer needed by those ordinary pickups and is a candidate for reassignment after appropriate reference validation.
+
+The production planner must therefore compute selector ownership **after the complete stage assignment is known**:
+
+1. reuse resident visuals still needed by the assigned items;
+2. identify pickup-owned visual selectors no longer needed by any assigned pickup;
+3. recycle those selectors for missing imported visuals;
+4. deduplicate repeated assigned visuals so multiple locations can share one selector;
+5. only invoke selector-table expansion/indirection when the number of distinct required visuals exceeds safe resident/recyclable capacity.
+
+This is different from merely counting zero entries in the clean ROM.
+
+### External-resource-ID bundles are not yet portable by local-copy alone
+
+Fire Potion uses an `external-resource-id-bundle`. Proof B copied/rebased its local descriptor/records into Prison, but the resulting visual was corrupted. Therefore copying that local bundle alone is insufficient for exact cross-stage Potion graphics.
+
+The next bounded proof should use a self-contained `embedded-data-bundle` source and a genuinely recycled pickup slot. Water's Potion resource is such a source. Replacing all Prison Herbs permits recycling Prison selector `8` without disturbing the three key selectors.
