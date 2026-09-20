@@ -929,14 +929,47 @@ Both use the proven raw/type-0 fighter conversion. The donor palette moves to `+
 
 The ROM extension target was verified to be untouched `0xFF` tail space before writing. The false cave remains stock; palette switching remains on the runtime-confirmed frame-setup boundary; no donor-rate hook is enabled.
 
+**Runtime-confirmed.**
+
+The user reported v19 as clean. Crouch Punch remains Sektor throughout, returns through imported `RBDUCK3` rather than the former stock Sub-Zero crouch frame, and transitions remain stable. Primary slot `0x08` is therefore runtime-confirmed as a direct graphical replacement.
+
+#### v20 — Crouch Low Kick
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-crouch-low-kick_destructive-swap_proof_v20.z64`
+
+Identity:
+
+- SHA-256 `a41a73cc2d37b371aeeae9bdc4c761100b94c44106697101f8689ab7ca77b687`;
+- CRC1/CRC2 `DAA30659 / FE85A85E`.
+
+v20 starts from runtime-confirmed v19 and replaces primary slot `0x0A` with the exact retail CUT_FRAME Sektor crouch-low-kick sequence:
+
+```text
+RBDUCKHIKICK1
+RBDUCKLOKICK2
+RBDUCKLOKICK3
+0
+RBDUCKLOKICK2
+RBDUCKHIKICK1
+RBDUCK3
+0
+```
+
+The final `RBDUCK3` reuses the already runtime-confirmed crouch frame from v17. Only three new physical donor frames are added:
+
+- `RBDUCKHIKICK1` at resource `+0x5C110`;
+- `RBDUCKLOKICK2` at `+0x5CE48`;
+- `RBDUCKLOKICK3` at `+0x5DF60`.
+
+All three are decoded from the supplied MKT Rev. 2 robot resource, verified against the retail descriptors, and materialized using the runtime-confirmed raw/type-0 fighter format. The donor palette moves to `+0x5F878`.
+
+File ID `0x87` becomes size `0x5F8C4`, still below the rejected v12 size `0x620E0`. The false cave remains untouched; palette switching remains on the v10 frame-setup boundary; no donor-rate hook is enabled.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary validation:
-
-1. crouch-punch shows Sektor throughout;
-2. its return to crouch now ends on Sektor `RBDUCK3`, not a stock Sub-Zero frame;
-3. repeated crouch-punch and transitions to idle/block/turn remain stable;
-4. no hang, ghosting, or palette artifact appears.
+Primary validation: confirm Crouch Low Kick is fully Sektor, returns to Sektor crouch, keeps normal stage loading, and transitions cleanly to block/turn/idle. If clean, isolate Crouch High Kick next.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
