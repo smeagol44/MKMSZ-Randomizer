@@ -448,16 +448,30 @@ v05 is byte-for-byte v04 except for removal of the proof-only diagnostic HUD hoo
 - only the first five idle-frame pointers plus the native loop command/self-offset are replaced to render the genuine Sektor stance;
 - donor palette ownership and idle rate remain as in the earlier proofs.
 
+**Rejected / failed as a hang fix; stage-start isolation succeeded.**
+
+The user confirmed that v05 enters gameplay normally, proving the v04 pre-game Mission Objective hang came from the added diagnostic HUD rather than the native-cursor experiment. Once gameplay begins, however, v05 behaves like v02/v03: Sektor idle renders, but forward movement, crouch, and airborne forward drift still hard-hang at the same points. The native-cursor-at-`+0x2EC` hypothesis is therefore **Rejected / failed** as the cause of the gameplay hang.
+
+This result leaves a smaller set of implementation pieces common to all failing Sektor builds: resource relocation/foreign shape use, temporary palette ownership/select-animation wrapper, proof state storage, and the donor-rate hook.
+
+#### v06 — remove only the donor animation-rate hook
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v06.z64`
+
+Identity:
+
+- SHA-256 `06b1eb0d3a964d2b42f4ba8006a646c700fde08ab97700a3082001c8471e06da`;
+- CRC1/CRC2 `4753AA06 / DACEC518`.
+
+v06 is byte-for-byte v05 except for restoring the clean stock bytes at ROM `0x32324..0x3232B` / VA `0x80031724..0x8003172B`, removing the proof's animation-rate interception entirely. Sektor therefore runs at MKMSZ's stock cadence rather than donor rate 8. No imported frame, resource, palette, select-animation, or state-storage bytes changed.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary test order:
+Primary test: repeat forward movement, crouch, and airborne forward drift, plus one or two previously safe actions. Any behavioral difference can be attributed to the removed rate hook.
 
-1. confirm that the stage now advances past Mission Objective into gameplay;
-2. if gameplay starts, verify genuine Sektor idle still loops;
-3. retry forward movement, crouch, and airborne forward drift;
-4. also sample previously safe block/attack/backward/jump inputs.
-
-This is the valid test of the native-cursor hypothesis that v04 failed to provide.
+A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
 ### Later proofs
 
