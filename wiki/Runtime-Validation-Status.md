@@ -13,7 +13,7 @@ This matrix states the narrowest claim supported by evidence. “Runtime-confirm
 | Flow bypasses | Logos skipped; selector entry avoids only immediate auto-save | Exact owning routine and branch guards | No known open item |
 | Palette | Multiple modes visibly recolor clothing | 64-entry source TLUT and BGR555 transform | Dynamic non-Sub-Zero palettes |
 | Enemy substitution | Fire `0x0A -> 0x09`; imported Temple monk in Fire | Stream formats, constructor/resource tables | Death presentation; arbitrary mixes; bosses |
-| XP progression | Nine-reward Temple proof; no combat XP; thresholds `85`, `258`; tier advance; no inventory; coexistence | Central award, direct stores, cap table, save field | Production storage/persistence, final art, full nine-tier run |
+| XP progression | Temple proof had three progression pickups plus one vanilla Herbs control; first two tested at `85` and `258`; no combat/kill/combo XP; tier advance; no inventory award; coexistence | Central award, direct stores, cap table, save field | Production storage/persistence, deterministic nine-reward generation, final art, full nine-tier run |
 | Reverse Elbow | v6 repeats without global hang; v7 airborne gate appears safe | Corrected velocity/scheduler/action paths | Intended v8 speed/pass-through/diagnostic behavior |
 | PS1 | No new runtime test in this consolidation | Executable/resource/save/pickup/enemy mappings | Fire type substitution, UI hook, playable Scorpion moves |
 
