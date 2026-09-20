@@ -34,4 +34,5 @@
 - Production native stage-local item randomization merged in PR #16; web build **v0.18**.
 - Seed `TEST153` runtime-confirmed: Fire's first ordinary pickup became Shield as predicted.
 - `TEST153` boot phrase `' OR 1==1 --` rendered correctly.
-- GitHub Wiki mirror introduced for easier navigation.
+- GitHub Wiki mirror introduced for easier navigation and automatic repository-to-Wiki synchronization completed successfully.
+- Runtime-confirmed logo and selector-save bypasses productionized in PR #18; first shipped in web build **v0.20**.
