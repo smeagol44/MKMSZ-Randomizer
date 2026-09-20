@@ -26,10 +26,9 @@ def _candidate_permutation(
     """Stable Fisher-Yates permutation independent of Python's random module."""
 
     values = list(range(len(stage.records)))
-    counter = 0
     seed_bytes = seed.encode("utf-8")
 
-    for index in range(len(values) - 1, 0, -1):
+    for counter, index in enumerate(range(len(values) - 1, 0, -1)):
         digest = hashlib.sha256(
             RNG_DOMAIN
             + seed_bytes
@@ -40,7 +39,6 @@ def _candidate_permutation(
         ).digest()
         swap_index = int.from_bytes(digest[:8], "big") % (index + 1)
         values[index], values[swap_index] = values[swap_index], values[index]
-        counter += 1
 
     return tuple(values)
 
