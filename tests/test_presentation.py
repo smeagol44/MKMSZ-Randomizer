@@ -30,6 +30,7 @@ from mkmszr.patches.box_indicator import (
     BoxIndicatorPatch,
 )
 from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
+from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
 from mkmszr.rom import RomImage
 
 
@@ -100,6 +101,7 @@ def test_seeded_phrase_is_written_into_fixed_slots() -> None:
 
 def test_presentation_patches_follow_four_box_inventory() -> None:
     pipeline = build_pipeline(RandomizerConfig())
-    assert isinstance(pipeline.patches[4], FourBoxInventoryPatch)
-    assert isinstance(pipeline.patches[5], BoxIndicatorPatch)
-    assert isinstance(pipeline.patches[6], BootBrandingPatch)
+    assert isinstance(pipeline.patches[4], PickupRandomizationPatch)
+    assert isinstance(pipeline.patches[5], FourBoxInventoryPatch)
+    assert isinstance(pipeline.patches[6], BoxIndicatorPatch)
+    assert isinstance(pipeline.patches[7], BootBrandingPatch)

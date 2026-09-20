@@ -15,6 +15,7 @@ from .pickup_persistence import (
     PickupPersistencePatch,
     pickup_persistence_patches,
 )
+from .pickup_randomization import PickupRandomizationPatch
 from .runtime_v1 import (
     RuntimeV1FirePersistencePatch,
     runtime_v1_fire_patches,
@@ -31,6 +32,7 @@ __all__ = [
     "NativePayloadPatch",
     "NativePayloadSpec",
     "PickupPersistencePatch",
+    "PickupRandomizationPatch",
     "RuntimeV1FirePersistencePatch",
     "SafeStageSelectorPatch",
     "SubZeroPalettePatch",

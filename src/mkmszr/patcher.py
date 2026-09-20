@@ -13,6 +13,7 @@ from .patches import (
     NativePayloadPatch,
     NativePayloadSpec,
     PickupPersistencePatch,
+    PickupRandomizationPatch,
     SafeStageSelectorPatch,
     SubZeroPalettePatch,
 )
@@ -37,6 +38,7 @@ def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
         ArenaReservationPatch(),
         NativePayloadPatch(NativePayloadSpec(payload=PICKUP_PERSISTENCE_PAYLOAD)),
         PickupPersistencePatch(),
+        PickupRandomizationPatch(),
         FourBoxInventoryPatch(),
         BoxIndicatorPatch(),
         BootBrandingPatch(),

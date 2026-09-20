@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "mkmszr"
 version = "0.1.0.dev0"
-description = "Native ROM patching core for the MKMSZ True Randomizer"
+description = "Native ROM patching core for the MKMSZ Randomizer"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "smeagol44" }]
