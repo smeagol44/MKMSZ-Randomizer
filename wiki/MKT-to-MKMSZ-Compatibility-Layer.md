@@ -863,15 +863,42 @@ The three raw/type-0 frames are compactly relocated immediately after the v11 do
 
 File ID `0x87` becomes ROM `0xF40000..0xF91DA3`, size `0x51DA4`, keeping this proof far below the rejected v12 size while preserving the already-proven raw fighter format and frame-setup-time palette switching.
 
+**Runtime-confirmed.**
+
+The user reported v17 as perfect. The stage loads normally; the genuine three-frame Sektor crouch renders cleanly with the donor palette; crouch transitions are stable; and no ghosting, palette artifact, or hang was observed in the tested route. Primary slot `0x04` Crouch is therefore a runtime-confirmed direct graphical replacement.
+
+#### v18 — crouch-family direct-core batch
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-crouch-family_destructive-swap_proof_v18.z64`
+
+Identity:
+
+- SHA-256 `aec6c96c315496b3665f433243e03b6fd305f61b8774bde337978a168b060f82`;
+- CRC1/CRC2 `DAA301D9 / 97D70477`.
+
+v18 starts from runtime-confirmed v17 and expands the crouching family through primary slots `0x05..0x07`:
+
+- `0x05` Crouch Turn: `RBDUCKTURN1, RBDUCKTURN2, ANI_FLIP, RBDUCKTURN1, RBDUCK3, 0`;
+- `0x06` Crouch Block: `RBDUCKBLOCK1, RBDUCKBLOCK2, RBDUCKBLOCK3, 0`;
+- `0x07` Crouch Hit: retail CUT_FRAME sequence `RBDUCKBLOCK1, RBDUCKHIT2, RBDUCKHIT3, 0`.
+
+The batch reuses v17's already-confirmed `RBDUCK3` frame and shares `RBDUCKBLOCK1` between block and hit, so only seven new physical donor frames are required. All seven use the proven raw/type-0 fighter conversion and exact supplied MKT Rev. 2 robot streams.
+
+New donor shapes begin at resource `+0x51D58`; the donor palette moves to `+0x59854`. File ID `0x87` is now size `0x598A0`, still below the already runtime-confirmed v15/v16 resource sizes.
+
+The false cave remains stock; palette switching remains on the runtime-confirmed native frame-setup boundary; no donor-rate hook is enabled.
+
 **Implementation/static-confirmed; runtime pending.**
 
 Primary validation:
 
-1. stage reaches gameplay normally;
-2. idle remains perfect;
-3. crouching shows the genuine three-frame Sektor duck;
-4. crouch -> idle / attack / jump transitions remain stable;
-5. no ghosting, palette artifact, or hang occurs.
+1. Crouch remains clean;
+2. crouch-turn left/right shows Sektor cleanly;
+3. crouch-block shows the genuine three-frame robot block;
+4. if practical, receive a hit while crouching to exercise the mapped crouch-hit reaction;
+5. transitions back to idle/standing actions remain clean and stable.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
