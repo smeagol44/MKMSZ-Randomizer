@@ -61,7 +61,7 @@ Do **not** infer the same for secondary tables. MKMSZ's 43-entry table 1 is Myth
 | `0x24` | zap/projectile_generic | `+0x00DA0` | `+0x001D4` | **DIRECT candidate** |
 | `0x25` | dizzy | `+0x0084C` | `+0x00778` | **DIRECT candidate** |
 
-The first proven member of this set is slot `0x00` stance/idle: Sektor proof v10 is **Runtime-confirmed** with correct donor colors, stable normal actions/movement, and clean transitions.
+The first proven member is slot `0x00` stance/idle: Sektor v10 is **Runtime-confirmed** with correct donor colors, stable normal actions/movement, and clean transitions. Destructive v11 is also **Runtime-confirmed**. Proof v12 now implements slots `0x01..0x04` (walk forward/backward, turn, duck) as the first multi-animation direct-core batch; runtime validation is pending.
 
 ## MKMSZ Sub-Zero primary table — all 65 slots
 
