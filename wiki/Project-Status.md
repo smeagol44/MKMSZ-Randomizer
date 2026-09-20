@@ -31,7 +31,7 @@ Last consolidated: 2026-09-20.
 | Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
 | Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
 | Temple XP progression proof | Three proof pickups plus one vanilla Herbs control established no-combat-XP and pickup-driven tiers | Generalized into the production Diagnostic B architecture; full nine-tier coverage and final art remain |
-| Reverse Elbow host/action proof + genuine MKT import branch | v6 established repeatable scheduler/action stability; v08/A1.7 runtime-confirmed genuine SCCOMBO10; Sektor v10/v11 idle are clean; v12 raw locomotion batch is too large to load; v13 loads but type-4 fighter frames visibly ghost/smear | Runtime-test v14: proven raw/type-0 plus only Sektor Turn. Use it to bracket safe raw growth while native fighter compression is investigated for larger animation batches |
+| Reverse Elbow host/action proof + genuine MKT import branch | v6 established repeatable scheduler/action stability; v08/A1.7 runtime-confirmed genuine SCCOMBO10; Sektor v10/v11 idle and v14 Turn are clean; v12 raw four-animation batch is too large; v13 type-4 fighter storage is visually invalid | Runtime-test v15 with only the shared seven-frame Sektor walk set added to the confirmed idle base; then compose idle+walk+turn and continue to crouch if stable |
 
 ## Latest runtime findings
 
