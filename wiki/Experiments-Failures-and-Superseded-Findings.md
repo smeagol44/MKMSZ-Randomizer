@@ -92,3 +92,14 @@ Current investigation order: first test the V2 allocation/reward callback **with
 | Native tier evaluator `0x80074FBC` called from progression stage-init restore | Earlier production build hung before gameplay display | **Rejected at this timing**. Call the evaluator only from the runtime-confirmed progression-pickup acquisition path |
 
 Diagnostic B supersedes the failed restore-helper design and is the accepted production behavior.
+
+
+## Global item materialization correction
+
+| Attempt / interpretation | Result | Durable lesson |
+|---|---|---|
+| Use destination pickup graphics and change only the logical award callback | Rejected before runtime promotion | Violates the 1.0 requirement that a randomized pickup visually match the item it contains |
+| Treat foreign-resource importing as optional polish | Superseded | Exact cross-stage model/resource materialization is core 1.0 infrastructure |
+| Keep the logical-item catalog separate from physical materialization | Retained | Useful for shuffle/solver semantics, but every accepted placement must still materialize the randomized item's real visual/resource identity |
+
+The disposable destination-shell diagnostic should not be treated as a required test or production direction.

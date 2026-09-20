@@ -1,20 +1,7 @@
 from collections import Counter
 
-from mkmszr.data.pickups import FIRE, FORTRESS, STAGE_PICKUPS
-from mkmszr.global_items import (
-    POWER_UPGRADE,
-    TOKEN_ITEMS,
-    build_generic_inventory_award_callback,
-    build_stock_logical_pool,
-    materialize_destination_shell,
-)
-
-GENERIC_CALLBACK = 0xA01AF6FC
-POWER_CALLBACK = 0xA01AF620
-
-
-def _words(identity: bytes) -> tuple[int, ...]:
-    return tuple(int.from_bytes(identity[i : i + 4], "big") for i in range(0, 0x1C, 4))
+from mkmszr.data.pickups import STAGE_PICKUPS
+from mkmszr.global_items import TOKEN_ITEMS, build_stock_logical_pool
 
 
 def test_stock_logical_pool_matches_all_84_ordinary_records() -> None:
@@ -42,74 +29,11 @@ def test_every_progression_token_has_a_unique_native_inventory_id() -> None:
     assert set(ids) == set(range(0x0E, 0x23))
 
 
-def test_cross_stage_inventory_reward_keeps_fire_potion_shell() -> None:
+def test_logical_items_retain_source_location_for_exact_visual_materialization() -> None:
     pool = build_stock_logical_pool()
+    assert all(item.source_stage_id >= 0 for item in pool)
+    assert all(item.source_record_index >= 0 for item in pool)
+
     prison_key = next(item for item in pool if item.key == "prison-l1")
-
-    plan = materialize_destination_shell(
-        FIRE.records[0].identity,
-        prison_key,
-        generic_inventory_callback=GENERIC_CALLBACK,
-        power_upgrade_callback=POWER_CALLBACK,
-    )
-
-    before = _words(FIRE.records[0].identity)
-    after = _words(plan.identity)
-
-    assert after[0] == before[0]
-    assert after[1] == 0x1A
-    assert after[2] == GENERIC_CALLBACK
-    assert after[3:] == before[3:]
-    assert plan.keeps_destination_visual
-    assert not plan.requires_foreign_resource
-
-
-def test_power_upgrade_can_use_any_destination_shell() -> None:
-    before = _words(FORTRESS.records[0].identity)
-    plan = materialize_destination_shell(
-        FORTRESS.records[0].identity,
-        POWER_UPGRADE,
-        generic_inventory_callback=GENERIC_CALLBACK,
-        power_upgrade_callback=POWER_CALLBACK,
-    )
-    after = _words(plan.identity)
-
-    assert after[0] == before[0]
-    assert after[1] == 0
-    assert after[2] == POWER_CALLBACK
-    assert after[3:] == before[3:]
-
-
-def test_native_effect_keeps_global_native_callback() -> None:
-    pool = build_stock_logical_pool()
-    extra_life = next(item for item in pool if item.key == "extra-life")
-    before = _words(FIRE.records[0].identity)
-
-    plan = materialize_destination_shell(
-        FIRE.records[0].identity,
-        extra_life,
-        generic_inventory_callback=GENERIC_CALLBACK,
-        power_upgrade_callback=POWER_CALLBACK,
-    )
-    after = _words(plan.identity)
-
-    assert after[0] == before[0]
-    assert after[1] == 0
-    assert after[2] == 0x80038A1C
-    assert after[3:] == before[3:]
-
-
-def test_generic_inventory_callback_is_compact_and_uses_a1_item_id() -> None:
-    callback = build_generic_inventory_award_callback(
-        inventory_add_va=0x80075448,
-        sound_and_return_tail_va=0xA01AF680,
-    )
-    assert len(callback) == 0x18
-    assert callback == bytes.fromhex(
-        "27BDFFE8 "
-        "AFBF0010 "
-        "0C01D512 "
-        "00A02021 "
-        "0806BDA0 "
-        "00000000"
-    )
+    assert prison_key.source_stage_id == 4
+    assert prison_key.inventory_id == 0x1A
