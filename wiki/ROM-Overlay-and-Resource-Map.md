@@ -99,3 +99,12 @@ The raw image payloads behind `0x28F..0x292` were statically extracted from Wate
 The native embedded-image path calls `0x8000322C`. Compression type 4 dispatches to `0x80003428`, which uses a 1024-byte ring buffer and separate MSB-first control/token streams. Correcting the back-reference loop to the native inclusive count `(low6 + 2)` reproduces every Water embedded Potion frame byte-for-byte against the corresponding Fire external Potion payload IDs `0x27F..0x286`.
 
 This establishes a conversion path: an external raw image payload can be encoded as a self-contained type-4 block and referenced through the normal embedded record form. A deterministic literal-only type-4 encoder was round-trip checked against all four Health-urn payloads. Disposable Proof H then applied exactly that conversion to one Health urn imported into Prison through extension selector `0x123C`. Runtime testing showed a clean Urn of Vitality that awarded correctly, while an untouched vanilla Herbs pickup in the same stage also remained correct. Therefore the external-to-embedded conversion is **Runtime-confirmed** for this ordinary-item family.
+
+
+## Composed extension-selector stress validation
+
+The pipeline-disconnected cross-stage planner now supports deterministic deduplicated extension-selector tables and self-contained imported visual bundles. A disposable stress ROM applied five distinct imported visuals simultaneously to each of Prison and Fortress: Potion, Urn of Vitality, Formula, Eye, and Shield, while leaving a sixth Herbs pickup on its original stock selector.
+
+For Prison, the stock resource file expanded from `0x48F0` to `0x7CB4`; five extension selectors occupied file-relative words beginning at `0x48F0`, yielding selectors `0x123C..0x1240`. Manual runtime testing confirmed all five imported models and awards, plus the untouched Herbs control. This is **Runtime-confirmed** composed multi-bundle coexistence in Prison.
+
+The Fortress half of the same proof is still **Pending** runtime validation. Its presence in the ROM and static construction must not be described as runtime-confirmed until manually tested.
