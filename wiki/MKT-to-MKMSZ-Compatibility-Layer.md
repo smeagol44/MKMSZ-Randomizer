@@ -572,9 +572,45 @@ v09 is built from the runtime-confirmed v08 behavior and reintroduces only the c
 
 The helper retains the corrected v02 palette bookkeeping: save stock selector and active palette handle, allocate/bind the genuine Sektor palette for exact idle selection, restore both stock fields before release on exit.
 
+**Runtime-confirmed except for one transition-frame artifact.**
+
+The user confirmed that v09 restores Sektor's correct donor colors while preserving the v08 hang fix: forward movement, crouch, airborne forward drift, attacks, blocking, turning, and jumping all work. The falsely claimed global cave remains stock and the re-homed helper in the reserved runtime block is therefore **Runtime-confirmed** as a safe proof architecture.
+
+One defect remains: a single visibly corrupted frame still appears at animation transitions. Static trace of target `select_animation` explains the timing: `0x8002FE54` only changes controller animation cursor `+0x6E4`; it does not install the first new shape immediately. v09 changes palette ownership during `select_animation`, so one render interval can briefly combine the previous shape with the new palette (and vice versa on exit).
+
+#### v10 — bind palette atomically inside native frame setup
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v10.z64`
+
+Identity:
+
+- SHA-256 `a4890654d3266346ea5d44775f44c3f2be515e5928adbd141e949ebf0e3d87fa`;
+- CRC1/CRC2 `DAAD01D9 / BED5AF87`.
+
+v10 preserves the runtime-confirmed v09 resource relocation, genuine five-frame Sektor idle, owned 1 KiB runtime allocation, and stock locomotion behavior, but restores target `select_animation` completely to stock.
+
+Instead, v10 hooks native frame setup `0x8001BDA0` through the owned helper at `0x801AF440`. The helper identifies a Sektor frame only when the incoming shape pointer lies inside the appended Sektor-shape/resource range of relocated file ID `0x87`.
+
+On Sektor frame installation:
+
+1. allocate/reuse the genuine donor palette;
+2. set actor `+0x9E` to the donor selector;
+3. call the original frame-setup body;
+4. native frame setup resolves that selector and writes the matching active handle to actor `+0x80` in the same synchronous call.
+
+On the first stock frame after Sektor:
+
+1. restore the saved stock selector;
+2. call the original frame-setup body so native code installs the stock shape and active palette together;
+3. release the donor palette only after stock frame setup has completed.
+
+This removes the v09 interval in which palette ownership changed before the new shape was installed. The false cave remains exact stock data; the donor-rate hook remains disabled so cadence is still the MKMSZ stock rate for this proof.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary success criterion: Sektor regains correct red/black donor colors while forward movement, crouch, airborne forward drift, attacks, blocking, turning, and jumping remain stable. The previously observed single-frame transition artifact may still remain; v09 intentionally does not change its ordering so palette re-homing is tested independently.
+Primary success criterion: all v09 movement/action stability and correct Sektor colors remain, while the one-frame transition corruption disappears.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
