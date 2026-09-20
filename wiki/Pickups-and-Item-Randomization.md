@@ -85,6 +85,23 @@ This is the first runtime confirmation that the production seeded pickup generat
 
 The old Lua randomizer substituted Herbs for some native mana pickups. The native ROM randomizer preserves real native mana tuples.
 
+## Planned XP progression pickups
+
+The legacy Lua replaces nine Herbs with virtual `Power Upgrade` items and continuously rewrites XP from the number collected.
+
+The native design will keep the useful randomizer concept but remove the per-frame override:
+
+- exactly nine ordinary Herbs identities will be deterministically replaced after the normal pickup layout is generated;
+- the synthetic pickup will reuse the destination stage's own Herbs behavior/resource/presentation tuple, changing only the award callback to a native MKMSZR progression callback;
+- the callback will not consume an inventory slot;
+- each collection advances XP to the next native threshold: `85, 258, 834, 1410, 2323, 3315, 4503, 5911, 7354`;
+- normal combat XP will be disabled, so XP remains at the acquired progression tier between pickups;
+- selection should use a separate deterministic RNG namespace so it does not perturb the base 84-location shuffle.
+
+Because every main stage already has native Herbs resources, this first progression-item design does not require cross-stage presentation-resource imports.
+
+This architecture is **static design / pending implementation** until a generated ROM is manually tested.
+
 ## Next frontier
 
 Global cross-stage placement needs a production resource planner that can load/reuse foreign presentation resources safely and deterministically.
