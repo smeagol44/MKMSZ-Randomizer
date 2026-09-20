@@ -32,6 +32,10 @@ The first generated layout is now runtime-confirmed at one Fire location; a full
 
 ## Functionally viable / beta
 
+### XP progression items
+
+The native XP architecture is now static-mapped. The planned production design disables gameplay XP awards and replaces nine Herbs pickups with progression pickups that advance to the next stock move tier. Stage-cap and combo EXPERIENCE-render paths are also mapped. Implementation and runtime validation are pending.
+
 ### Enemy randomization
 
 Cross-stage ordinary-enemy resource import works in the bounded Fire proof. Imported Temple monks render, move, fight and are killable, but normal death/despawn presentation is missing. Mixed rosters, broad compatibility and bosses/minibosses remain unresolved.
@@ -44,9 +48,10 @@ MKT Reptile's Reverse Elbow has an implementation-ready MKMSZ-side static design
 
 1. Broaden runtime validation of generated item layouts toward a complete seeded run.
 2. Design production **global cross-stage** item placement/resource import.
-3. Add full Game Over run-state reset.
-4. Define/preserve HP, EXP, lives and continues across intended lifecycle routes.
-5. Add richer randomizer HUD/status text.
-6. Build a production enemy randomization planner.
-7. Resolve imported-enemy death/despawn presentation and compatibility.
-8. Expand optional move/character replacement if Reverse Elbow succeeds.
+3. Implement pickup-driven XP/move progression: no combat XP, nine next-tier pickups, static stage caps, and no combo EXPERIENCE line.
+4. Add full Game Over run-state reset.
+5. Define/preserve HP, lives and continues across intended lifecycle routes.
+6. Add richer randomizer HUD/status text.
+7. Build a production enemy randomization planner.
+8. Resolve imported-enemy death/despawn presentation and compatibility.
+9. Expand optional move/character replacement if Reverse Elbow succeeds.

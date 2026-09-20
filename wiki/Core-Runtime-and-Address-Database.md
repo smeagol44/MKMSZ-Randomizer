@@ -52,6 +52,26 @@ Runtime Layout V1:
 | string width | `0x80074084` | matching measurement |
 | one-shot stage-entry save bypass | `0x80291C0C` | consumed by entry callbacks |
 | automatic stage-entry save | `FUN_800798A8` | generic save UI entry |
+| current XP | `0x8011200C` | native 32-bit player EXP total |
+| central XP award helper | `0x8002E104` / ROM `0x0002ED04` | ordinary scaled XP award/tier-update path |
+| XP tier evaluator / stage clamp | `0x80074FBC` / ROM `0x00075BBC` | clamps to stage cap and returns power tier 0..9 |
+| per-stage XP-cap table | `0x800A63FC` / ROM `0x000A6FFC` | signed-halfword cap indexed by native stage ID |
+
+## XP tier thresholds
+
+Static evaluation of the native tier helper gives the exact first XP value for each nonzero tier:
+
+`85, 258, 834, 1410, 2323, 3315, 4503, 5911, 7354`
+
+The final value corresponds to hexadecimal `0x1CBA`.
+
+Three additional direct XP-add/store paths outside the central helper are at:
+
+- `0x800540E8` / ROM `0x00054CE8`
+- `0x80057160` / ROM `0x00057D60`
+- `0x8005722C` / ROM `0x00057E2C`
+
+These are relevant to the planned no-combat-XP progression-item patch.
 
 ## Player special-move seam
 

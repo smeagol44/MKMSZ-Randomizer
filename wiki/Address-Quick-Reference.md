@@ -39,6 +39,20 @@ Convenience index only. Current shared ownership is [[Core Runtime and Address D
 | automatic stage-entry save | `0x800798A8` |
 | post-legal logo bypass | ROM `0x0007A3F4` |
 
+## XP / progression
+
+| Item | Address |
+|---|---:|
+| current XP | `0x8011200C` |
+| central XP award helper | `0x8002E104` / ROM `0x0002ED04` |
+| XP tier evaluator / clamp | `0x80074FBC` / ROM `0x00075BBC` |
+| stage XP-cap table | `0x800A63FC` / ROM `0x000A6FFC` |
+| direct XP award store 1 | `0x800540E8` / ROM `0x00054CE8` |
+| direct XP award store 2 | `0x80057160` / ROM `0x00057D60` |
+| direct XP award store 3 | `0x8005722C` / ROM `0x00057E2C` |
+| combo EXPERIENCE label render call | ROM `0x00063704` |
+| combo EXPERIENCE value render call | ROM `0x00063724` |
+
 ## Special moves
 
 | Item | Address |
