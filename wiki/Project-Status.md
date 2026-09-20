@@ -34,7 +34,7 @@ The first generated layout is now runtime-confirmed at one Fire location; a full
 
 ### XP progression items
 
-The native XP architecture is now static-mapped. The planned production design disables gameplay XP awards and replaces nine Herbs pickups with progression pickups that advance to the next stock move tier. Stage-cap and combo EXPERIENCE-render paths are also mapped. Implementation and runtime validation are pending.
+The Temple proof is runtime-confirmed: mapped combat/kill XP awards are suppressed, combo HITS remains while the EXPERIENCE line is removed, progression pickups advance to the next stock XP tier without entering inventory, the second pickup reached the second special-move tier, and Temple's max XP displayed as 20000. A normal brown Herbs pickup and progression pickups coexisted and were distinguishable. The current experimental progression-item recolor works but is paler/greyer than the desired bright-blue-with-bronze-handle presentation. Production integration and visual refinement remain pending.
 
 ### Enemy randomization
 
@@ -48,7 +48,7 @@ MKT Reptile's Reverse Elbow has an implementation-ready MKMSZ-side static design
 
 1. Broaden runtime validation of generated item layouts toward a complete seeded run.
 2. Design production **global cross-stage** item placement/resource import.
-3. Implement pickup-driven XP/move progression: no combat XP, nine next-tier pickups, static stage caps, and no combo EXPERIENCE line.
+3. Productionize the runtime-confirmed pickup-driven XP/move progression architecture and refine its visual presentation.
 4. Add full Game Over run-state reset.
 5. Define/preserve HP, lives and continues across intended lifecycle routes.
 6. Add richer randomizer HUD/status text.
