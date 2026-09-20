@@ -1,3 +1,4 @@
+from mkmszr.errors import PatchError
 from mkmszr.global_items import build_stock_logical_pool
 from mkmszr.resource_materialization import (
     CANONICAL_VISUAL_DONORS,
@@ -111,7 +112,7 @@ def test_portable_identity_uses_canonical_fixed_callback_and_new_selector() -> N
 def test_stage_bound_token_identity_fails_closed() -> None:
     try:
         portable_fixed_callback_identity("prison-l1", 0x123C)
-    except Exception as exc:
+    except PatchError as exc:
         assert "destination-safe token wrapper required" in str(exc)
     else:
         raise AssertionError("stage-bound token callback should not be emitted")
