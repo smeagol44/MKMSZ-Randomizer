@@ -1,65 +1,68 @@
-# Research workflow
+# Research methodology and evidence
 
-## Source-of-truth order
+This page describes MKMSZR's research methods, evidence records, and technical validation limits. Its existing URL is retained for links. Assistant operating rules are maintained separately in Project Instructions.
 
-1. Current repository implementation and tests.
-2. Versioned `wiki/` owning page, registries, and stage catalogs.
-3. Historical research reports and exact artifacts for provenance or unresolved detail.
-4. New bounded static or runtime investigation.
+## Sources and provenance
 
-The research archive is not a second current manual. When archive evidence changes a conclusion, update the owning Wiki page and preserve the superseded statement where it explains a failure or safety rule.
+| Source | Role |
+|---|---|
+| Repository implementation and tests | What the product currently implements and checks |
+| Versioned `wiki/` and published Wiki | Current technical knowledge, requirements, status, registries, and decoded catalogs |
+| `MKMSZR Research` archive | Original evidence, preserved Ghidra work, captures, experiments, and historical interpretations |
+| Bounded static or runtime investigation | Evidence for an unresolved question |
 
-## Alignment and decision discipline
+The archive is a provenance trail rather than a second current manual. An older report can contain a superseded interpretation; the owning Wiki topic records the current conclusion and the history needed to explain it.
 
-Before changing code or choosing the next task, preserve the product intent already documented in [Project status](Project-Status) and the owning subsystem page.
+## Types of investigation
 
-- Treat explicit user requirements, 1.0 requirements, and anything marked rejected/failed as hard constraints unless the user changes them.
-- Do not replace a requested behavior with an easier approximation just because it is simpler to implement. If a shortcut changes visible behavior, semantics, progression, determinism, or randomizer goals, present it as an alternative and get approval before implementing it.
-- When the user says "continue", continue the last agreed task rather than selecting a nearby task yourself.
-- When asked "what next?", follow the current documented priority order plus the user's latest explicit direction.
-- Separate diagnostic/proof shortcuts from production direction. A proof may intentionally simplify behavior, but that simplification does not become the product design automatically.
-- New native runtime hooks or lifecycle changes must be validated in a disposable proof ROM by the user before they are enabled in the normal production pipeline, unless the exact runtime behavior is already covered by prior confirmation.
+- **Static analysis** establishes code, data, address, and control-flow relationships without executing the game.
+- **Implementation checks** establish guarded output, allocation bounds, deterministic generation, and patch composition represented in code/tests.
+- **Runtime validation** observes behavior on a defined ROM, configuration, route, and game state.
 
-## Before an experiment
+These answer different questions. A diagnostic shortcut can isolate one mechanism without satisfying the product requirements in [Project status](Project-Status). An implementation stepping stone and the requested final behavior can therefore have different scopes.
 
-- Name the clean ROM/revision and verify its hash.
-- State whether the task is static analysis, implementation, or runtime validation.
-- Define one hypothesis and the smallest guarded change that can distinguish it.
-- Resolve ROM versus VA/RDRAM addressing, overlay scope, endianness, signed-immediate effects, and cave ownership.
-- Check [Address and patch-site registry](Address-and-Patch-Site-Registry) for production conflicts.
-- Keep the clean ROM immutable and write a disposable output.
+## Bounded experiment model
 
-## Evidence recording
+A bounded experiment connects one hypothesis to a small guarded change and an observable outcome. Changing one runtime-critical variable at a time helps distinguish competing explanations; combining allocation and lifecycle changes made the first XP production failure harder to isolate.
 
-Use the narrow evidence labels defined on [Home](Home). Record expected bytes, replacements, addresses, relevant structure offsets, configuration/seed, exact route/state, positive observations, negative controls, and remaining ambiguity. If a result contradicts a prior interpretation, explain the mechanism of correction.
+| Experiment information | Technical purpose |
+|---|---|
+| Clean ROM/revision and verified hash | Identifies the binary to which offsets and guards apply |
+| Static, implementation, or runtime scope | Identifies what kind of conclusion the experiment can support |
+| Hypothesis, expected behavior, and negative controls | Distinguishes the proposed mechanism from alternatives |
+| Expected bytes, replacements, and structure offsets | Makes the patch and interpretation reproducible |
+| ROM offset versus VA/RDRAM, overlay/stage, endianness, signed immediates | Prevents address and encoding ambiguity |
+| Cave ownership, bounds, and pipeline interactions | Identifies conflicts with the [patch-site registry](Address-and-Patch-Site-Registry) |
+| Disposable output identity, configuration/seed, route/state, and lifecycle boundary | Binds observations to the actual test |
+| Positive and negative observations, remaining ambiguity | Defines the supported result and its limits |
 
-Examples of good corrections:
+## Evidence and corrections
+
+[Home](Home#evidence-labels) defines the evidence vocabulary. Confirmation is scoped to the evidence available; one seed, stage, or pickup is not exhaustive coverage.
+
+Examples of established corrections:
 
 - `lui 0x802F` plus signed low `0xCE20` resolves to `0x802ECE20`.
-- Projectile callbacks at `0x8004B82C/0x8004CC14` cannot be used as player movement evidence; player velocity is `0x8002B1EC`.
+- Projectile callbacks at `0x8004B82C/0x8004CC14` are not player movement evidence; player velocity is `0x8002B1EC`.
 - A top-level special callback returning through its entry `$ra` self-reenters.
 
-## Promotion to production
+The earlier interpretation, evidence that changed it, and corrected mechanism remain useful historical knowledge. Material examples are collected in [Experiments, failures, and superseded findings](Experiments-Failures-and-Superseded-Findings).
 
-Promotion requires guarded stock bytes, explicit allocation/bounds, interaction with existing pipeline order, deterministic behavior where seeded, unit tests, clean-output checksum handling, documentation updates, and runtime coverage proportional to gameplay risk. Temporary proof caves must be reallocated; runtime success does not waive ownership conflicts.
+## Proof and production compatibility
 
-## Documentation update checklist
+A working disposable ROM demonstrates a bounded behavior. It does not establish that its temporary caves are compatible with the production layout. Production compatibility includes guarded stock bytes, explicit allocation/bounds, pipeline order, deterministic seeded behavior, tests, checksum handling, and relevant runtime coverage.
 
-- Owning domain page.
-- Function/address/data registry if an exact fact changed.
-- Project and runtime status if maturity changed.
-- Relevant stage catalog if a record/resource changed.
-- Failures/superseded page for a material rejected path.
-- Sidebar only when a new durable domain page is added.
+New native paths, allocation changes, lifecycle hooks, and callback compositions can have failures visible only in the relevant game state. The XP stage-init hang demonstrated that successful static/CI composition alone cannot establish that safety. Runtime results from an old proof layout do not establish the behavior of a changed production composition.
 
+## Knowledge organization
 
-## Runtime-sensitive implementation gate
+| Information | Wiki location |
+|---|---|
+| Subsystem mechanism, findings, and constraints | Owning domain page |
+| Exact function/address/structure facts | Shared registries |
+| Product maturity and bounded runtime coverage | Project and runtime status pages |
+| Stage records/resources | Stage catalogs |
+| Material failed or superseded approaches | Failure history and relevant owning topic |
+| Durable topic navigation | Home and sidebar |
 
-For a new native code path, allocation change, lifecycle hook, or callback composition that has not already been runtime-confirmed in its production layout:
-
-1. build a disposable ROM directly from the clean supported ROM;
-2. give the user the smallest bounded manual test;
-3. record the observed result;
-4. only after successful runtime validation, integrate that behavior into the normal browser/CLI pipeline.
-
-Implementation/CI confirmation alone is not sufficient to promote a new runtime-sensitive path to the web patcher.
+This structure keeps current explanations and decoded facts available together while retaining links to exact historical evidence when needed.

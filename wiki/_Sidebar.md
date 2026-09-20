@@ -24,12 +24,12 @@
 - [Persistence/inventory](Persistence-Inventory-and-Lifecycle)
 - [Native UI](Native-UI-and-Presentation)
 - [Palette/recoloring](Palette-and-Recoloring)
+- [XP/progression](XP-and-Progression)
 - [Web patcher/product](Web-Patcher-and-Product)
 - [Testing/CI](Testing-and-CI)
 
 **Research systems**
 
-- [XP/progression](XP-and-Progression)
 - [Enemy randomization](Enemy-Randomization)
 - [Player actions/moves](Player-Actions-and-Special-Moves)
 - [Reptile/foreign moves](Foreign-Moves-and-Reptile)
@@ -49,8 +49,8 @@
 - [Bridge](Stage-Catalog-Bridge)
 - [Fortress](Stage-Catalog-Fortress)
 
-**History and workflow**
+**History and methodology**
 
-- [Research workflow](Research-Workflow)
+- [Research methodology](Research-Workflow)
 - [Artifact index](Library-Artifact-Index)
 - [Milestone timeline](Milestone-Timeline)

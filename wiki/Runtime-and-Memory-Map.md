@@ -22,11 +22,13 @@ The game originally begins its main arena at `0x801AF420`. Production changes bo
 
 | Offset | Address | Size | Meaning |
 |---:|---:|---:|---|
-| `+0x000` | `0x801AF420` | `0x200` | Native code payload |
-| `+0x200` | `0x801AF620` | `0x200` | `MKSV` state block |
+| `+0x000` | `0x801AF420` | `0x300` | Native runtime V2 code payload |
+| `+0x300` | `0x801AF720` | `0x100` | `MKSV` V2 state block |
 | end | `0x801AF820` | — | New arena start |
 
-Cached code addresses use `0x801A...`; the loader/bootstrap uses the uncached alias `0xA01AF420` where required. Do not allocate a proof cave inside this block without updating the production layout and all tests.
+The superseded V1 split was `0x200` bytes of code at `0x801AF420..0x801AF61F` plus `0x200` bytes of state at `0x801AF620..0x801AF81F`. V2 retains the same total reservation; its code/state split is documented in [Core runtime](Core-Runtime-and-Address-Database).
+
+Cached code addresses use `0x801A...`; the loader/bootstrap uses the uncached alias `0xA01AF420` where required. This entire interval belongs to the versioned production layout. A proof cave placed inside it would conflict with existing code or state unless those owners were explicitly relocated.
 
 ## Overlay and process context
 

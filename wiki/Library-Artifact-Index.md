@@ -15,4 +15,4 @@ Current technical facts are reproduced in this Wiki. The external `MKMSZR Resear
 | Specialist handoffs | Narrow chronological experiment detail | Owning domain plus [failures](Experiments-Failures-and-Superseded-Findings) |
 | Ghidra N64 archive | Reconstructed clean-ROM analysis project | Address/function provenance |
 
-The archive may contain older claims that are deliberately superseded here. In particular, prefer the corrected `0x802ECE20` context pointer and `0x8002B1EC` player velocity helper over older handoffs.
+The archive may contain older claims that are deliberately superseded here. The corrected context pointer is `0x802ECE20` and the player velocity helper is `0x8002B1EC`; older conflicting handoffs preserve the superseded interpretations.

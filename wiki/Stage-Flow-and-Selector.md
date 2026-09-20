@@ -27,7 +27,7 @@ The initial mapper occupied ROM `0x9A700` / VA `0x80099B00`. Four-box integratio
 
 ## Runtime evidence
 
-The A-button route is runtime-confirmed for all eight safe stages. An attempted Start-button shortcut behaved intermittently and is rejected from production; no documentation should imply that Start is an alternate supported selector entry.
+The A-button route is runtime-confirmed for all eight safe stages. An attempted Start-button shortcut behaved intermittently and is rejected from production. Start is not an alternate supported selector entry.
 
 ## Selector-specific save bypass
 

@@ -1,6 +1,6 @@
 # Contributor start here
 
-## Repository and safety contract
+## Supported target and patcher safety
 
 The supported target is the USA Rev. 0 big-endian `.z64` ROM:
 
@@ -9,29 +9,30 @@ The supported target is the USA Rev. 0 big-endian `.z64` ROM:
 | SHA-256 | `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6` |
 | MD5 | `deec4faec416f4e02d934c2e42c0caad` |
 
-ROM bytes are never committed. The patcher rejects an unsupported input, refuses an in-place output, refuses to overwrite an existing output, guards every stock patch site, updates N64 header CRC1/CRC2, writes the new file, and re-reads it for verification.
+The repository distributes patch code without ROM bytes. The patcher rejects an unsupported input, refuses an in-place output, refuses to overwrite an existing output, guards every stock patch site, updates N64 header CRC1/CRC2, writes the new file, and re-reads it for verification.
 
-## Read order
+## Documentation map
 
-1. Read [Project status](Project-Status) and [Architecture overview](Architecture-Overview).
-2. Read the owning domain page for the change.
-3. Use [Function registry](Function-Registry), [patch-site registry](Address-and-Patch-Site-Registry), and [data structures](Data-Structures-and-Encodings) for exact facts.
-4. For stage data, use the relevant page under [Stage catalogs](Stage-Catalogs).
-5. Consult historical artifacts only when a provenance trail or unresolved detail is needed; follow [Research workflow](Research-Workflow).
+| Information | Location |
+|---|---|
+| Current features, requirements, and priorities | [Project status](Project-Status) |
+| Product layers and composition | [Architecture overview](Architecture-Overview) |
+| Subsystem mechanisms and findings | Owning domain pages linked from [Home](Home) |
+| Exact functions, patch sites, and structures | [Function registry](Function-Registry), [patch-site registry](Address-and-Patch-Site-Registry), [data structures](Data-Structures-and-Encodings) |
+| Decoded stage data | [Stage catalogs](Stage-Catalogs) |
+| Research methods and evidence provenance | [Research methodology](Research-Workflow), [artifact index](Library-Artifact-Index) |
 
-## Product-intent guardrail
+## Requirements, proofs, and implementation scope
 
-The Wiki is not only a technical reference; [Project status](Project-Status) also records current product requirements and priority order. Do not optimize away those requirements.
+The Wiki includes current product requirements and priority order in [Project status](Project-Status). These describe the intended product; assistant behavior and task-selection rules live in Project Instructions.
 
-In particular, distinguish:
+Three distinct scopes appear throughout the documentation:
 
 - a diagnostic shortcut used to isolate one mechanism;
 - an implementation stepping stone;
 - the actual requested 1.0 behavior.
 
-If a proposed implementation would change the requested visible/semantic result, stop and confirm the design rather than silently redefining the requirement.
-
-For new native runtime behavior, prefer: static design -> disposable proof ROM -> user manual validation -> production integration.
+A diagnostic result establishes its tested mechanism. It does not by itself establish final 1.0 behavior or compatibility with the production allocation. Static design, disposable proof, manual runtime observations, and production integration provide different kinds of evidence.
 
 ## Local setup
 
@@ -61,16 +62,17 @@ Order is a contract because later patches intentionally reuse or relocate earlie
 4. ordinary-pickup persistence;
 5. seeded pickup randomization;
 6. four-box inventory and lifecycle hooks;
-7. selector-only automatic-save bypass;
-8. native box indicator;
-9. boot branding and deterministic phrase;
-10. company/logo bypass;
-11. optional palette transform.
+7. pickup-driven XP progression and runtime V2 composition;
+8. selector-only automatic-save bypass;
+9. native box indicator;
+10. boot branding and deterministic phrase;
+11. company/logo bypass;
+12. optional palette transform.
 
-Do not reorder modules without checking their guards, cave ownership, and tests. The stage-selector mapper, persistence payload tail, legal-text area, and small executable caves have deliberate shared ownership.
+The stage-selector mapper, persistence payload tail, legal-text area, and small executable caves have deliberate shared ownership. Reordering modules can invalidate expected-byte guards or overwrite another owner's code; the pipeline tests cover the composed order.
 
-## Evidence and promotion
+## Evidence and compatibility limits
 
-A useful research result is not automatically production code. Promote it only when the address/structure is reproduced, stock bytes or bounds can be guarded, ownership and conflicts are known, failure behavior is bounded, and tests cover the new contract. Runtime testing should say exactly what was observed; do not generalize one pickup, enemy, stage, or seed into exhaustive coverage.
+A useful research result is not automatically production code. Production compatibility depends on reproducible addresses/structures, guarded stock bytes or bounds, known ownership and conflicts, bounded failure behavior, and tests of the new contract. Runtime evidence is limited to the observed pickup, enemy, stage, seed, and route; it is not inherently exhaustive.
 
-Never erase a material failed approach. Record why it failed and what later result superseded it. The most important current example is the corrected player-action address family: `0x8004B82C` and `0x8004CC14` are projectile helpers, while the player velocity helper is `0x8002B1EC`.
+The [failure history](Experiments-Failures-and-Superseded-Findings) explains rejected approaches and their corrections. One important example is the corrected player-action address family: `0x8004B82C` and `0x8004CC14` are projectile helpers, while the player velocity helper is `0x8002B1EC`.

@@ -18,7 +18,7 @@ Ordinary encounters are stream-driven and share a constructor. Type-only substit
 
 ## Progression conclusion
 
-Native XP thresholds and award/save paths are mapped. A bounded Temple proof replaced three of the four ordinary Herbs with non-inventory progression pickups while leaving one vanilla Herbs control. The first two tested pickups advanced to `85` and `258`, unlocked the expected second tier, and combat/kill/combo XP stayed disabled. Production still targets nine total progression rewards through `7354`; the proof is not production-safe because of cave conflicts, state ownership, and unfinished art.
+Native XP thresholds and award/save paths are mapped. A bounded Temple proof replaced three of the four ordinary Herbs with non-inventory progression pickups while leaving one vanilla Herbs control. The first two tested pickups advanced to `85` and `258`, unlocked the expected second tier, and combat/kill/combo XP stayed disabled. The original proof's caves conflicted with production ownership. Production now uses runtime V2 with nine deterministic generated-Herbs rewards through `7354` and Diagnostic B's XP-only stage-entry restore. Diagnostic B confirmed Temple -> Wind and title -> Fire retention at XP 258; final art, full nine-tier coverage, and remaining lifecycle boundaries are pending.
 
 ## Player-action conclusion
 
@@ -35,7 +35,7 @@ PS1 shares the 84-record pickup boundary, `0x30` grammar, ten-slot inventory con
 | Guarded clean-ROM pipeline | Cross-stage/global item pool |
 | Eight-stage selector and scoped flow bypasses | Enemy mixed-roster production |
 | All 84 stage-local pickup records | Boss randomization |
-| V1 pickup persistence and four-box backing | XP production allocation/state/art |
+| V2 pickup/progression state and four-box backing on confirmed routes | Final XP art, full nine-tier and remaining lifecycle validation |
 | Native text and source-palette transform | General textured UI |
 | Corrected player-action primitives | Finished foreign special move |
 | PS1 static architecture | PS1 runtime port |

@@ -68,6 +68,6 @@ The current process/controller pointer is at effective address `0x802ECE20`, not
 
 Latest runtime testing did not confirm the v8 improvements: no enemy pass-through, attacks cancel forward motion while diagnostic `L 1` stays unchanged, direction/jump/crouch are locked but attacks remain possible, speed remains very slow, and expanded HUD text is absent. The Y gate behaved as intended against a jumping enemy. Durable result: v6 lifecycle stability. v8 speed, pass-through, interaction, and diagnostics remain unresolved.
 
-## Next proof design
+## Pending proof questions
 
-Start from v6, reserve a conflict-free production-adjacent proof allocation, and make each state observable. Verify the player velocity words directly before adding pass-through, victim hold, or strike behavior. Do not infer action activity from a stale `L 1` byte alone. Preserve bounded loops and native cleanup at every exit.
+v6 is the established lifecycle baseline. The next proof design needs a conflict-free production-adjacent allocation and observable states. Direct player-velocity measurements would separate the unresolved movement problem from later pass-through, victim-hold, and strike behavior. A stale `L 1` byte alone does not establish that an action remains active. Bounded loops and native cleanup at every exit are part of the successful lifecycle design.

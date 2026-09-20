@@ -51,29 +51,29 @@ Failures are retained because they define safety boundaries and prevent repeated
 | v7 | Pass-through behavior not established; only bounded lifecycle/Y gating improved |
 | v8 | Intended 4x speed, per-tick velocity, forced crossover, and expanded HUD were not observed; attacking still stops motion |
 
-Stable baseline is v6's selector-3 scheduler bridge, lock, correct player velocity helper, bounded loops, and native restore. Future work should alter one observable at a time.
+Stable baseline is v6's selector-3 scheduler bridge, lock, correct player velocity helper, bounded loops, and native restore. Experiments that change one observable at a time can distinguish movement, interaction, and diagnostic failures.
 
 ## Flow and inventory rejections
 
 - Start-button selector shortcut was intermittent; only A-button route is production.
 - Broad boot-routine deletion was rejected because fade/title normalization must run.
-- Global save disabling was rejected; use the native selector one-shot flag.
+- Global save disabling was rejected; the accepted implementation uses the native selector one-shot flag.
 - Tablet `0x24` was rejected as key placeholder because it is consumable; Glass `0x08` is made inert instead.
 - Auto-spill/global inventory scan is intentionally outside the accepted four-box design.
 
-## Proof/production conflict rule
+## Proof/production allocation conflicts
 
-Historical proof offsets are evidence, not allocations. The Temple XP proof and foreign-key callback use temporary caves that conflict with current production owners. A feature must be re-laid out and retested before merge even if its old proof ROM worked.
+Historical proof offsets are evidence, not allocations. The Temple XP proof and foreign-key callback use temporary caves that conflict with current production owners. Their old runtime results do not establish compatibility with a new layout; reallocation and validation of the changed composition are separate technical work.
 
 
 ## XP productionization failure
 
 | Attempt | Result | Durable lesson |
 |---|---|---|
-| Runtime V2 XP production integration | Temple music loaded, then game hung immediately before the stage became visible; no progression pickup had executed | Do not promote a new native allocation/stage-init hook from static+CI evidence alone |
-| V2 repartition + progression stage-entry restore combined in one production step | Failure source became ambiguous between the repartition and the new restore path | Change one runtime-critical variable at a time and validate with a disposable ROM |
+| Runtime V2 XP production integration | Temple music loaded, then game hung immediately before the stage became visible; no progression pickup had executed | Static/CI evidence alone did not establish native allocation/stage-init safety |
+| V2 repartition + progression stage-entry restore combined in one production step | Failure source became ambiguous between the repartition and the new restore path | Disposable tests changing one runtime-critical variable at a time can isolate the cause |
 
-Current investigation order: first test the V2 allocation/reward callback **without** installing the progression stage-entry restore hook. If stage load succeeds, the restore path is isolated; if it still hangs, investigate the V2 repartition/state relocation itself.
+The initial isolation plan tested the V2 allocation/reward callback **without** the progression stage-entry restore hook. Stage-load success would implicate the restore path; a continued hang would leave repartition/state relocation implicated. Diagnostic A and B below resolved this investigation.
 
 
 ### XP Diagnostic A follow-up
@@ -81,7 +81,7 @@ Current investigation order: first test the V2 allocation/reward callback **with
 | Attempt | Result | Durable lesson |
 |---|---|---|
 | Diagnostic A: failed production build with only the progression stage-entry JAL redirected back to the existing four-box load/mask wrapper | Temple loaded and played normally; progression rewards at 85/258 worked; no combat XP; no EXPERIENCE combo text | V2 allocation and reward callback path are viable on the tested Temple route; failure is inside the progression restore-helper path |
-| Restore-helper review | The helper calls native tier evaluator `0x80074FBC` before normal stage gameplay is visible | Treat that evaluator call as the next bounded suspect; test it independently before any re-promotion |
+| Restore-helper review | The helper calls native tier evaluator `0x80074FBC` before normal stage gameplay is visible | The evaluator call became the next bounded suspect, subsequently isolated by Diagnostic B |
 
 
 ### XP Diagnostic B resolution
@@ -89,7 +89,7 @@ Current investigation order: first test the V2 allocation/reward callback **with
 | Attempt | Result | Durable lesson |
 |---|---|---|
 | Diagnostic B: restore persistent XP but omit native tier evaluator during stage initialization | Temple loaded; XP 85/258 rewards unlocked moves; Temple -> Wind retained XP/moves; title -> Fire retained XP/moves | Stage-entry XP restore is safe; native tier state already established at acquisition persists across tested routes |
-| Native tier evaluator `0x80074FBC` called from progression stage-init restore | Earlier production build hung before gameplay display | **Rejected at this timing**. Call the evaluator only from the runtime-confirmed progression-pickup acquisition path |
+| Native tier evaluator `0x80074FBC` called from progression stage-init restore | Earlier production build hung before gameplay display | **Rejected at this timing**. The accepted design calls the evaluator on the runtime-confirmed progression-pickup acquisition path |
 
 Diagnostic B supersedes the failed restore-helper design and is the accepted production behavior.
 
@@ -102,4 +102,4 @@ Diagnostic B supersedes the failed restore-helper design and is the accepted pro
 | Treat foreign-resource importing as optional polish | Superseded | Exact cross-stage model/resource materialization is core 1.0 infrastructure |
 | Keep the logical-item catalog separate from physical materialization | Retained | Useful for shuffle/solver semantics, but every accepted placement must still materialize the randomized item's real visual/resource identity |
 
-The disposable destination-shell diagnostic should not be treated as a required test or production direction.
+The disposable destination-shell diagnostic is a rejected alternative, not a required validation step or production direction.

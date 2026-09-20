@@ -31,7 +31,7 @@ The foreign Prison-key pickup proof relocated Fire's `0x2530`-byte file to ROM `
 
 ## Overlay identity warning
 
-Addresses at or above the stage-overlay base describe the currently loaded stage overlay. Always name the stage and source artifact when recording an overlay function. Do not promote an overlay address to a global function merely because it appeared stable in one stage.
+Stage-overlay function identities include the loaded stage and source artifact as well as the VA. Different overlays occupy the same address region; an address observed in one stage does not establish a globally resident function. The stage-overlay base is documented in [Runtime and memory map](Runtime-and-Memory-Map).
 
 
 ## Global-randomizer exact visual materialization

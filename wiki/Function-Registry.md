@@ -26,7 +26,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x800389BC` | Herbs pickup | Runtime-confirmed | Adds ID `0x04` |
 | `0x800389EC` | Health urn pickup | Static/runtime-confirmed | Adds ID `0x05` |
 | `0x80038A1C` | Extra-life urn pickup | Static-confirmed | Ordinary catalog callback |
-| `0x80038A58` | Mana pickup | Static-confirmed | Native mana; do not relabel as Herbs |
+| `0x80038A58` | Mana pickup | Static-confirmed | Native mana, distinct from Herbs despite legacy Lua substitution |
 | `0x80038A90` | Strength urn pickup | Static-confirmed | Adds ID `0x0B` |
 | `0x80038ACC` | Pickup manager | Static/runtime-confirmed | Production restore hook |
 | `0x80039418` | Pickup collected-flag store site | Static/runtime-confirmed | Production capture hook |

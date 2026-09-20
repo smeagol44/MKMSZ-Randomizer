@@ -2,6 +2,6 @@
 
 This directory is the version-controlled source for the GitHub Wiki. A push to `main` that changes `wiki/**` runs `.github/workflows/wiki.yml`, mirrors this directory to the repository Wiki, and deletes obsolete Wiki files there.
 
-Begin with [Home](Home.md) or [Contributor start here](Contributor-Start-Here.md). Current technical facts must live in these pages rather than only in research archives or handoff notes. Archive references may document provenance, but must not substitute for the decoded tables, addresses, constraints, and evidence status needed to work safely.
+[Home](Home.md) and [Contributor start here](Contributor-Start-Here.md) are the entry points to the current technical manual. The Wiki contains decoded tables, addresses, constraints, evidence status, product requirements, and pending work. Archive references provide provenance for those explanations.
 
-When a finding changes, update its owning page, the relevant registry/status page, and any stage catalog affected. Preserve important failed or superseded conclusions in [Experiments, failures, and superseded findings](Experiments-Failures-and-Superseded-Findings.md).
+Subsystem pages own their findings, shared registries organize exact facts, and status pages distinguish maturity and coverage. [Experiments, failures, and superseded findings](Experiments-Failures-and-Superseded-Findings.md) preserves material research history. Assistant operating rules are maintained separately in Project Instructions; Wiki pages describe project knowledge and contributor tooling.

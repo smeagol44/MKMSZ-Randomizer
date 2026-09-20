@@ -47,9 +47,9 @@ The experimental progression model is pale blue-grey and visually Herbs-like. Th
 
 ## Production semantics
 
-The proposed mode has exactly nine rewards and uses a dedicated RNG namespace. Each reward advances to the next native threshold rather than adding an arbitrary fixed amount. A custom award callback avoids inventory insertion, evaluates/clamps the native tier, caps at the ninth value, and restores progression state once per appropriate lifecycle boundary.
+The production mode has exactly nine rewards and uses a dedicated RNG namespace. Each reward advances to the next native threshold rather than adding an arbitrary fixed amount. A custom award callback avoids inventory insertion, evaluates/clamps the native tier, and caps at the ninth value. A separate stage-init helper restores persistent XP without evaluating tiers at that boundary.
 
-Normal ordinary-pickup randomization must remain independent: progression rewards need their own catalog/state and must not consume ordinary pickup RNG or persistence bits.
+Normal ordinary-pickup randomization remains independent of progression selection and count/XP state. Acquisition still marks the physical ordinary location as collected; progression count/XP use separate words and progression selection uses its own RNG namespace.
 
 ## Production allocation and state
 
@@ -80,13 +80,13 @@ Manual Temple validation failed before gameplay became visible:
 - the game then hung as the stage was about to be displayed;
 - no progression pickup was collected, so the failure occurs before the new pickup callback is exercised.
 
-The exact failing component is not yet established. The leading bounded candidates are the new stage-entry progression restore path versus the V2 code/state repartition itself. Do not treat either as confirmed until isolated by disposable proof ROMs.
+At that point the exact failing component was not established. The leading candidates were the new stage-entry progression restore path and the V2 code/state repartition itself. Diagnostic A and B below subsequently isolated the stage-init tier-evaluator call.
 
-The web/CLI production pipeline has been restored to the previously runtime-confirmed V1 allocation while this is investigated.
+The web/CLI pipeline was temporarily restored to the previously runtime-confirmed V1 allocation during that investigation. Diagnostic B later established the accepted V2 production behavior.
 
-### Required promotion discipline
+### Historical validation lesson
 
-New native runtime behavior must now be validated in a disposable ROM supplied directly for manual testing **before** it is enabled in the normal browser/CLI patch pipeline. CI/static composition is not sufficient evidence that a new runtime hook is production-safe.
+The failed integration passed static/CI composition checks but hung at a native stage-init boundary. Disposable Diagnostic A and B supplied the missing runtime evidence. This demonstrates the limit of CI as evidence for game-state-dependent behavior.
 
 
 ## Diagnostic A runtime isolation — 2026-09-20

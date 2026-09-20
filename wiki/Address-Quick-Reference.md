@@ -9,7 +9,7 @@ Use this page for orientation; owning registries contain scope and caveats.
 | Stage-overlay base | `0x802ECE30` |
 | Current process/context pointer | `0x802ECE20` |
 | Reserved runtime block | `0x801AF420..0x801AF81F` |
-| Runtime code/state split | code `0x801AF420..0x801AF61F`; state `0x801AF620..0x801AF81F` |
+| Runtime V2 code/state split | code `0x801AF420..0x801AF71F`; state `0x801AF720..0x801AF81F` |
 | Current native stage | `0x8009A910` |
 | Selector index | `0x800C11E0` |
 | Normalized action input | `0x800BF2EE` |

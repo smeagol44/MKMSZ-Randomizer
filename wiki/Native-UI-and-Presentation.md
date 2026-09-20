@@ -20,7 +20,7 @@ The production wrapper occupies ROM `0xAFA24..0xAFA97`, begins at VA `0x800AEE24
 
 ## Context-specific renderer family
 
-The path beginning at `0x80073CEC` and calling `0x8001E578` is real, but evidence shows it is context-specific rather than a universal always-on HUD/sprite API. It should not be used as a generic presentation abstraction without a new proof.
+The path beginning at `0x80073CEC` and calling `0x8001E578` is real, but evidence shows it is context-specific rather than a universal always-on HUD/sprite API. Its suitability as a generic presentation abstraction remains unproven.
 
 ## Pickup presentation descriptors
 

@@ -106,4 +106,4 @@ The node is 22 words. Four vertex X/Y pairs occur at `+0x08/+0x0A`, `+0x18/+0x1A
 
 ## BGR555 palettes
 
-N64 source colors are 16-bit BGR555 values with a preserved high control/alpha bit. Sub-Zero's 64-color source TLUT begins at ROM `0x78E16C`; clothing entries are indices `0x21..0x3F`. Transform only those indices unless a different palette has been independently mapped.
+N64 source colors are 16-bit BGR555 values with a preserved high control/alpha bit. Sub-Zero's 64-color source TLUT begins at ROM `0x78E16C`; clothing entries are indices `0x21..0x3F`. Those indices define the mapped clothing-transform range; other palettes require independent mappings.

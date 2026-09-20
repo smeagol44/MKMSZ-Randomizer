@@ -33,7 +33,7 @@ The test workflow uses Python 3.11 for pushes to `main`, `refactor/**`, and `fea
 
 CI proves deterministic generation, guarded source expectations, emitted byte/code layouts, bounds, non-overlap assumptions represented in tests, and product composition. It does not execute the ROM or prove animation, collision, save-device, stage-transition, or full-playthrough behavior.
 
-Runtime evidence must therefore accompany systems whose correctness depends on game state. Record the exact ROM/configuration, stage/route, expected change, observed behavior, negative controls, and lifecycle boundary. A single positive location is representative evidence only.
+Game-state-dependent correctness therefore remains unresolved by CI alone. A reproducible runtime record identifies the exact ROM/configuration, stage/route, expected change, observed behavior, negative controls, and lifecycle boundary. A single positive location is representative evidence only.
 
 ## Wiki publication
 
