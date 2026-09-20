@@ -64,3 +64,13 @@ Stable baseline is v6's selector-3 scheduler bridge, lock, correct player veloci
 ## Proof/production conflict rule
 
 Historical proof offsets are evidence, not allocations. The Temple XP proof and foreign-key callback use temporary caves that conflict with current production owners. A feature must be re-laid out and retested before merge even if its old proof ROM worked.
+
+
+## XP productionization failure
+
+| Attempt | Result | Durable lesson |
+|---|---|---|
+| Runtime V2 XP production integration | Temple music loaded, then game hung immediately before the stage became visible; no progression pickup had executed | Do not promote a new native allocation/stage-init hook from static+CI evidence alone |
+| V2 repartition + progression stage-entry restore combined in one production step | Failure source became ambiguous between the repartition and the new restore path | Change one runtime-critical variable at a time and validate with a disposable ROM |
+
+Current investigation order: first test the V2 allocation/reward callback **without** installing the progression stage-entry restore hook. If stage load succeeds, the restore path is isolated; if it still hangs, investigate the V2 repartition/state relocation itself.
