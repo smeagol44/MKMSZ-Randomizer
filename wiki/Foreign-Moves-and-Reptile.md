@@ -1,4 +1,6 @@
-# Foreign moves and Reptile
+# (Old) Foreign moves and Reptile
+
+> **Historical/superseded direction:** this page documents the behavioral-recreation phase. Current genuine donor-port findings and the MKT→MKMSZ adapter design are owned by [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer). Retain this page as proof history; do not treat its "conceptual transfer only" boundary as current.
 
 The selected donor concept is Mortal Kombat Trilogy N64 Reptile's Reverse Elbow / Elbow Dash. This is exploratory and not a production randomizer feature.
 
