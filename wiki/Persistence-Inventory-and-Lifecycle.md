@@ -80,3 +80,15 @@ The legacy Lua is only a clue here, not a solution. It writes startup configurat
 It also names `0x0F1057` as a life-related address, but does not use it for stage-transition preservation. There is no Lua logic that carries current HP, current lives, or current continues between stages.
 
 Therefore 1.0 needs a focused native lifecycle trace for the actual current-run values and the writers that reset them on stage entry/direct selector routes. Preserve/reset policy must be established from runtime/static evidence rather than inferred from the Lua startup configuration.
+
+
+## Temple Map lifecycle requirement
+
+If the Temple Map becomes a shuffled 1.0 inventory item, stock lifecycle behavior is not acceptable: the game removes it when transitioning from Temple to Wind.
+
+Required investigation:
+
+- identify the stock writer/removal path;
+- determine whether keeping the Map item across transitions has side effects;
+- preserve the logical Map item in randomizer inventory until the run lifecycle explicitly clears it;
+- independently preserve/replace the Temple elevator/exit trigger so Temple completion does not depend on where the shuffled Map reward is located.

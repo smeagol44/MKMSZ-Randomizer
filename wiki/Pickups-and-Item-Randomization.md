@@ -113,3 +113,33 @@ The global generator therefore needs a destination-stage materializer:
 - imported resource bundle when the destination does not already contain it.
 
 The runtime-confirmed Fire foreign Prison-key proof establishes that this architecture is feasible. A production planner must generalize it with guarded storage, relocation/expansion, file-table updates, deduplication, and allocation bounds.
+
+
+## 1.0 deterministic retry requirement
+
+The legacy Lua had a retry/reseeding bug: when an attempted global layout was rejected as unwinnable, later attempts were not guaranteed to regenerate identically from the same displayed seed.
+
+The native 1.0 generator must make retry state explicit and deterministic. A recommended contract is:
+
+```text
+candidate = H(namespace || user_seed || attempt_index || counter)
+```
+
+The solver tests attempt 0, then 1, then 2, and so on until one is accepted. The accepted attempt number is therefore a pure function of the user seed and game rules. Regenerating the same seed under the same randomizer version/rules must reproduce the identical final layout even when multiple rejected candidates precede it.
+
+The attempt index must not be advanced by unrelated RNG namespaces such as boot phrases, palette selection, HUD flavor text, or required-Power-Upgrades generation.
+
+## Required Power Upgrades
+
+1.0 retains the legacy concept of a seed-specific required number of progression rewards. This value must be generated deterministically from its own RNG namespace and displayed by the randomizer HUD.
+2. The value must be incorporated into whole-run solvability validation: the accepted global layout must make at least that many progression rewards reachable before the completion condition.
+3. The exact allowed range/policy should be finalized with the global solver, but it must not depend on how many candidate layouts were rejected.
+
+## Temple Map as a possible 85th check
+
+The Map is not one of the 84 ordinary records and currently couples several native behaviors. Before including it in the global pool, resolve two separate concerns:
+
+- **reward versus trigger:** determine whether the Map inventory award can be decoupled from the Temple elevator/exit-opening event, so shuffling the logical Map item does not make Temple incompletable;
+- **cross-stage persistence:** stock behavior removes the Map on Temple -> Wind. If the Map becomes a true randomized inventory item, that removal must be suppressed or replaced by explicit randomizer lifecycle handling.
+
+Until those are proven, the global solver should model the Map separately rather than pretending it is an ordinary 0x30-byte pickup.

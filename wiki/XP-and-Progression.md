@@ -129,3 +129,18 @@ Diagnostic B behavior is the production design.
 - All nine generated progression rewards are implementation/CI-confirmed, but a full nine-tier runtime run is still pending.
 - Production progression pickups currently retain ordinary Herbs graphics. Bright-blue Herbs body with a bronze/gold-looking handle remains a visual refinement.
 - Game Over/new-run reset behavior remains pending as part of the shared MKMSZR lifecycle work.
+
+
+## 1.0 required-Power-Upgrades rule
+
+The full randomizer should retain a seed-specific required number of Power Upgrades, as in the legacy Lua concept. This is separate from the fixed nine native thresholds/rewards that exist in the world.
+
+Requirements:
+
+- generate the required count deterministically from its own RNG namespace;
+- do not let rejected global-layout attempts change that required count;
+- show the requirement in the randomizer HUD;
+- include the requirement in the whole-run solver's completion predicate;
+- preserve the current runtime-confirmed threshold behavior for each collected reward.
+
+The exact min/max policy remains to be finalized with the global solver.
