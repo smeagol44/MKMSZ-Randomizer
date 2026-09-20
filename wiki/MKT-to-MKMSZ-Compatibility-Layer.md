@@ -422,9 +422,42 @@ v04 also adds proof-only native HUD instrumentation through the already runtime-
 
 where the digits encode donor-palette ownership, whether the live animation cursor is inside the native idle-script range, the low nibble of controller locomotion state, and the low nibble of normalized action input. This instrumentation is diagnostic only and is not a product UI design.
 
+**Rejected / failed before gameplay; cursor hypothesis not tested.**
+
+The user reported that v04 reached the Mission Objective display, stage music began, and then the game/emulator hung before gameplay appeared. Because v04 introduced both the native-cursor experiment and a new diagnostic HUD wrapper at the same time, this result is confounded and does **not** establish whether the native-cursor strategy is valid.
+
+Static re-audit found that the v04 diagnostic wrapper read controller/actor state from the gameplay HUD path without first proving that a live player context existed. The Mission Objective flow can execute that HUD path before normal gameplay control is established, so the diagnostic code is a **strong candidate** for the pre-game hang. This is not runtime-confirmed as the sole cause until an otherwise-identical no-HUD build is tested.
+
+Historical context from the earlier Reverse Elbow/Reptile proof is important here: a separate diagnostic path was already runtime-confirmed during gameplay, displaying forms such as `IN XXXXXXXX L0 P0 A00` through the native HUD/text path and surviving repeated special activations. Future instrumentation should reuse that proven pattern rather than the unguarded v04 wrapper.
+
+#### v05 — v04 cursor experiment with diagnostic HUD removed
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v05.z64`
+
+Identity:
+
+- SHA-256 `8be8bf1e1aa066483043c528623c8f7ff08c40042d786a5d62ef97a2ac1dd5e9`;
+- CRC1/CRC2 `BFDA3A1F / 1142C1A6`.
+
+v05 is byte-for-byte v04 except for removal of the proof-only diagnostic HUD hook/wrapper/string and the resulting header CRC change. It therefore preserves the intended v04 animation experiment unchanged:
+
+- native Sub-Zero table-0/index-0 still points to resource `+0x2EC`;
+- the live animation cursor remains in that native idle-script region;
+- only the first five idle-frame pointers plus the native loop command/self-offset are replaced to render the genuine Sektor stance;
+- donor palette ownership and idle rate remain as in the earlier proofs.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary success criterion: forward movement, crouching, and airborne forward drift no longer hang while the genuine Sektor idle still loops. A transient idle-entry corrupt frame may remain as a separate palette/shape ordering issue and is intentionally not changed in this proof.
+Primary test order:
+
+1. confirm that the stage now advances past Mission Objective into gameplay;
+2. if gameplay starts, verify genuine Sektor idle still loops;
+3. retry forward movement, crouch, and airborne forward drift;
+4. also sample previously safe block/attack/backward/jump inputs.
+
+This is the valid test of the native-cursor hypothesis that v04 failed to provide.
 
 ### Later proofs
 
