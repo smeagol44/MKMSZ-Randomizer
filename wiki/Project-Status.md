@@ -31,7 +31,7 @@ Last consolidated: 2026-09-20.
 | Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
 | Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
 | Temple XP progression proof | Three proof pickups plus one vanilla Herbs control established no-combat-XP and pickup-driven tiers | Generalized into the production Diagnostic B architecture; full nine-tier coverage and final art remain |
-| Reverse Elbow host/action proof + genuine MKT import branch | v6 established repeatable scheduler/action stability; v08/A1.7 runtime-confirmed genuine SCCOMBO10; Sektor v01-v03 runtime-confirm the genuine five-frame Sektor idle art/loop, while the same forward/crouch/air-forward paths still hang; v04 hung before gameplay after adding a new diagnostic HUD | Runtime-test v05, which keeps v04's live cursor at stock resource +0x2EC but removes the confounding HUD; then resolve the separate one-frame idle-entry artifact |
+| Reverse Elbow host/action proof + genuine MKT import branch | v6 established repeatable scheduler/action stability; v08/A1.7 runtime-confirmed genuine SCCOMBO10; Sektor v01-v05 runtime-confirm the genuine five-frame Sektor idle art/loop; v05 proves the native-cursor-at-+0x2EC strategy does not fix the same forward/crouch/air-forward hangs, while v04's pre-game hang came from its new HUD | Runtime-test v06, which removes only the donor animation-rate hook; then continue isolating palette/state ownership and the separate one-frame idle-entry artifact |
 
 ## Latest runtime findings
 
