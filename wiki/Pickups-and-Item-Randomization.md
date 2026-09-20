@@ -226,10 +226,12 @@ Those four raw image payloads were extracted from Water's stage package, then en
 1. Water's existing embedded Potion frames decode byte-for-byte to Fire's external Potion payloads `0x27F..0x286`, establishing equivalence between the two storage forms for a known paired item.
 2. A conservative literal-only type-4 encoder round-trips all four Health payloads exactly through a software model of native decoder `0x80003428`.
 
-### Disposable Proof H — static-confirmed, runtime pending
+### Disposable Proof H — runtime-confirmed
 
 Proof H relocates/expands Prison's resource file while leaving all stock selectors unchanged. Extension selector `0x123C` points to an appended Health-urn descriptor containing four embedded-data records. The original Water external IDs are removed; record `+0x08` instead points to four self-contained type-4 blocks generated from the exact `0x28F..0x292` image payloads.
 
 Only one early Prison Herbs location becomes the Health urn. The other five Herbs remain byte-for-byte stock on selector `8`.
 
-Expected runtime result: the Health urn renders cleanly, awards Health urn behavior/item ID `0x05`, and a separate untouched Herbs pickup still behaves normally. Until manually observed, the conversion remains **Static-confirmed only**.
+Manual runtime result: the first changed Prison pickup rendered as a clean Urn of Vitality and awarded the urn correctly; the next untouched Herbs pickup rendered and awarded normally. Both appeared correctly in inventory. This confirms that the external Health-urn resource family can be converted into self-contained embedded type-4 blocks and can coexist with stock stage resources through an extension selector.
+
+**Runtime-confirmed scope:** one converted Health urn in Prison plus one untouched Herbs control. This establishes the previously missing ordinary-item resource format needed by the cross-stage visual materializer; production generalization still requires guarded planner implementation, deduplication/allocation policy, and broader runtime coverage.
