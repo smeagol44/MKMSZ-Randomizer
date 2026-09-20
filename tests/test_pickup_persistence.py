@@ -1,5 +1,3 @@
-import hashlib
-
 from mkmszr.data.addresses import (
     ARENA_START_PATCHES,
     FIRE_POTION_CALLBACK_EXPECTED,
