@@ -18,7 +18,7 @@ Ordinary encounters are stream-driven and share a constructor. Type-only substit
 
 ## Progression conclusion
 
-Native XP thresholds and award/save paths are mapped. A Temple proof showed nine independent non-inventory rewards can coexist with ordinary pickups and advance thresholds (`85`, `258`, …, `7354`) while combat XP remains disabled. The proof is not production-safe because of cave conflicts, state ownership, and unfinished art.
+Native XP thresholds and award/save paths are mapped. A bounded Temple proof replaced three of the four ordinary Herbs with non-inventory progression pickups while leaving one vanilla Herbs control. The first two tested pickups advanced to `85` and `258`, unlocked the expected second tier, and combat/kill/combo XP stayed disabled. Production still targets nine total progression rewards through `7354`; the proof is not production-safe because of cave conflicts, state ownership, and unfinished art.
 
 ## Player-action conclusion
 

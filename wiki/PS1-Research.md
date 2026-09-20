@@ -82,6 +82,34 @@ The key fighter descriptor offsets match N64: type 1 `0x22AD8`, type 9 `0x2C084`
 
 A smallest future proof would change the first normal-Fire type at VA `0x80010B84` / extracted-file offset `0x1384` from `0A00` to `0900`, with a clean guarded build and runtime test.
 
+## Test Scorpion, Undead Scorpion, and shared AI/control data
+
+The PS1 Test Characters table is at `0x800AC43C`, with 25 records of `0x1C` bytes and names beginning at `0x800AC6F8`.
+
+Two entries that must remain distinct:
+
+| Entry | Fighter type | Resource identity | Current interpretation |
+|---|---:|---|---|
+| `SCORPION` test entry | `0x12` | `MKSZ.BIN` alternate palette | Sub-Zero-family test/AI actor, not a dormant playable Scorpion |
+| `UNDEAD SCORP` | `0x11` | genuine `SCORPION.BIN` | stronger candidate for real Scorpion-specific enemy actions |
+
+The generic fighter resource/palette table at `0x8009034C` resolves type `0x04` and type `0x12` into adjacent palette records inside `MKSZ.BIN`, while type `0x11` points into `SCORPION.BIN`. This is why the visible yellow Test Scorpion should not be conflated with the dedicated Undead Scorpion resource.
+
+Type-specific synthetic AI/control data also has a strong N64 counterpart:
+
+| Concept | PS1 | N64 counterpart | Evidence |
+|---|---:|---:|---|
+| per-type AI/control table | `0x80010FC8` | `0x800AF340` | endian-equivalent data |
+| type-`0x12` list | `0x800114E8` | `0x800AF860` | confirmed data match |
+| first type-`0x12` condition record | `0x80011554` | `0x800AF8CC` | unique matching bytes |
+| common descriptor sentinel | `0x80012B08` | `0x800B0E80` | confirmed |
+
+The PS1 evaluator path includes `0x80075B84 -> 0x80075C6C -> 0x8003D6BC -> 0x8003D7AC`. The records are spatial/condition-oriented AI descriptors, not player command strings such as directional special-move inputs.
+
+Normal Sub-Zero's executable contains player-facing move/help strings for specials such as Ice Blast, Ice Clone, Super Slide, Air Ice Blast, and Polar Blast, but those strings are UI data rather than the runtime command matcher.
+
+No player-reachable spear/teleport command path is confirmed for type `0x12`. The dedicated type-`0x11` Undead Scorpion remains the correct target for future Scorpion-specific attack tracing.
+
 ## Save format
 
 Memory-card file: `BASLUS-00476SUBZERO`, image size `0x900`. Checksum routine `0x80090B94` zeros the checksum field, adds `0x258`, then XORs `0x240` words; initialization is `0x80090BCC`.

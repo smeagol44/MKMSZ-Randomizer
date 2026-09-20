@@ -50,6 +50,6 @@ The box indicator hooks an existing HUD submission, executes the displaced call,
 
 - No production global item pool or foreign-resource planner.
 - No production enemy randomizer; same-stage substitution and one bounded cross-stage resource import are proofs.
-- No production XP-progression mode; the Temple nine-Herbs proof is confirmed.
+- No production XP-progression mode; a bounded Temple proof with three progression pickups and one vanilla Herbs control is confirmed through the first two XP tiers.
 - No finished Reverse Elbow; v6 established a stable lifecycle, while v8 still has movement and interaction defects.
 - PS1 findings guide comparison but do not share N64 addresses or binaries.

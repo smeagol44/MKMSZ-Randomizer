@@ -18,6 +18,19 @@ The ports share strong source/data lineage, but they do not share executable add
 | Save | Native cartridge save paths; N64 research fields differ | `0x900` memory-card image, `0x78` records, XOR checksum | Platform-specific |
 | Output checksum | N64 header CRC1/CRC2 | PS1 file/disc layout and save checksum | Never reuse |
 
+## Shared type-specific AI/control data
+
+A particularly strong cross-port data match exists in the Test Scorpion/type-`0x12` synthetic-control system:
+
+| Data | PS1 | N64 |
+|---|---:|---:|
+| per-type AI/control table | `0x80010FC8` | `0x800AF340` |
+| type-`0x12` list | `0x800114E8` | `0x800AF860` |
+| first type-`0x12` condition | `0x80011554` | `0x800AF8CC` |
+| common sentinel | `0x80012B08` | `0x800B0E80` |
+
+The descriptor bytes match after endian conversion. This is direct shared game-data lineage, not merely similar high-level behavior. It still does not make the PS1 and N64 evaluator code addresses interchangeable.
+
 ## Safe conclusions
 
 - The `0x30` pickup grammar, 84-location boundary, item-ID family, ordinary-enemy stream concept, and several fighter descriptor offsets are common lineage.

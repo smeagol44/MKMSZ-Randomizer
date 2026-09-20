@@ -29,19 +29,21 @@ The confirmed thresholds are:
 
 The final value corrects a legacy Lua comment that said `7345`; the actual `0x1CBA` value is `7354`.
 
-## Temple nine-reward proof
+## Temple bounded proof
 
-The proof introduced nine separate Herbs-like progression rewards while retaining the stage's ordinary pickups. Runtime results:
+The disposable proof changed Temple ordinary Herbs #1, #3, and #4 into progression pickups while leaving Herbs #2 completely vanilla as a brown control. Only the first two progression pickups needed to be collected to validate the core behavior. Runtime results:
 
-- defeating enemies did **not** award XP;
-- first reward set XP to `85`;
-- second reward set XP to `258`;
-- the second threshold activated the next progression tier;
-- rewards added nothing to inventory;
-- ordinary and progression pickups coexisted in the stage;
-- proof collection/state behavior worked through the tested sequence.
+- defeating enemies, kills, and combos did **not** award XP;
+- the combo `HITS` message remained while the `EXPERIENCE` line was removed;
+- first tested progression pickup set XP to `85`;
+- second tested progression pickup set XP to `258`;
+- the second threshold activated the next expected special-move tier;
+- progression pickups added nothing to inventory;
+- the untouched Herbs control remained a normal inventory Herbs pickup;
+- normal and progression pickups coexisted and were visually distinguishable;
+- Temple displayed max XP `20000`.
 
-The current model is pale blue-grey and visually Herbs-like. The intended final asset is a bright-blue body with a bronze handle.
+The experimental progression model is pale blue-grey and visually Herbs-like. The intended final presentation is a bright-blue Herbs body while retaining the bronze/gold-looking handle. That visual refinement is separate from the confirmed progression logic.
 
 ## Intended production semantics
 
