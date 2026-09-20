@@ -19,6 +19,20 @@ ROM bytes are never committed. The patcher rejects an unsupported input, refuses
 4. For stage data, use the relevant page under [Stage catalogs](Stage-Catalogs).
 5. Consult historical artifacts only when a provenance trail or unresolved detail is needed; follow [Research workflow](Research-Workflow).
 
+## Product-intent guardrail
+
+The Wiki is not only a technical reference; [Project status](Project-Status) also records current product requirements and priority order. Do not optimize away those requirements.
+
+In particular, distinguish:
+
+- a diagnostic shortcut used to isolate one mechanism;
+- an implementation stepping stone;
+- the actual requested 1.0 behavior.
+
+If a proposed implementation would change the requested visible/semantic result, stop and confirm the design rather than silently redefining the requirement.
+
+For new native runtime behavior, prefer: static design -> disposable proof ROM -> user manual validation -> production integration.
+
 ## Local setup
 
 ```bash

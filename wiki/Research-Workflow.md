@@ -9,6 +9,17 @@
 
 The research archive is not a second current manual. When archive evidence changes a conclusion, update the owning Wiki page and preserve the superseded statement where it explains a failure or safety rule.
 
+## Alignment and decision discipline
+
+Before changing code or choosing the next task, preserve the product intent already documented in [Project status](Project-Status) and the owning subsystem page.
+
+- Treat explicit user requirements, 1.0 requirements, and anything marked rejected/failed as hard constraints unless the user changes them.
+- Do not replace a requested behavior with an easier approximation just because it is simpler to implement. If a shortcut changes visible behavior, semantics, progression, determinism, or randomizer goals, present it as an alternative and get approval before implementing it.
+- When the user says "continue", continue the last agreed task rather than selecting a nearby task yourself.
+- When asked "what next?", follow the current documented priority order plus the user's latest explicit direction.
+- Separate diagnostic/proof shortcuts from production direction. A proof may intentionally simplify behavior, but that simplification does not become the product design automatically.
+- New native runtime hooks or lifecycle changes must be validated in a disposable proof ROM by the user before they are enabled in the normal production pipeline, unless the exact runtime behavior is already covered by prior confirmation.
+
 ## Before an experiment
 
 - Name the clean ROM/revision and verify its hash.
