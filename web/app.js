@@ -12,6 +12,7 @@ const resultSeed = document.querySelector("#resultSeed");
 const outputSha = document.querySelector("#outputSha");
 const outputCrc = document.querySelector("#outputCrc");
 const patchList = document.querySelector("#patchList");
+const pickupMode = document.querySelector("#pickupMode");
 const bootPhrase = document.querySelector("#bootPhrase");
 const downloadButton = document.querySelector("#downloadButton");
 const log = document.querySelector("#log");
@@ -135,6 +136,9 @@ web_patch_result = {
     "crc2": f"{_result.crc2:08X}",
     "sha256": _result.output_sha256,
     "patches": [patch.name for patch in _result.patches],
+    "pickup_mode": "Stage-local ordinary pickups (84)" if any(
+        patch.name == "pickup-randomization" for patch in _result.patches
+    ) else "Off",
     "boot_phrase": " / ".join(part for part in _boot_phrase if part),
 }
 `);
@@ -150,6 +154,7 @@ web_patch_result = {
     outputSha.textContent = metadata.sha256;
     outputCrc.textContent = `${metadata.crc1} / ${metadata.crc2}`;
     patchList.textContent = metadata.patches.length ? metadata.patches.join(", ") : "CRC refresh only";
+    pickupMode.textContent = metadata.pickup_mode;
     bootPhrase.textContent = metadata.boot_phrase;
 
     resultPanel.hidden = false;
