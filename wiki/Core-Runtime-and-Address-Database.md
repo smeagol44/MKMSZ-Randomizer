@@ -47,6 +47,8 @@ The manager context pointer is at effective address `0x802ECE20`; context `+0x6F
 
 Historical proof patches used some of these areas before production assigned them. Archive offsets are therefore not automatically safe in a current build.
 
+A separate Sektor proof correction established that ROM `0xA1308..` / VA `0x800A0708..` is **not a free zero cave**. The live pointer table at VA `0x800A09C4` references 0x78-byte action/dispatch records spanning this area; records 7-11 are intentionally zero-filled semantic entries. Writing helper code over records 7-10 caused input-specific hard hangs on forward movement, crouch, and airborne-forward drift. Restoring those records in Sektor proof v08 removed the hangs. Treat zero-filled dispatch records as owned data, not padding.
+
 ## Preserved analysis project
 
 The canonical N64 Ghidra program was reconstructed from the clean ROM rather than an old RDRAM dump. The archived project hash is SHA-256 `fbe071…`; it is provenance, not needed to use the address tables in this Wiki.
