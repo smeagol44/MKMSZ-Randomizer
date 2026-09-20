@@ -1,15 +1,15 @@
-> **Mirror notice:** This Wiki is a navigation-friendly adaptation of MKMSZR documentation. The ChatGPT Library folder `MKMSZR Research` remains the reverse-engineering/research source of truth; this repository remains the implementation/product source of truth. If the Wiki conflicts with an owning source, the owning source wins.
+> **Documentation status:** This page is part of the living/current MKMSZR Wiki. The Library folder `MKMSZR Research` preserves underlying evidence, historical canonical reports, and specialist artifacts. If a current Wiki conclusion conflicts with Library evidence, inspect the evidence and preserve superseded conclusions where relevant.
 
 # Library Artifact Index
 
-The Wiki mirrors the conclusions; specialist evidence remains in the Library.
+The Wiki owns the current synthesis; specialist evidence and historical research records remain in the Library.
 
 ## Folder map
 
 | Folder | Purpose |
 |---|---|
 | `01 - Original Sources` | immutable inputs, reference material, save states |
-| `02 - Research Reports` | canonical reports and focused handoffs |
+| `02 - Research Reports` | historical canonical reports and focused handoffs |
 | `03 - Patchers and Automation` | experiment tooling |
 | `04 - Stage Catalogs` | pickup/resource datasets |
 | `05 - Static Analysis` | Ghidra exports, manifests, loader evidence |
@@ -30,4 +30,4 @@ The Wiki mirrors the conclusions; specialist evidence remains in the Library.
 - PS1 executable/overlay analysis
 - MKT Reverse Elbow investigation handoffs
 
-Historical handoffs are evidence, not additional canonical owners.
+Historical reports and handoffs are durable evidence/history, not additional current-documentation owners.
