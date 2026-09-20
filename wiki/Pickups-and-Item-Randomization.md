@@ -209,3 +209,27 @@ Manual runtime result:
 Therefore vanilla stage resources and appended foreign embedded-data resources can coexist through extension selectors without consuming/replacing the original selector slot.
 
 **Evidence limit:** this confirms the `embedded-data-bundle` case. Fire Potion's earlier external-resource-ID transplant produced corrupted graphics, so external-resource-ID dependency handling remains unresolved rather than being generalized from this success.
+
+
+### Disposable Proof G — rejected external-ID-only transplant
+
+Proof G kept the extension-selector architecture from Proof F but imported Water's Health-urn descriptor/records while retaining external resource IDs `0x28F..0x292`. Only one early Prison Herbs location was changed; five Herbs stayed vanilla.
+
+**Runtime result: Rejected / failed visually.** The Health urn actor appeared, but its graphics were corrupted. This isolates the failure to the external-resource dependency layer: the extension selector and pickup path were already proven, while the copied external IDs were not portable by themselves.
+
+### External Health urn converted to embedded data
+
+Static tracing found that Health urn is the ordinary-item case that cannot simply choose another embedded donor: its catalogued Water, Fire and Bridge variants all use external IDs `0x28F..0x292`.
+
+Those four raw image payloads were extracted from Water's stage package, then encoded into MKMSZ's native type-4 embedded image format. The conversion was validated in two ways:
+
+1. Water's existing embedded Potion frames decode byte-for-byte to Fire's external Potion payloads `0x27F..0x286`, establishing equivalence between the two storage forms for a known paired item.
+2. A conservative literal-only type-4 encoder round-trips all four Health payloads exactly through a software model of native decoder `0x80003428`.
+
+### Disposable Proof H — static-confirmed, runtime pending
+
+Proof H relocates/expands Prison's resource file while leaving all stock selectors unchanged. Extension selector `0x123C` points to an appended Health-urn descriptor containing four embedded-data records. The original Water external IDs are removed; record `+0x08` instead points to four self-contained type-4 blocks generated from the exact `0x28F..0x292` image payloads.
+
+Only one early Prison Herbs location becomes the Health urn. The other five Herbs remain byte-for-byte stock on selector `8`.
+
+Expected runtime result: the Health urn renders cleanly, awards Health urn behavior/item ID `0x05`, and a separate untouched Herbs pickup still behaves normally. Until manually observed, the conversion remains **Static-confirmed only**.
