@@ -1,0 +1,1 @@
+MKMSZR Wiki mirror · Research source of truth: ChatGPT Library `MKMSZR Research` · Product source of truth: `smeagol44/MKMSZ-Randomizer`
