@@ -6,7 +6,7 @@ All eight main stages use ordinary `0x30`-byte records. The production catalog c
 
 Same-stage Fire Potion-to-Herbs testing established why the entire identity must move: callback changes the award, while type/resource/presentation fields control visible and collision behavior. Copying the complete tuple produced correct Herbs behavior and art at the Potion location.
 
-## Production shuffle
+## Current interim production shuffle
 
 For each stage, the generator uses a stable SHA-256-based Fisher–Yates shuffle with domain:
 
@@ -30,6 +30,8 @@ Candidate layouts are rejected, up to 1,000 deterministic attempts, if the known
 | Fire, Bridge, Fortress | Current ordinary locations treated as free by the ported access model |
 
 These are implementation/CI-confirmed rules ported from legacy logic. A complete native runtime playthrough across arbitrary seeds remains pending.
+
+This stage-local mode is an implementation stepping stone, not the final 1.0 randomizer model. 1.0 requires a single cross-stage logical pool and a whole-run validator.
 
 ## Progression-reward overlay
 
@@ -80,3 +82,34 @@ Production does not yet have a resource-import planner. Global item pooling rema
 - Cross-stage resource imports.
 - Legacy Lua substitutions such as replacing native mana with Herbs.
 - Treating empty logical slots as storage.
+
+
+## Legacy Lua global-randomizer reference
+
+The legacy `MKMSZR - 1.1.lua` already contained a true global shuffle design:
+
+1. build one flat list of locations across all eight stages;
+2. collect one flat item multiset;
+3. replace nine Herbs entries with progression Power Upgrades;
+4. Fisher-Yates shuffle the full item list;
+5. assign it back across stages;
+6. repeatedly collect every currently accessible location until no new location opens;
+7. accept the seed only if the resulting simulated inventory satisfies the final win condition.
+
+That is the correct high-level shape for 1.0, but it must **not** be ported literally. The Lua location-access rules differ from the current researched catalogs, some stock Mana entries were intentionally represented as Herbs, and the Lua's final beatability check was intentionally narrow. Current Wiki catalogs/requirements own the native 1.0 logic.
+
+The current SHA-256 deterministic RNG is preferable to Lua `math.random`; the global implementation should preserve deterministic namespace isolation while changing from stage-local to global assignment.
+
+## 1.0 cross-stage materialization requirement
+
+A logical item cannot be represented globally by blindly copying its native 28-byte tuple. The tuple may contain a stage-local resource selector and, for keys/crystals, an overlay-local callback.
+
+The global generator therefore needs a destination-stage materializer:
+
+- logical item identity and award semantics;
+- destination-safe callback;
+- destination-local resource slot;
+- presentation descriptor/collision data;
+- imported resource bundle when the destination does not already contain it.
+
+The runtime-confirmed Fire foreign Prison-key proof establishes that this architecture is feasible. A production planner must generalize it with guarded storage, relocation/expansion, file-table updates, deduplication, and allocation bounds.
