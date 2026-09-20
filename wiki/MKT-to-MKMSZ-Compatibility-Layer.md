@@ -385,9 +385,46 @@ v03 is built from the clean supported ROM and keeps the donor frames/palette/tim
 - only an exact Sub-Zero idle request `(table 0,index 0)`, while the isolated donor palette is owned by the same actor, writes controller `+0x6E4 = resource_base + 0x459E0`;
 - all non-idle calls continue through the stock `select_animation` tail and all other resource-table consumers see stock data.
 
+**Rejected / failed as a hang fix; donor rendering remains runtime-confirmed.**
+
+The user repeated the same forward, airborne-forward, crouch, safe-action, and transition tests. v03 behaved **exactly like v02**, including hard hangs at the same failing inputs and the same transient corrupt frame. Therefore permanently replacing the table-0/index-0 word was not the cause of the hang.
+
+This negative result materially narrows the failure: the common foreign state that remains during Sektor idle is the **live animation cursor itself**, which v03 still redirected from the native Sub-Zero stance region into the appended Sektor script. Static target code snapshots, compares, and advances controller `+0x6E4` directly in several helpers outside simple `select_animation` calls, so cursor locality/lifecycle is now the leading hypothesis.
+
+#### v04 — native cursor location with foreign frame pointers + diagnostic HUD
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v04.z64`
+
+Identity:
+
+- SHA-256 `295480a5596dd9c6a09be3dbc7899c3d6c2b6a1e0c2193c0624834a7ef3ee385`;
+- CRC1/CRC2 `36AD42FB / 615A2E42`.
+
+v04 keeps the relocated Sub-Zero resource table unchanged and no longer redirects `controller+0x6E4` to appended script `+0x459E0`. Instead, it preserves the native table-0/index-0 target and native cursor location at resource `+0x2EC`, replacing only the first seven words of that native idle script with:
+
+```text
+Sektor RBSTANCE1 shape
+Sektor RBSTANCE3 shape
+Sektor RBSTANCE5 shape
+Sektor RBSTANCE7 shape
+Sektor RBSTANCE9 shape
+command 1
+self +0x2EC
+```
+
+All other bytes in the original `0x459E0`-byte Sub-Zero resource are unchanged. The appended donor shapes, raw CI buffers, converted Sektor palette, and donor idle rate 8 remain the same as the earlier proofs.
+
+v04 also adds proof-only native HUD instrumentation through the already runtime-confirmed gameplay text path. The bottom readout is:
+
+`P# C# L# X#`
+
+where the digits encode donor-palette ownership, whether the live animation cursor is inside the native idle-script range, the low nibble of controller locomotion state, and the low nibble of normalized action input. This instrumentation is diagnostic only and is not a product UI design.
+
 **Implementation/static-confirmed; runtime pending.**
 
-This proof intentionally does not change the separate one-frame idle-entry palette artifact. If v03 removes the hangs while leaving that frame, the locomotion/resource-table defect and palette/shape ordering artifact are cleanly separated.
+Primary success criterion: forward movement, crouching, and airborne forward drift no longer hang while the genuine Sektor idle still loops. A transient idle-entry corrupt frame may remain as a separate palette/shape ordering issue and is intentionally not changed in this proof.
 
 ### Later proofs
 
