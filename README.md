@@ -11,6 +11,8 @@ The codebase is built around a modular Python patching core. ROMs are never stor
 - deterministic configuration shared by CLI and browser frontend;
 - preserve known-good native patches while the Lua-era randomizer logic is progressively replaced;
 - include the runtime-confirmed compact safe eight-stage selector in every patched ROM;
+- skip the two mandatory post-legal company/logo screens while preserving the legal/branding screen and normal title initialization;
+- skip only the Safe Stage Select automatic stage-entry save prompt while preserving normal later/manual saves;
 - reserve the runtime-tested 1 KiB MKMSZR native memory block in every patched ROM;
 - persist all 84 catalogued ordinary pickup locations across the eight main stages;
 - deterministically randomize the 84 ordinary pickup records from the run seed;
@@ -49,9 +51,7 @@ Current scope is intentionally conservative:
 - native mana pickups remain native mana rather than using the legacy Lua
   workaround that substituted Herbs.
 
-This is the first production-safe native randomization milestone. Runtime
-playthrough validation is still required before treating the mode as fully
-confirmed.
+Seed `TEST153` has now provided the first bounded runtime validation of this production mode: Fire's first ordinary location became the predicted Shield and behaved normally. A complete seeded run and broader arbitrary-layout coverage are still pending.
 
 ## Development status
 
