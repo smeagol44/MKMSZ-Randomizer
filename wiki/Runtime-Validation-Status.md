@@ -139,3 +139,13 @@ Runtime test matrix:
 - Sweep Fall + Sweep Getup;
 - Fortress -> gameplay -> Inventory;
 - Prison -> first doorway -> Inventory.
+
+
+Runtime result on 2026-09-21:
+- ordinary Run: **Runtime-confirmed visual failure**. N64-derived odd poses are clean; PS1-derived even poses render as heavily speckled/checkerboard full-body frames.
+- Sweep Fall -> Sweep Getup: **Runtime-confirmed pass** on the tested route; the former hard hang is gone.
+- Grab/Throw: **Runtime-confirmed pass**; remains visually/timing-correct.
+- Fortress -> gameplay -> Inventory: **Runtime-confirmed pass**.
+- Prison -> first doorway -> Inventory: **Runtime-confirmed pass**.
+
+Postmortem: v56 fixed the four-column output-cursor bug, but the resulting PS1 Run source itself still decodes with corrupted-looking internal pixel/color structure. The earlier “PS1 ideal” comparison was only the output of that same unverified pipeline, not ground truth. Rendering PS1 odd Run poses with their native PS1 palette shows the same speckling even before N64 conversion. Therefore the PS1 POVBQ Run donor path is **Rejected / unresolved**, and further Type-5/VQ tuning against those buffers is not meaningful.
