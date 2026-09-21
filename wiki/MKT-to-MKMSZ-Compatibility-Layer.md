@@ -1591,3 +1591,16 @@ v52 takes runtime-confirmed Fortress-working v49 (`0x4E544`) and changes no reac
 **Runtime-confirmed failure:** Fortress reaches the Mission Objective screen, stage music begins, and then the game hangs before gameplay, matching v51.
 
 This isolates a second, later Fortress allocation threshold behavior: file-0x87 footprint alone is sufficient to fail at `0x5100C`. The extra decoded Sektor combat frames in v51 are not needed to reproduce it. Therefore the immediate optimization target remains compressed/resource footprint rather than decoded-frame residency.
+
+
+#### v53 — Sektor-first common-animation takeover
+
+v53 is the first proof that stops treating Sub-Zero art as a permanent co-resident requirement.
+
+It maps 33 common primary states through slot `0x22` (excluding Victory and Elbow/Combo) to 129 genuine Sektor frames and removes the dynamic palette-switch helper. The native stock player palette path remains active; the lower 32 colors of the stock 64-entry TLUT are replaced with the proven Sektor colors, while the upper 32 remain valid stock fallback entries.
+
+All remaining direct references to the stock 341-frame Type-5 corpus are redirected to a safe Sektor stance placeholder. This preserves unported script/control grammar while making the old Sub-Zero Type-5 region fully reclaimable. The shared stock table/frames at `+0x14AC..+0x41683` are replaced by two shared 5-bpp Sektor models and 118 frame blobs; 11 additional frame blobs occupy a small appended tail.
+
+**Static/implementation-confirmed; runtime pending.** File `0x87` is only `0x473D8`, `0x716C` below the proven Fortress-working v49 footprint. The helper's 1 KiB arena reservation is also gone, restoring the stock `0x801AF420` arena start.
+
+The proof intentionally accepts visually placeholder rare/special states. Its purpose is to validate the final direction: Sektor-native palette + common-animation bulk replacement + whole-character stock-art garbage collection, rather than mixed-palette incremental coexistence.
