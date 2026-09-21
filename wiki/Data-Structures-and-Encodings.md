@@ -163,3 +163,16 @@ Reproducible tool: `tools/benchmark_type5_encoder.py`.
 **Static/implementation-confirmed in v54.** Type-5 model records do not require distinct physical pattern arrays. Multiple model records may use the same pattern-table relative offset while carrying independent normal-class widths/bases and transparent-run classes. The first 6 stream bits select the entropy model; pattern indices then resolve through that model's bases into the shared physical dictionary.
 
 The optimized Sektor v54 uses **16 model records over one shared 5-bpp dictionary**. Splitting the 129 inherited v53 frames into smaller entropy groups reduces stream bits enough to retain seven flattened Throw keyframes while keeping file ID `0x87 = 0x4E154`, below the runtime-confirmed Fortress-working v49 footprint. Independent software decode verifies every emitted frame against its exact source pixels. This is a packing optimization only; it does not alter the Type-5 pixel grammar or visible artwork.
+
+
+### Type-5 zero-bit normal-class compatibility boundary
+
+**Strong inference from v54 runtime failure; guarded in v55.** v54 Sweep Fall hard-hung after its second visible pose. Static tracing places the next pose in the first generated model on that action path whose normal-pattern class table contains a **0-bit** width. Stock/runtime-confirmed generated layouts had not established zero-bit normal classes as native-decoder-safe.
+
+v55 therefore treats `normal_bits >= 1` as a compatibility requirement for generated fighter Type-5 models. Its optimizer searches class widths from 1 through 16 bits and asserts the constraint across all 52 emitted model records. This is deliberately stronger than the software decoder requires. The causal link remains a strong inference until v55 Sweep Fall is runtime-tested successfully.
+
+### PS1 MKT POVBQ supplemental conversion
+
+**Static/implementation-confirmed in v55.** PS1 MKT `CHARS1/ROBOT.DAT` stores the ordinary robot Run bank through the POVBQ path rather than the N64 fighter representation. v55 decodes the required PS1 frames offline, using their 12-byte descriptors, padded width, palette ID, shared POVBQ table, 6-bit model selector, seven normal symbols, and two transparent-run symbols. The decoded indexed pixels are then palette-converted and encoded into MKMSZ native Type-5; PS1 compressed bytes are never copied directly into N64 resources.
+
+For the six even Run poses absent from MKT N64, the final shared Sektor dictionary requires only **18 supplemental 2x4 patterns**. After those are admitted, the palette-converted PS1 target buffers are represented exactly: zero color-space RMSE and 100% exact opaque indices. v55's final shared dictionary contains 40,595 patterns and is addressed by 52 Type-5 entropy models.
