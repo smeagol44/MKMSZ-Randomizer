@@ -1535,3 +1535,22 @@ v49 rebuilds the proven Sektor Idle/Walk/Turn/Crouch set with encoder-v2 but no 
 v50 uses the same animation content and encoder but places eligible compressed image streams into 22 file-local-unreferenced stock locomotion-frame intervals. It uses `0x2224` bytes of those holes and reduces file 0x87 to `0x4C320`, which is `0x1500` bytes smaller than the runtime-confirmed Fortress-working v40 footprint.
 
 **Runtime-confirmed.** Both v49 and v50 load Fortress normally, enter gameplay with music, and open Inventory normally. This confirms generated Type-5 locomotion is not intrinsically Fortress-incompatible and separately validates the conservative locomotion-hole reclamation strategy on Fortress.
+
+
+#### v51 — merged contiguous dead-stock reclamation
+
+Disposable proof: `MKMSZR_mkt-sektor-type5-full-crouch-combat_merged-reclaim-proof_v51.z64`.
+
+Identity:
+
+- SHA-256 `6a4d07216cf9acbf30aae513a4787eff5c17eaa836171612d612cc5fa729394e`;
+- CRC1/CRC2 `BE14F541 / D5784E8A`;
+- file ID `0x87` size `0x5100C`.
+
+v51 keeps the exact v46/v47 34-frame/action Sektor composition and the same generated Type-5 codec semantics. It improves only storage placement.
+
+The 42 stock frame intervals already established as file-local-unreferenced under the replaced-slot graph form five byte-contiguous runs. Treating each run as one reclaimed region permits large generated Type-5 dictionary tables, not only individual image streams, to occupy the old Sub-Zero storage. The planner fills the complete `0x5E6C`-byte proven-dead capacity. Sektor shape records stay in the donor append range, preserving the existing palette helper's runtime-confirmed classification contract.
+
+The result is `0x5100C`, saving another `0x1BB4` bytes versus v47 without dropping any mapped animation and sitting `0x1734` bytes below the known-failing v48 Fortress footprint.
+
+**Static/implementation-confirmed; runtime pending.**
