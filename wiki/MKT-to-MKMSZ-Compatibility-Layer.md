@@ -1651,3 +1651,16 @@ v55 keeps MKT N64 as the primary donor and uses PS1 MKT only for the six Run pos
 The final Type-5 corpus uses one 40,595-pattern 5-bpp dictionary with 52 entropy-model records. All normal class widths are constrained to at least one bit. The seven flattened Throw arm poses now use the donor `MECARM_P` gray-metal palette mapped into the Sektor TLUT, and the nine target Throw slots shift to `stance, stance, arm1..arm7` without modifying gameplay/victim timing.
 
 Two clean builds are byte-identical. Builder-side exact Type-5 round-trip covers all 158 emitted frames and optional v53 inheritance checking covers all 129 inherited frames. A separate finished-ROM audit confirms the file-table footprint, twelve distinct Run shape roots, separate Push loop, Throw shift/control preservation, and the nonzero Type-5 normal-class constraint.
+
+
+#### v56 — corrected PS1 Run donor conversion
+
+Disposable proof: `MKMSZR_sektor-run-decode_common-proof_v56.z64`.
+
+**Static/implementation-confirmed; runtime pending.** SHA-256 `eea8d47b4ed2fb94be891724097a97c74c94bff4703cd6f66a5bc5da25d892c0`; CRC1/CRC2 `A6256A28 / 73BE34AB`; file ID `0x87 = 0x4E414`.
+
+v55 runtime showed that the six PS1-derived Run poses collapsed to tiny artifacts while N64-derived odd poses remained correct. The fault was not PS1/N64 scale or a composite-frame misunderstanding: the importer failed to advance its destination cursor by four pixels after each 2x4 POVBQ vector, causing all vectors to overwrite one four-column strip. The former v55 “lossless 18-pattern” conclusion is therefore rejected.
+
+v56 fixes only that donor-decode path. Independent decoder comparison passes for PS1 MKT `RBRUN2/4/6/8/10/12`. Because the corrected full-body frames contain far more real pattern data, v56 uses 256 representative supplemental Type-5 patterns with exact transparency masks and a 64-model shared-dictionary layout. The resulting even poses are a documented bounded color/pattern approximation (RMSE ~4.504 in 5-bit RGB space), not a claimed lossless conversion. The result stays `0x130` bytes below the runtime-confirmed v49 Fortress footprint.
+
+v55 runtime separately confirms the corrected attacker Throw presentation and the Fortress/Prison + Inventory routes. Combo gameplay reaches six hits but retains at least one missing/neutral middle visual. Victim-side grabbed/thrown reactions are a separate pending compatibility family, with inherited `fb_*` primary slots `0x26+` as candidates pending MKMSZ call-site confirmation.
