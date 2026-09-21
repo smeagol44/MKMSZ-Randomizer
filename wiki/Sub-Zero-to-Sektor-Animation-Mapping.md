@@ -802,7 +802,7 @@ Identity:
 - file ID `0x87` size `0x4E154`;
 - `0x3F0` (1,008 bytes) below the runtime-confirmed Fortress-working v49 footprint `0x4E544`.
 
-**Static/implementation-confirmed; runtime pending.**
+**Partially runtime-tested; the Run ownership, Sweep-Fall encoding, and Throw palette/timing are superseded by v55.**
 
 v54 keeps the runtime-confirmed v53 native-Sektor-palette/helper-free architecture and extends it with Run, Elbow/Combo, and Grab/Throw visuals. A clean rebuild is deterministic, and an optional builder cross-check confirms all 129 inherited v53 frames are byte-for-byte identical in decoded pixels, geometry, and anchors to the runtime-confirmed v53 ROM.
 
@@ -856,3 +856,54 @@ Independent software decode verifies every emitted Type-5 frame against its exac
 
 Runtime gates: Run; full Elbow/Combo; Grab/Throw; Fortress -> gameplay -> Inventory; Prison first doorway -> Inventory.
 
+
+
+## v55 — true 12-frame Run + Sweep-Fall decoder guard + Throw repair
+
+Disposable proof: `MKMSZR_sektor-run-sweep-throw_common-proof_v55.z64`.
+
+Identity:
+- SHA-256 `13dd4c9247bf4b1154d3b7563412333c6e21f68569155f742e683fbc29635ebc`;
+- CRC1/CRC2 `A624ABE8 / 48D2A010`;
+- file ID `0x87 = 0x4D0A4`;
+- `0x14A0` (5,280 bytes) below runtime-confirmed Fortress-working v49 `0x4E544`.
+
+**Static/implementation-confirmed; runtime pending.**
+
+### Run / Push ownership correction
+
+v54 runtime testing exposed the earlier semantic mistake. MKMSZ `+0x1B0` is the **Push** animation: seven visual ticks followed by `1 -> +0x1B4`. That is why the v54 Sektor run poses appeared while pushing. The actual ordinary **Run** loop is at `+0xEE8` and contains **twelve visual positions**, followed by `1 -> +0xEE8`.
+
+v55 leaves Push as a seven-tick Sektor approximation using the six N64-retained run poses, but maps ordinary Run to twelve distinct Sektor poses:
+
+`RBRUN1, RBRUN2, RBRUN3, RBRUN4, RBRUN5, RBRUN6, RBRUN7, RBRUN8, RBRUN9, RBRUN10, RBRUN11, RBRUN12`.
+
+The odd poses `1/3/5/7/9/11` come from the supplied MKT N64 Rev. 2 donor. PS1 MKT preserves the full Run at `CODE/ROBOT.BIN +0x140C`, whose twelve image references resolve consecutively to `CHARS1/ROBOT.DAT` headers 222..233. The even poses `2/4/6/8/10/12`, deliberately cut from MKT N64, are decoded from those PS1 resources and converted into the native MKMSZ Type-5/Sektor-palette representation.
+
+The PS1/N64 common odd poses differ only modestly in port crop/geometry, so v55 does not apply a destructive global resize to the restored even poses. Shared-dictionary packing initially treats the existing Sektor 2x4 patterns as the codebook. Under the final palette conversion only **18 supplemental PS1 patterns** are needed; the six converted PS1 even frames are then reproduced exactly (`VQ_RMSE = 0`; 100% exact opaque pixels), so the final build is not a lossy approximation despite using the codebook optimization machinery.
+
+### Sweep Fall
+
+v54 hard-hung immediately after its second visible Sweep-Fall pose. Static audit places the next pose in the first generated model on that path containing a **0-bit normal Type-5 class**. Stock/runtime-confirmed generated layouts had not established such a class as native-decoder-safe. v55 therefore forbids zero-bit normal classes globally: all 52 generated model records have normal widths `>= 1` bit. This is a **strong inference / guarded repair** until runtime re-test confirms the former Sweep-Fall route no longer hangs.
+
+### Throw color and timing
+
+v54 established that the flattened mechanical-arm geometry is viable, but its codec-15 arm indices were interpreted through Sektor's body palette, producing a red arm. The donor source identifies a dedicated eight-entry `MECARM_P` palette. v55 converts that actual metal ramp into the resident Sektor TLUT using:
+
+`1->17, 2->19, 3->20, 4->22, 5->24, 6->25, 7->26`.
+
+The user also observed the visual arm choreography roughly one native tick ahead of the actual grab. v55 preserves MKMSZ gameplay/victim timing and changes only the nine attacker visual slots from v54's `stance, arm1..arm7, stance` to:
+
+`stance, stance, arm1, arm2, arm3, arm4, arm5, arm6, arm7`.
+
+The same seven genuine flattened arm phases remain in order: `+0x2318,+0x2340,+0x237C,+0x2390,+0x23B8,+0x23CC,+0x2408`.
+
+### v55 storage and verification
+
+The generated corpus contains **158 frames**: 129 inherited v53 frames + 12 Run poses + 10 Combo poses + 7 Throw composites. One physical 5-bpp dictionary contains **40,595** unique 2x4 patterns and is addressed by **52** entropy-model records. The table/dictionary occupies `0x32E03`; padded frame streams total `0x136A4`.
+
+Five former append scripts remain repacked into proven-dead pre-Type-5 script regions, while Standing High Kick remains the one packed script item. The stock 341-frame Sub-Zero Type-5 corpus remains fully reclaimed.
+
+Two clean v55 builds are byte-identical. The builder independently decodes every emitted Type-5 frame and requires exact equality with its selected target buffer; with the optional runtime-confirmed v53 ROM it also verifies all 129 inherited frames exactly. A separate finished-ROM audit confirms twelve distinct Run roots at `+0xEE8`, the independent seven-visual Push loop at `+0x1B0`, the one-slot Throw delay with stock separators untouched, and minimum normal-class width 1 across all 52 models.
+
+Runtime gates: Run; Push; Sweep Fall + Sweep Getup; Throw color/timing; full Combo regression; Fortress -> gameplay -> Inventory; Prison first doorway -> Inventory.
