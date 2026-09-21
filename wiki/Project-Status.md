@@ -31,7 +31,7 @@ Last consolidated: 2026-09-20.
 | Fire ordinary enemy `0x0A -> 0x09` | Spawns and plays normally | Production policy and broader coverage |
 | Temple monk imported into Fire | Model loads, enemy moves/fights/dies | Death/despawn presentation missing; arbitrary rosters unresolved |
 | Temple XP progression proof | Three proof pickups plus one vanilla Herbs control established no-combat-XP and pickup-driven tiers | Generalized into the production Diagnostic B architecture; full nine-tier coverage and final art remain |
-| Reverse Elbow host/action proof + genuine MKT import branch | v6 established repeatable scheduler/action stability; v08/A1.7 runtime-confirmed genuine SCCOMBO10; Sektor direct replacements through Jump are runtime-confirmed; v20 remains the accumulated raw-resource failure boundary | Continue with bounded aerial attack proofs (Jump Kick / Flip Kick / Flip Punch), then flips and reaction states. Proof ROMs from v25 onward include the confirmed post-legal logo skip for faster iteration; full-character composition still needs a storage solution |
+| Reverse Elbow host/action proof + genuine MKT import branch | v6 established repeatable scheduler/action stability; v08/A1.7 runtime-confirmed genuine SCCOMBO10; Sektor direct replacements through Jump Kick / Flip Kick / Flip Punch are runtime-confirmed; v20 remains the accumulated raw-resource failure boundary | Continue with Forward/Back Flip and reaction states; keep bundling only while file 0x87 remains in a previously proven working size band. Proof ROMs from v25 onward include the confirmed post-legal logo skip for faster iteration; full-character composition still needs a storage solution |
 
 ## Latest runtime findings
 
