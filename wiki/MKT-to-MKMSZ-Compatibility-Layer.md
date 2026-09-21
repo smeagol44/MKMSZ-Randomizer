@@ -1229,3 +1229,17 @@ v28 returns to the exact runtime-confirmed v11 baseline and imports MKT Sektor p
 Six genuine donor frames are materialized through the already runtime-confirmed raw/type-0 fighter adapter. The unique High-Kick apex `RBHIKICK1` is retail geometry 95x109 in target X:Y order, anchor (+19,-11), codec 24, with 10464 decoded aligned bytes. The Sektor palette moves to resource `+0x58870`, and file ID `0x87` becomes `0x588BC`. The proven frame-setup palette helper bounds are updated, the false cave remains stock, and the runtime-confirmed post-legal logo bypass is included.
 
 **Runtime-confirmed.** The user reported Standing High Kick working perfectly. This confirms primary slot `0x11` as a direct Sektor graphical replacement and leaves Knee as the next efficient bounded primary-slot proof.
+
+
+#### v29 — isolated Knee
+
+Disposable proof: `MKMSZR_mkt-sektor-knee_isolated-proof_v29.z64`.
+
+Identity:
+
+- SHA-256 `1adffe93fb6a04163896a7738ff74b1f915b0607e3cff1bd82b00b25fab40d71`;
+- CRC1/CRC2 `CAACEE79 / 889B6536`.
+
+v29 returns to the exact runtime-confirmed v11 baseline and maps MKT Sektor primary slot `0x13` Knee. Its exact retail sequence is `RBKNEE1, RBKNEE2, RBKNEE3, 0, RBKNEE2, RBKNEE1, 0`. The first/last frame is physically the already-resident robot stance frame used as `RBSTANCE7` in the v11 idle proof, so only `RBKNEE2` and `RBKNEE3` need new raw/type-0 materialization. The script fits the native seven-word Knee region in place; file ID `0x87` becomes `0x507E0`. The false cave remains stock and the post-legal logo bypass is included.
+
+**Runtime-confirmed.** The user reported Knee working perfectly. This confirms primary slot `0x13` as a direct Sektor graphical replacement; Sweep is next.
