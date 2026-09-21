@@ -1062,9 +1062,55 @@ New donor shapes:
 
 File ID `0x87` becomes size `0x590E4`, below the already runtime-confirmed v19 size `0x5C15C` and well below failed v20 `0x5F8C4`.
 
+**Runtime-confirmed.**
+
+The user confirmed that v22 works cleanly: Crouch High Kick plays correctly through its forward/reverse sequence, returns to the imported Sektor crouch, and the previously confirmed Crouch Low Kick remains correct in the same build.
+
+This runtime-confirms primary slot `0x09` Crouch High Kick as a direct graphical replacement and confirms coexistence of both crouching kick slots on the compact branch.
+
+#### v23 — isolated Uppercut
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-uppercut_isolated-proof_v23.z64`
+
+Identity:
+
+- SHA-256 `bcece5ddf4f7994c04776309c0f35158a1a3fcb1404a7e405194dd24150c10c7`;
+- CRC1/CRC2 `DAA31FC9 / 2BFDE43C`.
+
+v23 returns to the runtime-confirmed v17 crouch base and isolates primary slot `0x0B` Uppercut so the test remains below the known raw resource failure boundary.
+
+The exact MKT Rev. 2 Sektor uppercut sequence is:
+
+```text
+RBUPPERCUT1
+RBUPPERCUT3
+RBUPPERCUT4
+RBUPPERCUT5
+ANI_NOSLEEP
+RBUPPERCUT7
+0
+RBUPPERCUT5
+0
+```
+
+Static comparison with MKMSZ's stock Sub-Zero uppercut shows the same nine-word animation grammar and the same command value `5` for `ANI_NOSLEEP` in the same position. Therefore v23 replaces the stock script in place at resource `+0x49C`; no script relocation or neighboring overwrite is required.
+
+Five exact retail donor frames are materialized through the proven raw/type-0 fighter path:
+
+- `RBUPPERCUT1` at `+0x51D58`, 46x78, anchor (+20,-42);
+- `RBUPPERCUT3` at `+0x52C10`, 57x94, anchor (+20,-28);
+- `RBUPPERCUT4` at `+0x54230`, 82x98, anchor (+30,-25);
+- `RBUPPERCUT5` at `+0x56270`, 78x108, anchor (+32,-16);
+- `RBUPPERCUT7` at `+0x58448`, 46x130, anchor (+21,+6);
+- donor palette moves to `+0x59CC0`.
+
+File ID `0x87` becomes size `0x59D0C`, below the runtime-confirmed v19 size `0x5C15C` and well below failed v20 `0x5F8C4`.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary validation: stage load, Crouch High Kick forward/reverse sequence, return to Sektor crouch, and retention of the already-confirmed Crouch Low Kick.
+Primary validation: stage load, Sektor Uppercut animation, correct tall apex frame, and clean transition afterward. The proof intentionally does not compose the crouching kicks so Uppercut itself remains isolated from the known accumulation boundary.
 
 ### Later proofs
 
