@@ -1440,4 +1440,4 @@ v43 applies the runtime-confirmed v42 encoder architecture to all five Sektor st
 
 The result saves `0x3C74` bytes versus v40/v42 while preserving exactly the same visible idle content. This is the first proof that native type-5 encoding can convert the Sektor branch from raw-expansion experiments into a genuinely shrinking fighter resource.
 
-**Static/implementation-confirmed; runtime pending.**
+**Runtime-confirmed.** The complete five-frame native type-5 Sektor idle renders cleanly under frame-by-frame inspection, transitions correctly, and preserves the working Prison doorway route.
