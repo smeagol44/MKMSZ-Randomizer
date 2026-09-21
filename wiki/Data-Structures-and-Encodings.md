@@ -176,3 +176,12 @@ v55 therefore treats `normal_bits >= 1` as a compatibility requirement for gener
 **Static/implementation-confirmed in v55.** PS1 MKT `CHARS1/ROBOT.DAT` stores the ordinary robot Run bank through the POVBQ path rather than the N64 fighter representation. v55 decodes the required PS1 frames offline, using their 12-byte descriptors, padded width, palette ID, shared POVBQ table, 6-bit model selector, seven normal symbols, and two transparent-run symbols. The decoded indexed pixels are then palette-converted and encoded into MKMSZ native Type-5; PS1 compressed bytes are never copied directly into N64 resources.
 
 For the six even Run poses absent from MKT N64, the final shared Sektor dictionary requires only **18 supplemental 2x4 patterns**. After those are admitted, the palette-converted PS1 target buffers are represented exactly: zero color-space RMSE and 100% exact opaque indices. v55's final shared dictionary contains 40,595 patterns and is addressed by 52 Type-5 entropy models.
+
+
+### PS1 POVBQ output-cursor correction (v56)
+
+**Static/implementation-confirmed correction.** The first v55 PS1 Run importer copied the POVBQ vector decode incompletely. A decoded vector is 2 rows x 4 pixels. After writing row 1, the cursor moves to row 2; after writing row 2, it must return to row 1 **and advance four pixels to the next block column**. v55 omitted that final +4 advance, so every vector in a row pair overwrote the same four-column strip. Software round-trip checks did not catch the bug because both encoding and validation consumed the same malformed target buffers.
+
+v56 fixes the cursor progression and independently compares the six required PS1 Run frames against the separate PS1 decoder implementation. All six match byte-for-byte and each uses more than 30 nonzero columns, explicitly rejecting the former four-column collapse.
+
+Correct full-body PS1 frames materially increase dictionary pressure. The v56 proof therefore uses a bounded shared-dictionary approximation: 256 representative supplemental 2x4 patterns with **exact transparency masks**, 64 Type-5 entropy models, 40,833 total dictionary patterns, and file ID `0x87 = 0x4E414`. The six even Run poses are not claimed lossless: their selected-target color RMSE is about 4.504 in 5-bit RGB units with 36.3% exact opaque indices, while geometry/transparency silhouettes are preserved exactly.
