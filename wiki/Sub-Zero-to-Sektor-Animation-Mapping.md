@@ -708,3 +708,22 @@ Two disposable proofs preserve the same genuine Sektor Idle + Walk Forward/Backw
 v49 is `0xD24` bytes above the known-good v40 Fortress footprint. v50 is `0x1500` bytes below it. These are real-content controls rather than inert padding threshold probes.
 
 **Runtime-confirmed.** Both v49 and v50 load Fortress normally, reach gameplay/music, and allow Inventory to open without a hang. This establishes that the generated Type-5 locomotion itself is Fortress-safe at v49's `0x4E544` footprint and that v50's conservative stock locomotion-hole reclamation is also Fortress-safe on the tested route.
+
+
+## Full crouch-combat merged-reclamation proof — v51
+
+Disposable proof: `MKMSZR_mkt-sektor-type5-full-crouch-combat_merged-reclaim-proof_v51.z64`.
+
+Identity:
+
+- SHA-256 `6a4d07216cf9acbf30aae513a4787eff5c17eaa836171612d612cc5fa729394e`;
+- CRC1/CRC2 `BE14F541 / D5784E8A`;
+- file ID `0x87` size `0x5100C`.
+
+v51 preserves the exact 34 unique genuine Sektor frames/actions of v46/v47: Idle, Walk F/B, Turn, Crouch, Crouch Turn, Crouch Block, Crouch Hit, Crouch Punch, Crouch Low Kick, Crouch High Kick, and Standing Block. No action is removed and the established encoder-v2 grammar is unchanged.
+
+The storage planner changes only physical placement. The same 42 file-local-unreferenced stock frame intervals proved by v47 are merged only when byte-contiguous, yielding five reclaimed regions. This allows both Type-5 image streams and whole generated Type-5 model/dictionary tables to occupy the dead stock ranges. The planner uses the full `0x5E6C` bytes of already-proved reclaimed storage while keeping every Sektor shape/subdescriptor in the donor append range so the runtime-confirmed palette helper classification remains unchanged.
+
+File `0x87` drops from v47's `0x52BC0` to `0x5100C`, a further `0x1BB4`-byte reduction with identical mapped content. This is `0x1734` bytes below the exact v48 Fortress allocation footprint that is runtime-confirmed to fail, although the exact Fortress threshold remains unknown.
+
+**Static/implementation-confirmed; runtime pending.** Primary gate: Fortress stage load + Inventory. Secondary gate: Prison first doorway + Inventory and quick animation regression.
