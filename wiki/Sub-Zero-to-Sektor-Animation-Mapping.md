@@ -684,6 +684,27 @@ Identity:
 
 v48 begins from runtime-confirmed v40. It changes no reachable Sektor frame, script, descriptor, palette helper, selector logic, or stage behavior. The only fighter-resource change is extending file ID `0x87` from `0x4D820` to `0x52740` with `0x4F20` bytes (20,256 bytes) of untouched/unreachable `0xFF` tail padding.
 
-This is the Fortress counterpart to the earlier v41 Prison allocation control. If v48 hangs entering Fortress before music, allocation footprint alone is sufficient at `0x52740` on this route. If it loads, v45's reachable compressed-locomotion content or runtime decode behavior is implicated instead.
+This is the Fortress counterpart to the earlier v41 Prison allocation control.
+
+**Runtime-confirmed failure.** Fortress hangs on the Mission Objective screen before stage music/gameplay exactly as v45/v47 do. Since v40 at `0x4D820` loads Fortress normally, loaded file-0x87 allocation footprint alone is sufficient to cause the Fortress failure at `0x52740`. No exact lower threshold is claimed.
+
+
+## Compact locomotion Fortress controls — v49 / v50
+
+Two disposable proofs preserve the same genuine Sektor Idle + Walk Forward/Backward + Turn + Crouch behavior while using encoder-v2.
+
+`MKMSZR_mkt-sektor-type5_compact-locomotion_proof_v49.z64`:
+- SHA-256 `fab888febf806a84119b773ffe01a23c1c6d37efc25aae250e93d1d1b1a740ff`;
+- CRC1/CRC2 `BE1556F1 / 31A9C4B4`;
+- file ID `0x87` size `0x4E544`;
+- no stock-frame-hole reuse.
+
+`MKMSZR_mkt-sektor-type5_reclaimed-locomotion_proof_v50.z64`:
+- SHA-256 `adb737edd95a012a8675f36d5c0cafeb368cc8c29f0bd6f62c43db5c1181acf6`;
+- CRC1/CRC2 `BE159571 / 6193CBE7`;
+- file ID `0x87` size `0x4C320`;
+- uses `0x2224` bytes of file-local-unreferenced stock locomotion-frame intervals.
+
+v49 is `0xD24` bytes above the known-good v40 Fortress footprint. v50 is `0x1500` bytes below it. These are real-content controls rather than inert padding threshold probes.
 
 **Static/implementation-confirmed; runtime pending.**
