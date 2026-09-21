@@ -1271,3 +1271,17 @@ Identity:
 v31 returns to the exact runtime-confirmed v11 baseline and maps MKT Sektor primary slot `0x15` Roundhouse. Its exact retail sequence is `RBSPINKICK1,2,3,4,5,0,6,7,8,0`. The MKMSZ target uses the same ten-word animation structure, with no callback or donor-control tokens to translate, so the proof replaces only the eight visual pointers in place. All eight genuine donor frames use the proven raw/type-0 conversion. File ID `0x87` becomes `0x5B180`; neighboring action scripts, the false cave, and the rest of v11 remain untouched apart from the proven logo bypass and helper/palette bounds.
 
 **Runtime-confirmed.** The user reported Roundhouse working wonderfully. This confirms primary slot `0x15` as a direct Sektor graphical replacement; Jump is next.
+
+
+#### v32 — isolated Jump
+
+Disposable proof: `MKMSZR_mkt-sektor-jump_isolated-proof_v32.z64`.
+
+Identity:
+
+- SHA-256 `ca8b7e5d473a22ee67dbafd8a707ca8583fc38d2af875eee82734adcee8ce3b0`;
+- CRC1/CRC2 `CAACE1D9 / 6D21C0BA`.
+
+v32 returns to the exact runtime-confirmed v11 baseline and maps MKT Sektor primary slot `0x16` Jump. Its exact retail sequence is `RBJUMP1, RBJUMP2, RBJUMP3, 0`; the target uses the same four-word structure, so no control translation or script relocation is needed. Three genuine donor frames are materialized through the proven raw/type-0 conversion. File ID `0x87` becomes `0x52D94`, the false cave remains stock, and the post-legal logo bypass is included.
+
+**Runtime-confirmed.** The user reported Jump working perfectly. This confirms primary slot `0x16` as a direct Sektor graphical replacement. The next work may batch low-risk aerial attacks while keeping the resource below already-confirmed working sizes.
