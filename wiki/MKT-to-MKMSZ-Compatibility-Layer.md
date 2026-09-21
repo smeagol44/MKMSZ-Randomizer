@@ -1491,4 +1491,23 @@ The ROM composes 34 unique genuine Sektor frames across Idle, Walk Forward/Backw
 
 At `0x56E78`, the composed fighter file remains `0xA44` bytes below the exact `0x578BC` allocation footprint known to corrupt Prison and is `0xB268` bytes smaller than raw v12 despite covering substantially more actions.
 
-**Static/implementation-confirmed; runtime pending.**
+**Runtime-confirmed for the complete v46 animation set; bounded Prison/Inventory failure.** All 34 mapped Sektor frames/actions work, including Crouch Hit. Prison's first doorway survives, but opening Inventory after that boundary hard-hangs. Inventory before the door works and no equivalent failure has been observed in other stages so far.
+
+
+#### v47 — dead-stock image-stream reclamation
+
+Disposable proof: `MKMSZR_mkt-sektor-native-type5-repacked_prison-inventory-proof_v47.z64`.
+
+Identity:
+
+- SHA-256 `4eb68d30f64c67be8a669b11452c87f9ca0fd4bad5c12d616feadffa8a2276ad`;
+- CRC1/CRC2 `BE14E2F1 / A10378F8`;
+- file ID `0x87` size `0x52BC0`.
+
+v47 is a storage-placement control, not a new animation/codec experiment. The exact 34-frame v46 composition and encoder-v2 streams are retained.
+
+Static liveness analysis across all stock primary/secondary animation script starts plus a conservative whole-file aligned-pointer scan identifies 42 old Sub-Zero frame intervals, totaling `0x5E6C` bytes, whose shape pointers are owned only by the primary animation slots already replaced in v46. Sektor shape/subdescriptor records intentionally remain in the proven donor append range so the existing palette helper continues to classify them correctly; only their native type-5 image wrappers/streams are relocated into those dead stock intervals.
+
+The allocator successfully reclaims `0x42B8` bytes (17,080 bytes) of dead stock storage. File `0x87` falls from `0x56E78` to `0x52BC0`, just `0x480` bytes above the fully runtime-confirmed v45 locomotion build.
+
+**Static/implementation-confirmed; runtime pending.** The decisive test is Prison first doorway followed by opening Inventory.
