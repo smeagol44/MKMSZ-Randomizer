@@ -1472,4 +1472,4 @@ Identity:
 
 v45 keeps v44's exact animation/codec strategy but fixes the packer invariant: every generated fighter shape begins on a 4-byte boundary. Crouch now references aligned shapes at `+0x50380`, `+0x5113C`, and `+0x51D84`. Walk's shared dictionary/model and all already-working Idle/Walk/Turn assets remain semantically unchanged.
 
-**Static/implementation-confirmed; runtime pending.**
+**Runtime-confirmed.** Idle, Walk Forward/Backward, Turn, Crouch, repeated transitions, shared-Walk type-5 dictionary use, and Prison's first doorway all pass.
