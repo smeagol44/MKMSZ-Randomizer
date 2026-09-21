@@ -1023,3 +1023,61 @@ For the six even source poses, `RBRUN2` width 96 and `RBRUN8` width 108 are natu
 **Next Run fix:** recapture ROBO8 pixels row-by-row with `source_stride = align4(source_width)`, re-run the retained-odd calibration, regenerate only the six clean even target buffers, then repeat the Type-5 footprint/round-trip/CRC gates before the next disposable proof.
 
 
+
+
+## v58 — stride-corrected full Run
+
+Disposable proof: `MKMSZR_sektor-run-stride_common-proof_v58.z64`.
+
+Identity:
+- SHA-256 `bc15eed845b9d97c785acf828e593d5683d6a8f905bfb475b751160774d973e2`;
+- CRC1/CRC2 `A6256DD8 / DB8E6E81`;
+- file ID `0x87 = 0x4E3FC`;
+- `0x148` bytes below the runtime-confirmed Fortress-working v49 footprint `0x4E544`.
+
+**Runtime-confirmed on 2026-09-21 for ordinary Run.** The user reported that the completed Run animation “works perfectly.”
+
+v58 is deliberately narrow. It keeps the v57/v56 non-Run architecture and changes only the six supplemental even Run source buffers. The v57 diagonal/slashed-frame failure was traced to a source-row-stride mistake: Midway WIMP stores each 8-bit source row at `align4(xsize)`, while v57 had consumed `xsize` bytes per row. Midway's own WIMP compression code explicitly computes `zero_pad = (4 - xsize) & 3`.
+
+This also resolves the misleading v57 calibration anomaly. The retained odd ROBO8 frames whose source widths were already 4-byte aligned matched N64 closely, while the apparent mismatches all required source-row padding. v58 therefore reads every ROBO8 row using the aligned source pitch before scaling/palette conversion. `RBRUN2` (width 96) and `RBRUN8` (108) remain natural controls; `RBRUN4` (63), `RBRUN6` (89), `RBRUN10` (74), and `RBRUN12` (81) are the four even poses materially corrected by the stride fix.
+
+The final twelve-pose Run at `+0xEE8` remains:
+`RBRUN1..RBRUN12`,
+with odd poses from retail N64 MKT and the six cut even poses reconstructed from stride-corrected `ROBO8.IMG`.
+
+The bounded Type-5 composition remains inside the proven Fortress allocation envelope: 158 generated frames, 64 entropy models, 40,737 shared dictionary patterns, table `0x335A9`, and padded streams `0x14254`. The six ROBO8 even poses use 160 selected supplemental patterns with color-space RMSE `1.895317` and `54.115%` exact opaque indices, while preserving the selected target silhouettes. Every emitted Type-5 frame round-trips through the software decoder and two clean v58 builds are byte-identical.
+
+Only Run was newly runtime-validated in v58; the already-confirmed Sweep Fall/Getup, Grab/Throw, Fortress/Inventory, and Prison/Inventory results come from the preceding repair line and are not re-labeled here as fresh v58 observations.
+
+
+## v59 — complete middle Combo visuals
+
+Disposable proof: `MKMSZR_sektor-full-combo_common-proof_v59.z64`.
+
+Identity:
+- SHA-256 `b8b1ddfa964de4da86dc9598f99139f4c50ac066deaaf4ab5cd91fda63baf1cc`;
+- CRC1/CRC2 `A6256DD8 / DB8E6E81`;
+- file ID `0x87 = 0x4E3FC`;
+- `0x148` bytes below runtime-confirmed Fortress-working v49 `0x4E544`.
+
+**Runtime-confirmed on 2026-09-21 for the completed Combo visuals.** The user reported that v59 “works perfectly.”
+
+The earlier missing middle Combo visual(s) were not caused by the primary `0x10` Elbow/Combo script. That script already preserved MKMSZ's exact 17-word / four-segment grammar and mapped its 13 visual positions to:
+`RBELBOCOMBO 1,2,3 / 2,1 / 4,5,6 / 7,8,9,10,9`.
+
+The remaining neutral/missing visuals came from later portions of MKMSZ's **Knee** animation reused by the six-hit gameplay combo. v59 leaves the six gameplay combo records at ROM `0xB1CB0..0xB1D0F` byte-identical, including animation selectors:
+`1003, 1004, 1305, 1501, 1303, 1501`.
+Only six late Knee visual shape references are redirected:
+
+| MKMSZ script position | v59 Sektor visual |
+|---:|---|
+| `+0x6A0` | `RBSPINKICK4` (`+0x1DD8`) |
+| `+0x6A4` | `RBSPINKICK5` (`+0x1DC4`) |
+| `+0x6AC` | `RBKNEE3` (`+0x1D74`) |
+| `+0x6C4` | `RBKNEE1` (`+0x17A8`) |
+| `+0x6D0` | `RBKNEE2` (`+0x1D60`) |
+| `+0x6D4` | `RBKNEE3` (`+0x1D74`) |
+
+All intervening controls/separators in those Knee segments remain byte-identical to clean MKMSZ. v59 adds no new frame assets and does not enlarge file `0x87`: it reuses already-resident Sektor shapes, so the v58 storage/model/Run composition remains unchanged. The count of remaining fallback stock-shape references falls from 323 to 317. Two independent clean v59 builds are byte-identical.
+
+v58's twelve-pose Run remains the runtime-confirmed Run baseline. v59 changes only the six late Knee visual references needed by the existing combo chain; no independent v59 re-validation of unrelated gameplay routes is implied.
