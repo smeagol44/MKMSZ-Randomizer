@@ -28,7 +28,7 @@ Historical N64 proof runs used BizHawk `2.11.1`, Ares64, CPU emulation `1`, and 
 
 ### v53 common-animation takeover
 
-**Static/implementation-confirmed; runtime pending.**
+**Runtime-confirmed.** Fortress, Prison, Inventory, representative common actions, and demo movies all pass without hangs. Expected remaining gaps are placeholder/unported animation states.
 
 v53 removes the proof palette helper and restores the stock frame-setup path, stock arena start `0x801AF420`, zero file-ID `0x1B` entry, and unused helper bootstrap/payload state. Sektor colors become the native player palette by replacing the lower 32 entries of the stock 64-entry TLUT; upper 32 stock entries remain valid fallback colors.
 
@@ -37,3 +37,19 @@ The proof ports 33 common primary slots through `0x22` (all except Victory `0x0D
 Two shared 5-bpp Type-5 models use stock model-0 class geometry with 19,939 and 15,869 patterns. 118 Sektor frames fit inside the reclaimed stock Type-5 region and 11 overflow into the relocated file tail. File `0x87 = 0x473D8`, leaving `0x716C` bytes relative to the runtime-confirmed Fortress-working v49 size `0x4E544`.
 
 Primary runtime gates: Fortress stage load + Inventory; Prison first doorway + Inventory; representative movement/ground/aerial/fall/recovery actions; observe rare/unported states only for bounded placeholder behavior.
+
+
+### v54 expanded takeover
+
+**Static/implementation-confirmed; runtime pending.**
+
+v54 adds:
+- MKMSZ native run-loop visuals replaced with the six genuine Sektor Run poses from MKT primary `0x4A`, repeated across MKMSZ's 12 visual run ticks while preserving the stock loop command;
+- primary `0x10` Elbow/Combo mapped to the exact 36-word MKT retail animation grammar and genuine donor frames;
+- primary `0x23` Throw/Grab visuals mapped to genuine Sektor throw poses while preserving MKMSZ's native 12-word throw control grammar and avoiding MKT throw callbacks.
+
+MKT codec 15 is now statically decoded from the public-source `uncompress_8` format (8-color RLE) and its throw frames are re-encoded to MKMSZ native Type-5. The complete v54 corpus has 154 unique Sektor frames, 35 mapped primary slots, and the explicit run-loop replacement.
+
+Storage uses four shared Type-5 models. The eight codec-15 throw frames use a dedicated 3-bpp model; other Sektor art remains 5-bpp. Per-model normal class widths are optimized from actual pattern frequencies while preserving the native 13 normal symbols and three zero-run symbols.
+
+File `0x87 = 0x508E4`. This is below the known failing `0x5100C` Fortress footprint by only `0x728`, so no safety claim is made. Primary gate: Fortress -> gameplay -> Inventory. Secondary gates: run; Elbow/Combo sequence; Grab/Throw; Prison doorway -> Inventory.
