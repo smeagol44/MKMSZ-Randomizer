@@ -1285,3 +1285,18 @@ Identity:
 v32 returns to the exact runtime-confirmed v11 baseline and maps MKT Sektor primary slot `0x16` Jump. Its exact retail sequence is `RBJUMP1, RBJUMP2, RBJUMP3, 0`; the target uses the same four-word structure, so no control translation or script relocation is needed. Three genuine donor frames are materialized through the proven raw/type-0 conversion. File ID `0x87` becomes `0x52D94`, the false cave remains stock, and the post-legal logo bypass is included.
 
 **Runtime-confirmed.** The user reported Jump working perfectly. This confirms primary slot `0x16` as a direct Sektor graphical replacement. The next work may batch low-risk aerial attacks while keeping the resource below already-confirmed working sizes.
+
+
+#### v33 — bounded aerial-attack bundle
+
+Disposable proof: `MKMSZR_mkt-sektor-aerial-attacks_bundle-proof_v33.z64`.
+
+Identity:
+
+- SHA-256 `97b137ecd835d6667143ff3d18aec7b225962d217798cb933b9d29e2294fab37`;
+- CRC1/CRC2 `CAACE1C9 / 5DC52FD1`;
+- file ID `0x87` size `0x58D9C`.
+
+v33 deliberately batches three low-risk direct mappings while staying below previously runtime-confirmed resource sizes: Jump Kick (slot `0x17`), Flip Punch (slot `0x18`), and Flip Kick (slot `0x19`). Each uses the exact seven-word retail robot forward/reverse animation grammar with three genuine donor frames and no donor callbacks. Nine unique donor shapes are materialized through the runtime-confirmed raw/type-0 adapter.
+
+**Runtime-confirmed.** The user reported all three attacks working perfectly. This establishes that small bounded bundles are acceptable when their resulting file-0x87 size remains in a previously proven working band.
