@@ -1604,3 +1604,18 @@ All remaining direct references to the stock 341-frame Type-5 corpus are redirec
 **Static/implementation-confirmed; runtime pending.** File `0x87` is only `0x473D8`, `0x716C` below the proven Fortress-working v49 footprint. The helper's 1 KiB arena reservation is also gone, restoring the stock `0x801AF420` arena start.
 
 The proof intentionally accepts visually placeholder rare/special states. Its purpose is to validate the final direction: Sektor-native palette + common-animation bulk replacement + whole-character stock-art garbage collection, rather than mixed-palette incremental coexistence.
+
+
+#### v54 — codec-15 throw support and expanded takeover
+
+v54 extends the runtime-confirmed v53 takeover with Run, Elbow/Combo, and Throw/Grab visuals.
+
+A new donor-codec bridge is added for MKT compression method 15. The public MKT source identifies method 15 as the new-header 8-color RLE format implemented by `uncompress_8`: high-bit tokens emit zero runs, `0x40` tokens emit one/two 3-bit pixels, and low tokens emit mini/extended nonzero runs. v54 reproduces that offline decoder and round-trips the resulting throw pixels through the existing MKMSZ Type-5 generator.
+
+Throw remains a visual-only compatibility mapping: MKMSZ's native slot-0x23 control grammar is preserved and only its visual positions are replaced. MKT throw callbacks are not transplanted.
+
+Run likewise preserves MKMSZ's native 12-tick loop at `+0xEE8`; the six genuine Sektor Run frames fill those ticks twice. Elbow/Combo primary `0x10` uses the donor's generic 36-word animation grammar because it contains animation-rate commands/local flow but no translated gameplay callback dependency.
+
+The expanded corpus is 154 Sektor frames in four shared Type-5 models, including a dedicated 3-bpp model for codec-15 throw art. File `0x87 = 0x508E4`.
+
+**Static/implementation-confirmed; runtime pending.** Because the footprint is only `0x728` below the known failing Fortress `0x5100C` size and remains above the proven-working `0x4E544`, Fortress is the decisive stability test.
