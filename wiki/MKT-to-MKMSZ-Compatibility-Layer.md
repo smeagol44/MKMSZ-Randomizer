@@ -1525,4 +1525,13 @@ Identity:
 
 v48 is derived directly from runtime-confirmed v40 and preserves its exact reachable idle-only Sektor content. It extends only the declared file-0x87 end into an all-0xFF tail by `0x4F20` bytes, making the loader-facing footprint exactly equal to failing v45.
 
-**Static/implementation-confirmed; runtime pending.** This isolates Fortress allocation footprint from compressed-locomotion content. A v48 pre-music Fortress hang would prove that file size alone is sufficient at `0x52740`; a successful load would instead point to v45's reachable content/decode lifetime.
+**Runtime-confirmed failure.** Fortress hangs before stage music/gameplay. Together with working v40 and failing v45/v47, this proves that file-0x87 allocation footprint alone is sufficient to break Fortress at `0x52740`. The exact minimum failing size is not required for the current architecture.
+
+
+#### v49 / v50 — real compressed locomotion below the Fortress failure point
+
+v49 rebuilds the proven Sektor Idle/Walk/Turn/Crouch set with encoder-v2 but no destructive stock-hole reuse. File 0x87 is `0x4E544`, only `0xD24` above the known-good v40 footprint and well below failing v48.
+
+v50 uses the same animation content and encoder but places eligible compressed image streams into 22 file-local-unreferenced stock locomotion-frame intervals. It uses `0x2224` bytes of those holes and reduces file 0x87 to `0x4C320`, which is `0x1500` bytes smaller than the runtime-confirmed Fortress-working v40 footprint.
+
+**Static/implementation-confirmed; runtime pending.** Testing both provides a fast real-content check of how much compaction Fortress needs and separately exercises conservative stock-hole reuse on Fortress.
