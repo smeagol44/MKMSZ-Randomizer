@@ -1365,4 +1365,6 @@ Identity:
 
 v39 layers the already runtime-confirmed compact eight-stage selector onto the isolated v38 Stumble proof without changing the fighter resource/helper. The Stumble state uses six genuine donor frames and an appended exact 17-word retail loop with translated local jump target.
 
-**Runtime-confirmed.** The user supplied two screenshots of the upright multi-frame reel-back reaction and confirmed it works correctly. This also runtime-confirms the Sektor proof-helper/resource composition with the compact stage selector.
+**Runtime-confirmed for Stumble on the tested route.** The user supplied two screenshots of the upright multi-frame reel-back reaction and confirmed it works correctly.
+
+**Superseding Prison evidence:** v39 enters Prison and renders the initial area correctly, but the first doorway/encounter-activation boundary causes catastrophic scene/framebuffer corruption. Bridge and the earlier Stumble route do not show this failure. The compact selector itself therefore remains functional, but global selector + enlarged-Sektor-resource compatibility is not established. Strong current inference is stage-specific arena/resource pressure rather than visible-scene complexity; v39 file `0x87` is `0x578BC`, `0x11EDC` bytes larger than stock. This is not yet the proven root cause. The next bounded control keeps the same selector/helper composition but returns file `0x87` to the v11 size `0x4D820`.
