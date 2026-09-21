@@ -464,3 +464,18 @@ v34 bundles primary slots `0x1A` Forward Flip, `0x1B` Back Flip, `0x1C` High Hit
 **Runtime-confirmed:** Forward Flip, Back Flip, and High Hit all worked correctly in the tested route.
 
 **Pending:** Low Hit was not exercised. The user could not obtain a practical enemy attack while crouching in the tested route; this is lack of route coverage, not a failure observation.
+
+
+## Runtime-confirmed bundle — v35 Sweep Fall + Sweep Getup
+
+Disposable proof: `MKMSZR_mkt-sektor-sweep-fall-getup_bundle-proof_v35.z64`.
+
+Identity:
+
+- SHA-256 `9826cc7dba710a9121fe897f1bebc1d8c0f1a732c5c7d426b53787e0f7639c57`;
+- CRC1/CRC2 `CAACE1B9 / C178A223`;
+- file ID `0x87` size `0x57D00`.
+
+v35 returns to the exact runtime-confirmed v11 idle baseline and bundles primary slot `0x1F` Sweep Fall with slot `0x22` Sweep Getup. The two retail sequences share one genuine robot frame; ten unique donor frames are materialized in total through the proven raw/type-0 fighter conversion. Knockdown, normal Getup, Stumble, and Throw remain stock in this proof.
+
+**Runtime-confirmed.** The user successfully forced the AI sweep route and reported both the fall and sweep-specific recovery working perfectly.
