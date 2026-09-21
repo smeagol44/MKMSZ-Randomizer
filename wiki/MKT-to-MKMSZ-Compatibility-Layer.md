@@ -1441,3 +1441,20 @@ v43 applies the runtime-confirmed v42 encoder architecture to all five Sektor st
 The result saves `0x3C74` bytes versus v40/v42 while preserving exactly the same visible idle content. This is the first proof that native type-5 encoding can convert the Sektor branch from raw-expansion experiments into a genuinely shrinking fighter resource.
 
 **Runtime-confirmed.** The complete five-frame native type-5 Sektor idle renders cleanly under frame-by-frame inspection, transitions correctly, and preserves the working Prison doorway route.
+
+
+#### v44 — native type-5 locomotion composition
+
+Disposable proof: `MKMSZR_mkt-sektor-native-type5-locomotion_bundle-proof_v44.z64`.
+
+Identity:
+
+- SHA-256 `f1b82589be9cb089a224e09e92a59da25f8bdff531a1418efefe07df66b63cc4`;
+- CRC1/CRC2 `BE14EA81 / 1DC5EB0A`;
+- file ID `0x87` size `0x5273C`.
+
+v44 combines the runtime-confirmed five-frame type-5 Idle with native type-5 Walk Forward/Backward, Turn, and Crouch. Forward and backward walks reuse the same seven physical frames, and those seven images point to a single shared generated type-5 model/dictionary. This is the first proof to test cross-frame dictionary sharing in the imported-fighter path.
+
+The resulting fighter resource is `0xF9A4` bytes smaller than raw v12's `0x620E0` composition covering the same locomotion family, while requiring no new runtime decoder and retaining the compact stage selector.
+
+**Static/implementation-confirmed; runtime pending.**
