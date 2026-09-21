@@ -628,3 +628,24 @@ v45 is a corrective rebuild of v44 with the same genuine Sektor Idle, Walk Forwa
 Corrected Crouch shape offsets are `+0x50380`, `+0x5113C`, and `+0x51D84`; all are word-aligned. The only resource-size cost versus v44 is four bytes of padding.
 
 **Runtime-confirmed.** Idle, Walk Forward/Backward, Turn, and Crouch all work correctly; repeated transitions among them remain stable, and Prison's first doorway passes. This confirms the corrected word-aligned packer and shared-Walk native type-5 dictionary composition.
+
+
+## Accelerated native type-5 crouch-combat composition — v46
+
+Disposable proof: `MKMSZR_mkt-sektor-native-type5-crouch-combat_bundle-proof_v46.z64`.
+
+Identity:
+
+- SHA-256 `de53faf74aa651f56bb23b38c3952e8db9e8c5fe680bcb48b84333cc306ba89b`;
+- CRC1/CRC2 `BE156481 / 757D90E7`;
+- file ID `0x87` size `0x56E78`.
+
+v46 deliberately accelerates coverage. It rebuilds the already runtime-confirmed compressed locomotion set and adds primary slots `0x05..0x0A` plus `0x0C`: Crouch Turn, Crouch Block, Crouch Hit, Crouch Punch, Crouch High Kick, Crouch Low Kick, and Standing Block. Together with Idle, Walk Forward/Backward, Turn, and Crouch, the resource contains 34 unique genuine Sektor fighter frames.
+
+The offline type-5 encoder is upgraded beyond the v42-v45 flat-index proof form. v46 uses stock-compatible normal pattern-index classes and symbols `13..15` for transparent 2x4-block runs. Every generated stream is independently decoded during the build and checked byte-for-byte against the exact MKT-decoded aligned Sektor pixel buffer.
+
+The long Crouch High Kick sequence is appended at resource `+0x56E04` and primary slot `0x09` redirects to it, matching the already runtime-confirmed raw-v22 strategy. All generated shape records are 4-byte aligned.
+
+Despite the much larger animation scope, file `0x87` is only `0x56E78`: `0xB268` bytes smaller than raw v12's `0x620E0`, and `0xA44` bytes below the exact v41 size `0x578BC` that is runtime-confirmed to break Prison.
+
+**Static/implementation-confirmed; runtime pending.**
