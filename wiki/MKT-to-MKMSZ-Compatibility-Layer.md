@@ -1554,3 +1554,14 @@ The 42 stock frame intervals already established as file-local-unreferenced unde
 The result is `0x5100C`, saving another `0x1BB4` bytes versus v47 without dropping any mapped animation and sitting `0x1734` bytes below the known-failing v48 Fortress footprint.
 
 **Static/implementation-confirmed; runtime pending.**
+
+
+#### Stock-control Type-5 encoder benchmark
+
+To separate Sektor artwork complexity from encoder quality, the clean stock Sub-Zero Type-5 corpus was used as an exact control. All 341 native Type-5 fighter frames were decoded to **1,418,312 bytes** of indexed pixels and then recompressed from those same pixels.
+
+Midway's stock Type-5 representation totals **262,616 bytes** including the shared four-model table/dictionaries, padded compressed streams, and per-frame shape/descriptor/wrapper overhead. A generalized encoder-v2 pass that preserves the stock frame-to-model assignments and stock model class geometries but rebuilds frequency-ordered dictionaries totals **261,798 bytes**.
+
+**Static/implementation-confirmed:** the generated result is **818 bytes / 0.311% smaller** than Midway on the identical Sub-Zero artwork. Compressed stream coding differs by only 466 bits across all 341 frames, so the two encoders are essentially at parity at the codec level.
+
+Architectural consequence: the current Sektor size gap should not be interpreted as evidence that the project is missing a substantially better Type-5 coding algorithm. The dominant remaining opportunities are fewer/shared Sektor model tables, better grouping by pattern overlap, whole-resource compaction, and progressive reuse of replaced stock art. The existing Sektor proof grouping remains deliberately conservative and is not yet equivalent to the stock global four-model packing strategy.
