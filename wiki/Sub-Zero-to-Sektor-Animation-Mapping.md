@@ -744,3 +744,49 @@ v52 starts from fully runtime-confirmed Fortress-working v49 and changes no reac
 **Runtime-confirmed failure.** Fortress reproduces v51's later Mission Objective hang with stage music playing. Therefore the `0x5100C` allocation footprint alone is sufficient to cause this later Fortress failure; the additional 17 combat frames present in v51 are not required.
 
 Production-relevant implication: keep optimizing physical file-0x87 footprint. The known real-content working point is v49 at `0x4E544`; v51/v52 at `0x5100C` fail, a gap of only `0x2AC8` (10,952 bytes).
+
+
+## v53 — common-animation Sektor takeover / native palette
+
+Disposable proof: `MKMSZR_mkt-sektor-common-takeover_native-palette-proof_v53.z64`.
+
+Identity:
+- SHA-256 `65181aa5a270ec2ba404d01d02a8054ffba923991408a87465a25515b6b99e7f`;
+- CRC1/CRC2 `A6246DD8 / 513DCBF9`;
+- file ID `0x87` size `0x473D8`.
+
+**Static/implementation-confirmed; runtime pending.**
+
+This proof changes strategy from mixed Sub-Zero/Sektor coexistence to a Sektor-first takeover.
+
+### Common mapped scope
+
+33 common primary states through `0x22` are mapped to genuine Sektor visuals: all slots in that range except Victory `0x0D` and Elbow/Combo `0x10`. This includes the previously proven locomotion/crouch/ground attacks plus Uppercut, High/Low Punch, both standing kicks, Knee, Sweep, Roundhouse, Jump, Jump Kick, Flip Punch/Kick, Forward/Back Flip, High/Low Hit, Knockdown, Sweep Fall, Stumble, normal Getup, and Sweep Getup. Low Hit remains semantically the same direct mapping that lacked a practical runtime trigger in v34.
+
+The build contains 129 unique genuine retail Sektor frames.
+
+### Native palette; helper removed
+
+The frame-setup-time donor-palette helper is removed completely. v53 begins from the clean ROM for the runtime path and restores:
+- stock frame setup at `0x8001BDA0`;
+- stock shared-arena start `0x801AF420`;
+- zero/unclaimed file-ID `0x1B`;
+- no helper bootstrap and no `0xF10000` helper payload load.
+
+The stock 64-entry Sub-Zero player TLUT is retained structurally. Its lower 32 entries are replaced with the exact runtime-proven converted Sektor palette; the upper 32 stock entries remain valid. All Sektor images are 5-bpp and therefore address only the lower 32 entries.
+
+### Full stock Type-5 reclamation
+
+Because rare/unported animations are allowed to look wrong temporarily, v53 redirects every remaining direct stock Type-5 shape reference in the clean primary/secondary script corpus to the first Sektor stance shape. Those states retain their stock control grammar but display a safe placeholder Sektor frame instead of depending on Sub-Zero art.
+
+This makes the entire stock 341-frame Type-5 corpus disposable. The old `+0x14AC..+0x41683` region is rebuilt for Sektor.
+
+Two shared generated 5-bpp models use the exact stock model-0 class geometry:
+- model 0: 69 frames, 19,939 patterns;
+- model 1: 60 frames, 15,869 patterns.
+
+118 Sektor frames fit in the reclaimed stock Type-5 region; 11 overflow into the relocated file tail. Independent software decode checks require every generated frame to reproduce the exact MKT-decoded padded pixels.
+
+The resulting file `0x87 = 0x473D8`, which is `0x716C` bytes smaller than the runtime-confirmed Fortress-working v49 footprint `0x4E544` and far below v51/v52's failing `0x5100C`.
+
+Unported primary states intentionally left as placeholder visuals are Victory `0x0D`, Elbow/Combo `0x10`, Throw `0x23`, generic projectile/Zap `0x24`, Dizzy `0x25`, plus later primary/secondary rare/special states not yet individually mapped.
