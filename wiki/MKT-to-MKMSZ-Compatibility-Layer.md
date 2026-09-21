@@ -1510,4 +1510,4 @@ Static liveness analysis across all stock primary/secondary animation script sta
 
 The allocator successfully reclaims `0x42B8` bytes (17,080 bytes) of dead stock storage. File `0x87` falls from `0x56E78` to `0x52BC0`, just `0x480` bytes above the fully runtime-confirmed v45 locomotion build.
 
-**Static/implementation-confirmed; runtime pending.** The decisive test is Prison first doorway followed by opening Inventory.
+**Runtime-confirmed for the Prison headroom control; Fortress attribution pending.** Prison's first doorway followed by Inventory now works normally at 0x52BC0, while the otherwise equivalent v46 content at 0x56E78 failed on that route. This strongly confirms the v46 Inventory hang as memory/headroom-sensitive. Separately, v47 hangs entering Fortress on the Mission Objective screen before music/gameplay. Because Fortress was not tested across several preceding proof revisions, no causal attribution to reclamation is made yet. The reclaimed intervals should be described as file-local-unreferenced until Fortress and other stage-specific access paths are excluded.
