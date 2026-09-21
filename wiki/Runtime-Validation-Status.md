@@ -24,3 +24,16 @@ Historical N64 proof runs used BizHawk `2.11.1`, Ares64, CPU emulation `1`, and 
 ## Production vs proof
 
 “Production” requires current guarded code and tests. “Proof” may intentionally use a temporary cave, a one-off record edit, or a narrow replacement. For example, the Temple XP result is runtime-confirmed but its cave conflicts with production, and the Temple-monk import proves resource residency but lacks the monk's normal death presentation.
+
+
+### v53 common-animation takeover
+
+**Static/implementation-confirmed; runtime pending.**
+
+v53 removes the proof palette helper and restores the stock frame-setup path, stock arena start `0x801AF420`, zero file-ID `0x1B` entry, and unused helper bootstrap/payload state. Sektor colors become the native player palette by replacing the lower 32 entries of the stock 64-entry TLUT; upper 32 stock entries remain valid fallback colors.
+
+The proof ports 33 common primary slots through `0x22` (all except Victory `0x0D` and Elbow/Combo `0x10`) using 129 unique Sektor frames. Unported/rare states retain stock control scripts but all 413 remaining direct stock-Type5 shape references are redirected to one safe Sektor stance shape. The complete stock 341-frame Type-5 corpus is therefore reclaimed.
+
+Two shared 5-bpp Type-5 models use stock model-0 class geometry with 19,939 and 15,869 patterns. 118 Sektor frames fit inside the reclaimed stock Type-5 region and 11 overflow into the relocated file tail. File `0x87 = 0x473D8`, leaving `0x716C` bytes relative to the runtime-confirmed Fortress-working v49 size `0x4E544`.
+
+Primary runtime gates: Fortress stage load + Inventory; Prison first doorway + Inventory; representative movement/ground/aerial/fall/recovery actions; observe rare/unported states only for bounded placeholder behavior.
