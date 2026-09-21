@@ -610,4 +610,21 @@ The seven Walk frames share one generated type-5 model/dictionary containing 1,4
 
 This recreates the same broad locomotion scope that raw v12 expanded to `0x620E0` and failed at stage load, but v44 remains at `0x5273C`, saving `0xF9A4` bytes relative to v12 while retaining the compact stage selector.
 
-**Static/implementation-confirmed; runtime pending.** The runtime gate is clean Idle/Walk F/B/Turn/Crouch transitions plus Prison's first doorway.
+**Partial runtime result / rejected packing bug.** Idle, Walk Forward/Backward, and Turn all work correctly. Pressing Crouch hard-hangs immediately before any crouch frame appears. Static audit found Crouch shape offsets `+0x5037E`, `+0x5113A`, and `+0x51D81`; the first and third are not word-aligned. Because the target dereferences shape/descriptor words with ordinary MIPS word loads, this precisely explains the pre-frame hard hang. The type-5 Crouch encoding itself is not rejected by this result.
+
+
+## Corrected native type-5 locomotion composition — v45
+
+Disposable proof: `MKMSZR_mkt-sektor-native-type5-locomotion_bundle-proof_v45.z64`.
+
+Identity:
+
+- SHA-256 `602664487903c6706a44e2180c5d0e5e8cfe1ad4899dad4fa4d13a3ea876d43b`;
+- CRC1/CRC2 `BE14EAF1 / EC2A122C`;
+- file ID `0x87` size `0x52740`.
+
+v45 is a corrective rebuild of v44 with the same genuine Sektor Idle, Walk Forward/Backward, Turn, and Crouch content and the same shared seven-frame Walk type-5 dictionary. The packer now aligns every generated shape record to a 4-byte boundary before emitting its descriptor/image wrapper.
+
+Corrected Crouch shape offsets are `+0x50380`, `+0x5113C`, and `+0x51D84`; all are word-aligned. The only resource-size cost versus v44 is four bytes of padding.
+
+**Static/implementation-confirmed; runtime pending.**
