@@ -447,3 +447,20 @@ v33 returns to the exact runtime-confirmed v11 idle baseline and bundles three d
 All nine unique donor frames use the proven raw/type-0 fighter conversion. Ordinary Jump remains stock in this bundle to keep the resource comfortably below the previously runtime-confirmed v25/v16 size class.
 
 **Runtime-confirmed.** The user reported all three attacks working perfectly in the tested route.
+
+
+## Partial runtime validation — v34 flips and hit reactions
+
+Disposable proof: `MKMSZR_mkt-sektor-flips-hit-reactions_bundle-proof_v34.z64`.
+
+Identity:
+
+- SHA-256 `4fb6517be14fc74febecc35b17d0524147e618a62ede808bd5a5d25104f46dca`;
+- CRC1/CRC2 `CAACE149 / 3F3E800D`;
+- file ID `0x87` size `0x5BC4C`.
+
+v34 bundles primary slots `0x1A` Forward Flip, `0x1B` Back Flip, `0x1C` High Hit, and `0x1D` Low Hit. The two flip states share the six physical retail Rev. 2 `RBJUMPFLIP` frames in opposite orders and use translated local loop destinations. High Hit and Low Hit each use their exact five-word retail visual sequences.
+
+**Runtime-confirmed:** Forward Flip, Back Flip, and High Hit all worked correctly in the tested route.
+
+**Pending:** Low Hit was not exercised. The user could not obtain a practical enemy attack while crouching in the tested route; this is lack of route coverage, not a failure observation.
