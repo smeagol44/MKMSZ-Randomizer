@@ -1635,4 +1635,19 @@ The PS1 run frames are already port-scaled/cropped fighter assets rather than th
 
 The PS1 Throw entry is also present at primary slot `0x23 -> ROBOT.BIN +0x112C` and retains the holder/slave mechanical-arm structure. `ROBOT.DAT` contains serialized palette blocks in addition to image descriptors/streams, so the PS1 files may also help establish the exact metal-arm palette binding.
 
-**Pending:** PS1 `ROBOT.DAT` image streams use a platform-specific compressed representation (observed descriptor tags include `0x17` and `0x19`). They must be decoded exactly and then converted/re-encoded into MKMSZ native Type-5; direct stream copying is not an accepted compatibility path. Runtime validation is required before any PS1-derived frame becomes part of the normal takeover composition.
+**Static/implementation-confirmed in v55:** PS1 `ROBOT.DAT` ordinary robot graphics use the platform-specific POVBQ path for the Run bank. The v55 builder decodes all required PS1 Run frames from `CHARS1/ROBOT.DAT`, validates the `CODE/ROBOT.BIN +0x140C` twelve-frame script, converts the PS1 palette indices into the resident Sektor TLUT, and re-encodes the restored even-numbered poses as MKMSZ native Type-5. Direct PS1 stream copying is not used. Runtime validation of the resulting v55 N64 composition remains pending.
+
+
+#### v55 — PS1-restored 12-frame Run and runtime repairs
+
+Disposable proof: `MKMSZR_sektor-run-sweep-throw_common-proof_v55.z64`.
+
+**Static/implementation-confirmed; runtime pending.** SHA-256 `13dd4c9247bf4b1154d3b7563412333c6e21f68569155f742e683fbc29635ebc`; CRC1/CRC2 `A624ABE8 / 48D2A010`; file ID `0x87 = 0x4D0A4`.
+
+v54 runtime evidence corrected three assumptions. MKMSZ `+0x1B0` is Push, not ordinary Run; the real twelve-visual Run loop is `+0xEE8`. Sweep Fall hard-hung after the second visible pose, immediately before entering a generated Type-5 model containing a 0-bit normal class. Throw geometry worked, but the arm used body-palette indices and its visuals led the grab by about one target animation tick.
+
+v55 keeps MKT N64 as the primary donor and uses PS1 MKT only for the six Run poses cut from N64. `CODE/ROBOT.BIN +0x140C` references twelve consecutive `CHARS1/ROBOT.DAT` Run descriptors (222..233). Odd poses remain exact N64 donor frames; PS1 supplies `RBRUN2/4/6/8/10/12`. The PS1 POVBQ frames are decoded offline and palette-converted before Type-5 encoding. Shared-dictionary matching needs only 18 additional 2x4 patterns; after those are admitted the six restored targets are exact after palette conversion (`VQ_RMSE = 0`, 100% exact opaque pixels).
+
+The final Type-5 corpus uses one 40,595-pattern 5-bpp dictionary with 52 entropy-model records. All normal class widths are constrained to at least one bit. The seven flattened Throw arm poses now use the donor `MECARM_P` gray-metal palette mapped into the Sektor TLUT, and the nine target Throw slots shift to `stance, stance, arm1..arm7` without modifying gameplay/victim timing.
+
+Two clean builds are byte-identical. Builder-side exact Type-5 round-trip covers all 158 emitted frames and optional v53 inheritance checking covers all 129 inherited frames. A separate finished-ROM audit confirms the file-table footprint, twelve distinct Run shape roots, separate Push loop, Throw shift/control preservation, and the nonzero Type-5 normal-class constraint.
