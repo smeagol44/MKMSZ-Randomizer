@@ -1108,7 +1108,9 @@ Five exact retail donor frames are materialized through the proven raw/type-0 fi
 
 File ID `0x87` becomes size `0x59D0C`, below the runtime-confirmed v19 size `0x5C15C` and well below failed v20 `0x5F8C4`.
 
-**Implementation/static-confirmed; runtime pending.**
+**Runtime-confirmed.**
+
+The user reported the uppercut working exactly as expected, including the tall apex frame and clean transition afterward.
 
 Primary validation: stage load, Sektor Uppercut animation, correct tall apex frame, and clean transition afterward. The proof intentionally does not compose the crouching kicks so Uppercut itself remains isolated from the known accumulation boundary.
 
@@ -1159,7 +1161,9 @@ Seven raw/type-0 frames are appended. File ID `0x87` becomes `0x5DA0C`, essentia
 
 Starting with v25, these disposable animation proofs also include the already runtime-confirmed **post-legal logo bypass** at ROM `0x7A3F4`: only the first guarded word changes to `0x10000003`, skipping the two fixed company/logo presentations while preserving the legal screen, fade normalization, and title handoff.
 
-**Implementation/static-confirmed; runtime pending.**
+**Runtime-confirmed.**
+
+The user reported High Punch working perfectly in the tested route. The post-legal logo bypass also remains part of the convenience baseline from this proof onward.
 
 Primary test: ordinary High Punch, repeated High Punch, transitions back to idle/block, and watch for any stock frame only on the known Low-Punch crossover branches.
 
@@ -1186,6 +1190,19 @@ Pending runtime/static questions are intentionally narrow:
 Do not spend effort polishing the old forced-crossover imitation while these genuine-port proofs are pending.
 
 
+#### v26 — isolated Low Punch
+
+Disposable proof: `MKMSZR_mkt-sektor-low-punch_isolated-proof_v26.z64`.
+
+Identity:
+
+- SHA-256 `46de0dbfb1217d9d19b8af5221771597e23bfed78248b64090a2eb131c28510d`;
+- CRC1/CRC2 `CAAC9DC9 / 4FC0CC34`.
+
+v26 returns to the small runtime-confirmed v11 idle baseline and isolates primary slot `0x0F` Low Punch. The exact CUT_FRAME branch needs five Low-Punch-owned frames (`RBLOPUNCH2..6`, excluding the cut `RBLOPUNCH1`) plus the three High-Punch crossover frames `RBHIPUNCH1`, `RBHIPUNCH5`, and `RBHIPUNCH7`. MKMSZ's inherited 27-word punch-chain control structure is preserved; only the corresponding visual frame pointers are replaced. File ID `0x87` is `0x5BF88`. The runtime-confirmed post-legal logo bypass is included.
+
+**Runtime-confirmed.** The user reported the ordinary and chained Low Punch behavior working perfectly in the tested route.
+
 #### v27 — isolated Standing Low Kick
 
 Disposable proof: `MKMSZR_mkt-sektor-standing-low-kick_isolated-proof_v27.z64`.
@@ -1195,4 +1212,4 @@ Identity:
 - SHA-256 `548dc3b1e07528c5863e20cfcbd52f7cdf632b85c409a80d37d15916a798bb7f`;
 - CRC1/CRC2 `CAACE1B9 / 6BA95942`.
 
-v27 returns to the runtime-confirmed v11 idle base and imports the exact MKT Rev. 2 Sektor Standing Low Kick. The donor sequence is `RBLOKICK1,2,3,4,5,6,0,5,4,3,2,1,0`. MKMSZ's stock slot-0x12 script region is only 10 words before the neighboring High Kick script, so the exact 13-word donor sequence is appended at resource `+0x4D7D4` and primary table slot `0x12` is redirected there rather than overwriting slot `0x11` data. Six donor frames use the proven raw/type-0 conversion, the Sektor palette moves to `+0x588F8`, and file 0x87 is `0x58944` bytes. The runtime-confirmed post-legal logo bypass is included as a convenience baseline. **Implementation/static-confirmed; runtime pending.**
+v27 returns to the runtime-confirmed v11 idle base and imports the exact MKT Rev. 2 Sektor Standing Low Kick. The donor sequence is `RBLOKICK1,2,3,4,5,6,0,5,4,3,2,1,0`. MKMSZ's stock slot-0x12 script region is only 10 words before the neighboring High Kick script, so the exact 13-word donor sequence is appended at resource `+0x4D7D4` and primary table slot `0x12` is redirected there rather than overwriting slot `0x11` data. Six donor frames use the proven raw/type-0 conversion, the Sektor palette moves to `+0x588F8`, and file 0x87 is `0x58944` bytes. The runtime-confirmed post-legal logo bypass is included as a convenience baseline. **Runtime-confirmed.** The user reported Standing Low Kick working perfectly in the tested route.
