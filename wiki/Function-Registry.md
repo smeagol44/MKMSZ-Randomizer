@@ -7,8 +7,10 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | Address | Function | Evidence | Notes |
 |---:|---|---|---|
 | `0x8000D0B8` | Debug stage-select menu | Runtime-confirmed | Production A-button title route |
-| `0x8000322C` | Embedded image decompression dispatcher | Static-confirmed | Reads compression type from byte 3; type 4 dispatches to `0x80003428`; used by resource-backed render path |
+| `0x8000322C` | Embedded image decompression dispatcher | Static-confirmed | Ordinary types come from header byte `+3`; exact header `0x05000000` is special-cased to fighter codec type 5. Type 4 dispatches to `0x80003428`; type 5 dispatches through `0x80003314` |
 | `0x80003428` | Type-4 embedded image decoder | Static-confirmed | Separate control/token streams with a 1024-byte ring buffer; exact decode reproduced Water embedded Potion frames byte-for-byte against Fire external Potion payloads |
+| `0x80003314` | Type-5 fighter-image wrapper | Static-confirmed | Resolves image-relative model/dictionary pointer, compressed stream at image `+0x0C`, packed dimensions, output arena pointer; calls `0x80065E00`; advances output by `align4(width) * align2(height)` |
+| `0x80065E00` | Type-5 fighter-image decoder | Static-confirmed | Decodes native fighter data in 2-row x 4-pixel blocks from a per-image model/dictionary table; stock Sub-Zero frames use this path |
 | `0x80015088` | Stage transition handler | Static-confirmed | Copies selection to current-stage state |
 | `0x80015B54` | Resume after four-box input hook | Implementation-confirmed | Common configured-control convergence |
 | `0x8001C528` | Pickup presentation loader | Static/runtime-confirmed | Called from pickup manager with record `+0x28` presentation pointer + 4; not the `+0x24` resource-selector lookup |
