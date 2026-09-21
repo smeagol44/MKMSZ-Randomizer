@@ -41,7 +41,7 @@ Primary runtime gates: Fortress stage load + Inventory; Prison first doorway + I
 
 ### v54 expanded takeover
 
-**Static/implementation-confirmed; runtime pending.**
+**Partially runtime-tested; superseded by v55 for Run / Sweep Fall / Throw presentation.**
 
 Final disposable proof: `MKMSZR_mkt-sektor-run-combo-throw_common-proof_v54.z64`.
 
@@ -68,3 +68,38 @@ Runtime test matrix:
 - Fortress -> gameplay -> Inventory;
 - Prison -> first doorway -> Inventory.
 
+
+
+Runtime result for v54 on 2026-09-21:
+- **Run mapping failed semantically:** ordinary Run still displayed the stance fallback, while the imported six-pose cycle appeared during Push. Static correction: `+0x1B0` is Push; the actual twelve-visual Run loop is `+0xEE8`.
+- **Sweep Fall failed:** gameplay/emulation hard-hung after the second visible pose. Static correlation: the next frame is the first one assigned to a v54 Type-5 model containing a 0-bit normal class. This is a strong causal inference, not yet runtime-confirmed as the sole cause.
+- **Throw mostly worked:** grab/throw gameplay and composite geometry were usable, but the mechanical arm rendered red because codec-15 indices were interpreted through the body palette, and the arm choreography appeared one native MKMSZ visual tick ahead of the actual grab.
+
+### v55 Run / Sweep-Fall / Throw repair
+
+**Static/implementation-confirmed; runtime pending.**
+
+Disposable proof: `MKMSZR_sektor-run-sweep-throw_common-proof_v55.z64`.
+
+Identity:
+- SHA-256 `13dd4c9247bf4b1154d3b7563412333c6e21f68569155f742e683fbc29635ebc`;
+- CRC1/CRC2 `A624ABE8 / 48D2A010`;
+- file ID `0x87 = 0x4D0A4`;
+- `0x14A0` (5,280 bytes) below runtime-confirmed Fortress-working v49 `0x4E544`.
+
+v55 keeps the v54 Combo content but repairs the three observed problem areas. The true MKMSZ Run loop at `+0xEE8` contains twelve distinct visuals. Odd Sektor poses `RBRUN1/3/5/7/9/11` come from MKT N64; the six even poses come from PS1 MKT `CODE/ROBOT.BIN +0x140C` / `CHARS1/ROBOT.DAT`, which preserves the full twelve-frame run that N64 cut. Push remains a separate seven-visual loop at `+0x1B0`.
+
+The six PS1-derived even poses are decoded from PS1 POVBQ, palette-converted into the native Sektor TLUT, and re-encoded as MKMSZ Type-5. Shared-dictionary optimization needs only 18 supplemental 2x4 patterns; the converted PS1 targets are reproduced exactly (`VQ_RMSE = 0`, 100% exact opaque pixels).
+
+All 52 generated Type-5 model records now require every normal class width to be at least 1 bit. Throw's seven flattened arm phases use the genuine MKT `MECARM_P` gray-metal ramp mapped as `1->17, 2->19, 3->20, 4->22, 5->24, 6->25, 7->26`. The nine attacker slots are shifted to `stance, stance, arm1..arm7`, delaying visuals by one native MKMSZ slot without changing victim/gameplay timing.
+
+Two clean builds are byte-identical. Independent structural audit confirms the 12 distinct Run shape roots, separate 7-frame Push loop, one-slot Throw shift, stock Throw separators, 52 Type-5 models with minimum normal width 1 bit, and the exact file-table footprint. The builder additionally round-trips all 158 emitted Type-5 frames and optionally verifies all 129 inherited v53 frames byte-for-byte.
+
+Runtime test matrix:
+- ordinary Run: all twelve poses, no stance fallback;
+- Push: still animates separately and remains stable;
+- Sweep Fall + Sweep Getup: specifically reproduce the former hard-hang route;
+- Grab/Throw: gray arm and one-tick visual sync correction;
+- full Elbow/Combo regression;
+- Fortress -> gameplay -> Inventory;
+- Prison -> first doorway -> Inventory.
