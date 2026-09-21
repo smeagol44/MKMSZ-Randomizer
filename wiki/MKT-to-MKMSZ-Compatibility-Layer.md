@@ -1510,4 +1510,19 @@ Static liveness analysis across all stock primary/secondary animation script sta
 
 The allocator successfully reclaims `0x42B8` bytes (17,080 bytes) of dead stock storage. File `0x87` falls from `0x56E78` to `0x52BC0`, just `0x480` bytes above the fully runtime-confirmed v45 locomotion build.
 
-**Runtime-confirmed for the Prison headroom control; Fortress attribution pending.** Prison's first doorway followed by Inventory now works normally at 0x52BC0, while the otherwise equivalent v46 content at 0x56E78 failed on that route. This strongly confirms the v46 Inventory hang as memory/headroom-sensitive. Separately, v47 hangs entering Fortress on the Mission Objective screen before music/gameplay. Because Fortress was not tested across several preceding proof revisions, no causal attribution to reclamation is made yet. The reclaimed intervals should be described as file-local-unreferenced until Fortress and other stage-specific access paths are excluded.
+**Runtime-confirmed for the Prison headroom control; Fortress attribution pending.** Prison's first doorway followed by Inventory now works normally at 0x52BC0, while the otherwise equivalent v46 content at 0x56E78 failed on that route. This strongly confirms the v46 Inventory hang as memory/headroom-sensitive. Separately, Fortress testing now bounds the regression: v45 at 0x52740 and v47 at 0x52BC0 both hang on the Mission Objective screen before music/gameplay, while v40 at 0x4D820 loads Fortress normally. Therefore v47's dead-stock reclamation is not the onset. The reclaimed intervals remain conservatively described as file-local-unreferenced.
+
+
+#### v48 — Fortress exact-size allocation-footprint control
+
+Disposable proof: `MKMSZR_mkt-sektor-idle-stage-select_fortress-size-control_v48.z64`.
+
+Identity:
+
+- SHA-256 `c4324831437bd76563f36961f68ab37c604b93e4b42f11e649b4f38fc9cdfbd9`;
+- CRC1/CRC2 `BE14EAF1 / EC2A122C`;
+- file ID `0x87` size `0x52740`.
+
+v48 is derived directly from runtime-confirmed v40 and preserves its exact reachable idle-only Sektor content. It extends only the declared file-0x87 end into an all-0xFF tail by `0x4F20` bytes, making the loader-facing footprint exactly equal to failing v45.
+
+**Static/implementation-confirmed; runtime pending.** This isolates Fortress allocation footprint from compressed-locomotion content. A v48 pre-music Fortress hang would prove that file size alone is sufficient at `0x52740`; a successful load would instead point to v45's reachable content/decode lifetime.
