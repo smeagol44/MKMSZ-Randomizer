@@ -1300,3 +1300,20 @@ Identity:
 v33 deliberately batches three low-risk direct mappings while staying below previously runtime-confirmed resource sizes: Jump Kick (slot `0x17`), Flip Punch (slot `0x18`), and Flip Kick (slot `0x19`). Each uses the exact seven-word retail robot forward/reverse animation grammar with three genuine donor frames and no donor callbacks. Nine unique donor shapes are materialized through the runtime-confirmed raw/type-0 adapter.
 
 **Runtime-confirmed.** The user reported all three attacks working perfectly. This establishes that small bounded bundles are acceptable when their resulting file-0x87 size remains in a previously proven working band.
+
+
+#### v34 — flips + hit reactions bundle
+
+Disposable proof: `MKMSZR_mkt-sektor-flips-hit-reactions_bundle-proof_v34.z64`.
+
+Identity:
+
+- SHA-256 `4fb6517be14fc74febecc35b17d0524147e618a62ede808bd5a5d25104f46dca`;
+- CRC1/CRC2 `CAACE149 / 3F3E800D`;
+- file ID `0x87` size `0x5BC4C`.
+
+The bundle maps Forward Flip, Back Flip, High Hit, and Low Hit. The actual MKT Rev. 2 retail binary uses six physical `RBJUMPFLIP` frames shared by both flip directions; the proof follows that retail form rather than the eight-frame symbolic source form. High/Low Hit each use three genuine donor reaction frames.
+
+**Runtime-confirmed:** Forward Flip, Back Flip, and High Hit.
+
+**Pending:** Low Hit was not triggered in the tested route because enemies did not provide a practical crouching-hit setup. No failure was observed.
