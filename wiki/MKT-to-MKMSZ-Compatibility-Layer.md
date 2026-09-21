@@ -1580,3 +1580,14 @@ Identity:
 v52 starts from runtime-confirmed v49, whose real Type-5 Idle + Walk F/B + Turn + Crouch content loads Fortress normally at `0x4E544`. It changes no reachable fighter content and appends only `0x2AC8` bytes of untouched/unreachable `0xFF` so the loader-facing file-0x87 allocation exactly matches v51.
 
 **Runtime pending.** If v52 reproduces v51's music-then-hang Fortress behavior, allocation footprint alone remains sufficient at `0x5100C`. If v52 loads Fortress normally, v51's additional decoded fighter-image residency or another content-dependent arena consumer is implicated beyond compressed file size.
+
+
+#### v52 — v51-size Fortress control
+
+Disposable proof: `MKMSZR_mkt-sektor-type5-locomotion_v51-size-control_v52.z64`.
+
+v52 takes runtime-confirmed Fortress-working v49 (`0x4E544`) and changes no reachable fighter content. It extends only the declared file-0x87 allocation with `0x2AC8` bytes of inert `0xFF`, producing the exact v51 footprint `0x5100C`.
+
+**Runtime-confirmed failure:** Fortress reaches the Mission Objective screen, stage music begins, and then the game hangs before gameplay, matching v51.
+
+This isolates a second, later Fortress allocation threshold behavior: file-0x87 footprint alone is sufficient to fail at `0x5100C`. The extra decoded Sektor combat frames in v51 are not needed to reproduce it. Therefore the immediate optimization target remains compressed/resource footprint rather than decoded-frame residency.
