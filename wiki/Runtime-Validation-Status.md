@@ -77,7 +77,7 @@ Runtime result for v54 on 2026-09-21:
 
 ### v55 Run / Sweep-Fall / Throw repair
 
-**Static/implementation-confirmed; runtime pending.**
+**Partially runtime-confirmed; Run failed visually; Sweep Fall still pending.**
 
 Disposable proof: `MKMSZR_sektor-run-sweep-throw_common-proof_v55.z64`.
 
@@ -101,5 +101,41 @@ Runtime test matrix:
 - Sweep Fall + Sweep Getup: specifically reproduce the former hard-hang route;
 - Grab/Throw: gray arm and one-tick visual sync correction;
 - full Elbow/Combo regression;
+- Fortress -> gameplay -> Inventory;
+- Prison -> first doorway -> Inventory.
+
+Runtime result on 2026-09-21:
+- Grab/Throw: **Runtime-confirmed** on the tested route. Mechanical arm color now reads as metal/gray and the one-slot visual delay feels synchronized; user described the result as “perfect” and “awesome.”
+- Fortress -> gameplay -> Inventory: **Runtime-confirmed pass**.
+- Prison -> first doorway -> Inventory: **Runtime-confirmed pass**.
+- Run: **Runtime-confirmed failure**. Odd N64 poses render, but every PS1-derived even pose collapses to a few tiny artifacts. Static postmortem found the PS1 POVBQ emitter failed to advance its destination pointer by four pixels after each 2x4 block; all blocks overwrote the same four-column strip.
+- Full combo: gameplay reaches **6 hits**, but at least one middle impact uses an incorrect/neutral visual; visual mapping remains incomplete.
+- Sweep Fall + Sweep Getup: still pending a v55 runtime result.
+
+
+### v56 corrected PS1 Run decode
+
+**Static/implementation-confirmed; runtime pending.**
+
+Disposable proof: `MKMSZR_sektor-run-decode_common-proof_v56.z64`.
+
+Identity:
+- SHA-256 `eea8d47b4ed2fb94be891724097a97c74c94bff4703cd6f66a5bc5da25d892c0`;
+- CRC1/CRC2 `A6256A28 / 73BE34AB`;
+- file ID `0x87 = 0x4E414`;
+- `0x130` (304 bytes) below runtime-confirmed Fortress-working v49 `0x4E544`.
+
+v56 changes only the six PS1-derived even Run poses relative to v55. The PS1 POVBQ output pointer now advances by four pixels after each 2x4 vector, matching the independent decoder implementation for all six donor frames. A separate cross-check also requires each corrected source frame to occupy more than 30 nonzero columns, specifically rejecting the v55 four-column overwrite failure.
+
+The corrected full-body PS1 frames add much more real pattern content than v55's malformed strips. To stay under the known Fortress-safe footprint, v56 uses 256 representative supplemental patterns with exact transparency masks and 64 Type-5 entropy models. The six even poses are therefore a bounded visual approximation rather than lossless: color-space RMSE ~4.504 in 5-bit RGB units and 36.3% exact opaque indices, while pose geometry and transparency silhouettes remain exact. The final shared dictionary has 40,833 patterns.
+
+Two independent clean builds are byte-identical and builder-side Type-5 round-trip passes for all 158 emitted frames.
+
+Runtime test matrix:
+- ordinary Run: verify twelve full-body poses with no tiny-artifact frames;
+- Push regression;
+- Grab/Throw regression;
+- full Combo regression (known missing middle visual remains expected);
+- Sweep Fall + Sweep Getup;
 - Fortress -> gameplay -> Inventory;
 - Prison -> first doorway -> Inventory.
