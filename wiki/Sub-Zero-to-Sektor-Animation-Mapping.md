@@ -648,4 +648,25 @@ The long Crouch High Kick sequence is appended at resource `+0x56E04` and primar
 
 Despite the much larger animation scope, file `0x87` is only `0x56E78`: `0xB268` bytes smaller than raw v12's `0x620E0`, and `0xA44` bytes below the exact v41 size `0x578BC` that is runtime-confirmed to break Prison.
 
-**Static/implementation-confirmed; runtime pending.**
+**Runtime-confirmed for all mapped animations; Prison post-door Inventory failure remains.** The user confirmed every v46 animation works, including Crouch Hit. Prison's first doorway no longer corrupts gameplay, but opening Inventory after crossing that doorway hard-hangs. Inventory works before the doorway, and this failure has not been observed in other stages so far. The evidence therefore points to a tighter Prison-specific post-door memory high-water boundary rather than an animation/codec failure.
+
+
+## Dead-stock reclamation / Prison-Inventory control — v47
+
+Disposable proof: `MKMSZR_mkt-sektor-native-type5-repacked_prison-inventory-proof_v47.z64`.
+
+Identity:
+
+- SHA-256 `4eb68d30f64c67be8a669b11452c87f9ca0fd4bad5c12d616feadffa8a2276ad`;
+- CRC1/CRC2 `BE14E2F1 / A10378F8`;
+- file ID `0x87` size `0x52BC0`.
+
+v47 preserves the exact v46 34-frame/action composition and exact type-5 codec grammar. It changes only physical storage placement.
+
+A conservative stock-file liveness pass derived shape references from all 65 primary and 43 secondary animation-table script starts, then performed a whole-file aligned-word reference scan. Of the stock shapes referenced by the primary slots already replaced in v46, 42 frame blocks have no remaining pointer outside those replaced scripts. Their shape-to-next-shape intervals total `0x5E6C` bytes and are treated as disposable proof storage.
+
+To preserve the already-runtime-confirmed palette helper, every generated Sektor shape/subdescriptor remains in the donor append range. Only type-5 image wrappers/streams are placed into the proven-dead stock frame holes. 17,080 bytes (`0x42B8`) of generated image storage fit there; the three oversized/fragmentation-fallback images remain in the donor tail.
+
+The result reduces file `0x87` from v46's `0x56E78` to `0x52BC0` without dropping any animation. This is only `0x480` bytes above runtime-confirmed v45 while retaining the full v46 crouch-combat set.
+
+**Static/implementation-confirmed; runtime pending.** Primary gate: Prison -> cross first doorway -> open Inventory. Secondary gate: quick regression of the mapped Sektor animations.
