@@ -727,3 +727,20 @@ The storage planner changes only physical placement. The same 42 file-local-unre
 File `0x87` drops from v47's `0x52BC0` to `0x5100C`, a further `0x1BB4`-byte reduction with identical mapped content. This is `0x1734` bytes below the exact v48 Fortress allocation footprint that is runtime-confirmed to fail, although the exact Fortress threshold remains unknown.
 
 **Static/implementation-confirmed; runtime pending.** Primary gate: Fortress stage load + Inventory. Secondary gate: Prison first doorway + Inventory and quick animation regression.
+
+
+## Fortress later allocation boundary — v51 / v52
+
+v51 (`0x5100C`) preserves the complete 34-frame crouch-combat composition and passes the previously failing Prison doorway -> Inventory route. Fortress progresses farther than the earlier `0x52740` failure: stage music begins, but gameplay still does not leave the Mission Objective screen.
+
+v52 is the decisive control: `MKMSZR_mkt-sektor-type5-locomotion_v51-size-control_v52.z64`.
+
+- SHA-256 `02745e4dff4e4a4beaacb928d62915da4fff702c9bfae48fd3154835d59480ef`;
+- CRC1/CRC2 `BE14F541 / D5784E8A`;
+- file ID `0x87` size `0x5100C`.
+
+v52 starts from fully runtime-confirmed Fortress-working v49 and changes no reachable fighter content. It adds only `0x2AC8` bytes of inert `0xFF` allocation tail so file `0x87` exactly matches v51's footprint.
+
+**Runtime-confirmed failure.** Fortress reproduces v51's later Mission Objective hang with stage music playing. Therefore the `0x5100C` allocation footprint alone is sufficient to cause this later Fortress failure; the additional 17 combat frames present in v51 are not required.
+
+Production-relevant implication: keep optimizing physical file-0x87 footprint. The known real-content working point is v49 at `0x4E544`; v51/v52 at `0x5100C` fail, a gap of only `0x2AC8` (10,952 bytes).
