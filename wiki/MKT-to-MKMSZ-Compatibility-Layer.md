@@ -1112,6 +1112,34 @@ File ID `0x87` becomes size `0x59D0C`, below the runtime-confirmed v19 size `0x5
 
 Primary validation: stage load, Sektor Uppercut animation, correct tall apex frame, and clean transition afterward. The proof intentionally does not compose the crouching kicks so Uppercut itself remains isolated from the known accumulation boundary.
 
+#### v24 — isolated Standing Block
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-standing-block_isolated-proof_v24.z64`
+
+Identity:
+
+- SHA-256 `61dcf4fc9d6ace56cf06c565233c944bb3530405466fc89f1ca239b49409fad9`;
+- CRC1/CRC2 `DAACE659 / 489383DE`.
+
+v24 starts from runtime-confirmed destructive v11 and replaces only primary slot `0x0C` Standing Block with the exact MKT Rev. 2 Sektor CUT_FRAME sequence:
+
+```text
+RBHIBLOCK1
+RBHIBLOCK3
+RBHIBLOCK3
+0
+```
+
+Only two physical donor frames are required. They use the proven raw/type-0 fighter conversion and exact robot dictionary/descriptor rules. The donor palette is moved after the new block frames; the frame-setup-time palette helper remains otherwise unchanged.
+
+File ID `0x87` is only `0x503E0` bytes in this proof, well below every observed raw-resource failure boundary.
+
+**Implementation/static-confirmed; runtime pending.**
+
+Primary test: standing block repeatedly, block -> idle, block -> walk, block -> punch/kick, and confirm no stock Sub-Zero block frame or palette artifact appears.
+
 ### Later proofs
 
 After genuine animation rendering is runtime-confirmed:
