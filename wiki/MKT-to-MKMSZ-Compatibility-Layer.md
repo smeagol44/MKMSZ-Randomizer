@@ -1401,3 +1401,26 @@ v41 preserves v40's exact reachable idle-only Sektor content, compact selector, 
 **Runtime-confirmed failure.** The same Prison first-doorway boundary corrupts the framebuffer exactly as in v39. Since no new reachable fighter content exists, this isolates loaded fighter-resource allocation footprint as sufficient to cause the failure at `0x578BC`. The exact lower failure threshold remains unknown and is no longer the highest-value question.
 
 Architectural consequence: stop accumulating raw/type-0 donor frames. The next priority is compact fighter storage: identify a fighter-safe compressed representation or decode-on-demand bridge, and reclaim unreachable stock Sub-Zero storage where reference/liveness analysis proves ownership.
+
+
+### Native fighter compression breakthrough
+
+**Static-confirmed.** Stock Sub-Zero fighter art is not stored through the pickup-style type-4 path used by rejected v13. Stock frame wrappers use exact header `0x05000000`, which `0x8000322C` special-cases as **type 5** and dispatches through `0x80003314 -> 0x80065E00`.
+
+The type-5 decoder operates on 2-row x 4-pixel blocks for the main Sub-Zero model table and supports per-image model/dictionary pointers. The wrapper's packed decode dimensions can therefore describe an aligned backing buffer while the fighter descriptor retains the true visible dimensions. This is a direct native path for an offline Sektor encoder and is preferred over porting MKT's codec unless type-5 runtime validation fails.
+
+#### v42 — native type-5 single-frame storage proof
+
+Disposable proof: `MKMSZR_mkt-sektor-native-type5-single-frame_proof_v42.z64`.
+
+Identity:
+
+- SHA-256 `b29f6afe1f9c066fa4ff410c1b8fed9befbb11711f870d4c6fc8a15374eeed33`;
+- CRC1/CRC2 `BE156571 / 370FC1CC`;
+- file ID `0x87` remains `0x4D820`, identical in allocation size to runtime-confirmed v40.
+
+v42 begins from v40 and changes only the already-runtime-confirmed first Sektor stance frame's image representation. Its shape/script/descriptor/palette ownership remain unchanged. The visible descriptor remains `55x113`; the generated native type-5 backing buffer is transparently padded to `56x114` so it satisfies the decoder's 4-pixel / 2-row block geometry and the renderer's known row-stride contract.
+
+The proof uses one custom type-5 model at 5 bits per pixel. The 56x114 frame contains 798 2x4 blocks and 369 unique patterns; a deliberately simple dictionary encoder reduces this one image from 6,332 raw stored bytes to 3,265 bytes. An independent software decoder round-trips the generated type-5 stream exactly to the proven raw Sektor pixel buffer plus one transparent padded row.
+
+**Static/implementation-confirmed; runtime pending.** The first runtime gate is clean idle rendering/transitions. The second is Prison's first doorway, confirming the compact representation does not reintroduce file-0x87 headroom failure.
