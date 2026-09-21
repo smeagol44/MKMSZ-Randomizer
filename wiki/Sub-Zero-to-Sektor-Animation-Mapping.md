@@ -985,17 +985,28 @@ The six missing even Run poses now have bounded N64-style target geometry:
 
 The PS1 MKT material remains useful as an **independent descriptor/sequence reference**, especially because it preserves all 12 Run poses. It must not be treated as an N64 byte/layout oracle, and the rejected POVBQ pixel decode is not being revived. PS1 addresses and compressed-texture semantics remain platform-specific.
 
-### Current v57 gate / next exact step
+### v57 static build checkpoint
 
-No v57 ROM has been produced from this new path yet, and the clean MKMSZ ROM remains untouched.
+Disposable proof built from the clean supported MKMSZ ROM:
 
-The next bounded step is:
+`MKMSZR_sektor-full-run_common-proof_v57.z64`
 
-1. replace only the v56 rejected even-Run donor branch with the six converted `ROBO8.IMG` buffers above;
-2. keep the known-good N64 odd Run poses and all already-confirmed v55/v56 Throw/Sweep/Fortress/Prison behavior unchanged;
-3. rebuild through the existing native Type-5 encoder and resource packer;
-4. require software round-trip equality, expected-byte guards, word alignment, file-0x87 footprint checks, and valid N64 CRC1/CRC2;
-5. only then issue the smallest disposable v57 Run proof for manual runtime validation.
+Identity:
 
-**Pending:** runtime visual confirmation of the six inserted even poses and the completed 12-pose Run cycle.
+- SHA-256 `2938fb45efbe0a81679054f820e1ddfbea4b2174d7227d1454f54e0558e8269b`;
+- CRC1/CRC2 `A6256BE8 / 2791B9F0`;
+- file ID `0x87 = 0x4E4A0`;
+- `0xA4` bytes below the runtime-confirmed Fortress-working v49 footprint `0x4E544`.
+
+**Implementation/static-confirmed; runtime pending.**
+
+A fully lossless inclusion of all six clean ROBO8 even frames was also built analytically, but it reached approximately `0x50200`, above the last runtime-confirmed Fortress-safe footprint. That lossless allocation was therefore not selected as the first runtime proof.
+
+v57 instead keeps the clean ROBO8-derived geometry and exact transparency/silhouette masks, while using the already-established bounded Type-5 codebook strategy only for opaque palette-pattern approximation. The selected bound is **160 supplemental ROBO8 2x4 patterns**. Resulting quality is approximately **2.427 RGB RMSE** in 5-bit channel space with **47.346% exact opaque indices**, materially better than rejected v56's approximately 4.504 RMSE / 36.3% exact opaque indices. The final shared dictionary contains 40,737 patterns, the Type-5 table is `0x335A9`, and padded frame streams total `0x142F8`.
+
+All six ROBO8 even-frame source buffers are hash-guarded in the recovered builder, all twelve Run roots at `+0xEE8` are distinct, generated Type-5 frames round-trip against their selected target buffers, normal class widths remain nonzero, all referenced shapes are word-aligned, and two clean v57 builds are byte-identical.
+
+The v56 non-Run line is preserved: Throw/Grab composition, Sweep-Fall safety fix, Push approximation, existing Combo mapping, native v53 palette architecture, and the existing Fortress/Prison allocation strategy are unchanged in intent.
+
+**Pending runtime gate:** ordinary Run must show a coherent twelve-pose Sektor cycle with the six formerly bad alternating frames corrected. Regressions: Push, Sweep Fall + Sweep Getup, Throw, full Combo, Fortress -> gameplay -> Inventory, and Prison first doorway -> Inventory.
 
