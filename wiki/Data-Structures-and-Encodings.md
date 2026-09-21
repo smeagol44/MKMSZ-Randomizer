@@ -156,3 +156,10 @@ The generated result is **818 bytes (0.311%) smaller than stock Midway** for the
 This benchmark does **not** mean the current Sektor resource layout is already globally optimal. The Sektor proof builders still partition frames into multiple generated dictionaries/tables for bounded integration, so duplicate patterns and per-group model overhead remain. The benchmark instead shows that the native Type-5 grammar and encoder-v2 coding strategy are no longer the main compression gap. The remaining high-value work is model/dictionary grouping, cross-animation pattern sharing, dead-stock reclamation, and whole-resource packing.
 
 Reproducible tool: `tools/benchmark_type5_encoder.py`.
+
+
+### Shared-dictionary multi-model packing
+
+**Static/implementation-confirmed in v54.** Type-5 model records do not require distinct physical pattern arrays. Multiple model records may use the same pattern-table relative offset while carrying independent normal-class widths/bases and transparent-run classes. The first 6 stream bits select the entropy model; pattern indices then resolve through that model's bases into the shared physical dictionary.
+
+The optimized Sektor v54 uses **16 model records over one shared 5-bpp dictionary**. Splitting the 129 inherited v53 frames into smaller entropy groups reduces stream bits enough to retain seven flattened Throw keyframes while keeping file ID `0x87 = 0x4E154`, below the runtime-confirmed Fortress-working v49 footprint. Independent software decode verifies every emitted frame against its exact source pixels. This is a packing optimization only; it does not alter the Type-5 pixel grammar or visible artwork.
