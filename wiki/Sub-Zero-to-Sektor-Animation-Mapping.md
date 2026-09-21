@@ -937,3 +937,65 @@ Additional v55 runtime observation: the Sub-Zero combo still reaches six gamepla
 **v56 runtime correction:** the six PS1-derived even Run poses still render badly, now as speckled/checkerboard full bodies rather than four-column artifacts. The six N64 odd poses remain clean. Native-palette renders of PS1 odd poses show the same bad internal structure, so this is an upstream PS1 POVBQ interpretation failure, not a Type-5/VQ packing failure. The v56 PS1 Run path is **Rejected**. Sweep Fall/Getup, Throw, Fortress+Inventory, and Prison+Inventory all pass on the tested v56 route.
 
 **Replacement donor path (Static-confirmed):** preserved Midway MK3 `ROBO8.IMG` contains complete raw 8-bit `RBRUN1..RBRUN12` full-body images and `ROBO_P`. N64 MKT source explicitly lists the six even Run poses as cut. Future Run work must first calibrate raw MK3 odd poses against their exact N64 odd counterparts before transferring the even poses.
+
+## TEMPORARY recovery checkpoint — v57 full-Run reconstruction (2026-09-21)
+
+> **In-progress recovery note.** Preserve this section until the v57 Run proof is built and runtime-tested. It records partial work recovered after repeated chat/stream failures. Nothing in this section is Runtime-confirmed unless explicitly stated.
+
+### Baseline and rejected path
+
+- **Runtime-confirmed baseline remains v53** for the common Sektor takeover architecture.
+- The later v55/v56 line retains the already user-confirmed Throw/Grab, Sweep Getup, Fortress, Prison, and Inventory fixes from the current takeover branch.
+- **Rejected / failed for Run:** the v56 PS1 POVBQ-derived even Run frames. The alternating bad frames were already malformed in the decoded donor buffers, so another ROM built from that decode would only reproduce the visual corruption.
+- The actual recovered builder `MKMSZR_build_sektor_takeover_v56.py` is available again and is the immediate code baseline for v57. It preserves the existing Type-5 encoder, donor/native corpus packing, guards, CRC path, and the already-confirmed non-Run fixes.
+
+### Clean Midway source for the cut even Run poses
+
+**Static-confirmed:** Midway's preserved WIMP library `video/supermk3/ROBO8.IMG` contains full-body source images `RBRUN1..RBRUN12`, including all six even poses cut from the retail N64 MKT robot data. It also contains the robot palette `ROBO_P`.
+
+The WIMP headers parse consistently with the preserved WIMP structures. `ROBO_P` is a 64-color RGB555 source palette. Its colors can be reduced deterministically to the already runtime-proven 32-color N64 Sektor TLUT used by the takeover branch; this avoids introducing a new runtime palette path.
+
+### N64 conversion calibration
+
+**Static-confirmed for retained source/N64 pairs:** the Midway source art was reduced for N64 with an approximately fixed geometry transform:
+
+- target width = `round(source_width * 0.80)`;
+- target height = `round(source_height * 0.85)`;
+- target X anchor follows the same 0.80 reduction exactly on the checked retained frames;
+- target Y anchors are calibrated from the retained N64 robot descriptors and are applied explicitly below rather than guessed from the rejected PS1 pixel path.
+
+This relationship was cross-checked against retained N64 robot Run, Stance, and Air-Punch descriptors. Pixel-mask comparison of retained Run frames also shows very close agreement for source/N64 pairs where the preserved source art revision matches the retail N64 pose. Some retained poses differ artistically between the preserved development source and final retail N64 art, so the calibration is being used as a conversion rule, not as a claim of universal pixel identity.
+
+### Derived even-frame target descriptors
+
+The six missing even Run poses now have bounded N64-style target geometry:
+
+| Pose | Midway source | Derived target | Target anchor |
+|---|---:|---:|---:|
+| `RBRUN2` | 96x131 | **77x111** | **(+43,-8)** |
+| `RBRUN4` | 63x127 | **50x108** | **(+17,-12)** |
+| `RBRUN6` | 89x131 | **71x111** | **(+29,-8)** |
+| `RBRUN8` | 108x135 | **86x115** | **(+46,-8)** |
+| `RBRUN10` | 74x131 | **59x111** | **(+26,-9)** |
+| `RBRUN12` | 81x137 | **65x116** | **(+24,-4)** |
+
+**Implementation/static-confirmed, not runtime-confirmed:** all six clean `ROBO8.IMG` even poses have now been converted into target-sized indexed buffers using the calibrated reduction and deterministic `ROBO_P` -> proven N64 Sektor-TLUT color mapping. They are no longer dependent on the rejected PS1 POVBQ decoder.
+
+### Role of PS1 MKT
+
+The PS1 MKT material remains useful as an **independent descriptor/sequence reference**, especially because it preserves all 12 Run poses. It must not be treated as an N64 byte/layout oracle, and the rejected POVBQ pixel decode is not being revived. PS1 addresses and compressed-texture semantics remain platform-specific.
+
+### Current v57 gate / next exact step
+
+No v57 ROM has been produced from this new path yet, and the clean MKMSZ ROM remains untouched.
+
+The next bounded step is:
+
+1. replace only the v56 rejected even-Run donor branch with the six converted `ROBO8.IMG` buffers above;
+2. keep the known-good N64 odd Run poses and all already-confirmed v55/v56 Throw/Sweep/Fortress/Prison behavior unchanged;
+3. rebuild through the existing native Type-5 encoder and resource packer;
+4. require software round-trip equality, expected-byte guards, word alignment, file-0x87 footprint checks, and valid N64 CRC1/CRC2;
+5. only then issue the smallest disposable v57 Run proof for manual runtime validation.
+
+**Pending:** runtime visual confirmation of the six inserted even poses and the completed 12-pose Run cycle.
+
