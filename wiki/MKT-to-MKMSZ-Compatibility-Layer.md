@@ -1423,4 +1423,21 @@ v42 begins from v40 and changes only the already-runtime-confirmed first Sektor 
 
 The proof uses one custom type-5 model at 5 bits per pixel. The 56x114 frame contains 798 2x4 blocks and 369 unique patterns; a deliberately simple dictionary encoder reduces this one image from 6,332 raw stored bytes to 3,265 bytes. An independent software decoder round-trips the generated type-5 stream exactly to the proven raw Sektor pixel buffer plus one transparent padded row.
 
-**Static/implementation-confirmed; runtime pending.** The first runtime gate is clean idle rendering/transitions. The second is Prison's first doorway, confirming the compact representation does not reintroduce file-0x87 headroom failure.
+**Runtime-confirmed.** The user inspected the idle animation frame-by-frame and reported no visible difference between the generated native type-5 frame and the surrounding proven raw Sektor frames. Prison's first doorway also remained healthy. This validates generated MKMSZ native type-5 as a fighter-safe storage representation for genuine Sektor art.
+
+
+#### v43 — all-five-frame native type-5 idle compaction
+
+Disposable proof: `MKMSZR_mkt-sektor-native-type5-idle_proof_v43.z64`.
+
+Identity:
+
+- SHA-256 `d5d79cf541b70fc61a91c2f360a3e682873bdbdf25400744dbce2d6fe40935e6`;
+- CRC1/CRC2 `BE15E281 / 5D345038`;
+- file ID `0x87` size `0x49BAC`.
+
+v43 applies the runtime-confirmed v42 encoder architecture to all five Sektor stance frames and **physically compacts** the donor tail instead of leaving reclaimed raw bytes inside the loaded file. The five shape/descriptor/type-5 blocks are packed contiguously, the active stance script is repointed, the donor palette is relocated to `+0x49B60`, and the existing palette helper's upper bound/palette pointer are updated. The compact selector, logo bypass, false-cave restoration, and Sektor palette-switch architecture remain unchanged.
+
+The result saves `0x3C74` bytes versus v40/v42 while preserving exactly the same visible idle content. This is the first proof that native type-5 encoding can convert the Sektor branch from raw-expansion experiments into a genuinely shrinking fighter resource.
+
+**Static/implementation-confirmed; runtime pending.**
