@@ -868,7 +868,7 @@ Identity:
 - file ID `0x87 = 0x4D0A4`;
 - `0x14A0` (5,280 bytes) below runtime-confirmed Fortress-working v49 `0x4E544`.
 
-**Static/implementation-confirmed; runtime pending.**
+**Partially runtime-confirmed; v55 Run import failed visually and is superseded by v56.**
 
 ### Run / Push ownership correction
 
@@ -880,7 +880,7 @@ v55 leaves Push as a seven-tick Sektor approximation using the six N64-retained 
 
 The odd poses `1/3/5/7/9/11` come from the supplied MKT N64 Rev. 2 donor. PS1 MKT preserves the full Run at `CODE/ROBOT.BIN +0x140C`, whose twelve image references resolve consecutively to `CHARS1/ROBOT.DAT` headers 222..233. The even poses `2/4/6/8/10/12`, deliberately cut from MKT N64, are decoded from those PS1 resources and converted into the native MKMSZ Type-5/Sektor-palette representation.
 
-The PS1/N64 common odd poses differ only modestly in port crop/geometry, so v55 does not apply a destructive global resize to the restored even poses. Shared-dictionary packing initially treats the existing Sektor 2x4 patterns as the codebook. Under the final palette conversion only **18 supplemental PS1 patterns** are needed; the six converted PS1 even frames are then reproduced exactly (`VQ_RMSE = 0`; 100% exact opaque pixels), so the final build is not a lossy approximation despite using the codebook optimization machinery.
+The PS1/N64 common odd poses differ only modestly in port crop/geometry, so v55 did not apply a destructive global resize. **Runtime correction:** the v55 PS1 POVBQ emitter was wrong: after writing each 2x4 vector it did not advance the destination pointer by four pixels, so every vector overwrote the same four-column strip. The prior “18 supplemental patterns / lossless” result only proved equality against those malformed target buffers and is **Rejected / superseded**.
 
 ### Sweep Fall
 
@@ -907,3 +907,28 @@ Five former append scripts remain repacked into proven-dead pre-Type-5 script re
 Two clean v55 builds are byte-identical. The builder independently decodes every emitted Type-5 frame and requires exact equality with its selected target buffer; with the optional runtime-confirmed v53 ROM it also verifies all 129 inherited frames exactly. A separate finished-ROM audit confirms twelve distinct Run roots at `+0xEE8`, the independent seven-visual Push loop at `+0x1B0`, the one-slot Throw delay with stock separators untouched, and minimum normal-class width 1 across all 52 models.
 
 Runtime gates: Run; Push; Sweep Fall + Sweep Getup; Throw color/timing; full Combo regression; Fortress -> gameplay -> Inventory; Prison first doorway -> Inventory.
+
+
+## v56 — corrected full-body PS1 Run decode
+
+Disposable proof: `MKMSZR_sektor-run-decode_common-proof_v56.z64`.
+
+Identity:
+- SHA-256 `eea8d47b4ed2fb94be891724097a97c74c94bff4703cd6f66a5bc5da25d892c0`;
+- CRC1/CRC2 `A6256A28 / 73BE34AB`;
+- file ID `0x87 = 0x4E414`;
+- `0x130` (304 bytes) below runtime-confirmed Fortress-working v49 `0x4E544`.
+
+**Static/implementation-confirmed; runtime pending.**
+
+v56 is intentionally narrow: it keeps v55's already-working Throw, existing Combo mapping, Sweep-Fall safety guard, Push mapping, and all inherited v53 content. Only the six PS1-derived even Run poses are rebuilt.
+
+The corrected PS1 POVBQ emitter follows the native 2-row/4-column vector layout exactly: after the second four-pixel row of a vector it advances the output cursor by four pixels before returning to the first row. Independent comparison against the separate PS1 decoder matches byte-for-byte for `RBRUN2/4/6/8/10/12`; every source frame also spans more than 30 nonzero columns, directly excluding the v55 four-column overwrite failure.
+
+The corrected six full-body frames contain substantially more unique pattern data than the malformed v55 strips. Lossless inclusion would cross the known Fortress allocation boundary, so v56 uses a bounded codebook approximation: 256 supplemental PS1 2x4 patterns, exact transparency masks/silhouettes, and 64 Type-5 entropy models. The resulting six converted even poses have color-space RMSE about 4.504 in 5-bit RGB units and 36.3% exact opaque indices. This is deliberately documented as **lossy color/pattern approximation with exact silhouette**, not as lossless conversion.
+
+Final storage: 158 generated frames, 40,833 shared dictionary patterns, table `0x33789`, padded streams `0x1408C`, file `0x87 = 0x4E414`. Two clean builds are byte-identical and every emitted Type-5 frame round-trips against its selected v56 target buffer.
+
+Runtime gate: ordinary Run must show all twelve full-body poses; v55's tiny-artifact even frames must be absent. Push, Throw, Combo, Sweep Fall, Fortress/Inventory and Prison/Inventory are regressions.
+
+Additional v55 runtime observation: the Sub-Zero combo still reaches six gameplay hits, but at least one middle impact displays an incorrect/neutral Sektor visual. The victim-side “being grabbed/thrown” presentation remains a separate pending mapping family; inherited primary `fb_*` slots `0x26+` are the first static candidates and must be tied to actual MKMSZ call sites before replacement.
