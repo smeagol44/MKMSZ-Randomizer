@@ -1457,4 +1457,19 @@ v44 combines the runtime-confirmed five-frame type-5 Idle with native type-5 Wal
 
 The resulting fighter resource is `0xF9A4` bytes smaller than raw v12's `0x620E0` composition covering the same locomotion family, while requiring no new runtime decoder and retaining the compact stage selector.
 
+**Partial runtime result / rejected packing bug.** Idle, Walk Forward/Backward, and Turn render correctly, confirming the multi-animation type-5 path and shared Walk dictionary at runtime. Crouch hard-hangs before its first frame. Static audit attributes this to unaligned generated shape offsets in v44 (`+0x5037E` and `+0x51D81` are not word-aligned), not to the codec.
+
+
+#### v45 — corrected word-aligned type-5 locomotion
+
+Disposable proof: `MKMSZR_mkt-sektor-native-type5-locomotion_bundle-proof_v45.z64`.
+
+Identity:
+
+- SHA-256 `602664487903c6706a44e2180c5d0e5e8cfe1ad4899dad4fa4d13a3ea876d43b`;
+- CRC1/CRC2 `BE14EAF1 / EC2A122C`;
+- file ID `0x87` size `0x52740`.
+
+v45 keeps v44's exact animation/codec strategy but fixes the packer invariant: every generated fighter shape begins on a 4-byte boundary. Crouch now references aligned shapes at `+0x50380`, `+0x5113C`, and `+0x51D84`. Walk's shared dictionary/model and all already-working Idle/Walk/Turn assets remain semantically unchanged.
+
 **Static/implementation-confirmed; runtime pending.**
