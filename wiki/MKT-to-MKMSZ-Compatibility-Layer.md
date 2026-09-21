@@ -1351,3 +1351,18 @@ Two isolated proofs deliberately avoid combining the states because their projec
 - six genuine Sektor normal-Getup frames.
 
 **Runtime-confirmed.** The user reported both isolated states working perfectly.
+
+
+#### v39 — Stumble + compact stage selector composition
+
+Disposable proof: `MKMSZR_mkt-sektor-stumble-stage-select_proof_v39.z64`.
+
+Identity:
+
+- SHA-256 `2ff5eb680c97df2a10bdceaf21da71c30d76ceb9cbae401dfb6c14e0e11831ca`;
+- CRC1/CRC2 `BE156481 / 13B6BEC2`;
+- file ID `0x87` size `0x578BC`.
+
+v39 layers the already runtime-confirmed compact eight-stage selector onto the isolated v38 Stumble proof without changing the fighter resource/helper. The Stumble state uses six genuine donor frames and an appended exact 17-word retail loop with translated local jump target.
+
+**Runtime-confirmed.** The user supplied two screenshots of the upright multi-frame reel-back reaction and confirmed it works correctly. This also runtime-confirms the Sektor proof-helper/resource composition with the compact stage selector.
