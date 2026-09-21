@@ -43,13 +43,28 @@ Primary runtime gates: Fortress stage load + Inventory; Prison first doorway + I
 
 **Static/implementation-confirmed; runtime pending.**
 
-v54 adds:
-- MKMSZ native run-loop visuals replaced with the six genuine Sektor Run poses from MKT primary `0x4A`, repeated across MKMSZ's 12 visual run ticks while preserving the stock loop command;
-- primary `0x10` Elbow/Combo mapped to the exact 36-word MKT retail animation grammar and genuine donor frames;
-- primary `0x23` Throw/Grab visuals mapped to genuine Sektor throw poses while preserving MKMSZ's native 12-word throw control grammar and avoiding MKT throw callbacks.
+Final disposable proof: `MKMSZR_mkt-sektor-run-combo-throw_common-proof_v54.z64`.
 
-MKT codec 15 is now statically decoded from the public-source `uncompress_8` format (8-color RLE) and its throw frames are re-encoded to MKMSZ native Type-5. The complete v54 corpus has 154 unique Sektor frames, 35 mapped primary slots, and the explicit run-loop replacement.
+Identity:
+- SHA-256 `7f11e7e462a8e9a5fb028a62e5281989480dd3eb19bdc5d281241113caf1876a`;
+- CRC1/CRC2 `A6256DA8 / 9F9B13D5`;
+- file ID `0x87 = 0x4E154`;
+- `0x3F0` bytes below the runtime-confirmed Fortress-working v49 footprint `0x4E544`.
 
-Storage uses four shared Type-5 models. The eight codec-15 throw frames use a dedicated 3-bpp model; other Sektor art remains 5-bpp. Per-model normal class widths are optimized from actual pattern frequencies while preserving the native 13 normal symbols and three zero-run symbols.
+v54 adds six genuine Sektor Run frames while preserving MKMSZ's native run loop and omitting MKT's footstep callback. Primary `0x10` keeps MKMSZ's exact 17-word four-segment Elbow/Combo grammar and replaces only its 13 visual positions with ten genuine `RBELBOCOMBO` poses.
 
-File `0x87 = 0x508E4`. This is below the known failing `0x5100C` Fortress footprint by only `0x728`, so no safety claim is made. Primary gate: Fortress -> gameplay -> Inventory. Secondary gates: run; Elbow/Combo sequence; Grab/Throw; Prison doorway -> Inventory.
+The Throw interpretation is corrected: MKMSZ's attacker Throw body at `+0x8F8` is 12 words with nine visual positions `[0,1,3,4,5,6,7,9,10]`. Later shape references previously counted as extra Throw frames belong to the adjacent reaction/flip block at `+0x928` and are left outside Throw ownership.
+
+Sektor's longer slave-arm throw is downsampled into seven exact offline-flattened mechanical-arm composites:
+`+0x2318,+0x2340,+0x237C,+0x2390,+0x23B8,+0x23CC,+0x2408`,
+with genuine `RBSTANCE7` at entry/exit. MKT codec 15 is decoded offline; the MKT slave-animation ABI is not imported.
+
+The generated corpus totals 152 frames: 129 inherited v53 + 6 Run + 10 Combo + 7 Throw keyframes. One shared 5-bpp dictionary is addressed by 16 entropy-model records; independent software decode checks every frame byte-for-byte against its exact source pixels. The optional v53 cross-check verifies all 129 inherited frames against the runtime-confirmed v53 ROM.
+
+Runtime test matrix:
+- Run;
+- full Elbow/Combo;
+- Grab/Throw;
+- Fortress -> gameplay -> Inventory;
+- Prison -> first doorway -> Inventory.
+
