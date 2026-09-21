@@ -707,4 +707,4 @@ Two disposable proofs preserve the same genuine Sektor Idle + Walk Forward/Backw
 
 v49 is `0xD24` bytes above the known-good v40 Fortress footprint. v50 is `0x1500` bytes below it. These are real-content controls rather than inert padding threshold probes.
 
-**Static/implementation-confirmed; runtime pending.**
+**Runtime-confirmed.** Both v49 and v50 load Fortress normally, reach gameplay/music, and allow Inventory to open without a hang. This establishes that the generated Type-5 locomotion itself is Fortress-safe at v49's `0x4E544` footprint and that v50's conservative stock locomotion-hole reclamation is also Fortress-safe on the tested route.
