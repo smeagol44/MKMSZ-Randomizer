@@ -1534,4 +1534,4 @@ v49 rebuilds the proven Sektor Idle/Walk/Turn/Crouch set with encoder-v2 but no 
 
 v50 uses the same animation content and encoder but places eligible compressed image streams into 22 file-local-unreferenced stock locomotion-frame intervals. It uses `0x2224` bytes of those holes and reduces file 0x87 to `0x4C320`, which is `0x1500` bytes smaller than the runtime-confirmed Fortress-working v40 footprint.
 
-**Static/implementation-confirmed; runtime pending.** Testing both provides a fast real-content check of how much compaction Fortress needs and separately exercises conservative stock-hole reuse on Fortress.
+**Runtime-confirmed.** Both v49 and v50 load Fortress normally, enter gameplay with music, and open Inventory normally. This confirms generated Type-5 locomotion is not intrinsically Fortress-incompatible and separately validates the conservative locomotion-hole reclamation strategy on Fortress.
