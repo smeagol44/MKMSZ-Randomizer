@@ -1618,3 +1618,21 @@ The corrected MKMSZ attacker Throw body at `+0x8F8` has nine visual positions, n
 
 Storage uses one physical 5-bpp dictionary with 16 independent Type-5 entropy-model records. The final generated corpus is 152 frames (129 inherited v53 + 6 Run + 10 Combo + 7 Throw). Five former appended scripts are repacked into now-dead pre-Type-5 script regions. The result is `0x3F0` bytes below the runtime-confirmed Fortress-working v49 file-0x87 footprint.
 
+
+
+## PS1 MKT supplemental donor evidence
+
+**Static-confirmed; platform-specific.** The unpacked USA PlayStation MKT disc is useful as a supplemental asset/reference donor, but its binaries and compressed sprite streams are not assumed byte-compatible with either MKT N64 or MKMSZ N64.
+
+Relevant retail files:
+- `CODE/ROBOT.BIN` — robot animation-table/script module;
+- `CHARS1/ROBOT.DAT` — ordinary robot fighter graphics/resource bank;
+- `CHARS2/ROBOTBQ.DAT` and `CHARS3/ROBOFAT.DAT` — additional robot banks.
+
+The PS1 robot primary table preserves the Run entry at slot `0x46`, which points to `ROBOT.BIN +0x140C`. Unlike the supplied N64 MKT retail binary, the PS1 script references **twelve distinct Run frames**, with two footstep callbacks before looping. The twelve frame descriptors are at `ROBOT.DAT +0xA6C..+0xAFB` in 12-byte records. This supplies the six even-numbered Sektor Run poses that the N64 retail robot asset set cut.
+
+The PS1 run frames are already port-scaled/cropped fighter assets rather than the larger raw arcade-development composites. Their odd-frame dimensions/anchors are close to the corresponding retained N64 MKT poses, making the PS1 set a stronger supplemental source than synthesizing or duplicating the six N64 poses.
+
+The PS1 Throw entry is also present at primary slot `0x23 -> ROBOT.BIN +0x112C` and retains the holder/slave mechanical-arm structure. `ROBOT.DAT` contains serialized palette blocks in addition to image descriptors/streams, so the PS1 files may also help establish the exact metal-arm palette binding.
+
+**Pending:** PS1 `ROBOT.DAT` image streams use a platform-specific compressed representation (observed descriptor tags include `0x17` and `0x19`). They must be decoded exactly and then converted/re-encoded into MKMSZ native Type-5; direct stream copying is not an accepted compatibility path. Runtime validation is required before any PS1-derived frame becomes part of the normal takeover composition.
