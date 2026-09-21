@@ -1553,7 +1553,7 @@ The 42 stock frame intervals already established as file-local-unreferenced unde
 
 The result is `0x5100C`, saving another `0x1BB4` bytes versus v47 without dropping any mapped animation and sitting `0x1734` bytes below the known-failing v48 Fortress footprint.
 
-**Static/implementation-confirmed; runtime pending.**
+**Partial runtime confirmation.** Prison, including the first doorway followed by Inventory, works normally. Fortress still hangs on the Mission Objective screen, but unlike v45/v47/v48 the stage music begins before the hang. This indicates the smaller `0x5100C` footprint advances farther through Fortress initialization but remains above a later memory boundary.
 
 
 #### Stock-control Type-5 encoder benchmark
@@ -1565,3 +1565,18 @@ Midway's stock Type-5 representation totals **262,616 bytes** including the shar
 **Static/implementation-confirmed:** the generated result is **818 bytes / 0.311% smaller** than Midway on the identical Sub-Zero artwork. Compressed stream coding differs by only 466 bits across all 341 frames, so the two encoders are essentially at parity at the codec level.
 
 Architectural consequence: the current Sektor size gap should not be interpreted as evidence that the project is missing a substantially better Type-5 coding algorithm. The dominant remaining opportunities are fewer/shared Sektor model tables, better grouping by pattern overlap, whole-resource compaction, and progressive reuse of replaced stock art. The existing Sektor proof grouping remains deliberately conservative and is not yet equivalent to the stock global four-model packing strategy.
+
+
+#### v52 — v49 padded to v51 size
+
+Disposable proof: `MKMSZR_mkt-sektor-type5-locomotion_v51-size-control_v52.z64`.
+
+Identity:
+
+- SHA-256 `02745e4dff4e4a4beaacb928d62915da4fff702c9bfae48fd3154835d59480ef`;
+- CRC1/CRC2 `BE14F541 / D5784E8A`;
+- file ID `0x87` size `0x5100C`.
+
+v52 starts from runtime-confirmed v49, whose real Type-5 Idle + Walk F/B + Turn + Crouch content loads Fortress normally at `0x4E544`. It changes no reachable fighter content and appends only `0x2AC8` bytes of untouched/unreachable `0xFF` so the loader-facing file-0x87 allocation exactly matches v51.
+
+**Runtime pending.** If v52 reproduces v51's music-then-hang Fortress behavior, allocation footprint alone remains sufficient at `0x5100C`. If v52 loads Fortress normally, v51's additional decoded fighter-image residency or another content-dependent arena consumer is implicated beyond compressed file size.
