@@ -1010,3 +1010,16 @@ The v56 non-Run line is preserved: Throw/Grab composition, Sweep-Fall safety fix
 
 **Pending runtime gate:** ordinary Run must show a coherent twelve-pose Sektor cycle with the six formerly bad alternating frames corrected. Regressions: Push, Sweep Fall + Sweep Getup, Throw, full Combo, Fortress -> gameplay -> Inventory, and Prison first doorway -> Inventory.
 
+### v57 runtime correction — ROBO8 source row pitch
+
+**Runtime-confirmed failure:** the first v57 Run test shows several Run frames as heavily diagonal/slashed horizontal bands rather than coherent fighter sprites.
+
+**Static-confirmed root defect:** Midway's preserved WIMP processing code treats image `xsize` as the **unpadded** visible width and advances every source row by `zero_pad = (4 - xsize) & 3`. Therefore raw WIMP image storage uses a 4-byte-aligned source-row pitch. The v57 ROBO8 extraction instead read each source as tightly packed `width * height`, so non-4-aligned source widths progressively consume row-padding bytes as pixels and shift every following row.
+
+This also resolves the earlier odd-frame calibration anomaly: the ROBO8 odd Run frames that matched the N64 silhouettes extremely closely were source widths 100, 104 and 64 (already 4-byte aligned), while the three apparent source-art mismatches were widths 81, 71 and 97 (all requiring row padding). The earlier suggestion of an art-revision difference for those mismatches is superseded.
+
+For the six even source poses, `RBRUN2` width 96 and `RBRUN8` width 108 are natural unchanged controls; `RBRUN4` width 63, `RBRUN6` width 89, `RBRUN10` width 74 and `RBRUN12` width 81 require corrected source pitch. The v57 Run path is therefore **Rejected / failed** for this concrete extraction bug. Non-Run v57 regressions remain pending the user's current test pass.
+
+**Next Run fix:** recapture ROBO8 pixels row-by-row with `source_stride = align4(source_width)`, re-run the retained-odd calibration, regenerate only the six clean even target buffers, then repeat the Type-5 footprint/round-trip/CRC gates before the next disposable proof.
+
+
