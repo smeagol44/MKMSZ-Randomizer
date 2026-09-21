@@ -669,4 +669,21 @@ To preserve the already-runtime-confirmed palette helper, every generated Sektor
 
 The result reduces file `0x87` from v46's `0x56E78` to `0x52BC0` without dropping any animation. This is only `0x480` bytes above runtime-confirmed v45 while retaining the full v46 crouch-combat set.
 
-**Runtime-confirmed for the Prison memory control; Fortress regression pending attribution.** Prison -> first doorway -> Inventory works normally, while the exact v46 composition at the larger 0x56E78 footprint hangs when Inventory is opened after that doorway. This confirms the reclaimed-storage size reduction is sufficient to restore that route. However, v47 hangs when entering Fortress at the Mission Objective screen before stage music/gameplay. Fortress had not been exercised for several prior revisions, so the first failing build is unknown. The reclaimed stock intervals are therefore only proven unused by the file-local animation graph and tested routes, not globally dead across all stage-specific player paths.
+**Runtime-confirmed for the Prison memory control; Fortress regression pending attribution.** Prison -> first doorway -> Inventory works normally, while the exact v46 composition at the larger 0x56E78 footprint hangs when Inventory is opened after that doorway. This confirms the reclaimed-storage size reduction is sufficient to restore that route. However, Fortress testing now shows the same pre-music Mission Objective hang in v45 (0x52740) as in v47 (0x52BC0), while v40 (0x4D820) loads Fortress normally. This means v47 reclamation is not the onset of the Fortress regression. The reclaimed stock intervals remain conservatively described as file-local-unreferenced rather than globally dead.
+
+
+## Fortress exact-size allocation control — v48
+
+Disposable proof: `MKMSZR_mkt-sektor-idle-stage-select_fortress-size-control_v48.z64`.
+
+Identity:
+
+- SHA-256 `c4324831437bd76563f36961f68ab37c604b93e4b42f11e649b4f38fc9cdfbd9`;
+- CRC1/CRC2 `BE14EAF1 / EC2A122C`;
+- file ID `0x87` size `0x52740`, exactly matching failing v45.
+
+v48 begins from runtime-confirmed v40. It changes no reachable Sektor frame, script, descriptor, palette helper, selector logic, or stage behavior. The only fighter-resource change is extending file ID `0x87` from `0x4D820` to `0x52740` with `0x4F20` bytes (20,256 bytes) of untouched/unreachable `0xFF` tail padding.
+
+This is the Fortress counterpart to the earlier v41 Prison allocation control. If v48 hangs entering Fortress before music, allocation footprint alone is sufficient at `0x52740` on this route. If it loads, v45's reachable compressed-locomotion content or runtime decode behavior is implicated instead.
+
+**Static/implementation-confirmed; runtime pending.**
