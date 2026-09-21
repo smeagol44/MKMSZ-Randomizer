@@ -1332,3 +1332,22 @@ Identity:
 v35 bundles the directly mapped Sweep Fall and Sweep Getup states while remaining comfortably below previously runtime-confirmed file-0x87 sizes. The two sequences share one physical Sektor frame, so ten unique donor shapes cover both states. Other fall/recovery states remain untouched.
 
 **Runtime-confirmed.** The user forced an enemy sweep and observed both genuine Sektor Sweep Fall and Sweep Getup working perfectly.
+
+
+#### v36 / v37 — Knockdown and normal Getup
+
+Two isolated proofs deliberately avoid combining the states because their projected combined file-0x87 size would slightly exceed the largest previously runtime-confirmed working build.
+
+`MKMSZR_mkt-sektor-knockdown_isolated-proof_v36.z64`:
+- SHA-256 `054e0bd8fb8807f38c645c5ad9177e0adf0bc6058694a9c8c7eaf3956a2b8e08`;
+- CRC1/CRC2 `CAACE5B9 / 0A1A7384`;
+- file ID `0x87` size `0x57344`;
+- seven genuine Sektor Knockdown frames.
+
+`MKMSZR_mkt-sektor-getup_isolated-proof_v37.z64`:
+- SHA-256 `8178af685d3ffc631a9390d43c7b31d9946ed748acd8ddc2291440148d033533`;
+- CRC1/CRC2 `CAACE5C9 / 63053889`;
+- file ID `0x87` size `0x54308`;
+- six genuine Sektor normal-Getup frames.
+
+**Runtime-confirmed.** The user reported both isolated states working perfectly.
