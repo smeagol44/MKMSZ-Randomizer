@@ -967,9 +967,54 @@ All three are decoded from the supplied MKT Rev. 2 robot resource, verified agai
 
 File ID `0x87` becomes size `0x5F8C4`, still below the rejected v12 size `0x620E0`. The false cave remains untouched; palette switching remains on the v10 frame-setup boundary; no donor-rate hook is enabled.
 
+**Rejected / failed due to whole-scene runtime corruption before the new animation is used.**
+
+The user reported that the stage itself appears, but approximately one second later—just as the player is about to appear—the entire scene becomes severely corrupted. The screenshot shows broad renderer/framebuffer-style corruption across the stage and HUD, not merely a malformed fighter frame. The new Crouch Low Kick was not activated before the failure.
+
+This materially tightens the raw fighter-resource size boundary:
+
+- v19 file ID `0x87` size `0x5C15C`: normal gameplay is runtime-confirmed clean;
+- v20 size `0x5F8C4`: catastrophic scene corruption occurs during player instantiation;
+- delta: only `0x3768` bytes (~13.8 KiB).
+
+The strongest current explanation is **Hypothesis / strong inference:** file ID `0x87` has crossed a practical load/allocation boundary and is colliding with later runtime memory or render-state allocation. The failure is not attributed to the Crouch Low Kick animation semantics because the animation is never selected.
+
+#### v21 — isolated Crouch Low Kick below the raw-size boundary
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-crouch-low-kick_isolated-proof_v21.z64`
+
+Identity:
+
+- SHA-256 `f6169f6d2a82b0165ff5a96ef609a60ef0f95546288c8978ddd8aa35983a161b`;
+- CRC1/CRC2 `DAA30FC9 / 88373F03`.
+
+v21 returns to runtime-confirmed v17 (Idle + Crouch) and adds only the exact same retail Crouch Low Kick mapping used by v20:
+
+```text
+RBDUCKHIKICK1
+RBDUCKLOKICK2
+RBDUCKLOKICK3
+0
+RBDUCKLOKICK2
+RBDUCKHIKICK1
+RBDUCK3
+0
+```
+
+The three donor frames use the same verified raw/type-0 conversion, but are placed immediately after v17's compact donor block:
+
+- `RBDUCKHIKICK1` at `+0x51D58`;
+- `RBDUCKLOKICK2` at `+0x52A90`;
+- `RBDUCKLOKICK3` at `+0x53BA8`;
+- donor palette at `+0x554C0`.
+
+File ID `0x87` is only `0x5550C`, safely below runtime-confirmed v18/v19/v16 sizes. This isolates animation correctness from the accumulation/size failure seen in v20.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary validation: confirm Crouch Low Kick is fully Sektor, returns to Sektor crouch, keeps normal stage loading, and transitions cleanly to block/turn/idle. If clean, isolate Crouch High Kick next.
+Primary test: normal stage load, Sektor Crouch Low Kick, clean return to Sektor crouch, and no broad scene corruption. If v21 succeeds, slot `0x0A` is a valid direct mapping and the remaining blocker is storage/composition, not animation semantics.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
 
