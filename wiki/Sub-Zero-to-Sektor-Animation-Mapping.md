@@ -794,39 +794,65 @@ Unported primary states intentionally left as placeholder visuals are Victory `0
 
 ## v54 — Run + Elbow/Combo + Throw/Grab
 
-Disposable proof: `MKMSZR_mkt-sektor-expanded-takeover_run-combo-throw-proof_v54.z64`.
+Disposable proof: `MKMSZR_mkt-sektor-run-combo-throw_common-proof_v54.z64`.
 
 Identity:
-- SHA-256 `0828131f04ad956e09bdefcb7fff194553bb69e3ab8013158d711a3e16a21b4a`;
-- CRC1/CRC2 `A624BBE8 / 289CF90E`;
-- file ID `0x87` size `0x508E4`.
+- SHA-256 `7f11e7e462a8e9a5fb028a62e5281989480dd3eb19bdc5d281241113caf1876a`;
+- CRC1/CRC2 `A6256DA8 / 9F9B13D5`;
+- file ID `0x87` size `0x4E154`;
+- `0x3F0` (1,008 bytes) below the runtime-confirmed Fortress-working v49 footprint `0x4E544`.
 
 **Static/implementation-confirmed; runtime pending.**
 
-v54 keeps the runtime-confirmed v53 Sektor-native palette/helper-free architecture and adds three requested visual families.
+v54 keeps the runtime-confirmed v53 native-Sektor-palette/helper-free architecture and extends it with Run, Elbow/Combo, and Grab/Throw visuals. A clean rebuild is deterministic, and an optional builder cross-check confirms all 129 inherited v53 frames are byte-for-byte identical in decoded pixels, geometry, and anchors to the runtime-confirmed v53 ROM.
 
 ### Running
 
-MKT Sektor primary slot `0x4A` Run supplies six genuine poses at donor shapes `+0x2708,+0x271C,+0x2730,+0x2744,+0x2758,+0x276C`. MKMSZ's native run cycle is the 12-frame loop at file-0x87 `+0xEE8..+0xF14`, followed by command `1 -> +0xEE8`. v54 preserves that target control grammar and fills the 12 visual ticks with the six Sektor poses repeated twice.
+MKMSZ secondary slot `0x27` still targets script `+0x1B0`. v54 preserves the native seven-visual loop plus `1 -> +0x1B4` control grammar and replaces only the visuals with genuine Sektor `RBRUN1,3,5,7,9,11,1` donor poses at `+0x2708,+0x271C,+0x2730,+0x2744,+0x2758,+0x276C,+0x2708`. MKT's footstep callback is not transplanted.
 
-### Elbow/Combo
+### Elbow / full combo
 
-Primary slot `0x10` is redirected to an appended translation of the exact 36-word MKT Sektor retail script at donor `+0x47C`. Its generic animation-rate commands and local animation flow are retained; all ten genuine donor visual shapes are translated to generated MKMSZ Type-5 shapes. No MKT gameplay callback is introduced here.
+Primary slot `0x10` remains at MKMSZ target `+0x5E0`. The exact native 17-word, four-segment structure is preserved, including its zero separators. Its 13 visual positions use the ten genuine Sektor `RBELBOCOMBO1..10` shapes in sequence:
 
-### Throw/Grab
+`1,2,3 / 2,1 / 4,5,6 / 7,8,9,10,9`.
 
-MKT Sektor Throw uses complex callback/control grammar that is not transplanted. v54 instead preserves MKMSZ primary slot `0x23`'s native 12-word throw grammar and replaces its nine visual positions with genuine Sektor throw poses. This is intentionally a visual transplant, not a donor throw-logic port.
+No MKT gameplay callback or donor movement/control ABI is introduced.
 
-Most Sektor throw poses are MKT codec 15. v54 adds exact offline support for the public-source codec-15 `uncompress_8` algorithm (8-color RLE) and re-encodes those decoded pixels into MKMSZ Type-5.
+### Grab / throw
 
-### Storage
+A corrected static audit shows that MKMSZ's attacker-side Throw body at `+0x8F8` is exactly **12 words with nine visual positions**:
 
-The corpus grows from v53's 129 frames to **154 unique Sektor frames**. Four shared Type-5 models are used:
-- 5-bpp model: 20,036 patterns;
-- 5-bpp model: 20,020 patterns;
-- 5-bpp model: 1,050 patterns;
-- dedicated 3-bpp codec-15 throw model: 269 patterns.
+`[0,1,3,4,5,6,7,9,10]`.
 
-Per-model normal-class widths are optimized from actual pattern frequencies. File `0x87 = 0x508E4`: `0x728` below failing v51/v52 `0x5100C`, but `0x23A0` above the proven-working v49 `0x4E544`.
+The later shape references previously counted as part of a 15-position throw belong to the adjacent reaction/flip block beginning at `+0x928`; they are not attacker Throw frames and are not rewritten by v54. This agrees with the nine-frame MKMSZ Throwing presentation visible in external sprite references.
 
-Runtime priority is therefore Fortress first, followed by Run, Elbow/Combo, Throw/Grab, and Prison doorway + Inventory.
+MKT Sektor's throw is substantially longer and uses `RBSHOLDER4` plus a slave mechanical arm. v54 does **not** import the incompatible slave-animation ABI. Instead it decodes MKT codec 15 offline, composites `RBSHOLDER4` with selected arm poses using donor anchors, and re-encodes the exact flattened pixels as ordinary MKMSZ Type-5 frames.
+
+The nine MKMSZ attacker slots are downsampled to:
+
+`RBSTANCE7 -> arm +0x2318 -> +0x2340 -> +0x237C -> +0x2390 -> +0x23B8 -> +0x23CC -> +0x2408 -> RBSTANCE7`.
+
+Thus the throw uses seven distinct genuine mechanical-arm composites spanning emergence, forward extension, vertical sweep, upper-left transition, long sweep, downward return, and near-retraction, with genuine Sektor stance at entry/exit. Every MKMSZ zero separator and non-shape control word remains stock.
+
+### Storage / Type-5 packing
+
+The final corpus contains **152 generated Sektor frames**:
+- 129 inherited v53 frames;
+- 6 Run frames;
+- 10 Elbow/Combo frames;
+- 7 flattened Throw keyframes.
+
+All artwork uses one physical shared 5-bpp Type-5 pattern dictionary. Sixteen entropy-model records point into that same dictionary with independent normal-class windows; the 6-bit native model selector makes this representation format-compatible. This changes only compression/model selection, not decoded pixels.
+
+Final storage figures:
+- 40,594 unique 2x4 patterns;
+- shared table/dictionary size `0x31F5E`;
+- compressed stream bytes `0x156B8`;
+- file `0x87 = 0x4E154`.
+
+Five former appended scripts are repacked into now-dead pre-Type-5 script regions; only the exact 13-word Standing High Kick script remains a separately packed script item. The stock 341-frame Sub-Zero Type-5 corpus remains fully reclaimed.
+
+Independent software decode verifies every emitted Type-5 frame against its exact donor-decoded padded pixel buffer. Every generated shape is word-aligned. The helper remains absent, file ID `0x1B` remains unclaimed, the stock arena start remains restored, and the native Sektor palette architecture from v53 is unchanged.
+
+Runtime gates: Run; full Elbow/Combo; Grab/Throw; Fortress -> gameplay -> Inventory; Prison first doorway -> Inventory.
+
