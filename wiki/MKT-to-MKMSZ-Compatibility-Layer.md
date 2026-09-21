@@ -1257,3 +1257,17 @@ Identity:
 v30 returns to the exact runtime-confirmed v11 baseline and maps MKT Sektor primary slot `0x14` Sweep. The retail sequence contains eight genuine Sweep frames around an `ani_calla,sweep_sounds` command. Because donor callback IDs are not ABI-compatible, the proof preserves MKMSZ's native Sweep control words `6,0` and replaces only the visual frame pointers. All eight `RBSWEEPKICK1..8` frames use the proven raw/type-0 conversion. File ID `0x87` becomes `0x56C7C`, the false cave remains stock, and the post-legal logo bypass is included.
 
 **Runtime-confirmed.** The user reported Sweep working beautifully. This confirms primary slot `0x14` as a direct Sektor graphical replacement; Roundhouse is next.
+
+
+#### v31 — isolated Roundhouse
+
+Disposable proof: `MKMSZR_mkt-sektor-roundhouse_isolated-proof_v31.z64`.
+
+Identity:
+
+- SHA-256 `21e569d7b32e21062db4eee0ec93e21ad7aa59a74e32027936e25e7e50d0b732`;
+- CRC1/CRC2 `CAACE1B9 / 8F6ED860`.
+
+v31 returns to the exact runtime-confirmed v11 baseline and maps MKT Sektor primary slot `0x15` Roundhouse. Its exact retail sequence is `RBSPINKICK1,2,3,4,5,0,6,7,8,0`. The MKMSZ target uses the same ten-word animation structure, with no callback or donor-control tokens to translate, so the proof replaces only the eight visual pointers in place. All eight genuine donor frames use the proven raw/type-0 conversion. File ID `0x87` becomes `0x5B180`; neighboring action scripts, the false cave, and the rest of v11 remain untouched apart from the proven logo bypass and helper/palette bounds.
+
+**Runtime-confirmed.** The user reported Roundhouse working wonderfully. This confirms primary slot `0x15` as a direct Sektor graphical replacement; Jump is next.
