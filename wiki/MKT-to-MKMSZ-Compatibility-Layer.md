@@ -1213,3 +1213,19 @@ Identity:
 - CRC1/CRC2 `CAACE1B9 / 6BA95942`.
 
 v27 returns to the runtime-confirmed v11 idle base and imports the exact MKT Rev. 2 Sektor Standing Low Kick. The donor sequence is `RBLOKICK1,2,3,4,5,6,0,5,4,3,2,1,0`. MKMSZ's stock slot-0x12 script region is only 10 words before the neighboring High Kick script, so the exact 13-word donor sequence is appended at resource `+0x4D7D4` and primary table slot `0x12` is redirected there rather than overwriting slot `0x11` data. Six donor frames use the proven raw/type-0 conversion, the Sektor palette moves to `+0x588F8`, and file 0x87 is `0x58944` bytes. The runtime-confirmed post-legal logo bypass is included as a convenience baseline. **Runtime-confirmed.** The user reported Standing Low Kick working perfectly in the tested route.
+
+
+#### v28 — isolated Standing High Kick
+
+Disposable proof: `MKMSZR_mkt-sektor-standing-high-kick_isolated-proof_v28.z64`.
+
+Identity:
+
+- SHA-256 `9c01b27c8778fd4a80fd0ccaee45d3b4d4265325a976cc436d6af318d1fc36b4`;
+- CRC1/CRC2 `CAACE1C9 / 470098EC`.
+
+v28 returns to the exact runtime-confirmed v11 baseline and imports MKT Sektor primary slot `0x11` Standing High Kick. The exact retail sequence is `RBLOKICK1,2,3,4,5,RBHIKICK1,0,5,4,3,2,1,0`. As with v27, MKMSZ's stock script region is only 10 words, so the exact 13-word sequence is appended and the primary table entry is redirected rather than overwriting the neighboring Knee script.
+
+Six genuine donor frames are materialized through the already runtime-confirmed raw/type-0 fighter adapter. The unique High-Kick apex `RBHIKICK1` is retail geometry 95x109 in target X:Y order, anchor (+19,-11), codec 24, with 10464 decoded aligned bytes. The Sektor palette moves to resource `+0x58870`, and file ID `0x87` becomes `0x588BC`. The proven frame-setup palette helper bounds are updated, the false cave remains stock, and the runtime-confirmed post-legal logo bypass is included.
+
+**Runtime-confirmed.** The user reported Standing High Kick working perfectly. This confirms primary slot `0x11` as a direct Sektor graphical replacement and leaves Knee as the next efficient bounded primary-slot proof.
