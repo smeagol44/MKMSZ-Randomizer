@@ -932,3 +932,8 @@ Final storage: 158 generated frames, 40,833 shared dictionary patterns, table `0
 Runtime gate: ordinary Run must show all twelve full-body poses; v55's tiny-artifact even frames must be absent. Push, Throw, Combo, Sweep Fall, Fortress/Inventory and Prison/Inventory are regressions.
 
 Additional v55 runtime observation: the Sub-Zero combo still reaches six gameplay hits, but at least one middle impact displays an incorrect/neutral Sektor visual. The victim-side “being grabbed/thrown” presentation remains a separate pending mapping family; inherited primary `fb_*` slots `0x26+` are the first static candidates and must be tied to actual MKMSZ call sites before replacement.
+
+
+**v56 runtime correction:** the six PS1-derived even Run poses still render badly, now as speckled/checkerboard full bodies rather than four-column artifacts. The six N64 odd poses remain clean. Native-palette renders of PS1 odd poses show the same bad internal structure, so this is an upstream PS1 POVBQ interpretation failure, not a Type-5/VQ packing failure. The v56 PS1 Run path is **Rejected**. Sweep Fall/Getup, Throw, Fortress+Inventory, and Prison+Inventory all pass on the tested v56 route.
+
+**Replacement donor path (Static-confirmed):** preserved Midway MK3 `ROBO8.IMG` contains complete raw 8-bit `RBRUN1..RBRUN12` full-body images and `ROBO_P`. N64 MKT source explicitly lists the six even Run poses as cut. Future Run work must first calibrate raw MK3 odd poses against their exact N64 odd counterparts before transferring the even poses.
