@@ -149,3 +149,31 @@ Runtime result on 2026-09-21:
 - Prison -> first doorway -> Inventory: **Runtime-confirmed pass**.
 
 Postmortem: v56 fixed the four-column output-cursor bug, but the resulting PS1 Run source itself still decodes with corrupted-looking internal pixel/color structure. The earlier “PS1 ideal” comparison was only the output of that same unverified pipeline, not ground truth. Rendering PS1 odd Run poses with their native PS1 palette shows the same speckling even before N64 conversion. Therefore the PS1 POVBQ Run donor path is **Rejected / unresolved**, and further Type-5/VQ tuning against those buffers is not meaningful.
+
+
+### v58 stride-corrected full Run
+
+**Runtime-confirmed on 2026-09-21 for ordinary Run.**
+
+Disposable proof: `MKMSZR_sektor-run-stride_common-proof_v58.z64`.
+
+- SHA-256 `bc15eed845b9d97c785acf828e593d5683d6a8f905bfb475b751160774d973e2`
+- CRC1/CRC2 `A6256DD8 / DB8E6E81`
+- file `0x87 = 0x4E3FC`, leaving `0x148` bytes relative to runtime-confirmed Fortress-working v49 `0x4E544`
+
+v58 corrects the v57 ROBO8 source-row bug by reading Midway WIMP images with `align4(xsize)` source pitch. The final `+0xEE8` Run loop contains twelve distinct Sektor poses. Builder-side Type-5 round-trip and two-build reproducibility checks pass. Runtime result: the user reported that Running works perfectly; the former diagonal/slashed even-frame corruption is gone.
+
+
+### v59 complete Combo visuals
+
+**Runtime-confirmed on 2026-09-21 for the Combo presentation fix.**
+
+Disposable proof: `MKMSZR_sektor-full-combo_common-proof_v59.z64`.
+
+- SHA-256 `b8b1ddfa964de4da86dc9598f99139f4c50ac066deaaf4ab5cd91fda63baf1cc`
+- CRC1/CRC2 `A6256DD8 / DB8E6E81`
+- file `0x87 = 0x4E3FC`, unchanged from v58
+
+v59 preserves the six-hit combo gameplay/control records byte-for-byte and keeps the primary `0x10` four-segment `RBELBOCOMBO` visual grammar. Static tracing showed the remaining neutral/missing middle visuals came from late Knee segments selected by the existing combo chain. Six late Knee shape references are redirected to already-resident Sektor Spin-Kick/Knee frames, with intervening controls/separators unchanged. No new frame assets or file-0x87 growth are introduced.
+
+Runtime result: the user reported v59 works perfectly. This closes the known missing middle-Combo visual defect. v58 remains the runtime-confirmed full-Run baseline; no unrelated v59 routes are newly claimed as re-tested.
