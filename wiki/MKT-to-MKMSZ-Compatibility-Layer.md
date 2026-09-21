@@ -1012,11 +1012,59 @@ The three donor frames use the same verified raw/type-0 conversion, but are plac
 
 File ID `0x87` is only `0x5550C`, safely below runtime-confirmed v18/v19/v16 sizes. This isolates animation correctness from the accumulation/size failure seen in v20.
 
-**Implementation/static-confirmed; runtime pending.**
+**Runtime-confirmed.**
+
+The user confirmed normal stage load and a clean genuine Sektor crouch low kick, including the full return to the imported Sektor crouch state. This establishes primary slot `0x0A` Crouch Low Kick as a correct direct graphical replacement. It also confirms that v20's catastrophic corruption was caused by accumulated composition/resource pressure rather than by the low-kick mapping itself.
 
 Primary test: normal stage load, Sektor Crouch Low Kick, clean return to Sektor crouch, and no broad scene corruption. If v21 succeeds, slot `0x0A` is a valid direct mapping and the remaining blocker is storage/composition, not animation semantics.
 
 A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
+
+
+#### v22 — isolated Crouch High Kick composed with confirmed Low Kick
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-crouch-kicks_isolated-proof_v22.z64`
+
+Identity:
+
+- SHA-256 `a73a4a9b5cf5a822fd9f504962cbbd8716fd154954e7a6e5cdf35b53abd4c176`;
+- CRC1/CRC2 `DAA30659 / 739BE7D0`.
+
+v22 builds from runtime-confirmed v21. It retains the confirmed Crouch Low Kick and adds primary slot `0x09` Crouch High Kick.
+
+The exact retail Sektor high-kick sequence is:
+
+```text
+RBDUCKHIKICK1
+RBDUCKHIKICK2
+RBDUCKHIKICK3
+RBDUCKHIKICK4
+0
+RBDUCKHIKICK3
+RBDUCKHIKICK2
+RBDUCKHIKICK1
+RBDUCK3
+0
+```
+
+`RBDUCKHIKICK1` and `RBDUCK3` were already resident in v21, so only three new physical frames are added.
+
+Because the exact retail sequence is 10 words long while MKMSZ's original slot-`0x09` script area has only 9 words before the next stock script, v22 does **not** overwrite the neighboring High Punch script. Instead it stores the exact 10-word Sektor high-kick script at appended resource `+0x554C0` and redirects primary table slot `0x09` there.
+
+New donor shapes:
+
+- `RBDUCKHIKICK2` at `+0x554E8`;
+- `RBDUCKHIKICK3` at `+0x56090`;
+- `RBDUCKHIKICK4` at `+0x571E8`;
+- donor palette at `+0x59098`.
+
+File ID `0x87` becomes size `0x590E4`, below the already runtime-confirmed v19 size `0x5C15C` and well below failed v20 `0x5F8C4`.
+
+**Implementation/static-confirmed; runtime pending.**
+
+Primary validation: stage load, Crouch High Kick forward/reverse sequence, return to Sektor crouch, and retention of the already-confirmed Crouch Low Kick.
 
 ### Later proofs
 
