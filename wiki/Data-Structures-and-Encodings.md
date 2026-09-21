@@ -131,3 +131,28 @@ The decoder consumes the stream MSB-first. The first 6 bits select the model. Ea
 This format is now the preferred compact-storage target for Sektor.
 
 Generated Sektor encoder v2 is **Implementation-confirmed** to use more of the native grammar: nontransparent 2x4 patterns are frequency-ordered into multiple normal classes using stock-compatible extra-bit/base tables, while symbols `13..15` encode transparent-block runs as `zero_base + extra + 1` blocks. The build independently decodes every emitted stream and requires exact equality with the donor-decoded aligned pixel buffer before a proof ROM is written. v46 is the first runtime-pending composition using these wider generated-code paths. A simple offline proof encoder can use a one-model, 5-bits-per-pixel dictionary because the imported Sektor palette indices are `0..31`. Runtime validation of such generated type-5 data is still pending.
+
+
+### Stock Sub-Zero Type-5 recompression benchmark
+
+**Static/implementation-confirmed.** The clean USA Rev 0 file ID `0x87` contains 341 stock Type-5 fighter frames sharing the table at file offset `+0x14AC`. Their Type-5-owned region runs from the shared table through the final frame at `+0x41684`.
+
+The 341 frames decode to exactly **1,418,312 raw indexed-pixel bytes**. Stock Midway storage for the same corpus is:
+
+- shared table/dictionaries: **112,636 bytes**;
+- padded compressed streams: **139,068 bytes**;
+- shape/descriptor/wrapper overhead: **10,912 bytes**;
+- total: **262,616 bytes** (`0x401D8`), equivalent to about **5.4007x** reduction versus the decoded pixels.
+
+The project encoder-v2 strategy was then generalized to the stock four-model arrangement and run on the exact same decoded pixels. The benchmark preserves each frame's stock model assignment and each stock model's normal/zero-run class widths, but rebuilds frequency-ordered dictionaries containing only patterns actually used by the 341-frame corpus. Result:
+
+- generated shared table/dictionaries: **111,878 bytes**;
+- generated padded compressed streams: **139,008 bytes**;
+- identical shape/descriptor/wrapper overhead: **10,912 bytes**;
+- generated total: **261,798 bytes** (`0x3FEA6`), about **5.4176x** reduction.
+
+The generated result is **818 bytes (0.311%) smaller than stock Midway** for the exact same decoded artwork. Stream coding itself is essentially at parity: generated streams use only 466 fewer bits across all 341 frames. Most of the measured win comes from omitting 128 stock dictionary patterns not used by this scanned Type-5 corpus.
+
+This benchmark does **not** mean the current Sektor resource layout is already globally optimal. The Sektor proof builders still partition frames into multiple generated dictionaries/tables for bounded integration, so duplicate patterns and per-group model overhead remain. The benchmark instead shows that the native Type-5 grammar and encoder-v2 coding strategy are no longer the main compression gap. The remaining high-value work is model/dictionary grouping, cross-animation pattern sharing, dead-stock reclamation, and whole-resource packing.
+
+Reproducible tool: `tools/benchmark_type5_encoder.py`.
