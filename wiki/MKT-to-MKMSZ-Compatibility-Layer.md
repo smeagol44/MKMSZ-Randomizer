@@ -1473,3 +1473,22 @@ Identity:
 v45 keeps v44's exact animation/codec strategy but fixes the packer invariant: every generated fighter shape begins on a 4-byte boundary. Crouch now references aligned shapes at `+0x50380`, `+0x5113C`, and `+0x51D84`. Walk's shared dictionary/model and all already-working Idle/Walk/Turn assets remain semantically unchanged.
 
 **Runtime-confirmed.** Idle, Walk Forward/Backward, Turn, Crouch, repeated transitions, shared-Walk type-5 dictionary use, and Prison's first doorway all pass.
+
+
+#### v46 — encoder-v2 accelerated crouch-combat composition
+
+Disposable proof: `MKMSZR_mkt-sektor-native-type5-crouch-combat_bundle-proof_v46.z64`.
+
+Identity:
+
+- SHA-256 `de53faf74aa651f56bb23b38c3952e8db9e8c5fe680bcb48b84333cc306ba89b`;
+- CRC1/CRC2 `BE156481 / 757D90E7`;
+- file ID `0x87` size `0x56E78`.
+
+v46 is the first generated-fighter proof to use the wider native type-5 grammar rather than only normal code 0. Its one-model family dictionaries use frequency-ordered normal pattern classes and native transparent-run symbols `13..15`, with stock-style zero-run ranges. The builder independently decodes every generated stream and requires an exact match to the known-good MKT-decoded padded frame buffer.
+
+The ROM composes 34 unique genuine Sektor frames across Idle, Walk Forward/Backward, Turn, Crouch, Crouch Turn, Crouch Block, Crouch Hit, Crouch Punch, Crouch Low Kick, Crouch High Kick, and Standing Block. Crouch High Kick retains the proven appended-script/table-redirection strategy because its ten-word retail sequence does not fit the stock target region.
+
+At `0x56E78`, the composed fighter file remains `0xA44` bytes below the exact `0x578BC` allocation footprint known to corrupt Prison and is `0xB268` bytes smaller than raw v12 despite covering substantially more actions.
+
+**Static/implementation-confirmed; runtime pending.**
