@@ -1243,3 +1243,17 @@ Identity:
 v29 returns to the exact runtime-confirmed v11 baseline and maps MKT Sektor primary slot `0x13` Knee. Its exact retail sequence is `RBKNEE1, RBKNEE2, RBKNEE3, 0, RBKNEE2, RBKNEE1, 0`. The first/last frame is physically the already-resident robot stance frame used as `RBSTANCE7` in the v11 idle proof, so only `RBKNEE2` and `RBKNEE3` need new raw/type-0 materialization. The script fits the native seven-word Knee region in place; file ID `0x87` becomes `0x507E0`. The false cave remains stock and the post-legal logo bypass is included.
 
 **Runtime-confirmed.** The user reported Knee working perfectly. This confirms primary slot `0x13` as a direct Sektor graphical replacement; Sweep is next.
+
+
+#### v30 — isolated Sweep
+
+Disposable proof: `MKMSZR_mkt-sektor-sweep-kick_isolated-proof_v30.z64`.
+
+Identity:
+
+- SHA-256 `f8a1098706df4fec29580aaf951e5276ac5f193a7d1b073caaee3bc149b80fc8`;
+- CRC1/CRC2 `CAACE149 / 5BD11509`.
+
+v30 returns to the exact runtime-confirmed v11 baseline and maps MKT Sektor primary slot `0x14` Sweep. The retail sequence contains eight genuine Sweep frames around an `ani_calla,sweep_sounds` command. Because donor callback IDs are not ABI-compatible, the proof preserves MKMSZ's native Sweep control words `6,0` and replaces only the visual frame pointers. All eight `RBSWEEPKICK1..8` frames use the proven raw/type-0 conversion. File ID `0x87` becomes `0x56C7C`, the false cave remains stock, and the post-legal logo bypass is included.
+
+**Runtime-confirmed.** The user reported Sweep working beautifully. This confirms primary slot `0x14` as a direct Sektor graphical replacement; Roundhouse is next.
