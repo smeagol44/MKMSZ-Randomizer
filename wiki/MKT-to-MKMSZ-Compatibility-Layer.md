@@ -1136,9 +1136,32 @@ Only two physical donor frames are required. They use the proven raw/type-0 figh
 
 File ID `0x87` is only `0x503E0` bytes in this proof, well below every observed raw-resource failure boundary.
 
+**Runtime-confirmed.**
+
+The user reported v24 as perfect. Standing Block renders as genuine Sektor, transitions cleanly, and showed no stock Sub-Zero block frame, palette artifact, or stability regression in the tested route.
+
+#### v25 — isolated High Punch core + post-legal logo skip
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-high-punch_isolated-proof_v25.z64`
+
+Identity:
+
+- SHA-256 `b26f5eb73d72354c66a336d992d9cca2bbc3daf36545147124c898176e7a7167`;
+- CRC1/CRC2 `CAACE5C9 / 637009C7`.
+
+v25 starts from runtime-confirmed v24 and adds the seven genuine Sektor High Punch frames `RBHIPUNCH1..7`. MKMSZ's stock High Punch script has the same 28-word control/segment grammar as MKT's retail robot script, so the existing target command words and jump targets are preserved while every High-Punch-owned frame pointer is redirected to imported Sektor shapes.
+
+Two late crossover frame references belong semantically to Low Punch (`RBLOPUNCH5` and `RBLOPUNCH2`). Those remain stock Sub-Zero in v25 by design rather than being approximated; they will be addressed when Low Punch is mapped. A simple High Punch and all High-Punch-owned frames are therefore the primary validation scope.
+
+Seven raw/type-0 frames are appended. File ID `0x87` becomes `0x5DA0C`, essentially the same size class as runtime-confirmed v16 (`0x5DB60`) and below the v19/v20 failure bracket.
+
+Starting with v25, these disposable animation proofs also include the already runtime-confirmed **post-legal logo bypass** at ROM `0x7A3F4`: only the first guarded word changes to `0x10000003`, skipping the two fixed company/logo presentations while preserving the legal screen, fade normalization, and title handoff.
+
 **Implementation/static-confirmed; runtime pending.**
 
-Primary test: standing block repeatedly, block -> idle, block -> walk, block -> punch/kick, and confirm no stock Sub-Zero block frame or palette artifact appears.
+Primary test: ordinary High Punch, repeated High Punch, transitions back to idle/block, and watch for any stock frame only on the known Low-Punch crossover branches.
 
 ### Later proofs
 
