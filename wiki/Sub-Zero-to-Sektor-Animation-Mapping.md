@@ -479,3 +479,34 @@ Identity:
 v35 returns to the exact runtime-confirmed v11 idle baseline and bundles primary slot `0x1F` Sweep Fall with slot `0x22` Sweep Getup. The two retail sequences share one genuine robot frame; ten unique donor frames are materialized in total through the proven raw/type-0 fighter conversion. Knockdown, normal Getup, Stumble, and Throw remain stock in this proof.
 
 **Runtime-confirmed.** The user successfully forced the AI sweep route and reported both the fall and sweep-specific recovery working perfectly.
+
+
+## Runtime-confirmed isolated proofs — v36 Knockdown and v37 Getup
+
+### v36 Knockdown
+
+Disposable proof: `MKMSZR_mkt-sektor-knockdown_isolated-proof_v36.z64`.
+
+Identity:
+
+- SHA-256 `054e0bd8fb8807f38c645c5ad9177e0adf0bc6058694a9c8c7eaf3956a2b8e08`;
+- CRC1/CRC2 `CAACE5B9 / 0A1A7384`;
+- file ID `0x87` size `0x57344`.
+
+v36 maps primary slot `0x1E` Knockdown on the exact runtime-confirmed v11 baseline. The exact retail robot sequence uses seven genuine `RBKNOCKDOWN` frames in a nine-word two-part script and fits the MKMSZ owning region in place.
+
+**Runtime-confirmed.** The user reported the Knockdown sequence working perfectly.
+
+### v37 normal Getup
+
+Disposable proof: `MKMSZR_mkt-sektor-getup_isolated-proof_v37.z64`.
+
+Identity:
+
+- SHA-256 `8178af685d3ffc631a9390d43c7b31d9946ed748acd8ddc2291440148d033533`;
+- CRC1/CRC2 `CAACE5C9 / 63053889`;
+- file ID `0x87` size `0x54308`.
+
+v37 maps primary slot `0x21` normal Getup on the exact runtime-confirmed v11 baseline. Six genuine retail Sektor Getup frames are materialized through the proven raw/type-0 fighter conversion.
+
+**Runtime-confirmed.** The user reported normal Getup working perfectly.
