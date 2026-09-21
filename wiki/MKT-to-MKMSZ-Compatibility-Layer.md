@@ -1384,3 +1384,20 @@ v40 preserves the compact stage selector and the same Sektor helper architecture
 **Runtime-confirmed control.** This strongly implicates loaded fighter-resource footprint / stage allocation headroom in the v39 Prison failure. It does not prove a single universal size threshold.
 
 This result elevates compact fighter storage to the next architectural priority. The existing raw/type-0 adapter is presentation-correct but scales poorly because donor codec-22/23/24 streams are expanded before storage. The earlier pickup-style type-4 attempt remains rejected for fighter presentation; future work should inspect or implement the true fighter-compatible decode/storage path rather than repeating that encoder.
+
+
+#### v41 — exact-size Prison allocation-footprint control
+
+Disposable proof: `MKMSZR_mkt-sektor-idle-stage-select_prison-size-control_v41.z64`.
+
+Identity:
+
+- SHA-256 `7c54becf79417c10bb188b780967c93bdc3a773fe7898866d6dfeaabce0705ac`;
+- CRC1/CRC2 `BE156481 / 13B6BEC2`;
+- file ID `0x87` size `0x578BC`.
+
+v41 preserves v40's exact reachable idle-only Sektor content, compact selector, helper, and control flow. It changes only the file-0x87 end pointer so an additional `0xA09C` bytes of untouched/unreachable `0xFF` tail are loaded/allocated, making the fighter resource exactly the same size as failing v39.
+
+**Runtime-confirmed failure.** The same Prison first-doorway boundary corrupts the framebuffer exactly as in v39. Since no new reachable fighter content exists, this isolates loaded fighter-resource allocation footprint as sufficient to cause the failure at `0x578BC`. The exact lower failure threshold remains unknown and is no longer the highest-value question.
+
+Architectural consequence: stop accumulating raw/type-0 donor frames. The next priority is compact fighter storage: identify a fighter-safe compressed representation or decode-on-demand bridge, and reclaim unreachable stock Sub-Zero storage where reference/liveness analysis proves ownership.
