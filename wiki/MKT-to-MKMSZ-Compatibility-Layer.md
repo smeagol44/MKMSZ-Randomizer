@@ -1606,16 +1606,15 @@ All remaining direct references to the stock 341-frame Type-5 corpus are redirec
 The proof intentionally accepts visually placeholder rare/special states. Its purpose is to validate the final direction: Sektor-native palette + common-animation bulk replacement + whole-character stock-art garbage collection, rather than mixed-palette incremental coexistence.
 
 
-#### v54 — codec-15 throw support and expanded takeover
+#### v54 — optimized Run / Combo / Throw takeover
 
-v54 extends the runtime-confirmed v53 takeover with Run, Elbow/Combo, and Throw/Grab visuals.
+Final disposable proof: `MKMSZR_mkt-sektor-run-combo-throw_common-proof_v54.z64`.
 
-A new donor-codec bridge is added for MKT compression method 15. The public MKT source identifies method 15 as the new-header 8-color RLE format implemented by `uncompress_8`: high-bit tokens emit zero runs, `0x40` tokens emit one/two 3-bit pixels, and low tokens emit mini/extended nonzero runs. v54 reproduces that offline decoder and round-trips the resulting throw pixels through the existing MKMSZ Type-5 generator.
+**Static/implementation-confirmed; runtime pending.** SHA-256 `7f11e7e462a8e9a5fb028a62e5281989480dd3eb19bdc5d281241113caf1876a`; CRC1/CRC2 `A6256DA8 / 9F9B13D5`; file ID `0x87 = 0x4E154`.
 
-Throw remains a visual-only compatibility mapping: MKMSZ's native slot-0x23 control grammar is preserved and only its visual positions are replaced. MKT throw callbacks are not transplanted.
+v54 preserves MKMSZ-native gameplay/control grammar rather than transplanting MKT callbacks. Run keeps the target seven-visual loop and uses genuine `RBRUN1,3,5,7,9,11,1`; Elbow/Combo keeps the target 17-word four-segment grammar and uses genuine `RBELBOCOMBO1..10` visuals.
 
-Run likewise preserves MKMSZ's native 12-tick loop at `+0xEE8`; the six genuine Sektor Run frames fill those ticks twice. Elbow/Combo primary `0x10` uses the donor's generic 36-word animation grammar because it contains animation-rate commands/local flow but no translated gameplay callback dependency.
+The corrected MKMSZ attacker Throw body at `+0x8F8` has nine visual positions, not fifteen. The later shape-bearing words beginning at `+0x928` are part of an adjacent reaction/flip block. Sektor's longer MKT slave-arm throw is therefore downsampled only into those nine attacker slots. Codec-15 arm sprites are decoded offline using Midway's `uncompress_8` grammar, flattened with `RBSHOLDER4` using donor anchors, and re-encoded as ordinary MKMSZ Type-5. The selected arm shapes are `+0x2318,+0x2340,+0x237C,+0x2390,+0x23B8,+0x23CC,+0x2408`, with `RBSTANCE7` at entry and exit. No slave-animation ABI or donor throw callback is imported.
 
-The expanded corpus is 154 Sektor frames in four shared Type-5 models, including a dedicated 3-bpp model for codec-15 throw art. File `0x87 = 0x508E4`.
+Storage uses one physical 5-bpp dictionary with 16 independent Type-5 entropy-model records. The final generated corpus is 152 frames (129 inherited v53 + 6 Run + 10 Combo + 7 Throw). Five former appended scripts are repacked into now-dead pre-Type-5 script regions. The result is `0x3F0` bytes below the runtime-confirmed Fortress-working v49 file-0x87 footprint.
 
-**Static/implementation-confirmed; runtime pending.** Because the footprint is only `0x728` below the known failing Fortress `0x5100C` size and remains above the proven-working `0x4E544`, Fortress is the decisive stability test.
