@@ -1368,3 +1368,19 @@ v39 layers the already runtime-confirmed compact eight-stage selector onto the i
 **Runtime-confirmed for Stumble on the tested route.** The user supplied two screenshots of the upright multi-frame reel-back reaction and confirmed it works correctly.
 
 **Superseding Prison evidence:** v39 enters Prison and renders the initial area correctly, but the first doorway/encounter-activation boundary causes catastrophic scene/framebuffer corruption. Bridge and the earlier Stumble route do not show this failure. The compact selector itself therefore remains functional, but global selector + enlarged-Sektor-resource compatibility is not established. Strong current inference is stage-specific arena/resource pressure rather than visible-scene complexity; v39 file `0x87` is `0x578BC`, `0x11EDC` bytes larger than stock. This is not yet the proven root cause. The next bounded control keeps the same selector/helper composition but returns file `0x87` to the v11 size `0x4D820`.
+
+
+#### v40 — Prison file-0x87 size control
+
+Disposable proof: `MKMSZR_mkt-sektor-idle-stage-select_prison-control_v40.z64`.
+
+Identity:
+
+- SHA-256 `6fa455c174d0d9417549bff5a3a662c9e67c179f5bc4d9842ae416be83b2659d`;
+- file ID `0x87` size `0x4D820`.
+
+v40 preserves the compact stage selector and the same Sektor helper architecture as v39, but uses the smaller v11 idle-only fighter resource. On the exact Prison route that corrupted in v39, the initial area and first doorway/encounter activation worked normally.
+
+**Runtime-confirmed control.** This strongly implicates loaded fighter-resource footprint / stage allocation headroom in the v39 Prison failure. It does not prove a single universal size threshold.
+
+This result elevates compact fighter storage to the next architectural priority. The existing raw/type-0 adapter is presentation-correct but scales poorly because donor codec-22/23/24 streams are expanded before storage. The earlier pickup-style type-4 attempt remains rejected for fighter presentation; future work should inspect or implement the true fighter-compatible decode/storage path rather than repeating that encoder.
