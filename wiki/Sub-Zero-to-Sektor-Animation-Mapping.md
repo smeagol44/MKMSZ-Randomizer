@@ -510,3 +510,18 @@ Identity:
 v37 maps primary slot `0x21` normal Getup on the exact runtime-confirmed v11 baseline. Six genuine retail Sektor Getup frames are materialized through the proven raw/type-0 fighter conversion.
 
 **Runtime-confirmed.** The user reported normal Getup working perfectly.
+
+
+## Runtime-confirmed composition — v39 Stumble + Stage Select
+
+Disposable proof: `MKMSZR_mkt-sektor-stumble-stage-select_proof_v39.z64`.
+
+Identity:
+
+- SHA-256 `2ff5eb680c97df2a10bdceaf21da71c30d76ceb9cbae401dfb6c14e0e11831ca`;
+- CRC1/CRC2 `BE156481 / 13B6BEC2`;
+- file ID `0x87` remains `0x578BC`, byte-identical to the v38 Stumble resource.
+
+The proof composes primary slot `0x20` Stumble with the compact eight-stage selector while keeping the Sektor helper/resource payload unchanged. The Stumble animation uses the exact appended 17-word retail loop and six genuine donor frames.
+
+**Runtime-confirmed.** The user supplied two runtime screenshots showing the long upright reel-back/stagger reaction and reported that the animation works correctly. The same run also confirms that the compact stage selector and Sektor transplantation architecture coexist successfully in this disposable proof.
