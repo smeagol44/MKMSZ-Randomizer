@@ -790,3 +790,43 @@ Two shared generated 5-bpp models use the exact stock model-0 class geometry:
 The resulting file `0x87 = 0x473D8`, which is `0x716C` bytes smaller than the runtime-confirmed Fortress-working v49 footprint `0x4E544` and far below v51/v52's failing `0x5100C`.
 
 Unported primary states intentionally left as placeholder visuals are Victory `0x0D`, Elbow/Combo `0x10`, Throw `0x23`, generic projectile/Zap `0x24`, Dizzy `0x25`, plus later primary/secondary rare/special states not yet individually mapped.
+
+
+## v54 — Run + Elbow/Combo + Throw/Grab
+
+Disposable proof: `MKMSZR_mkt-sektor-expanded-takeover_run-combo-throw-proof_v54.z64`.
+
+Identity:
+- SHA-256 `0828131f04ad956e09bdefcb7fff194553bb69e3ab8013158d711a3e16a21b4a`;
+- CRC1/CRC2 `A624BBE8 / 289CF90E`;
+- file ID `0x87` size `0x508E4`.
+
+**Static/implementation-confirmed; runtime pending.**
+
+v54 keeps the runtime-confirmed v53 Sektor-native palette/helper-free architecture and adds three requested visual families.
+
+### Running
+
+MKT Sektor primary slot `0x4A` Run supplies six genuine poses at donor shapes `+0x2708,+0x271C,+0x2730,+0x2744,+0x2758,+0x276C`. MKMSZ's native run cycle is the 12-frame loop at file-0x87 `+0xEE8..+0xF14`, followed by command `1 -> +0xEE8`. v54 preserves that target control grammar and fills the 12 visual ticks with the six Sektor poses repeated twice.
+
+### Elbow/Combo
+
+Primary slot `0x10` is redirected to an appended translation of the exact 36-word MKT Sektor retail script at donor `+0x47C`. Its generic animation-rate commands and local animation flow are retained; all ten genuine donor visual shapes are translated to generated MKMSZ Type-5 shapes. No MKT gameplay callback is introduced here.
+
+### Throw/Grab
+
+MKT Sektor Throw uses complex callback/control grammar that is not transplanted. v54 instead preserves MKMSZ primary slot `0x23`'s native 12-word throw grammar and replaces its nine visual positions with genuine Sektor throw poses. This is intentionally a visual transplant, not a donor throw-logic port.
+
+Most Sektor throw poses are MKT codec 15. v54 adds exact offline support for the public-source codec-15 `uncompress_8` algorithm (8-color RLE) and re-encodes those decoded pixels into MKMSZ Type-5.
+
+### Storage
+
+The corpus grows from v53's 129 frames to **154 unique Sektor frames**. Four shared Type-5 models are used:
+- 5-bpp model: 20,036 patterns;
+- 5-bpp model: 20,020 patterns;
+- 5-bpp model: 1,050 patterns;
+- dedicated 3-bpp codec-15 throw model: 269 patterns.
+
+Per-model normal-class widths are optimized from actual pattern frequencies. File `0x87 = 0x508E4`: `0x728` below failing v51/v52 `0x5100C`, but `0x23A0` above the proven-working v49 `0x4E544`.
+
+Runtime priority is therefore Fortress first, followed by Run, Elbow/Combo, Throw/Grab, and Prison doorway + Inventory.
