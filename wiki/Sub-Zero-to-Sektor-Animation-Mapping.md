@@ -592,3 +592,22 @@ The five visible descriptors remain the exact retail Sektor geometries: 55x113, 
 File ID `0x87` shrinks from v40's `0x4D820` to `0x49BAC`, reclaiming `0x3C74` bytes (15,476 bytes) while retaining the same five-frame idle content. This leaves the compact Sektor idle resource only `0x41CC` bytes above the clean stock Sub-Zero file size `0x459E0`.
 
 **Runtime-confirmed.** The user inspected the complete five-frame idle cycle frame-by-frame, observed no visual mismatch or transition artifact, and confirmed Prison's first doorway remains healthy.
+
+
+## Native type-5 locomotion composition — v44
+
+Disposable proof: `MKMSZR_mkt-sektor-native-type5-locomotion_bundle-proof_v44.z64`.
+
+Identity:
+
+- SHA-256 `f1b82589be9cb089a224e09e92a59da25f8bdff531a1418efefe07df66b63cc4`;
+- CRC1/CRC2 `BE14EA81 / 1DC5EB0A`;
+- file ID `0x87` size `0x5273C`.
+
+v44 extends the runtime-confirmed native type-5 branch to the complete low-risk locomotion set: five-frame Idle, seven physical Walk frames shared by Forward/Backward, two-frame Turn, and three-frame Crouch. The exact retail control grammar is preserved for both walk loops, Turn, and Crouch.
+
+The seven Walk frames share one generated type-5 model/dictionary containing 1,456 unique 2x4 patterns with 11-bit pattern indices. Turn/Crouch use private generated dictionaries because shared variants are approximately neutral in size and would add complexity without meaningful gain.
+
+This recreates the same broad locomotion scope that raw v12 expanded to `0x620E0` and failed at stage load, but v44 remains at `0x5273C`, saving `0xF9A4` bytes relative to v12 while retaining the compact stage selector.
+
+**Static/implementation-confirmed; runtime pending.** The runtime gate is clean Idle/Walk F/B/Turn/Crouch transitions plus Prison's first doorway.
