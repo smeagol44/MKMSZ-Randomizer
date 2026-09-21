@@ -1184,3 +1184,15 @@ Pending runtime/static questions are intentionally narrow:
 - identify the best native victim-action primitives for exact donor reactions without bypassing interruption/cleanup.
 
 Do not spend effort polishing the old forced-crossover imitation while these genuine-port proofs are pending.
+
+
+#### v27 — isolated Standing Low Kick
+
+Disposable proof: `MKMSZR_mkt-sektor-standing-low-kick_isolated-proof_v27.z64`.
+
+Identity:
+
+- SHA-256 `548dc3b1e07528c5863e20cfcbd52f7cdf632b85c409a80d37d15916a798bb7f`;
+- CRC1/CRC2 `CAACE1B9 / 6BA95942`.
+
+v27 returns to the runtime-confirmed v11 idle base and imports the exact MKT Rev. 2 Sektor Standing Low Kick. The donor sequence is `RBLOKICK1,2,3,4,5,6,0,5,4,3,2,1,0`. MKMSZ's stock slot-0x12 script region is only 10 words before the neighboring High Kick script, so the exact 13-word donor sequence is appended at resource `+0x4D7D4` and primary table slot `0x12` is redirected there rather than overwriting slot `0x11` data. Six donor frames use the proven raw/type-0 conversion, the Sektor palette moves to `+0x588F8`, and file 0x87 is `0x58944` bytes. The runtime-confirmed post-legal logo bypass is included as a convenience baseline. **Implementation/static-confirmed; runtime pending.**
