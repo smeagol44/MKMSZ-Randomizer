@@ -627,4 +627,4 @@ v45 is a corrective rebuild of v44 with the same genuine Sektor Idle, Walk Forwa
 
 Corrected Crouch shape offsets are `+0x50380`, `+0x5113C`, and `+0x51D84`; all are word-aligned. The only resource-size cost versus v44 is four bytes of padding.
 
-**Static/implementation-confirmed; runtime pending.**
+**Runtime-confirmed.** Idle, Walk Forward/Backward, Turn, and Crouch all work correctly; repeated transitions among them remain stable, and Prison's first doorway passes. This confirms the corrected word-aligned packer and shared-Walk native type-5 dictionary composition.
