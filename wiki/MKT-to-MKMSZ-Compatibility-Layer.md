@@ -1317,3 +1317,18 @@ The bundle maps Forward Flip, Back Flip, High Hit, and Low Hit. The actual MKT R
 **Runtime-confirmed:** Forward Flip, Back Flip, and High Hit.
 
 **Pending:** Low Hit was not triggered in the tested route because enemies did not provide a practical crouching-hit setup. No failure was observed.
+
+
+#### v35 — Sweep Fall + Sweep Getup bundle
+
+Disposable proof: `MKMSZR_mkt-sektor-sweep-fall-getup_bundle-proof_v35.z64`.
+
+Identity:
+
+- SHA-256 `9826cc7dba710a9121fe897f1bebc1d8c0f1a732c5c7d426b53787e0f7639c57`;
+- CRC1/CRC2 `CAACE1B9 / C178A223`;
+- file ID `0x87` size `0x57D00`.
+
+v35 bundles the directly mapped Sweep Fall and Sweep Getup states while remaining comfortably below previously runtime-confirmed file-0x87 sizes. The two sequences share one physical Sektor frame, so ten unique donor shapes cover both states. Other fall/recovery states remain untouched.
+
+**Runtime-confirmed.** The user forced an enemy sweep and observed both genuine Sektor Sweep Fall and Sweep Getup working perfectly.
