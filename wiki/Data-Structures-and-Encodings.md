@@ -107,3 +107,25 @@ The node is 22 words. Four vertex X/Y pairs occur at `+0x08/+0x0A`, `+0x18/+0x1A
 ## BGR555 palettes
 
 N64 source colors are 16-bit BGR555 values with a preserved high control/alpha bit. Sub-Zero's 64-color source TLUT begins at ROM `0x78E16C`; clothing entries are indices `0x21..0x3F`. Those indices define the mapped clothing-transform range; other palettes require independent mappings.
+
+
+## Native fighter image type 5
+
+**Static-confirmed.** Stock Sub-Zero fighter frames in global file ID `0x87` predominantly use a dedicated native fighter codec selected by exact image header `0x05000000`. This is distinct from ordinary embedded-image type 4 and explains why the rejected v13 pickup-style type-4 fighter experiment was not a faithful stock-fighter storage path.
+
+The type-5 wrapper is:
+
+| Offset | Meaning |
+|---:|---|
+| `+0x00` | exact header `0x05000000` |
+| `+0x04` | signed image-relative pointer to the type-5 model/dictionary table |
+| `+0x08` | packed decode dimensions, high 16 bits height / low 16 bits width |
+| `+0x0C` | compressed bitstream |
+
+`0x80003314` resolves the table pointer and calls `0x80065E00`. The output arena reservation is `align4(width) * align2(height)`.
+
+The table begins with `u16 rows_per_block` and `u16 model_count`, followed by 104-byte model entries. Stock Sub-Zero's main table at file-0x87 offset `+0x14AC` begins `0002 0004`: 2 rows per block and four models. A model contains a pattern-table relative offset, bits-per-pixel, 13 normal-code extra-bit counts, three zero-run extra-bit counts, 13 pattern-index bases, and three zero-run bases.
+
+The decoder consumes the stream MSB-first. The first 6 bits select the model. Each output unit is a `rows_per_block x 4` pixel block; stock fighter data uses two rows, so ordinary blocks are 2x4 pixels. A 4-bit symbol below 13 selects a normal pattern-index class; symbols 13..15 encode transparent block runs. Pattern entries store the 2x4 pixel indices packed at the selected model's bit depth.
+
+This format is now the preferred compact-storage target for Sektor. A simple offline proof encoder can use a one-model, 5-bits-per-pixel dictionary because the imported Sektor palette indices are `0..31`. Runtime validation of such generated type-5 data is still pending.
