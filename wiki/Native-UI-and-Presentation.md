@@ -191,3 +191,33 @@ The deterministic visual cycle intentionally avoids combat-trigger variables:
 - y=145.
 
 The proof's only intended runtime question is whether the genuine Toasty CI8 image renders with correct palette/transparency and stable slide/lifetime behavior during normal gameplay. If successful, the next bounded composition can combine the already runtime-confirmed Toasty audio with this visual path before introducing the final uppercut-contact / cosmetic-RNG trigger.
+
+
+### Toasty visual proof v01 — no visible output
+
+Disposable proof:
+- builder: `MKMSZR_build_toasty_visual_v01.py`
+- ROM: `MKMSZR_toasty-visual_common-proof_v01.z64`
+
+**Runtime-confirmed failure on 2026-09-22.** This proof was intended to display Toasty automatically during ordinary gameplay; no input, uppercut, RNG event, or sound trigger was required. The user observed that **nothing appeared on screen**.
+
+The proof architecture was deliberately visual-only:
+- HUD call at ROM `0x0005D9CC` redirected to wrapper VA `0x8009A184`;
+- wrapper preserved the displaced HUD submit call;
+- deterministic cycle: 6-frame slide in, 32-frame hold, 16-frame slide out, blank until frame 150, then repeat;
+- dynamic CI8 texture slot requested through `0x8001C2B4`;
+- raw image resource registered through clean-ROM file ID `0x1B`, ROM `0xF30000`;
+- raw-file loader `0x80065D64` used for the image;
+- textured renderer `0x80073CEC` used for draw submission;
+- dedicated 256-entry palette descriptor at VA `0x800A0708`;
+- image payload is the genuine retail MKT Toasty image converted to target-native CI8, visible 78x85 with stride 96;
+- no Toasty sound import, combat hook, or RNG was present.
+
+**Evidence limit:** because v01 had no independent diagnostic marker, the negative result does not distinguish among:
+1. wrapper/hook not executing as intended;
+2. dynamic texture-slot allocation failing;
+3. raw image load/binding failing;
+4. palette/descriptor incompatibility;
+5. `0x80073CEC` being unsuitable from this gameplay HUD context.
+
+Do not repeat v01 unchanged. The next bounded proof should first establish wrapper execution with an already-proven visible diagnostic (native text or simple render-node quad), then isolate texture-slot allocation/load from textured submission one variable at a time. The successful Toasty audio v03 result is unaffected by this visual failure.
