@@ -1081,3 +1081,47 @@ Only six late Knee visual shape references are redirected:
 All intervening controls/separators in those Knee segments remain byte-identical to clean MKMSZ. v59 adds no new frame assets and does not enlarge file `0x87`: it reuses already-resident Sektor shapes, so the v58 storage/model/Run composition remains unchanged. The count of remaining fallback stock-shape references falls from 323 to 317. Two independent clean v59 builds are byte-identical.
 
 v58's twelve-pose Run remains the runtime-confirmed Run baseline. v59 changes only the six late Knee visual references needed by the existing combo chain; no independent v59 re-validation of unrelated gameplay routes is implied.
+
+
+## v61/v62 — Sektor MKT combo-string transplant
+
+The combo-string work is separate from v59's visual repair. v59 kept MKMSZ's original six Sub-Zero gameplay combo records and only fixed the Sektor visuals used by that chain. v61/v62 instead replace the gameplay combo graph itself with Sektor's MKT button/animation structure while keeping the already-runtime-confirmed Sektor art resident in file `0x87`.
+
+### v61 — direct donor reaction-selector transplant
+
+Disposable proof: `MKMSZR_sektor-mkt-combos_common-proof_v61.z64`.
+
+Identity:
+- SHA-256 `aecd40a9a8ba5c8a96195cf9f18ebe5b0c53b67d40d88fc33fb1c55b5d930111`;
+- CRC1/CRC2 `A8234446 / EB410032`;
+- file `0x87 = 0x4E3FC`, byte-identical to v60.
+
+The proof replaces the six native combo records at ROM `0xB1CB0..0xB1D0F`, redirects the native knee/high-kick combo root pointer at ROM `0xA1CE8`, and adds one proof-only 16-byte standalone `HK -> HK` continuation record at ROM `0x9AD90` / VA `0x8009A190`. The normal HP/elbow root remains `0x800B10B0`.
+
+The resulting Sektor strings are:
+- `HK, HK`;
+- `HP, HP, D+LP`;
+- `HP, HP, HK, B+HK`;
+- `HP, HP, HK, HK, B+HK`.
+
+**Rejected / failed.** Runtime testing showed `HP, HP, D+LP` produced the intended uppercut-style victim launch, but the long combo caused catastrophic world/background rendering corruption while Sektor/HUD remained alive. v61 had copied MKT combo reaction selector `0x02` numerically into MKMSZ for the knockback finishers.
+
+### v62 — MKMSZ-safe reaction translation
+
+Disposable proof: `MKMSZR_sektor-mkt-combos-safe_common-proof_v62.z64`.
+
+Identity:
+- SHA-256 `689862a64ab2cfe04041fae357a19774e335cea39eff6c9d6f5ae143f601e1fd`;
+- CRC1/CRC2 `B4234446 / 80A601BE`;
+- file `0x87 = 0x4E3FC`, unchanged from v60/v61.
+
+v62 preserves v61's Sektor button graph, attacker animation selectors, internal combo pointers, uppercut record, and proof-only `HK,HK` root. It changes only three gameplay reaction-selector bytes relative to v61, plus the resulting header CRC:
+- ROM `0x9AD98`: standalone `HK,HK` finisher selector `0x02 -> 0x04`;
+- ROM `0xB1CE8`: four-hit `B+HK` finisher selector `0x02 -> 0x04`;
+- ROM `0xB1D08`: five-hit `B+HK` finisher selector `0x02 -> 0x04`.
+
+The low-byte input requirements remain semantically appropriate: `0x0400` for the standalone `HK,HK` finisher and `0x0401` for the stick-away `B+HK` finishers. The already-working uppercut entry remains `0x0504` (`stk_5`-family launch plus stick-down requirement).
+
+**Runtime-confirmed on 2026-09-21.** After the three selector translations, the user reported v62 “working perfectly.” This closes the v61 long-combo corruption on the tested route while preserving the uppercut launch behavior.
+
+Evidence limit: v62 is still a disposable proof. Its extra 16-byte combo record uses `0x9AD90`, inside the randomizer bootstrap's production-owned `0x9AD84..` region. Production integration must relocate that standalone record to conflict-free owned storage; the runtime result validates the combo semantics, not that proof allocation.
