@@ -258,3 +258,10 @@ The clean ROM's global file table has no file claiming `0xF20000`; the highest s
 This design deliberately touches no stock waveform sample interval used by any sequenced audio. The old waveform 133 bytes remain stock, and waveform 533's old `0x1750`-byte sample interval also remains untouched; only its unreachable metadata/predictor record is repointed.
 
 Expected runtime test: collecting an ordinary pickup should play the genuine MKT Toasty voice once, while background music remains unchanged. Music should no longer acquire pitched Toasty/ghost notes.
+
+
+### Toasty sound proof v02 — runtime result
+
+**Runtime-confirmed for foreign-sample playback; rejected as Toasty identification.** The v02 routing fix produced a normal one-shot sound effect on ordinary pickup, with no recurrence as background music. The heard effect matched the separately decoded donor WAV: a short reverse-cymbal sound.
+
+v02 therefore runtime-confirms the important lower-level result that MKMSZ can play an imported MKT N64 ADPCM sample using transplanted predictor-book metadata through the stock pickup SSEQ route. It does **not** confirm the sample as Toasty. The remaining blocker is donor identification/routing inside MKT, not basic cross-game SN64 waveform compatibility.
