@@ -39,6 +39,7 @@ Failures are retained because they define safety boundaries and prevent repeated
 - General helper abstraction failed where inline allocation/submission worked.
 - Textured-image rendering remains unproven; native text is the stable production path.
 - Early proof diagnostics used legal-screen string storage that production later assigned; the final box wrapper uses a guarded dedicated region.
+- **Toasty visual v01**: automatic HUD-cycle proof produced no visible image. Because it had no independent marker, it does not distinguish wrapper execution from texture-slot allocation, file loading, palette binding, or `0x80073CEC` context suitability. Do not repeat unchanged; next proof must add a proven text/quad diagnostic and isolate one variable at a time.
 
 ## Reverse Elbow failures
 
