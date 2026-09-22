@@ -23,6 +23,7 @@
 - [Pickups/randomization](Pickups-and-Item-Randomization)
 - [Persistence/inventory](Persistence-Inventory-and-Lifecycle)
 - [Native UI](Native-UI-and-Presentation)
+- [Sounds/music](Sounds-and-Music)
 - [Palette/recoloring](Palette-and-Recoloring)
 - [XP/progression](XP-and-Progression)
 - [Web patcher/product](Web-Patcher-and-Product)
