@@ -46,6 +46,19 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 
 Boot string pointer instructions live at ROM `0x7A22C`, `0x7A250`, `0x7A274`, `0x7A298`, `0x7A2BC`, `0x7A2E0`, `0x7A304`, `0x7A328`, `0x7A34C`, `0x7A370`, and `0x7A394`; every instruction is guarded before replacement.
 
+## Title branding production allocation (pending composed runtime gate)
+
+The accepted Candidate-B title art and final `SUB-ZERO EDITION` placement are runtime-confirmed in a standalone proof, but the production-safe composition is not yet enabled in browser/CLI. Planned guarded ownership after composed validation:
+
+| ROM | VA | Owner | Guard/original | Planned effect |
+|---:|---:|---|---|---|
+| `0x00079C24..0x79C2B` | `0x80079024..0x8007902B` | Title branding | `3C04800B 2484ED1C` | Call edition-text wrapper, then resume stock START draw setup |
+| `0x0009ADE0..` | `0x8009A1E0..` | Title branding | zero tail inside bootstrap allocation | Centered uppercase `<NAME> EDITION` wrapper; bounded before mapper at `0x9AEFC` |
+| `0x000A5478` | file entry `0x5E` | Title branding | stock `4E3060 / 512440 / flag 1` | Repoint title package to relocated compressed Candidate-B package |
+| `0x00F90000..0xFBFD94` | — | Title branding | clean-ROM `0xFF` | Compressed file `0x5E`, size `0x2FD95` |
+
+The earlier standalone proof's `0x9AD84` helper and raw `0xEF7000..` file relocation are proof-only and conflict with production ownership; they are explicitly not reusable allocations.
+
 ## Proof-only sites
 
 | ROM/VA | Proof | Status |
