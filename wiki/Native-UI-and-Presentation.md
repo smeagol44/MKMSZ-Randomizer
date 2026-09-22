@@ -242,15 +242,18 @@ This closes the first v01 ambiguity: the HUD hook/wrapper **does execute** in ga
 The Toasty audio v03 proof remains independently runtime-confirmed and is not modified by these visual diagnostics.
 
 
-### Toasty visual diagnostic v03 — dynamic-slot status
+### Toasty visual diagnostic v03 — intrusive / rejected diagnostic
 
-**Implementation/static-confirmed; runtime pending manual validation.**
+**Runtime-confirmed failure on 2026-09-22; allocator conclusion remains unresolved.**
 
-v03 keeps the complete v02/v01 main wrapper, texture allocator call, file load, palette data, timer logic, and textured submission byte-for-byte unchanged. It changes only the already-proven diagnostic helper so the marker reports:
+The user observed persistent `V03 SLOT FAIL` during ordinary gameplay and the Toasty image remained absent. However, unlike v02, **all normal game music and sound effects were also absent** in this proof.
 
-- `V03 SLOT ACTIVE` when the saved dynamic texture slot is nonnegative and its stock texture-table active halfword at `+0x0E` is `1`;
-- `V03 SLOT FAIL` otherwise.
+v03 had expanded the diagnostic helper beyond the v02 marker footprint so it could inspect the saved slot and dynamic-texture table before returning into the otherwise unchanged v01/v02 texture path. Because that diagnostic change introduced an unrelated global audio regression, its `SLOT FAIL` result is not accepted as clean evidence that `0x8001C2B4` itself fails. The diagnostic may be perturbing runtime state or occupying unsafe zero-initialized executable/data space.
 
-Because the marker executes before the unchanged allocation code, `FAIL` is expected on the first HUD frame. If `0x8001C2B4(78,85)` successfully creates a persistent active slot, subsequent frames should show `ACTIVE`.
+Durable conclusions:
+- v02 remains the clean runtime proof that the HUD hook/wrapper executes;
+- v03 is a **Rejected / intrusive diagnostic** for allocator-state attribution;
+- do not change the loader, palette, or `0x80073CEC` based on v03 alone;
+- the next allocator diagnostic should return to the v02-known-good helper/allocation footprint and expose allocator success with a smaller, less intrusive method.
 
-This is the next single-variable diagnostic boundary. If `ACTIVE` appears while Toasty remains absent, allocation/state is exonerated and the next proof should isolate raw file load/binding. If `FAIL` persists, investigate the allocator/slot-table contract before touching loader, palette, or textured submission.
+For faster manual iteration, future disposable Toasty proofs may include the already runtime-confirmed post-legal logo bypass and compact eight-stage A-button Safe Stage Select as a fixed test harness. Their guarded patches must remain separate from the visual diagnostic variable and must not claim the production bootstrap cave used by other systems.
