@@ -171,3 +171,34 @@ For a future custom-sound proof:
 - perform a bounded manual runtime test before integrating any new audio path into the normal pipeline.
 
 A successful call to an existing MKMSZ sound does **not** by itself prove that foreign-sample import is safe; the sample/bank format and lifetime must be validated separately.
+
+
+### Toasty sound proof v01 — rejected routing assumption
+
+Disposable proof: `MKMSZR_toasty-sound_common-proof_v01.z64`.
+
+**Runtime-confirmed failure / diagnostic result.** The imported donor waveform did not play as a normal pickup SFX. Instead, gameplay produced a very faint recurring “ghost/howl” sound at changing pitches. The effect followed the game's **Music** toggle rather than the expected SFX behavior; with music disabled the pickup produced no Toasty voice.
+
+Static postmortem identified two namespace/routing mistakes in the proof design:
+
+1. the prior liveness audit for MKMSZ patch `550` was incomplete. It checked explicit SSEQ instrument-change commands but did **not** check each SSEQ track header's initial patch ID. Stock SSEQ entry `393` is a one-track entry whose initial patch ID is exactly `550`. Therefore patch `550` / subpatch `393` / waveform `383` is live and must not be treated as unused;
+2. redirecting gameplay descriptor `0x3B` from raw/event ID `0x020C` to `0x0226` selects **SSEQ entry 550**, not “patch 550 directly.” SSEQ entry `550` is a five-track looping/music-style entry whose initial patches are `37, 38, 39, 41, 41`. Thus the pickup redirection and the patched waveform were in different namespaces.
+
+The stock pickup route is now more precisely understood:
+
+```text
+descriptor 0x3B
+  -> event/SSEQ entry 0x020C (524)
+  -> entry 524 initial patch 681
+  -> patch 681
+  -> subpatch 524
+  -> waveform 133
+```
+
+This explains why v01 could alter background/sequenced audio without producing the intended pickup Toasty voice.
+
+The pitch-varying runtime symptom is consistent with the transplanted Toasty ADPCM waveform being decoded and used as a pitched SN64 instrument, but this is **not yet sufficient to label the foreign waveform import itself runtime-confirmed**; the routing was wrong and no clean one-shot Toasty playback occurred.
+
+**Rejected / superseded conclusion:** patch/raw ID `550` is not an unused proof host. Future liveness checks must include both SSEQ track-header initial patch IDs and in-stream instrument changes.
+
+The next bounded sound task is to design a proof around the known stock pickup event `524` / patch `681` without modifying any patch or waveform reachable by unrelated sequenced audio.
