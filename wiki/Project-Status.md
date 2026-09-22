@@ -19,6 +19,7 @@ Last consolidated: 2026-09-21.
 | Logo and selector-save bypasses | Production | Runtime-confirmed, legal screen and later/manual saves preserved |
 | Outfit recoloring | Production | Runtime-confirmed palette modes; static TLUT source transform |
 | Browser/CLI shared patch core | Production beta | CI builds/tests; release UX continues to mature |
+| Rebranded title screen | Runtime-confirmed proof; production integration gated | Candidate-B CI8/BGR555 MORTAL KOMBAT MYTHOLOGIES / RANDOMIZER art plus uppercase edition line accepted; standalone v05 SHA-256 `3f98e2d73fc66203a333d2b6a9f0861cc528201804e96349c2dce376f8f189d0`; full production-layout composition still needs one manual runtime pass before browser/CLI enablement |
 
 ## Confirmed proofs, not product features
 
@@ -61,6 +62,10 @@ The 1.0 randomizer is not considered complete with stage-local shuffling alone. 
 7. **Final runtime coverage.** Complete a representative full global seed, including all nine progression tiers and the major lifecycle boundaries.
 
 Open Temple Map work: the legacy Lua global pool included the scripted Map as an 85th check. For 1.0, investigate separating the Map inventory reward from the Temple elevator/exit trigger so the elevator can still be raised correctly even when the Map item itself is shuffled elsewhere. Also prevent the Map item from being removed on the Temple -> Wind transition, which is stock behavior today.
+
+### Title-screen integration gate
+
+The final standalone title presentation is **Runtime-confirmed** and accepted visually: Candidate-B icy title art, native uppercase `SUB-ZERO EDITION`, final edition baseline at y=114. Production integration must not reuse the proof allocations because they overlap current bootstrap/payload ownership. A guarded production composition using compressed file-0x5E relocation and a dedicated bootstrap-tail wrapper is the next bounded validation before the feature becomes non-optional in browser/CLI.
 
 ## Pending priorities
 
