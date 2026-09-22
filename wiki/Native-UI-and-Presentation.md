@@ -88,7 +88,7 @@ The planned guarded layout is:
 - compressed Candidate-B file `0x5E` at ROM `0xF90000..0xFBFD94`, flag `1`;
 - title text hook at ROM `0x79C24`, replacing only the stock `START` string-address load pair before the existing START draw;
 - title text wrapper in the unused bootstrap-stub tail beginning at ROM `0x9ADE0` / VA `0x8009A1E0`, ending before the relocated selector mapper at ROM `0x9AEFC`;
-- build-selected uppercase `<NAME> EDITION`, default `SUB-ZERO`, with a conservative temporary name limit.
+- build-selected uppercase `<NAME> EDITION`, default `SUB-ZERO`; the temporary browser/CLI field accepts at most 12 name characters and normalizes to uppercase before appending ` EDITION`. The supported temporary input set is A-Z, 0-9, spaces and hyphens.
 
 The clean ROM is all `0xFF` across the planned `0xF90000..0xFBFD94` title allocation, and the current production pipeline has no owner there. The latest runtime-confirmed Sektor takeover resource ends below `0xF90000`; rejected/superseded larger Sektor proofs are not allocation promises.
 
