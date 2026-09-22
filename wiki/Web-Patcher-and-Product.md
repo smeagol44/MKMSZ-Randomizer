@@ -24,12 +24,13 @@ The browser build compiles the Python package to a wheel and serves it with the 
 | `seeded` | Deterministic seed-derived clothing color |
 | `hue` | Requires explicit degrees |
 | `rgb` | Requires `RRGGBB` or `#RRGGBB` |
+| Title character | Temporary freeform uppercase name, default `SUB-ZERO`, max 12 characters; patcher appends ` EDITION` and rasterizes it into the generated title CI8 image |
 
 Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.
 
 ## Deployment
 
-`.github/workflows/pages.yml` runs on `main`, builds the wheel, copies the static frontend to `_site`, substitutes the run number into the displayed version, and deploys GitHub Pages. `.github/workflows/wiki.yml` independently mirrors `wiki/` to the GitHub Wiki.
+`.github/workflows/pages.yml` runs on `main`, first compiles `src/mkmszr` with Python's `compileall`, then builds the wheel, copies the static frontend to `_site`, substitutes the run number into the displayed version, and deploys GitHub Pages. The compile gate was added after a 2026-09-22 title-branding packaging regression in which a malformed source header containing literal `\\n` escapes was packaged into a syntactically invalid wheel; Pyodide then failed before patching. The corrected deployed wheel was manually inspected and `mkmszr.patcher` imported successfully. `.github/workflows/wiki.yml` independently mirrors `wiki/` to the GitHub Wiki.
 
 This separation matters: product deployment does not package research artifacts, ROMs, proof patches, or emulator state.
 
