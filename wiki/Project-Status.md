@@ -15,7 +15,7 @@ Last consolidated: 2026-09-21.
 | Pickup-driven XP progression | Production beta | Diagnostic B runtime-confirmed V2 allocation, XP restore, 85/258 rewards, Temple -> Wind transition and title -> Fire retention; nine-reward/full-tier run pending |
 | Four inventory boxes | Production beta | Runtime-confirmed switching, transition preservation, stage-key masking; Game Over/reset edge still pending |
 | `BOX n OF 4` HUD text | Production | Runtime-confirmed native text path |
-| Boot branding and seed phrase | Production | Guarded and CI-confirmed; phrase uses a dedicated deterministic namespace |
+| Boot branding and seed phrase | Production beta | Existing legal-screen path is Runtime-confirmed; redesigned 2026 layout is guarded and full-pipeline Implementation/CI-confirmed, including shared configurable `<CHAR> EDITION`. Seeded joke uses a dedicated deterministic namespace; exact new visual arrangement awaits one runtime look. |
 | Logo and selector-save bypasses | Production | Runtime-confirmed, legal screen and later/manual saves preserved |
 | Outfit recoloring | Production | Runtime-confirmed palette modes; static TLUT source transform |
 | Browser/CLI shared patch core | Production beta | Shared wheel/CLI core; Pages runs `python -m compileall -q src/mkmszr` before packaging. After the 2026-09-22 malformed-title-source regression and a stale-wheel cache recurrence, each Pages deployment now gets a unique PEP 440 wheel version/URL and a run-number cache-busted `app.js`; the generated unique wheel was manually imported successfully. |
