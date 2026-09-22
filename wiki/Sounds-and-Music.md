@@ -715,3 +715,78 @@ Subpatch 263 also has centered pan `0x40`, full-range note velocity/volume bytes
 The argument layout and behavior of `0x80097010` match the standard N64 `alSynStartVoiceParams` / `n_alSynStartVoiceParams` role: wavetable, floating-point pitch ratio, volume, pan, effects mix, and attack time are queued to the synth/mixer. External libultra source is used only to name/corroborate the API semantics; the MKT-specific values above come from retail disassembly.
 
 **Consequence:** the user's rejection of the prior waveform-262 WAV does not contradict the retail selection trace. That WAV omitted the required `-2253`-cent runtime correction and played the stream about 3.67× too fast. The next bounded validation is to generate a pitch-corrected waveform-262 WAV using the retail ratio `0.272154916` and have it auditioned before any further MKMSZ proof is built.
+
+
+### Source-to-retail selector anchor map
+
+**Static-confirmed mapping evidence; individual Dan Forden waveform identities remain pending direct listening confirmation.**
+
+A content-first comparison of the preserved Midway `triple_sndtab` against the retail MKT USA Rev. 2 primary selector table at `0x800A1AA8` shows that the early selector-slot layout is preserved even though the underlying sound/event IDs were rebuilt for N64.
+
+Useful anchors:
+
+| Selector slot | Preserved source meaning | Retail selector value | Evidence |
+|---:|---|---:|---|
+| `0x08` | subway approaching | `0x01B1` | contiguous source semantic group maps to contiguous retail SSEQ IDs |
+| `0x09` | subway steady state | `0x01B2` | same group |
+| `0x0A` | subway going away | `0x01B3` | same group |
+| `0x0C` | P1 cursor | `0x016F` | four-slot cursor/pick group remains contiguous |
+| `0x0D` | P2 cursor | `0x0170` | same group |
+| `0x0E` | P1 picked | `0x0171` | same group |
+| `0x0F` | P2 picked | `0x0172` | same group |
+| `0x10` | Shao Kahn: Fight! #3 | `0x0244` | **direct audio validation:** user identified the correctly pitch-reconstructed retail event as “Fight!” |
+| `0x11` | Round One | `0x0240` | five-entry Fight/Round cluster |
+| `0x12` | Round Two | `0x0241` | same cluster |
+| `0x13` | Round Three | `0x0242` | same cluster |
+| `0x14` | Round Four | `0x0243` | same cluster |
+| `0x15` | Finish Him! | `0x0164` | paired retail IDs |
+| `0x16` | Finish Her! | `0x0165` | paired retail IDs |
+
+This establishes a much safer rule for this prefix of the table: **the semantic selector slot is preserved, while the numeric sound/SSEQ ID stored in that slot is platform-specific.**
+
+The earlier attempt to identify Toasty from a retail `randper(40)` branch is therefore **Rejected as an identification method**. Its downstream selector `0x10` is the preserved Fight slot, and the user directly identified the resulting pitch-corrected waveform as “Fight!”. The branch match was wrong even though the downstream audio trace was internally correct.
+
+#### Dan Forden selector trio
+
+The preserved source table contains:
+
+```text
+slot 0x1B -> DF: toasty
+slot 0x1C -> DF: frosty
+slot 0x1D -> DF: crispy
+```
+
+More strongly, preserved `MKFX.ASM` explicitly sets:
+
+```text
+movi 01bH,a11    ; sound: toasty
+...
+move a9,a0
+calla triple_sound
+```
+
+so source Toasty’s selector slot is unambiguous.
+
+The corresponding retail primary-table entries are:
+
+```text
+slot 0x1B -> event 0x0160
+slot 0x1C -> event 0x018E
+slot 0x1D -> event 0x0188
+```
+
+Tracing those three retail SSEQ definitions:
+
+| Source semantic | Retail slot | Retail event | Initial/current patch | Subpatch | Waveform | Pitch correction |
+|---|---:|---:|---:|---:|---:|---:|
+| Toasty candidate | `0x1B` | `0x0160` | 65 | 111 | 77 | `-2253` cents |
+| Frosty candidate | `0x1C` | `0x018E` | 66 | 112 | 78 | `-2253` cents |
+| Crispy candidate | `0x1D` | `0x0188` | 67 | 113 | 79 | `-2253` cents |
+
+All three definitions are simple one-track, one-note events with note/root key `0x3C`; no intermediate program-change ambiguity exists. Their retail waveform spans are:
+
+- waveform 77: ROM `0xB0FBFC..0xB10411`;
+- waveform 78: ROM `0xB10412..0xB10D1B`;
+- waveform 79: ROM `0xB10D1C..0xB11891`.
+
+Pitch-corrected WAV candidates were generated for direct listening. Do not promote the semantic waveform identities to Runtime-confirmed until the user auditions them. The selector/event mapping itself is substantially stronger than the discarded branch-first method because it is anchored by preserved slot semantics plus the user-confirmed retail `0x10 = Fight!` control.
