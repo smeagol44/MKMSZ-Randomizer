@@ -412,17 +412,40 @@ lw/sw ...,-0x26C0(...)
 
 which resolves to **`0x800ED940`**, not `0x800FD940`. v12 used a `0x8010` high half and therefore aliased an unrelated address range. Its runtime image is not evidence that slot `0x17` itself is unusable.
 
-The renderer directly consumes the node texture ID at `+0x4A`, record `0x802F83F0 + id*0x10` fields `+0x00` and `+0x08`, and backing pointer `0x800ED940[id]`. This static mapping also shows that the same renderer addressing arithmetic can represent dynamic IDs `0x200..0x2FF`; runtime use through the gameplay queue is still pending.
+The renderer directly consumes the node texture ID at `+0x4A`, record `0x802E83F0 + id*0x10` fields `+0x00` and `+0x08`, and backing pointer `0x800ED940[id]`. This static mapping also shows that the same renderer addressing arithmetic can represent dynamic IDs `0x200..0x2FF`; runtime use through the gameplay queue is still pending.
 
 
-### Toasty visual diagnostic v13 — corrected fixed-slot alias
+### Toasty visual diagnostic v13 — rejected alias implementation, second signed-address bug
+
+**Runtime-confirmed failure on 2026-09-22; implementation bug identified statically afterward.**
+
+The normal HUD remained intact, but the shifted clone became another distinct gold/white fragmented pattern rather than the v10 equals-sign control.
+
+The v13 backing-pointer correction was real, but a second sign-extension error remained in the alias helper. The fixed/dynamic slot record base is formed by stock code as:
+
+```text
+lui   ...,0x802F
+addiu ...,...,0x83F0   # signed immediate = -0x7C10
+```
+
+which resolves to **`0x802E83F0`**, not `0x802F83F0`. v13 still used the latter page for the copied slot metadata. Therefore it combined the correct slot-`0x13` backing pointer with unrelated format/stride metadata, explaining the changed but still incorrect fragment.
+
+This result is not evidence against slot `0x17` itself.
+
+
+### Toasty visual diagnostic v14 — fully corrected fixed-slot alias
 
 **Implementation/static-confirmed; runtime pending manual validation.**
 
-v13 is intentionally identical to v12 except for **one instruction immediate** in the alias helper:
-- v12: pointer-table high half `0x8010`;
-- v13: corrected high half `0x800F`.
+v14 is intentionally identical to v13 except for the single slot-table high-half instruction:
+- v13 alias metadata page: `0x8030` plus signed negative offsets -> wrong `0x802Fxxxx` page;
+- v14 alias metadata page: `0x802F` plus the same signed offsets -> correct `0x802Exxxx` page.
 
-This changes only one non-header ROM byte relative to v12. Slot `0x17` now receives the exact slot-`0x13` renderer record state plus the correct `0x800ED940[0x13]` backing pointer, while the stock HUD remains untouched.
+The exact copied records are now:
+- slot `0x13`: `0x802E8520`;
+- slot `0x17`: `0x802E8560`;
+- backing pointers remain `0x800ED98C` -> `0x800ED99C`.
 
-Expected result: the shifted clone should return to the runtime-confirmed v10 equals-sign appearance. If it does, fixed-slot aliasing is valid and the v12 failure is fully explained by the pointer-base bug.
+Relative to v13, v14 changes only one non-header ROM byte. No allocation, pixel copy, new cave, renderer change, audio change, or Toasty asset is introduced.
+
+Expected result: intact normal HUD plus the same shifted equals-sign texture seen in runtime-confirmed v10.
