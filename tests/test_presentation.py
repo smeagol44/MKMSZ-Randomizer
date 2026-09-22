@@ -30,6 +30,7 @@ from mkmszr.patches.box_indicator import (
     BoxIndicatorPatch,
 )
 from mkmszr.patches.flow_bypass import BootLogoBypassPatch, SafeStageSelectSkipAutoSavePatch
+from mkmszr.patches.title_branding import TitleBrandingPatch
 from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
 from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
 from mkmszr.rom import RomImage
@@ -108,3 +109,4 @@ def test_presentation_patches_follow_four_box_inventory() -> None:
     assert isinstance(pipeline.patches[8], BoxIndicatorPatch)
     assert isinstance(pipeline.patches[9], BootBrandingPatch)
     assert isinstance(pipeline.patches[10], BootLogoBypassPatch)
+    assert isinstance(pipeline.patches[11], TitleBrandingPatch)
