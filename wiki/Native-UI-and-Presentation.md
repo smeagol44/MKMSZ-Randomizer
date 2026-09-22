@@ -451,17 +451,32 @@ Relative to v13, v14 changes only one non-header ROM byte. No allocation, pixel 
 Observed result: intact normal HUD plus the same shifted equals-sign texture seen in runtime-confirmed v10. This confirms the corrected slot-record base `0x802E83F0` and backing-pointer base `0x800ED940`, and closes the fixed-slot alias control.
 
 
-### Toasty visual diagnostic v15 — first actual Toasty pixels
+### Toasty visual diagnostic v15 — actual Toasty pixels confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+The user observed a large, clearly non-HUD textured image at the intended shifted gameplay position. Its silhouette/pose matches the genuine Toasty CI8 source, while its colors are strongly blue/cyan/black because v15 intentionally inherited the stock HUD palette. The stock gameplay route remained functional.
+
+This confirms the important composition boundary:
+- dynamic CI8 allocation through `0x8001C2B4(78,85)` works with the gameplay HUD renderer;
+- the 96-byte aligned backing stride is accepted;
+- raw Toasty pixels loaded through file ID `0x1B` reach the allocated backing store;
+- node `+0x4A` can point the added gameplay-HUD node at that dynamic texture.
+
+The remaining visible defect is palette selection, not the image source/stride/renderer socket.
+
+
+### Toasty visual diagnostic v16 — genuine palette selector
 
 **Implementation/static-confirmed; runtime pending manual validation.**
 
-v15 deliberately stops the stock-symbol control sequence and reconnects the genuine Toasty CI8 image to the runtime-confirmed gameplay HUD queue.
+Static audit of gameplay renderer `0x8001F7A8` identifies node halfword `+0x4C` as the palette selector. The v08-v15 source HUD node sets `+0x4C = 0x10`. The renderer resolves it through:
+- selector table `0x80290A00 + selector*8`, taking the first halfword as palette index;
+- palette-pointer table `0x802E73E0 + palette_index*4`;
+- native CI8 TLUT upload before textured drawing.
 
-One-time HUD setup:
-- allocates a native dynamic CI8 slot through `0x8001C2B4(78,85)`; the allocator's 32-pixel alignment produces the required 96-byte row stride;
-- reads the real backing pointer through `0x800ED940[id]`;
-- loads raw file ID `0x1B` into that backing buffer through stock `0x80065D64`.
+Preserved Temple RAM shows selector entry `0x10` maps to palette index `0x10`; selector entry `0x11` is unused, and palette-pointer entry `0x11` is zero on that captured route.
 
-Per frame, the stock HUD node is submitted unchanged; an MKMSZR-owned clone is created through `0x8002018C`, rebound at node `+0x4A` to the dynamic Toasty slot, expanded to the actual 78x85 source/destination rectangle, and submitted through `0x8001EAE4`.
+v16 therefore leaves v15's dynamic texture allocation, genuine image bytes, 96-byte stride, geometry, and gameplay render submission unchanged. It adds the genuine 256-entry Toasty A1B5G5R5 TLUT in the existing zero-guarded proof-data cave, registers selector/palette index `0x11` to that TLUT, and changes **only the clone's** node `+0x4C` from inherited stock `0x10` to custom `0x11`.
 
-The genuine v01 Toasty CI8 rows are reused unchanged. The stock HUD palette is intentionally retained in v15, so colors are expected to be incorrect. The bounded runtime question is whether the actual Toasty shape/pixels appear through the correct gameplay renderer. Palette integration is deferred until that succeeds.
+Expected result: the v15 Toasty image remains in the same place and size but renders with its genuine colors. Stock HUD nodes retain selector `0x10`.
