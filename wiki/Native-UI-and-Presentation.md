@@ -44,7 +44,7 @@ NOT LICENSED BY NINTENDO
 
 The stock legal font encodes the registered-sign glyph with ASCII `^` and the copyright glyph with ASCII `~`; production preserves that stock encoding rather than introducing a new font path. The packed region is exactly bounded for the worst-case 12-character edition name and leaves two zero bytes before the adjacent `BOX n OF 4` code allocation.
 
-**Evidence:** the underlying legal-screen renderer and prior branding path are Runtime-confirmed. The rearranged 2026 layout and configurable edition line are Implementation/CI-confirmed through the full shared patch pipeline, including a non-default `SEKTOR EDITION` build; visual runtime confirmation of this exact rearrangement remains pending.
+**Evidence:** the redesigned 2026 layout is **Runtime-confirmed**. The user confirmed the exact rearranged legal screen looks correct in-game, including the configurable edition line, seeded joke placement, `BY SMEAG`, and `NOT LICENSED BY NINTENDO`. The same layout is also full-pipeline Implementation/CI-confirmed, including a non-default `SEKTOR EDITION` build.
 
 ## Context-specific renderer family
 
