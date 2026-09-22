@@ -46,20 +46,20 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 
 Boot string pointer instructions live at ROM `0x7A22C`, `0x7A250`, `0x7A274`, `0x7A298`, `0x7A2BC`, `0x7A2E0`, `0x7A304`, `0x7A328`, `0x7A34C`, `0x7A370`, and `0x7A394`; every instruction is guarded before replacement.
 
-## Title branding allocation correction
+## Title branding production allocation
 
-The PR #41 wrapper allocation at ROM `0x9ADE0` / VA `0x8009A1E0` is **Rejected / failed**. It overlaps the permanent pickup-persistence composition already installed earlier in the production pipeline. The browser's zero-byte guard failure exposed the conflict before overwrite.
+The corrected title implementation is **Runtime-confirmed** through the full current production pipeline and uses data-only storage. It does not own an executable title cave.
 
-| ROM | VA | Owner/status | Evidence |
+| ROM | VA | Owner/status | Production effect |
 |---:|---:|---|---|
-| `0x00079C24..0x79C2B` | `0x80079024..0x8007902B` | Stock title START setup; corrective title design leaves it untouched | Static-confirmed |
-| `0x0009ADD8..0x9ADE7` | `0x8009A1D8..` | Pickup-persistence restore trampoline | Implementation-confirmed production ownership |
-| `0x0009ADE8..` | `0x8009A1E8..` | Pickup-persistence capture helper | Implementation-confirmed production ownership |
-| `0x0009AEC0..` | `0x8009A2C0..` | Pickup descriptor table / Fire translation through `0x9AEFB` | Implementation-confirmed production ownership |
-| `0x0009AEFC` | `0x8009A2FC` | Relocated selector/flow mapper | Production ownership |
-| `0x00F90000..` | — | Title file-`0x5E` relocation area | High-ROM allocation remains the corrective data-only title target; exact final end is configuration-dependent and pending the new runtime gate |
+| `0x00079C24..0x79C2B` | `0x80079024..0x8007902B` | Stock title START setup | Left untouched by corrected title branding |
+| `0x000A5478` | file entry `0x5E` | Title branding | Repoint compressed title package to generated high-ROM copy |
+| `0x000B3364` palette base | `0x800B2764` | Title branding, selected unused CI8 entries only | Replace 15 guarded Candidate-B-unused palette entries with grayscale antialias ramp |
+| `0x00F90000..0xFC0FFF` | — | Title branding | Guarded `0x31000`-byte capacity for generated compressed file `0x5E`; actual end varies with name |
 
-The old title-only proof's wrapper at `0x9ADE0` must not be reused. The corrective design under validation uses no title executable cave or title-menu hook.
+Observed compressed ends: `SUB-ZERO` proof end-exclusive `0xFC017F`; `SEKTOR` proof end-exclusive `0xFC014F`.
+
+The PR #41 allocation at `0x9ADE0` / `0x8009A1E0` is **Rejected / failed** and must not be reused. It overlaps production pickup-persistence code/data beginning with the restore trampoline/capture helper and continuing through the descriptor/Fire-translation area to the relocated selector mapper.
 
 ## Proof-only sites
 
