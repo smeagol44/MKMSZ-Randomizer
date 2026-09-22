@@ -509,3 +509,86 @@ MKT ZLIB-SSEQ resource at ROM 0xAA7070
 This now **confirms** the association `0x0244 -> SSEQ definition 580` through the actual retail loader and runtime pointer installation. The previously rejected shortcut was the unsupported leap from numeric equality alone; the relationship itself is now established by loader evidence.
 
 This does **not** rehabilitate the rejected waveform-262 Toasty candidate. The remaining error must be downstream in interpretation of SSEQ entry 580's track/program/patch behavior or later SN64 selection semantics.
+
+### Definition 580 retail command execution
+
+**Static-confirmed from retail MKT USA Rev. 2 MIPS disassembly.** This replaces reliance on the generic SSEQ parser for the program/patch selected by Toasty's note-on event.
+
+Definition `0x0244` / decimal 580 resolves through the proven SSEQ loader to compressed track stream ROM `0xAAC6CA`, compressed length `0x30`. Raw-DEFLATE decompression yields 48 bytes. The first `0x18` bytes are the retail track header; the final `0x18` bytes are the command stream:
+
+```text
+00 07 31 00
+00 0C 67
+00 0D 40
+00 07 F9 00
+01 11 3C 7F
+85 7F 12 3C
+00 22
+```
+
+The runtime track initializer at `0x8008A40C` sets track-state `+0x10 = 1`, selecting command-dispatch table `0x800F7CE0` via pointer table `0x800F7B10`.
+
+For this dispatch table:
+
+- opcode `0x07` -> handler `0x80091D28`;
+- opcode `0x11` -> handler `0x80092D68`;
+- opcode `0x12` -> handler `0x80092EE8`.
+
+#### Program change 0x07
+
+The retail `0x07` handler at `0x80091D28` reads the two bytes following the command and stores the resulting 16-bit program number directly at track-state `+0x04`.
+
+Therefore the two program changes in definition 580 execute exactly as:
+
+```text
+07 31 00 -> current patch = 0x0031 (49)
+...
+07 F9 00 -> current patch = 0x00F9 (249)
+```
+
+The second write occurs before the note-on event.
+
+#### Note-on 0x11
+
+The retail note-on handler at `0x80092D68` reads the current patch directly from track-state `+0x04`:
+
+```text
+0x80092DA4  lh   t8,0x04(a0)   ; current patch/program
+0x80092DAC  sll  t9,t8,2
+0x80092DB4  addu t1,t9,t0     ; patch table base + patch*4
+```
+
+At the Toasty note-on command `11 3C 7F`, the current patch value is therefore **249 / `0x00F9`**.
+
+The handler then reads patch 249's one-subpatch record from the active SN64 bank. In the decompressed MKT SN64 control bank:
+
+```text
+patch 249 record: 01 00 01 07
+```
+
+This means one subpatch beginning at index `0x0107` = 263.
+
+Subpatch 263 is:
+
+```text
+64 7F 40 00 3C 00 00 7F 00 00 01 06 00 02 7D 00 00 0A 7F 7F
+```
+
+Its note range is `0x00..0x7F`, so note `0x3C` selects it. The subpatch's waveform field is `0x0106` = 262.
+
+Therefore the exact retail command-selection chain is now:
+
+```text
+definition 580
+  -> program 49
+  -> volume/pan commands
+  -> program 249
+  -> note-on 0x3C
+  -> retail note-on handler reads current patch 249
+  -> subpatch 263
+  -> waveform record 262
+```
+
+**Key conclusion:** patch **249** is retail-code-confirmed as the exact SN64 patch selected by definition 580's note-on event. This is not inferred from generic tooling.
+
+The user's prior audition still rejects the standalone waveform-262 WAV as a valid audible Toasty reconstruction. Since retail execution really does select patch 249/subpatch 263/waveform 262, the remaining discrepancy is downstream: the standalone extraction/decoding/playback reconstruction is missing some retail runtime behavior (for example waveform pitch/correction, envelope or another voice-start transform), rather than selecting the wrong program before note-on.
