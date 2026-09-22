@@ -790,3 +790,39 @@ All three definitions are simple one-track, one-note events with note/root key `
 - waveform 79: ROM `0xB10D1C..0xB11891`.
 
 Pitch-corrected WAV candidates were generated for direct listening. Do not promote the semantic waveform identities to Runtime-confirmed until the user auditions them. The selector/event mapping itself is substantially stronger than the discarded branch-first method because it is anchored by preserved slot semantics plus the user-confirmed retail `0x10 = Fight!` control.
+
+
+### Audibly confirmed retail Toasty voice
+
+**User-audition confirmed on 2026-09-22.** The source-slot correlation method successfully identified the actual retail MKT Toasty voice without relying on the previously misleading `randper(40)` branch.
+
+Preserved source `triple_sndtab` identifies:
+
+```text
+slot 0x1B -> DF: toasty
+slot 0x1C -> DF: frosty
+slot 0x1D -> DF: crispy
+```
+
+The retail primary selector table preserves those slot positions in this anchored region. The user listened to the pitch-corrected retail candidate from source slot `0x1B` and explicitly confirmed that it is the desired Dan Forden **“Toasty!”** voice.
+
+Confirmed retail chain:
+
+```text
+source selector slot 0x1B
+  -> retail primary selector slot 0x1B
+  -> retail event 0x0160
+  -> SN64 patch 65
+  -> subpatch 111
+  -> waveform 77
+```
+
+Waveform 77 uses the same `-2253`-cent retail correction that must be applied at playback. The user-confirmed standalone WAV is:
+
+`MKT_slot-1b_toasty-candidate_wave77_pitch-corrected.wav`
+
+This supersedes the rejected candidates:
+- reverse-cymbal waveform from the earlier incorrect patch-7 route;
+- `Fight!` waveform 262 reached from retail selector slot `0x10`.
+
+**Implementation consequence:** future MKMSZR Toasty sound proofs should use only the confirmed slot-`0x1B` / event-`0x0160` / patch-65 / subpatch-111 / waveform-77 voice. Frosty and Crispy are not required for the current feature.
