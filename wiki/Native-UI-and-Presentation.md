@@ -25,9 +25,11 @@ The path beginning at `0x80073CEC` and calling `0x8001E578` is real, but evidenc
 
 ## Title-menu branding audit
 
-**Static-confirmed on the clean USA Rev. 0 ROM.** The normal title controller is `0x80078C40`. Its title artwork is a six-tile indexed image submitted through the context-specific `0x80073CEC -> 0x8001E578` family. Earlier runtime instrumentation of that family visibly duplicated the title logo while leaving the `START` / `OPTIONS` menu text and cursor untouched, so the static split below agrees with runtime evidence.
+The title-menu path is now decoded far enough to support the accepted MKMSZR rebrand.
 
-The six title resources are drawn with palette descriptor `0x800B2760` (ROM `0xB3360`, 256 BGR/RGBA5551-style entries) at these fixed positions:
+**Static-confirmed on the clean USA Rev. 0 ROM.** The normal title controller is `0x80078C40`. Its title artwork is a six-tile CI8 image submitted through the context-specific `0x80073CEC -> 0x8001E578` family. Earlier runtime instrumentation of that family visibly duplicated the title logo while leaving the `START` / `OPTIONS` menu text and cursor untouched.
+
+The six title resources are:
 
 | Resource | Size | Screen origin | File-0x5E decoded record |
 |---:|---:|---:|---:|
@@ -38,15 +40,59 @@ The six title resources are drawn with palette descriptor `0x800B2760` (ROM `0xB
 | `0x3CA` | 100x120 | `(120,120)` | `+0x485F0` |
 | `0x3CB` | 100x120 | `(220,120)` | `+0x4B4DC` |
 
-Together they form one exact 320x240 indexed composite. The stock visible logo occupies approximately `x=19..297`, `y=71..145`; the rest is black/transparent-looking background. The six direct palette loads in the executable are the only direct code references found to `0x800B2760`.
+Together they form one exact 320x240 indexed composite.
 
-The tiles live in global file ID `0x5E`. Its clean-ROM file-table entry points to compressed ROM `0x4E3060..0x51243F` (end-exclusive `0x512440`), flag `1`; the package expands to exactly `0x61494` bytes. The native loader uses the game's LZW-style package decompressor before parsing the image archive. Static decoding reproduced the full package and allowed lossless extraction of the six indexed title tiles and the complete stock title composite without emulator capture.
+### Palette correction
 
-Immediately after the six image submissions, the controller draws `START` at `(160,160)` and `OPTIONS` at `(160,180)` through frontend text renderer `0x8001CA88`. Static inspection of that renderer confirms mappings for uppercase A-Z, lowercase a-z, digits, spaces, hyphen and the punctuation needed by `Sub-Zero Edition`. Its centered-title calling form therefore provides a strong static basis for a build-selected `<character> Edition` line.
+The palette descriptor begins at `0x800B2760` / ROM `0xB3360`, but the earlier audit was four bytes early when interpreting palette entries. The word at `0xB3360` is the `0x100`-entry descriptor/count; the 256 16-bit palette entries begin at **ROM `0xB3364`**.
 
-**Implementation direction, pending runtime proof:** keep the six-tile geometry/layout stable and modify the 320x240 indexed composite offline: move the existing Mortal Kombat Mythologies/Sub-Zero artwork upward inside the composite and add the new `RANDOMIZER` graphic beneath it. Quantizing the added graphic to the existing 256-color title palette avoids changing palette behavior. Add the character-specific edition line through `0x8001CA88` between the final tile submission and the existing START/OPTIONS draws. A wrapper at the final `0x3CB` submission site is a clean hook candidate because it can reproduce the displaced image draw, render the edition line, return, and then let vanilla START/OPTIONS execute unchanged.
+For offline title reconstruction and re-quantization, interpreting those entries as **BGR555** reproduces the stock emulator appearance closely: dark maroon-black background, icy-blue upper plaque and blue `SUB-ZERO`. The older RGB interpretation is rejected for title-preview work because it produced misleading cyan/green/noisy previews.
 
-Do not yet treat the wrapper as production-ready: current permanent caves are already composed among bootstrap, persistence, selector and inventory systems, so code/string storage must receive an explicit non-conflicting allocation and a guarded disposable title proof before pipeline integration. Repacking or relocating modified file `0x5E` also requires its own guarded allocation/loader proof; static feasibility is not runtime confirmation.
+### File 0x5E packaging
+
+The six tiles live in global file ID `0x5E`. Its clean-ROM table entry points to compressed ROM `0x4E3060..0x51243F` (end-exclusive `0x512440`), flag `1`; the package expands to exactly `0x61494` bytes.
+
+The package uses the game's MSB-first LZW-style stream. A matching encoder/decoder pair is **Static-confirmed** by byte-exact stock recompression: decoding the stock package and re-encoding it yields the original compressed size `0x2F3E0` and round-trips to the same `0x61494` decoded bytes.
+
+The accepted Candidate-B artwork changes only the six title-tile pixel regions. Re-encoding that modified package produces `0x2FD95` bytes, which is `0x9B5` bytes larger than the stock slot. Production therefore cannot overwrite file `0x5E` in place; it needs a guarded relocation.
+
+### Accepted Randomizer title proof
+
+The accepted image direction is the icy-metallic **MORTAL KOMBAT MYTHOLOGIES / RANDOMIZER** Candidate B, converted to the exact native 320x240 CI8 image with the corrected stock BGR555 palette. The user runtime-tested the final art and reported it looks awesome.
+
+The final standalone title proof is:
+
+- `MKMSZR_title-screen_candidate-b_with-edition_proof_v05.z64`
+- SHA-256 `3f98e2d73fc66203a333d2b6a9f0861cc528201804e96349c2dce376f8f189d0`
+- edition text centered at `x=160`, `y=114`
+- displayed string `SUB-ZERO EDITION`
+
+This is **Runtime-confirmed** for the title-screen route shown by the user. The proof's title art and final edition placement are accepted visually.
+
+The proof itself is **not a production allocation**. It used a raw file-`0x5E` relocation overlapping the production payload region and used the bootstrap cave beginning at ROM `0x9AD84`, which production already owns. Those proof locations must not be copied into the browser/CLI pipeline.
+
+### Edition text
+
+Immediately after the six image submissions, vanilla draws `START` at `(160,160)` and `OPTIONS` at `(160,180)` through frontend text renderer `0x8001CA88`. The accepted proof inserts one centered line before those menu calls at `y=114`.
+
+Runtime testing corrected one earlier static assumption: mixed/lowercase text is not reliable with the exact title-font/style configuration copied from START/OPTIONS. The lowercase `Sub-Zero Edition` proof rendered corrupted/missing glyphs. The accepted behavior therefore uses **uppercase only**.
+
+The hyphen byte in `SUB-ZERO` renders more like a colon with this title-font configuration. That presentation quirk is accepted for the current temporary freeform edition field.
+
+### Production integration plan
+
+The non-optional web/CLI integration is gated on one composed runtime proof with the current production pipeline.
+
+The planned guarded layout is:
+
+- compressed Candidate-B file `0x5E` at ROM `0xF90000..0xFBFD94`, flag `1`;
+- title text hook at ROM `0x79C24`, replacing only the stock `START` string-address load pair before the existing START draw;
+- title text wrapper in the unused bootstrap-stub tail beginning at ROM `0x9ADE0` / VA `0x8009A1E0`, ending before the relocated selector mapper at ROM `0x9AEFC`;
+- build-selected uppercase `<NAME> EDITION`, default `SUB-ZERO`, with a conservative temporary name limit.
+
+The clean ROM is all `0xFF` across the planned `0xF90000..0xFBFD94` title allocation, and the current production pipeline has no owner there. The latest runtime-confirmed Sektor takeover resource ends below `0xF90000`; rejected/superseded larger Sektor proofs are not allocation promises.
+
+**Pending:** build and manually validate the title feature composed with the full production pipeline before enabling it in the normal browser/CLI patch list.
 
 ## Pickup presentation descriptors
 
