@@ -18,7 +18,7 @@ The codebase is built around a modular Python patching core. ROMs are never stor
 - deterministically randomize the 84 ordinary pickup records from the run seed;
 - provide four native 10-slot inventory boxes with remapping-aware switching and title-menu transition persistence;
 - show the active inventory box through the native gameplay text path;
-- brand the boot/legal screen for MKMSZR while preserving original Midway/Nintendo attribution;
+- brand the boot/legal screen as MKMSZR with the configured character edition, seeded joke text, `BY SMEAG`, and `NOT LICENSED BY NINTENDO`;
 - choose a deterministic two-line boot joke/quote from a 100+ message pool;
 - deterministic Sub-Zero outfit recoloring, including seed-derived colors.
 
