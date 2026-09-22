@@ -335,3 +335,69 @@ A follow-up trace treated retail table value `0x0244` as ZLIB-SSEQ event 580 and
 Therefore the prior conclusion that `0x0244 -> event 580 -> patch 249 -> waveform 262` is the complete Toasty audio path is **Rejected / superseded**.
 
 The next bounded audit must return to the retail MIPS call sequence around the unique `randper(40)` path and decode the actual `triple_sound` helper ABI/alternate entry semantics instruction-by-instruction before mapping any value into SSEQ/SN64 resources again.
+
+
+### Retail MKT `triple_sound` ABI
+
+**Static-confirmed from retail MKT USA Rev. 2 MIPS disassembly.** This audit corrects the interpretation boundary before any further Toasty sample extraction.
+
+The main executable is loaded with ROM offset equal to low VA offset (ROM `0x1000` is entry VA `0x80001000`). Therefore retail helper VA `0x800054A8` is at ROM `0x54A8`; earlier analysis that applied MKMSZ's `+0xC00` mapping to MKT was incorrect.
+
+The unique `randper(40)` Toasty/comment branch at ROM/VA `0x39BF4 / 0x80039BF4` reaches:
+
+```text
+0x80039C28  addiu a0,zero,0x10
+0x80039C2C  jal   0x800054A8
+0x80039C30  move  a1,zero
+```
+
+Retail `0x800054A8` is the N64 selector wrapper corresponding to the source-level `triple_sound` role. Its observed ABI is:
+
+```text
+a0 = 16-bit selector-table index
+a1 = selector-table bank
+     0     -> primary table at 0x800A1AA8
+     nonzero -> secondary table at 0x800A1C20
+```
+
+The helper computes `entry_ptr = table_base + index*2` and reads a signed 16-bit selector entry.
+
+For primary-table slot `0x10`:
+
+```text
+0x800A1AA8 + 0x10*2 = 0x800A1AC8
+entry = 0x0244
+```
+
+The selector-entry high bit is metadata rather than part of the downstream audio-definition ID:
+
+- bit 15 clear: use fixed pan `0x40` (center);
+- bit 15 set: call `0x8000590C`, which derives a position-dependent pan value from gameplay X position;
+- low 15 bits: downstream audio-definition/event ID.
+
+Thus Toasty's retail selector entry `0x0244` is unflagged and centered.
+
+The wrapper then calls `0x80005590(entry_ptr, pan)`. That helper masks the selected halfword with `0x7FFF` and passes the result to `0x8008AA50`.
+
+For Toasty:
+
+```text
+triple_sound selector 0x10
+  -> primary selector entry 0x0244
+  -> pan 0x40
+  -> audio-definition ID 0x0244 (decimal 580)
+```
+
+`0x8008AA50` does **not** treat `0x0244` as an SN64 patch or waveform number. It obtains the active audio manager through global `0x802AFEEC`, loads the current definition-array base from `manager->+0x0C -> +0x20`, computes:
+
+```text
+definition_ptr = definition_base + (0x0244 * 0x10)
+```
+
+and calls low-level `0x8008A74C(definition_ptr, 0x0244, 0, 0, params)`.
+
+Therefore `0x0244` is **flat runtime audio-definition index 580 into a 16-byte-record array**. The exact ROM resource/bank record backing that runtime definition must be established from the manager/load path before mapping it to SSEQ, SN64 patch, subpatch, or waveform data.
+
+**Rejected / superseded shortcut:** do not equate `0x0244` directly with ZLIB-SSEQ entry 580 solely because both use 16-byte records. That association requires an explicit loader/base trace.
+
+This closes the requested ABI question. No further donor waveform should be extracted until the runtime definition-array base for the Toasty call is tied to its exact loaded ROM resource.
