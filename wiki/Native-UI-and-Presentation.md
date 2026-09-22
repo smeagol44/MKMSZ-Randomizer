@@ -140,9 +140,9 @@ The intended Toasty feature is now split into independently testable presentatio
 
 **Static-confirmed donor behavior:** MKT's `forden_peek` creates the genuine 97x100 `TOASTY` image with its 64-color `TOASTY_P` palette, slides it in from the right for 6 ticks, stops it for `0x20` ticks while playing the Toasty voice, reverses horizontal velocity, slides it out for `0x10` ticks, then deletes it. The donor `randper(40)` gate is 40/1000 = 4%, approximately one qualifying event in 25.
 
-**Static-confirmed audio feasibility:** the retail MKT Toasty voice is a non-looping `0x2A54`-byte N64 ADPCM sample and MKMSZ uses a compatible native sound-bank grammar/playback family. A no-growth in-place sound proof is available through dormant raw sound ID 550. See [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer).
+**Runtime-confirmed audio:** Toasty audio proof v03 reproduces the intended retail voice and the user reported it as perfect. Audio is considered solved for this workstream and must remain untouched while the visual path is isolated. See [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer).
 
-**Pending:** runtime validation of the imported sound, then the remaining textured screen-space/object binding for the 97x100 image. General textured-image rendering is still not claimed as solved until that bounded proof succeeds.
+**Pending:** the remaining textured screen-space/object binding for the Toasty image. General textured-image rendering is still not claimed as solved until that bounded proof succeeds; the already runtime-confirmed audio v03 is not part of these visual diagnostics.
 
 
 ### Toasty visual-only proof v01
@@ -221,3 +221,36 @@ The proof architecture was deliberately visual-only:
 5. `0x80073CEC` being unsuitable from this gameplay HUD context.
 
 Do not repeat v01 unchanged. The next bounded proof should first establish wrapper execution with an already-proven visible diagnostic (native text or simple render-node quad), then isolate texture-slot allocation/load from textured submission one variable at a time. The successful Toasty audio v03 result is unaffected by this visual failure.
+
+
+### Toasty visual diagnostic v02 — wrapper confirmed
+
+Disposable proof:
+- builder: `MKMSZR_build_toasty_visual_v02.py`
+- ROM: `MKMSZR_toasty-visual-marker_common-proof_v02.z64`
+
+**Runtime-confirmed on 2026-09-22.** The user observed the native `V02 WRAPPER OK` marker continuously during normal gameplay, while the Toasty image still never appeared.
+
+v02 changed only the wrapper's displaced HUD-submit call target so it passed through a tiny helper that:
+1. executes the original `0x8001EAE4` submit;
+2. preserves its return value;
+3. draws the diagnostic through runtime-confirmed native text `0x80073E74`;
+4. returns into the otherwise unchanged v01 texture path.
+
+This closes the first v01 ambiguity: the HUD hook/wrapper **does execute** in gameplay. The unresolved visual failure is downstream of wrapper execution, beginning with dynamic texture allocation/state, raw-load/binding, palette compatibility, or `0x80073CEC` context suitability.
+
+The Toasty audio v03 proof remains independently runtime-confirmed and is not modified by these visual diagnostics.
+
+
+### Toasty visual diagnostic v03 — dynamic-slot status
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v03 keeps the complete v02/v01 main wrapper, texture allocator call, file load, palette data, timer logic, and textured submission byte-for-byte unchanged. It changes only the already-proven diagnostic helper so the marker reports:
+
+- `V03 SLOT ACTIVE` when the saved dynamic texture slot is nonnegative and its stock texture-table active halfword at `+0x0E` is `1`;
+- `V03 SLOT FAIL` otherwise.
+
+Because the marker executes before the unchanged allocation code, `FAIL` is expected on the first HUD frame. If `0x8001C2B4(78,85)` successfully creates a persistent active slot, subsequent frames should show `ACTIVE`.
+
+This is the next single-variable diagnostic boundary. If `ACTIVE` appears while Toasty remains absent, allocation/state is exonerated and the next proof should isolate raw file load/binding. If `FAIL` persists, investigate the allocator/slot-table contract before touching loader, palette, or textured submission.
