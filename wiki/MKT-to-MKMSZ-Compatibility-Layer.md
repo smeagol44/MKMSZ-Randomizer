@@ -1730,6 +1730,16 @@ MKMSZ raw sound ID `550` is a particularly clean disposable proof host:
 - target predictor book ROM `0x968F88`;
 - its waveform interval does not overlap any other parsed MKMSZ waveform.
 
-Static liveness checks found raw ID 550 absent from all 564 entries of the native gameplay SFX descriptor table, absent from immediate direct raw-sound calls, absent as an immediate constant in the main executable scan, and absent from all parsed SSEQ instrument-change commands (the stock SSEQ corpus uses instruments only through 156). This supports using raw ID 550 as a disposable proof slot; it is not yet promoted as a permanent production allocation.
+**Rejected / superseded by runtime proof v01.** The original liveness audit for patch/raw ID 550 was incomplete because it checked explicit SSEQ instrument-change commands but not the initial patch ID stored in each SSEQ track header. Stock SSEQ entry 393 starts with patch 550, so patch 550 / subpatch 393 / waveform 383 is live.
 
-The smallest sound-only runtime proof can therefore replace raw ID 550's intermediate/waveform/predictor/sample data with the genuine donor Toasty data and temporarily redirect ordinary pickup SFX descriptor index `0x3B` at ROM `0xA257E` from raw ID `0x020C` to `0x0226`. Collecting an ordinary pickup then tests the imported Toasty audio without adding code, growing the sound bank, or changing runtime allocation.
+The first sound proof also exposed a namespace distinction: changing gameplay descriptor `0x3B` from event ID `0x020C` to `0x0226` selects SSEQ entry 550; it does not directly select patch 550. Entry 550 is a five-track looping/music-style entry using initial patches 37, 38, 39, 41 and 41. Meanwhile the normal pickup event `0x020C` is SSEQ entry 524, whose single track starts on patch 681.
+
+Runtime result: v01 produced a faint recurring, pitch-varying “ghost/howl” controlled by the Music toggle and no clean Toasty pickup voice. This behavior is consistent with the donor waveform having been placed into a live sequenced instrument path rather than the intended one-shot SFX route.
+
+Future audio liveness analysis must include:
+- gameplay event/SSEQ entry references;
+- every SSEQ track-header initial patch ID;
+- in-stream instrument changes;
+- patch -> subpatch -> waveform sharing.
+
+No patch or waveform is considered disposable solely because it is absent from gameplay descriptor tables or in-stream instrument-change commands.
