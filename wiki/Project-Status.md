@@ -18,7 +18,7 @@ Last consolidated: 2026-09-21.
 | Boot branding and seed phrase | Production | Guarded and CI-confirmed; phrase uses a dedicated deterministic namespace |
 | Logo and selector-save bypasses | Production | Runtime-confirmed, legal screen and later/manual saves preserved |
 | Outfit recoloring | Production | Runtime-confirmed palette modes; static TLUT source transform |
-| Browser/CLI shared patch core | Production beta | Shared wheel/CLI core; Pages now runs `python -m compileall -q src/mkmszr` before building/deploying the browser wheel. This gate was added after the 2026-09-22 malformed-title-source packaging regression; corrected deployed wheel import was verified manually. |
+| Browser/CLI shared patch core | Production beta | Shared wheel/CLI core; Pages runs `python -m compileall -q src/mkmszr` before packaging. After the 2026-09-22 malformed-title-source regression and a stale-wheel cache recurrence, each Pages deployment now gets a unique PEP 440 wheel version/URL and a run-number cache-busted `app.js`; the generated unique wheel was manually imported successfully. |
 | Rebranded title screen | Production beta | Candidate-B CI8/BGR555 title art plus configurable uppercase `<NAME> EDITION` are runtime-confirmed through the full current production pipeline. PR #42 merged corrected data-only composition as `cebfe39c92e96590efbf571ee338467e2b7dc368`; browser/CLI install it non-optionally. Temporary name field defaults to `SUB-ZERO`, max 12 characters, uppercase only. |
 
 ## Confirmed proofs, not product features
