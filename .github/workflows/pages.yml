@@ -31,6 +31,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build
+          # Give every Pages deployment a unique PEP 440 version so browsers,
+          # CDNs and micropip cannot reuse an older wheel at the same URL.
+          sed -i "s/version = \"0\\.1\\.0\\.dev0\"/version = \"0.1.0.dev${GITHUB_RUN_NUMBER}\"/" pyproject.toml
+          grep -q "version = \"0.1.0.dev${GITHUB_RUN_NUMBER}\"" pyproject.toml
           python -m build --wheel
 
       - name: Assemble static site
