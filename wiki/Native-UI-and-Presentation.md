@@ -79,15 +79,25 @@ Runtime testing corrected one earlier static assumption: mixed/lowercase text is
 
 The hyphen byte in `SUB-ZERO` renders more like a colon with this title-font configuration. That presentation quirk is accepted for the current temporary freeform edition field.
 
-### Production integration correction
+### Production integration
 
-The Candidate-B image itself and the accepted uppercase edition-line placement remain **Runtime-confirmed** presentation results. The first PR #41 browser/CLI implementation is **Rejected / failed** for composition, not for appearance.
+The Candidate-B image, final visual spacing, and configurable edition-name path are **Runtime-confirmed** on the tested production route.
 
-It placed an edition-text wrapper at ROM `0x9ADE0` / VA `0x8009A1E0`. That address is not free after the current production pipeline has installed pickup persistence: the restore trampoline begins at `0x9ADD8`, the capture helper at `0x9ADE8`, descriptor data at `0x9AEC0`, Fire translation at `0x9AEE8`, and the relocated selector mapper at `0x9AEFC`. The browser correctly failed the wrapper's zero-byte guard and refused to overwrite this owned code/data.
+The accepted production implementation is data-only:
 
-The earlier title-only production-layout proof did not execute the full patch pipeline, so its successful title rendering did not establish composition safety. This supersedes the prior claim that `0x9ADE0` was an unused bootstrap tail.
+- no title executable wrapper;
+- no title-menu code hook; stock ROM `0x79C24..0x79C2B` remains unchanged;
+- uppercase `<NAME> EDITION` is rasterized into the Candidate-B 320x240 CI8 title at patch time;
+- 15 Candidate-B-unused palette indices are reserved for grayscale antialias levels, with guarded stock words before replacement;
+- compressed file `0x5E` is relocated from ROM `0xF90000` within a guarded `0x31000`-byte high-ROM allocation;
+- the temporary browser/CLI field defaults to `SUB-ZERO`, accepts at most 12 name characters, normalizes to uppercase, and supports A-Z, 0-9, spaces and hyphens before appending ` EDITION`.
 
-The high-ROM compressed file-`0x5E` relocation beginning at `0xF90000` is not implicated by this failure. The corrective implementation under validation bakes the configurable uppercase `<NAME> EDITION` line directly into the title's CI8 pixels at patch time, removing the title code hook and executable-cave requirement entirely. The live webapp temporarily omits title branding until that full-pipeline proof is manually validated.
+Runtime evidence:
+
+- `MKMSZR_title-branding_full-pipeline-proof_v02.z64`, SHA-256 `8f86e6f50fcc068c66986681a57b18f9882cf8f1779376222a46b76f10b56382`, default `SUB-ZERO`; file `0x5E` compressed length `0x3017F`, end-exclusive ROM `0xFC017F`. User confirmed title rendering and title -> gameplay transition.
+- `MKMSZR_title-branding_sektor-full-pipeline-proof_v03.z64`, SHA-256 `4401dc0ebfce1eb16e6c0b4eb1178dd2605e79a10c1a280cd7caa6307ca21c65`, non-default `SEKTOR`; file `0x5E` compressed length `0x3014F`, end-exclusive ROM `0xFC014F`. User confirmed the configurable subtitle and normal gameplay startup.
+
+The old PR #41 wrapper at ROM `0x9ADE0` / VA `0x8009A1E0` remains **Rejected / failed** because the production pickup-persistence composition already owns that region. The browser's guard failure was the negative control that exposed the overlap. PR #42 merged the corrected no-cave implementation as `cebfe39c92e96590efbf571ee338467e2b7dc368`.
 
 ## Pickup presentation descriptors
 
