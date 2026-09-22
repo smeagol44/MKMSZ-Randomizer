@@ -321,14 +321,46 @@ v06 differed from the runtime-confirmed v05 baseline by interposing a 0x34-byte 
 Durable conclusion: do not wrap the raw loader and do not expand into that selector-cave tail for this diagnostic.
 
 
-### Toasty visual diagnostic v07 — non-interposed backing check
+### Toasty visual diagnostic v07 — rejected post-load helper
+
+**Runtime-confirmed failure on 2026-09-22; no load conclusion accepted.**
+
+v07 left the stock `0x80065D64` raw-loader call and delay slot unchanged, but added one post-return helper call inside the Toasty wrapper to inspect backing bytes. The user observed the **same failure boundary as v06**: Mission Objective appears, stage music starts, but gameplay never becomes visible.
+
+This exonerates the v06 loader interposition itself as the unique cause. The common new factor is extra helper-call instrumentation around the Toasty HUD wrapper. v07 is therefore rejected as an intrusive load diagnostic; no conclusion about the raw image bytes is accepted.
+
+Do not continue instrumenting the loader from this branch. The raw global-file loader already has independent runtime confirmation elsewhere, and older preserved UI evidence already established a more important renderer boundary.
+
+
+### Renderer correction from preserved UI evidence
+
+**Runtime-confirmed historical evidence, re-integrated 2026-09-22.**
+
+The earlier UI campaign had already established that `0x80073CEC -> 0x8001E578` is a real but context-specific 2D renderer family. Duplicating that family affected startup/title/inventory/PAUSED graphics, but did **not** duplicate the normal gameplay HUD, safe selector, stage-objective screen, or several other UI systems. A direct gameplay invocation of `0x80073CEC` also produced no visible sprite.
+
+Therefore the v01-v05 assumption that `0x80073CEC` could serve as the final Toasty gameplay renderer is **Rejected / superseded**. The useful v02/v05 results still stand for wrapper execution and dynamic allocation, but further Toasty rendering work should use the actual gameplay-HUD queue.
+
+Static re-audit of `0x8005BFB0` shows a native textured HUD path already present there:
+- six HUD resources are decoded through `0x8000322C`;
+- six corresponding texture slots are initialized through `0x8001BF70`, using slots `0x11..0x16`;
+- textured 0x58-byte HUD nodes store the texture slot in halfword `+0x4A` and submit through the already runtime-confirmed `0x8001EAE4` queue.
+
+At the first such submit, VA `0x8005C6E0` / ROM `0x5D2E0`, the stock node carries texture slot `0x12`.
+
+
+### Toasty visual diagnostic v08 — stock textured HUD clone
 
 **Implementation/static-confirmed; runtime pending manual validation.**
 
-v07 returns to the runtime-confirmed v05 allocation/load path and keeps the stock raw-loader JAL `0x80065D64` plus its delay slot byte-for-byte unchanged. It uses no bytes beyond the existing 0x20-byte standalone selector mapper.
+v08 is a fresh renderer-socket proof, not another custom-image attempt. It retains the runtime-confirmed logo-skip + Safe Stage Select harness, but removes the v01-v07 custom texture allocation/load/palette/`0x80073CEC` path entirely.
 
-After the loader returns, the existing Toasty wrapper temporarily calls a 28-byte helper placed entirely in its own previously-unused tail `0x9AEF4..0x9AF0F`. The original timer load is moved into that JAL's delay slot, and the helper recreates the displaced `sltiu t0,s2,150` in its return delay slot, preserving the surrounding cycle semantics.
+At stock textured HUD submit `0x8005C6E0`, v08:
+1. preserves the stock delay slot and submits the original node unchanged;
+2. obtains one fresh 0x58-byte gameplay-HUD node through `0x8002018C`;
+3. copies all 22 words from the already-built stock textured node **inline**, with no helper abstraction;
+4. shifts all four XY pairs by `+160,+80`;
+5. submits the clone through the same `0x8001EAE4` gameplay-HUD queue.
 
-The helper performs no calls and no table writes. It reads only backing halfword `+0x1C` from the allocator-provided destination and checks for the known Toasty value `0x0101`. The marker is stored in the existing proof-state block and displays `V07 L0` / `V07 L1`.
+No custom file ID, raw image load, dynamic texture allocation, palette replacement, native text marker, Toasty audio, RNG, or trigger is present.
 
-If `L1` persists and gameplay/audio remain normal while Toasty stays invisible, the raw file transfer/backing bytes are exonerated and the next boundary is palette/binding or `0x80073CEC` submission/context.
+The only intended runtime question is whether a known stock gameplay-HUD texture can be duplicated visibly at the shifted position. Success would establish the exact textured gameplay socket needed before reconnecting the Toasty asset one variable at a time.
