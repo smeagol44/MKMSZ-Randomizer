@@ -42,6 +42,7 @@ jobs:
           mkdir -p _site
           cp -R web/. _site/
           sed -i "s/v0\.DEV/v0.${GITHUB_RUN_NUMBER}/g" _site/index.html
+          sed -i "s#src=\"./app.js\"#src=\"./app.js?v=${GITHUB_RUN_NUMBER}\"#" _site/index.html
           wheel_path="$(find dist -maxdepth 1 -type f -name 'mkmszr-*.whl' -print -quit)"
           test -n "$wheel_path"
           wheel_name="$(basename "$wheel_path")"
