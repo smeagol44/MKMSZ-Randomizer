@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..data.boot_phrases import BOOT_PHRASE_LINE_LIMIT, select_boot_phrase
+from ..data.boot_phrases import select_boot_phrase
 from ..rom import RomImage
 from .base import PatchContext
 from .title_branding import edition_text
