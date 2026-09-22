@@ -4,6 +4,14 @@
 
 The global file table begins at ROM `0x000A5010` / VA `0x800A4410`. Entries are 12 bytes. Production claims file ID `0x1B` at ROM `0x000A5154` for the MKMSZR native payload, stored at ROM `0x00F10000`. The raw loader at `0x80065D64` is synchronous in the proven bootstrap path.
 
+## Title-menu global resource
+
+Global file ID `0x5E` owns the normal title-screen image package. Clean USA Rev. 0 stores it compressed at ROM `0x4E3060..0x51243F` (end-exclusive `0x512440`), with decoded size `0x61494`.
+
+The accepted MKMSZR Candidate-B title modifies only the six CI8 tile pixel regions and recompresses losslessly to `0x2FD95` bytes. That is `0x9B5` bytes larger than the stock compressed slot, so production needs relocation rather than in-place overwrite. Planned guarded storage after composed runtime validation is ROM `0xF90000..0xFBFD94`, while retaining the stock compressed-resource mode for file ID `0x5E`.
+
+The title palette descriptor is at ROM `0xB3360`; its count word is followed by the actual 256-entry palette at `0xB3364`. Offline reconstruction uses the verified BGR555 interpretation.
+
 ## Main stage resource files
 
 | Stage | ID | File-table entry ROM | Resource ROM range | Size | Verified runtime base | Slots | Pickups |
