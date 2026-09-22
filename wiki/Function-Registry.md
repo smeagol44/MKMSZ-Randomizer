@@ -44,7 +44,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8005BFB0` | Gameplay HUD function | Static/runtime-confirmed | Contains 13 submit calls |
 | `0x800615D8` | Frontend fade/normalization | Static/runtime-confirmed | Preserved after logo bypass with argument `0x80` |
 | `0x8006352C` | Auxiliary trigger-record spawner | Static-confirmed | Hardcodes fighter type `7` |
-| `0x80065D64` | Raw global-file loader | Runtime-confirmed | Used by native bootstrap |
+| `0x80064C18` | Native gameplay SFX wrapper | Static-confirmed | Indexes 10-byte descriptor table at `0x800A1730`; resolves raw sound ID and variation parameters, then calls `0x80080A88` |\n| `0x80080A88` | Raw sound-ID playback entry | Static-confirmed | Selects a 16-byte runtime sound definition by raw ID and dispatches through `0x8007EC4C` |\n| `0x8007EC4C` | Low-level sound-definition/voice allocator | Static-confirmed | Consumes resolved runtime sound definition and allocates/starts native audio voices |\n| `0x80065D64` | Raw global-file loader | Runtime-confirmed | Used by native bootstrap |
 | `0x80066390` | Arena synchronization helper | Implementation-confirmed | Bootstrap call |
 | `0x80071500` | Ordinary-enemy command interpreter | Static-confirmed | Stream pointer from `0x800C11E4` |
 | `0x800719F0` | Enemy spawn-parameter helper | Static-confirmed | Receives spawn index and type |
