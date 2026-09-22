@@ -11,12 +11,17 @@ from mkmszr.patches.boot_branding import (
     BOOT_POINTER_PATCHES,
     BOOT_TEXT_END,
     BOOT_TEXT_ROM,
+    BY_SMEAG_ROM,
+    COPYRIGHT_LINE_ROM,
+    EDITION_LINE_ROM,
     EXPECTED_BOOT_TEXT,
     EXPECTED_LICENSE_TEXT,
     LICENSE_END,
     LICENSE_ROM,
     PHRASE1_ROM,
     PHRASE2_ROM,
+    RANDOMIZER_LINE_ROM,
+    TITLE_LINE_ROM,
     BootBrandingPatch,
 )
 from mkmszr.patches.box_indicator import (
@@ -78,12 +83,18 @@ def test_runtime_confirmed_box_and_boot_presentation_install_together() -> None:
     assert rom.read_u32(HUD_HOOK_ROM) == BOX_HOOK_CALL
     assert rom.data[BOX_REGION_ROM:BOX_REGION_END] == BOX_REGION
 
-    assert _read_c_string(rom.data, 0x000AF9BE) == "RANDOMIZER"
-    assert _read_c_string(rom.data, 0x000AF9C9, 24) == "~1997 MIDWAY GAMES INC."
+    assert _read_c_string(rom.data, TITLE_LINE_ROM, 27) == (
+        "MORTAL KOMBAT^ MYTHOLOGIES"
+    )
+    assert _read_c_string(rom.data, RANDOMIZER_LINE_ROM) == "R A N D O M I Z E R"
+    assert _read_c_string(rom.data, EDITION_LINE_ROM, 21) == "SUB-ZERO EDITION"
+    assert _read_c_string(rom.data, COPYRIGHT_LINE_ROM, 21) == (
+        "~2026 LA PAVADA INC."
+    )
     assert _read_c_string(rom.data, PHRASE1_ROM) == "DO PEOPLE EVEN READ"
     assert _read_c_string(rom.data, PHRASE2_ROM) == "THESE THINGS?"
-    assert _read_c_string(rom.data, 0x000AFA09) == "BY SMEAG"
-    assert _read_c_string(rom.data, LICENSE_ROM, 24) == "LICENSED BY NINTENDO"
+    assert _read_c_string(rom.data, BY_SMEAG_ROM) == "BY SMEAG"
+    assert _read_c_string(rom.data, LICENSE_ROM, 25) == "NOT LICENSED BY NINTENDO"
 
     for offset, _expected, replacement in BOOT_POINTER_PATCHES:
         assert rom.read_u32(offset) == replacement
@@ -101,6 +112,27 @@ def test_seeded_phrase_is_written_into_fixed_slots() -> None:
     assert _read_c_string(rom.data, PHRASE2_ROM) == "BETTER ON PAPER"
 
 
+def test_boot_edition_matches_configured_title_character() -> None:
+    rom = _presentation_base_shape()
+
+    BoxIndicatorPatch().apply(rom, PatchContext())
+    BootBrandingPatch("sektor").apply(rom, PatchContext())
+
+    assert _read_c_string(rom.data, EDITION_LINE_ROM, 21) == "SEKTOR EDITION"
+
+
+def test_boot_edition_worst_case_name_fits_packed_legal_region() -> None:
+    rom = _presentation_base_shape()
+
+    BoxIndicatorPatch().apply(rom, PatchContext())
+    BootBrandingPatch("W" * 12).apply(rom, PatchContext())
+
+    assert _read_c_string(rom.data, EDITION_LINE_ROM, 21) == (
+        "WWWWWWWWWWWW EDITION"
+    )
+    assert rom.data[BOOT_TEXT_END - 2 : BOOT_TEXT_END] == b"\x00\x00"
+
+
 def test_presentation_patches_follow_four_box_inventory() -> None:
     pipeline = build_pipeline(RandomizerConfig())
     assert isinstance(pipeline.patches[4], PickupRandomizationPatch)
@@ -108,5 +140,6 @@ def test_presentation_patches_follow_four_box_inventory() -> None:
     assert isinstance(pipeline.patches[7], SafeStageSelectSkipAutoSavePatch)
     assert isinstance(pipeline.patches[8], BoxIndicatorPatch)
     assert isinstance(pipeline.patches[9], BootBrandingPatch)
+    assert pipeline.patches[9].edition_name == "SUB-ZERO"
     assert isinstance(pipeline.patches[10], BootLogoBypassPatch)
     assert isinstance(pipeline.patches[11], TitleBrandingPatch)
