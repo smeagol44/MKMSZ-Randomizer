@@ -55,3 +55,14 @@ The legacy Lua overlay is the behavioral reference for the information a player 
 The native product currently implements only `BOX n OF 4`. 1.0 requires a native randomizer HUD that exposes equivalent useful run-state information. Exact visual parity with the emulator overlay is not required, but the gameplay information is.
 
 The runtime-confirmed native text path at `0x80073E74` is the preferred basis for text elements. Geometric key-progress icons may use native render nodes only after a bounded proof; a text-first representation is acceptable if it conveys the same state reliably.
+
+
+## Toasty presentation target
+
+The intended Toasty feature is now split into independently testable presentation and audio pieces.
+
+**Static-confirmed donor behavior:** MKT's `forden_peek` creates the genuine 97x100 `TOASTY` image with its 64-color `TOASTY_P` palette, slides it in from the right for 6 ticks, stops it for `0x20` ticks while playing the Toasty voice, reverses horizontal velocity, slides it out for `0x10` ticks, then deletes it. The donor `randper(40)` gate is 40/1000 = 4%, approximately one qualifying event in 25.
+
+**Static-confirmed audio feasibility:** the retail MKT Toasty voice is a non-looping `0x2A54`-byte N64 ADPCM sample and MKMSZ uses a compatible native sound-bank grammar/playback family. A no-growth in-place sound proof is available through dormant raw sound ID 550. See [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer).
+
+**Pending:** runtime validation of the imported sound, then the remaining textured screen-space/object binding for the 97x100 image. General textured-image rendering is still not claimed as solved until that bounded proof succeeds.
