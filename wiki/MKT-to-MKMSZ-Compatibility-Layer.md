@@ -1669,3 +1669,20 @@ v55 runtime separately confirms the corrected attacker Throw presentation and th
 **v56 runtime correction:** the corrected-cursor PS1 frames are still visually invalid: every even Run frame is heavily speckled/checkerboard, while N64 odd frames are clean. Re-rendering PS1 odd frames before N64 conversion reproduces the same bad internal structure. This rejects the current PS1 POVBQ Run interpretation as a production donor path; the issue is upstream of Type-5 packing.
 
 A new clean source is **Static-confirmed**: Midway's preserved MK3 development `ROBO8.IMG` contains raw row-major 8-bit `RBRUN1..RBRUN12` images and a 64-color `ROBO_P` palette. This avoids the unresolved PS1 compressed representation. Because MK3 development frames are larger than N64 MKT frames, direct copying is not accepted; the six odd Run poses shared by both sources must establish the scale/crop/anchor transform before applying it to the six N64-cut even poses.
+
+
+## Combo-record translation rule
+
+The Sektor v61/v62 proof establishes a second concrete compatibility rule beyond the earlier Reverse Elbow strike work:
+
+**Static/runtime-confirmed at the tested combo scope:** MKT and MKMSZ share a compatible normal-combo record grammar, but the high byte of the combo strike/reaction field is still a game-local semantic selector. A donor numeric selector must not be assumed to name the same victim reaction in MKMSZ.
+
+The v61 Sektor graph copied MKT reaction selector `0x02` directly for the long-combo knockback finishers. The input graph and attacker animations ran, and donor `0x05` produced the expected uppercut launch, but the long branch caused catastrophic world/background rendering corruption. v62 changed only the three affected `0x02` selector bytes to MKMSZ-native/proven selector `0x04` while preserving every button, animation, pointer, and input-requirement byte. The user then reported the build working perfectly.
+
+Therefore future combo ports must separate:
+- **portable structure:** record size/layout, option chaining, attacker animation selectors when semantically mapped, button IDs, direction requirements, and timing;
+- **translation-required semantics:** combo strike/reaction selector high byte and any other table-indexed engine semantic.
+
+The correct workflow is to identify the donor reaction meaning, select an MKMSZ-native reaction with equivalent intended gameplay, and validate it in a bounded proof. Numeric equality alone is insufficient.
+
+The `HP,HP,D+LP` Sektor uppercut is a positive tested case: `0x0504` produced the intended upward launch in v61 and was left unchanged in runtime-confirmed v62. This demonstrates that individual selector values can coincide, but compatibility must be established per semantic rather than generalized from one match.
