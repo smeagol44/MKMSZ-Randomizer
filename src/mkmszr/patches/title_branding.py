@@ -10,6 +10,7 @@ build can select an uppercase character name without regenerating the art.
 from __future__ import annotations
 
 import base64
+import base64
 import zlib
 from importlib.resources import files
 
