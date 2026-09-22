@@ -324,3 +324,14 @@ The patch root key is `0x3C`, exactly matching the SSEQ note `0x3C`, so this eve
 Direct SN64 ADPCM decoding yields 6,432 PCM samples, about 0.292 s at the bank's nominal 22.05 kHz rate. The generated WAV SHA-256 is `c2113d64bf843af167af000001ccf22824e042f1c39d4cacd12ba6074941ab04`.
 
 This waveform is the **correct static retail candidate reached by the Toasty event path**. Do not mark its audible identity runtime-confirmed until the extracted WAV is directly listened to and confirmed as Dan Forden's “Toasty!” voice.
+
+
+### Second Toasty donor candidate — rejected
+
+A follow-up trace treated retail table value `0x0244` as ZLIB-SSEQ event 580 and followed its apparent audible note to patch `249` -> intermediate `263` -> waveform `262` at MKT ROM `0xB8E1EE..0xB8F00F`.
+
+**Rejected by direct audio validation.** The extracted/decoded waveform is not a recognizable Toasty voice; the user reported that the candidate effectively produces no audible sound. Although the decoded PCM is not numerically all-zero, it is not a valid Toasty identification.
+
+Therefore the prior conclusion that `0x0244 -> event 580 -> patch 249 -> waveform 262` is the complete Toasty audio path is **Rejected / superseded**.
+
+The next bounded audit must return to the retail MIPS call sequence around the unique `randper(40)` path and decode the actual `triple_sound` helper ABI/alternate entry semantics instruction-by-instruction before mapping any value into SSEQ/SN64 resources again.
