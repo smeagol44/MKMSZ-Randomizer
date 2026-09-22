@@ -356,9 +356,12 @@ class TitleBrandingPatch:
         rom.write_u32(TITLE_HOOK_ROM, jal(TITLE_WRAPPER_VA))
         rom.write_u32(TITLE_HOOK_ROM + 4, 0)
 
+        relocation_note = (
+            f"relocates compressed title file 0x5E to ROM "
+            f"0x{TITLE_RELOCATED_ROM:08X}..0x{TITLE_RELOCATED_END - 1:08X}"
+        )
         return (
             "installs runtime-confirmed Candidate-B RANDOMIZER title art",
             f"draws {edition_text(self.edition_name)} at x={TITLE_TEXT_X}, y={TITLE_TEXT_Y}",
-            f"relocates compressed title file 0x5E to ROM "
-            f"0x{TITLE_RELOCATED_ROM:08X}..0x{TITLE_RELOCATED_END - 1:08X}",
+            relocation_note,
         )
