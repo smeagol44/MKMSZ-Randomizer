@@ -19,7 +19,7 @@ Last consolidated: 2026-09-21.
 | Logo and selector-save bypasses | Production | Runtime-confirmed, legal screen and later/manual saves preserved |
 | Outfit recoloring | Production | Runtime-confirmed palette modes; static TLUT source transform |
 | Browser/CLI shared patch core | Production beta | CI builds/tests; release UX continues to mature |
-| Rebranded title screen | Production beta | Candidate-B CI8/BGR555 MORTAL KOMBAT MYTHOLOGIES / RANDOMIZER art plus native uppercase edition line are runtime-confirmed at the exact production title allocation/hook layout; PR #41 merged as `da9da8d38a2f9b15e59b4f82ee21b0e15e9387e7`. Browser/CLI now install it non-optionally with temporary uppercase freeform title name (default `SUB-ZERO`, max 12) plus ` EDITION`. |
+| Rebranded title screen | Temporarily rolled back; corrected composition pending runtime gate | Candidate-B art and the final standalone title appearance remain Runtime-confirmed. The first browser integration from PR #41 is **Rejected / failed**: the title wrapper at ROM `0x9ADE0` overlaps production pickup-persistence code already written earlier in the pipeline, so the web patcher correctly failed its guard. The live pipeline temporarily omits title branding while a data-only CI8 edition-line composition is validated. |
 
 ## Confirmed proofs, not product features
 
@@ -63,9 +63,13 @@ The 1.0 randomizer is not considered complete with stage-local shuffling alone. 
 
 Open Temple Map work: the legacy Lua global pool included the scripted Map as an 85th check. For 1.0, investigate separating the Map inventory reward from the Temple elevator/exit trigger so the elevator can still be raised correctly even when the Map item itself is shuffled elsewhere. Also prevent the Map item from being removed on the Temple -> Wind transition, which is stock behavior today.
 
-### Title-screen integration
+### Title-screen integration correction
 
-The final title presentation and exact production title layout are **Runtime-confirmed**. The user validated `MKMSZR_title-branding_production-layout-proof_v01.z64` (SHA-256 `47df5a735599c31f4e6deccfd386a736c7b8773d159ad2ca1547f98d55dbef83`) and reported success. It uses compressed file-`0x5E` relocation at ROM `0xF90000..0xFBFD94`, the title hook at `0x79C24`, and the dedicated bootstrap-tail wrapper at `0x9ADE0`. PR #41 then merged the same layout into the shared browser/CLI pipeline as a non-optional feature. The temporary edition-name control uppercases a freeform name, defaults to `SUB-ZERO`, accepts at most 12 characters, and appends ` EDITION`. The title proof validates the new title code/allocation path; it does not by itself exhaust every unrelated randomizer gameplay route.
+The Candidate-B title art, uppercase wording and final visual spacing remain **Runtime-confirmed** from the standalone title proofs. However, the first browser/CLI composition from PR #41 is **Rejected / failed** as a production allocation.
+
+The browser traceback on 2026-09-22 showed the title patch guarding ROM `0x9ADE0` as zero after earlier production patches had already populated it. Static re-audit confirms the permanent cave is packed: restore trampoline begins at `0x9ADD8`, pickup capture helper begins at `0x9ADE8`, descriptor data begins at `0x9AEC0`, Fire translation occupies `0x9AEE8..0x9AEFB`, and the relocated selector mapper begins at `0x9AEFC`. Therefore the title wrapper claim at `0x9ADE0` was wrong.
+
+The earlier `MKMSZR_title-branding_production-layout-proof_v01.z64` validated title rendering and the high-ROM file-`0x5E` relocation only; it did **not** reproduce the full production patch order and therefore did not validate cave composition. The live webapp has been temporarily rolled back to omit title branding while a full-pipeline, data-only title proof is validated.
 
 ## Pending priorities
 
