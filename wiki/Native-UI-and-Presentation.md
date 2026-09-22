@@ -372,16 +372,31 @@ Observed result:
 Because both source and clone inherited the same one-instruction slot change, the coupled visual change runtime-confirms that the node texture binding is live at halfword `+0x4A`. The small stock-HUD damage is an expected side effect of altering the source node before cloning; it is not treated as a new renderer failure.
 
 
-### Toasty visual diagnostic v10 — clone-only stock-slot rebind
+### Toasty visual diagnostic v10 — clone-local texture binding confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+The user observed the shifted equals-sign-like textured clone while the normal top-left HUD returned to its intact appearance. This cleanly separates clone-local texture selection from stock HUD state.
+
+v10 leaves the stock source node on slot `0x12`, clones the full 0x58-byte textured HUD node inline, changes only the clone's halfword `+0x4A` to resident slot `0x13`, shifts it by `+160,+80`, and submits through `0x8001EAE4`.
+
+This runtime-confirms that MKMSZR can rebind the texture of an added gameplay-HUD node independently without altering the source HUD node.
+
+
+### Toasty visual diagnostic v11 — independent extra fixed slot
 
 **Implementation/static-confirmed; runtime pending manual validation.**
 
-v10 returns the stock source node to its original slot `0x12` and keeps the v08 renderer socket/harness. After cloning the full 0x58-byte node inline, it changes only the clone's halfword `+0x4A` to resident slot `0x13`, then applies the same `+160,+80` XY shift and submits through `0x8001EAE4`.
+v11 keeps the runtime-confirmed v10 renderer/clone behavior but introduces one new texture-lifecycle variable: an additional fixed HUD texture slot `0x17`.
 
-No custom Toasty data, dynamic allocation, file-ID load, palette change, `0x80073CEC`, diagnostic text, audio, RNG, or trigger is present.
+Immediately after stock slot `0x13` has been initialized, a 48-byte trampoline in the final unused bytes of the same standalone proof cave:
+1. reads the exact width/height from the already-initialized slot-`0x13` record;
+2. reuses the same decoded source pointer;
+3. calls stock HUD slot initializer `0x8001BF70` once for new slot `0x17`;
+4. reproduces the two displaced stock instructions and resumes normal HUD initialization.
 
-Expected result:
-- the original top-left HUD should return to the intact v08 appearance;
-- the shifted clone should retain the v09 equals-sign-like texture appearance.
+The stock HUD remains on its original slots. The shifted clone now binds only to slot `0x17`.
 
-Success would prove clone-local texture rebinding without perturbing stock HUD state and establish the exact mechanism to use for a later custom Toasty texture slot.
+No custom Toasty pixels, file-ID load, dynamic allocator, palette replacement, `0x80073CEC`, text diagnostic, audio, RNG, or trigger are present.
+
+Expected result: the normal HUD stays intact and the shifted clone still looks like the v10 equals-sign-like fragment. Success would prove that MKMSZR can own an independent gameplay-HUD texture slot before custom Toasty content is introduced.
