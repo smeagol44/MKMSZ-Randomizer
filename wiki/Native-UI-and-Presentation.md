@@ -396,22 +396,33 @@ Static re-audit confirms the renderer consumes the slot's format word, line-widt
 Do not use v11's `0x17` allocation recipe for Toasty.
 
 
-### Toasty visual diagnostic v12 — fixed-slot alias control
+### Toasty visual diagnostic v12 — rejected alias implementation
+
+**Runtime-confirmed failure on 2026-09-22; implementation bug identified statically afterward.**
+
+The normal HUD remained intact, but the shifted clone changed again into a different bright/white fragmented pattern rather than the v10 equals-sign control.
+
+A subsequent instruction-level audit found the v12 helper copied the slot backing pointer from the **wrong table base**. The gameplay renderer at `0x8001F7A8`, fixed-slot initializer `0x8001BF70`, and dynamic allocator `0x8001C2B4` all index the backing-pointer table as:
+
+```text
+lui ...,0x800F
+... index * 4 ...
+lw/sw ...,-0x26C0(...)
+```
+
+which resolves to **`0x800ED940`**, not `0x800FD940`. v12 used a `0x8010` high half and therefore aliased an unrelated address range. Its runtime image is not evidence that slot `0x17` itself is unusable.
+
+The renderer directly consumes the node texture ID at `+0x4A`, record `0x802F83F0 + id*0x10` fields `+0x00` and `+0x08`, and backing pointer `0x800ED940[id]`. This static mapping also shows that the same renderer addressing arithmetic can represent dynamic IDs `0x200..0x2FF`; runtime use through the gameplay queue is still pending.
+
+
+### Toasty visual diagnostic v13 — corrected fixed-slot alias
 
 **Implementation/static-confirmed; runtime pending manual validation.**
 
-v12 returns to the runtime-confirmed v10 composition and still binds only the shifted clone to `0x17`, but it performs **no texture allocation and no pixel copy**.
+v13 is intentionally identical to v12 except for **one instruction immediate** in the alias helper:
+- v12: pointer-table high half `0x8010`;
+- v13: corrected high half `0x800F`.
 
-Immediately after stock slot `0x13` initialization, v12 aliases only the renderer-relevant state:
-- slot-`0x13` format/flags record word at `+0x00` -> slot `0x17`;
-- slot-`0x13` line-width/height record word at `+0x08` -> slot `0x17`;
-- slot-`0x13` status/active record word at `+0x0C` -> slot `0x17`;
-- backing pointer `0x800FD940[0x13]` -> `0x800FD940[0x17]`.
+This changes only one non-header ROM byte relative to v12. Slot `0x17` now receives the exact slot-`0x13` renderer record state plus the correct `0x800ED940[0x13]` backing pointer, while the stock HUD remains untouched.
 
-The two slots therefore reference the **same exact stock texture backing data**. No new heap/backing allocation exists. Stock HUD nodes remain on their original slots.
-
-Expected result:
-- intact normal HUD;
-- shifted clone returns to the v10 equals-sign appearance.
-
-If the blob persists, fixed slot `0x17` itself is being reused/overwritten or otherwise unsafe and should be abandoned. If the equals sign returns, the v11 failure is isolated to its independent backing allocation/lifetime rather than the slot identifier.
+Expected result: the shifted clone should return to the runtime-confirmed v10 equals-sign appearance. If it does, fixed-slot aliasing is valid and the v12 failure is fully explained by the pointer-base bug.
