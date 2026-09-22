@@ -19,7 +19,7 @@ Last consolidated: 2026-09-21.
 | Logo and selector-save bypasses | Production | Runtime-confirmed, legal screen and later/manual saves preserved |
 | Outfit recoloring | Production | Runtime-confirmed palette modes; static TLUT source transform |
 | Browser/CLI shared patch core | Production beta | CI builds/tests; release UX continues to mature |
-| Rebranded title screen | Runtime-confirmed proof; production integration gated | Candidate-B CI8/BGR555 MORTAL KOMBAT MYTHOLOGIES / RANDOMIZER art plus uppercase edition line accepted; standalone v05 SHA-256 `3f98e2d73fc66203a333d2b6a9f0861cc528201804e96349c2dce376f8f189d0`; full production-layout composition still needs one manual runtime pass before browser/CLI enablement |
+| Rebranded title screen | Production beta | Candidate-B CI8/BGR555 MORTAL KOMBAT MYTHOLOGIES / RANDOMIZER art plus native uppercase edition line are runtime-confirmed at the exact production title allocation/hook layout; PR #41 merged as `da9da8d38a2f9b15e59b4f82ee21b0e15e9387e7`. Browser/CLI now install it non-optionally with temporary uppercase freeform title name (default `SUB-ZERO`, max 12) plus ` EDITION`. |
 
 ## Confirmed proofs, not product features
 
@@ -63,9 +63,9 @@ The 1.0 randomizer is not considered complete with stage-local shuffling alone. 
 
 Open Temple Map work: the legacy Lua global pool included the scripted Map as an 85th check. For 1.0, investigate separating the Map inventory reward from the Temple elevator/exit trigger so the elevator can still be raised correctly even when the Map item itself is shuffled elsewhere. Also prevent the Map item from being removed on the Temple -> Wind transition, which is stock behavior today.
 
-### Title-screen integration gate
+### Title-screen integration
 
-The final standalone title presentation is **Runtime-confirmed** and accepted visually: Candidate-B icy title art, native uppercase `SUB-ZERO EDITION`, final edition baseline at y=114. Production integration must not reuse the proof allocations because they overlap current bootstrap/payload ownership. A guarded production composition using compressed file-0x5E relocation and a dedicated bootstrap-tail wrapper is the next bounded validation before the feature becomes non-optional in browser/CLI.
+The final title presentation and exact production title layout are **Runtime-confirmed**. The user validated `MKMSZR_title-branding_production-layout-proof_v01.z64` (SHA-256 `47df5a735599c31f4e6deccfd386a736c7b8773d159ad2ca1547f98d55dbef83`) and reported success. It uses compressed file-`0x5E` relocation at ROM `0xF90000..0xFBFD94`, the title hook at `0x79C24`, and the dedicated bootstrap-tail wrapper at `0x9ADE0`. PR #41 then merged the same layout into the shared browser/CLI pipeline as a non-optional feature. The temporary edition-name control uppercases a freeform name, defaults to `SUB-ZERO`, accepts at most 12 characters, and appends ` EDITION`. The title proof validates the new title code/allocation path; it does not by itself exhaust every unrelated randomizer gameplay route.
 
 ## Pending priorities
 
