@@ -1686,3 +1686,50 @@ Therefore future combo ports must separate:
 The correct workflow is to identify the donor reaction meaning, select an MKMSZ-native reaction with equivalent intended gameplay, and validate it in a bounded proof. Numeric equality alone is insufficient.
 
 The `HP,HP,D+LP` Sektor uppercut is a positive tested case: `0x0504` produced the intended upward launch in v61 and was left unchanged in runtime-confirmed v62. This demonstrates that individual selector values can coincide, but compatibility must be established per semantic rather than generalized from one match.
+
+
+## Toasty audio compatibility audit
+
+**Static-confirmed, proof not yet runtime-tested.** The supplied MKT USA Rev. 2 ROM and clean MKMSZ USA Rev. 0 ROM use the same lower SN64/N64-ADPCM control-bank grammar for their loaded sound definitions, even though MKT stores its control block as raw-DEFLATE-compressed data while MKMSZ stores its main control block uncompressed.
+
+MKMSZ:
+- native gameplay SFX wrapper `0x80064C18`;
+- raw-ID playback entry `0x80080A88`;
+- low-level sound-definition/voice path `0x8007EC4C`;
+- main SN64 control bank ROM `0x947C80`, control data at `0x947CB8`, size `0x2F088`;
+- waveform-data base ROM `0x9B0650`;
+- 683 raw sound IDs, 740 intermediate records, and 598 waveform records.
+
+MKT Rev. 2:
+- main SN64 control bank ROM `0xA8F550`;
+- compressed control payload ROM `0xA8F588`, compressed size `0x17AE0`;
+- raw DEFLATE expands exactly to the header-declared `0x1F720` bytes;
+- waveform-data base ROM `0xAB4370`;
+- 440 raw IDs, 426 intermediate records, and 411 waveform records.
+
+Midway source names Toasty as sound-table event `0x1B` / legacy sound call `0x1095`. Retail MKT's dedicated Toasty/event path resolves that event to raw sound ID `7`. Parsing raw ID 7 through the retail donor bank yields:
+- intermediate record 79;
+- waveform record 49;
+- waveform offset `0x3882A` from the MKT waveform base;
+- donor ROM span `0xAECB9A..0xAEF5ED`;
+- compressed N64 ADPCM length `0x2A54` bytes;
+- no loop;
+- ADPCM predictor book order 2, 8 predictors.
+
+The donor sample decodes to 19,264 PCM samples (about 0.874 s at the bank's 22.05 kHz nominal rate). No audio transcoding is required for an MKMSZ proof: the donor ADPCM stream and predictor book are natively compatible with the target audio library.
+
+### In-place proof slot
+
+MKMSZ raw sound ID `550` is a particularly clean disposable proof host:
+- unique intermediate record 393;
+- unique waveform record 383;
+- existing waveform length exactly `0x2A54`, matching donor Toasty byte-for-byte in capacity;
+- target waveform ROM span `0xB84FEC..0xB87A3F`;
+- target intermediate record ROM `0x94A61C`;
+- target waveform record ROM `0x94E520`;
+- target predictor book ROM `0x968F88`;
+- its waveform interval does not overlap any other parsed MKMSZ waveform.
+
+Static liveness checks found raw ID 550 absent from all 564 entries of the native gameplay SFX descriptor table, absent from immediate direct raw-sound calls, absent as an immediate constant in the main executable scan, and absent from all parsed SSEQ instrument-change commands (the stock SSEQ corpus uses instruments only through 156). This supports using raw ID 550 as a disposable proof slot; it is not yet promoted as a permanent production allocation.
+
+The smallest sound-only runtime proof can therefore replace raw ID 550's intermediate/waveform/predictor/sample data with the genuine donor Toasty data and temporarily redirect ordinary pickup SFX descriptor index `0x3B` at ROM `0xA257E` from raw ID `0x020C` to `0x0226`. Collecting an ordinary pickup then tests the imported Toasty audio without adding code, growing the sound bank, or changing runtime allocation.
