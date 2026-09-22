@@ -9,6 +9,7 @@ build can select an uppercase character name without regenerating the art.
 
 from __future__ import annotations
 
+import base64
 import zlib
 from importlib.resources import files
 
@@ -58,7 +59,7 @@ DEFAULT_EDITION_NAME = "SUB-ZERO"
 EDITION_NAME_MAX_LENGTH = 12
 EDITION_SUFFIX = " EDITION"
 EDITION_ALLOWED = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -")
-CANDIDATE_PIXELS_RESOURCE = "title_candidate_b_ci8.zlib"
+CANDIDATE_PIXELS_RESOURCE = "title_candidate_b_ci8.b64"
 
 TITLE_TILES = (
     (0x3B780, 120, 120, 0, 0),
@@ -94,7 +95,7 @@ def edition_text(value: str | None) -> str:
 
 def _candidate_pixels() -> bytes:
     resource = files("mkmszr.data").joinpath(CANDIDATE_PIXELS_RESOURCE)
-    pixels = zlib.decompress(resource.read_bytes())
+    pixels = zlib.decompress(base64.b64decode(resource.read_bytes(), validate=True))
     if len(pixels) != 320 * 240:
         raise AssertionError("embedded title pixel count drifted")
     return pixels
