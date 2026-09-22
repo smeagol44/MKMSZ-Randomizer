@@ -1,6 +1,6 @@
 # Project status
 
-Last consolidated: 2026-09-21.
+Last consolidated: 2026-09-22.
 
 ## Production pipeline
 
@@ -39,7 +39,7 @@ Latest Sektor storage milestone: v49 (file 0x87 `0x4E544`, no stock-hole reuse) 
 
 ## Latest runtime findings
 
-Toasty visual diagnostic v02 is **Runtime-confirmed**: the native `V02 WRAPPER OK` marker appears continuously during ordinary gameplay, while the Toasty image remains absent. This exonerates the HUD hook/wrapper execution path. Visual diagnostic v03 is **Rejected / intrusive** for allocator attribution: it showed persistent `V03 SLOT FAIL`, but also removed all normal game music/SFX, so its slot result is not accepted as clean evidence that `0x8001C2B4` fails. The next diagnostic must return to the v02-known-good marker/allocation footprint and isolate allocator success more safely. Toasty audio v03 remains independently Runtime-confirmed and is intentionally excluded from further visual diagnosis.
+Toasty visual diagnostic v02 is **Runtime-confirmed**: the native `V02 WRAPPER OK` marker appears continuously during ordinary gameplay, while the Toasty image remains absent. This exonerates the HUD hook/wrapper execution path. Visual diagnostic v03 is **Rejected / intrusive** for allocator attribution because its persistent `SLOT FAIL` coincided with loss of all normal music/SFX. v04 is **Runtime-confirmed** as the fixed convenience baseline: post-legal logos skip, A opens the compact safe selector, and normal music/SFX are restored. v05 is Implementation/static-confirmed and isolates only the saved return from dynamic allocator `0x8001C2B4`, without touching its slot table. Toasty audio v03 remains independently Runtime-confirmed and is intentionally excluded from further visual diagnosis.
 
 The Temple XP proof is confirmed: combat does not award XP; collecting the proof rewards sets XP to `85` and then `258`; the second threshold activates the next tier; nothing is added to inventory; ordinary pickups and progression rewards coexist. The proof model appears pale blue-grey and Herbs-like. The desired final presentation is a bright-blue body with a bronze handle.
 
