@@ -26,6 +26,7 @@ code { color: #dbe2ff; background: #171b25; padding: .08rem .3rem; border-radius
 .field { min-width: 0; }
 label { display: block; margin-bottom: .45rem; font-weight: 650; }
 input[type="file"], input[type="text"], select { width: 100%; min-height: 2.8rem; border: 1px solid #343b4a; border-radius: .65rem; padding: .65rem .75rem; background: #0c0f15; color: #f6f7fa; }
+.uppercase-input { text-transform: uppercase; }
 input[type="file"] { padding: .5rem; }
 input[type="color"] { width: 4.5rem; height: 2.8rem; border: 1px solid #343b4a; border-radius: .65rem; padding: .2rem; background: #0c0f15; }
 .color-field output { margin-left: .7rem; color: #b9c0cf; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
