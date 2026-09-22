@@ -29,9 +29,9 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x000A6BE4` | `0x800A5FE4` | Four-box keys | obsolete default template | Item `0x0D..0x22` stage map |
 | `0x000A6C48..0xA6CEF` | `0x800A6048..0x800A60EF` | Four-box state | guarded stock data | Four boxes, state, `MKBX` |
 | `0x000A6E88` | item-use table | Glass mask | `0x80071F58` | Inert `0x80071F50` |
-| `0x000AF9BE..0xAFA23` | boot strings | Branding | guarded legal text | Product title, phrase, author |
+| `0x000AF998..0xAFA23` | boot strings | Branding | guarded legal text | Product title, spaced RANDOMIZER, configurable `<CHAR> EDITION`, 2026 credit, seeded joke, author |
 | `0x000AFA24..0xAFA97` | `0x800AEE24..` | Box indicator | guarded legal-text region | Wrapper and `BOX 1 OF 4` |
-| `0x000AFA98..0xAFABB` | boot strings | Branding | guarded license text | Preserved Nintendo attribution |
+| `0x000AFA98..0xAFABB` | boot strings | Branding | guarded license text | `NOT LICENSED BY NINTENDO` |
 | `0x0078E16C..` | palette data | Outfit | 64 BGR555 colors | Clothing indices `0x21..0x3F` transformed |
 | `0x0002EDA8` | `0x8002E1A8` | XP progression | `AC24200C` | NOP central XP store |
 | `0x00054CE8` | `0x800540E8` | XP progression | `AC23200C` | NOP direct XP store |
