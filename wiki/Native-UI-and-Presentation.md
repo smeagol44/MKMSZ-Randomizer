@@ -435,7 +435,7 @@ This result is not evidence against slot `0x17` itself.
 
 ### Toasty visual diagnostic v14 — fully corrected fixed-slot alias
 
-**Implementation/static-confirmed; runtime pending manual validation.**
+**Runtime-confirmed on 2026-09-22.**
 
 v14 is intentionally identical to v13 except for the single slot-table high-half instruction:
 - v13 alias metadata page: `0x8030` plus signed negative offsets -> wrong `0x802Fxxxx` page;
@@ -448,4 +448,20 @@ The exact copied records are now:
 
 Relative to v13, v14 changes only one non-header ROM byte. No allocation, pixel copy, new cave, renderer change, audio change, or Toasty asset is introduced.
 
-Expected result: intact normal HUD plus the same shifted equals-sign texture seen in runtime-confirmed v10.
+Observed result: intact normal HUD plus the same shifted equals-sign texture seen in runtime-confirmed v10. This confirms the corrected slot-record base `0x802E83F0` and backing-pointer base `0x800ED940`, and closes the fixed-slot alias control.
+
+
+### Toasty visual diagnostic v15 — first actual Toasty pixels
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v15 deliberately stops the stock-symbol control sequence and reconnects the genuine Toasty CI8 image to the runtime-confirmed gameplay HUD queue.
+
+One-time HUD setup:
+- allocates a native dynamic CI8 slot through `0x8001C2B4(78,85)`; the allocator's 32-pixel alignment produces the required 96-byte row stride;
+- reads the real backing pointer through `0x800ED940[id]`;
+- loads raw file ID `0x1B` into that backing buffer through stock `0x80065D64`.
+
+Per frame, the stock HUD node is submitted unchanged; an MKMSZR-owned clone is created through `0x8002018C`, rebound at node `+0x4A` to the dynamic Toasty slot, expanded to the actual 78x85 source/destination rectangle, and submitted through `0x8001EAE4`.
+
+The genuine v01 Toasty CI8 rows are reused unchanged. The stock HUD palette is intentionally retained in v15, so colors are expected to be incorrect. The bounded runtime question is whether the actual Toasty shape/pixels appear through the correct gameplay renderer. Palette integration is deferred until that succeeds.
