@@ -47,7 +47,7 @@ def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
         XPProgressionPatch(),
         SafeStageSelectSkipAutoSavePatch(),
         BoxIndicatorPatch(),
-        BootBrandingPatch(),
+        BootBrandingPatch(config.edition_name),
         BootLogoBypassPatch(),
         TitleBrandingPatch(config.edition_name),
     ]
