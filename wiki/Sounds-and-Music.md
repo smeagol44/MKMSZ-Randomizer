@@ -202,3 +202,52 @@ The pitch-varying runtime symptom is consistent with the transplanted Toasty ADP
 **Rejected / superseded conclusion:** patch/raw ID `550` is not an unused proof host. Future liveness checks must include both SSEQ track-header initial patch IDs and in-stream instrument changes.
 
 The next bounded sound task is to design a proof around the known stock pickup event `524` / patch `681` without modifying any patch or waveform reachable by unrelated sequenced audio.
+
+
+### Clean Toasty pickup proof v02 design
+
+**Static-confirmed design; runtime pending.** This supersedes the rejected v01 routing/allocation approach.
+
+A complete parse of all 590 stock MKMSZ SSEQ entries / 882 tracks, including both each track header's initial patch ID and every in-stream `0x07` program change, establishes:
+
+- gameplay descriptor `0x3B` is the only descriptor-table entry selecting event/SSEQ entry `0x020C` (524);
+- SSEQ entry 524 has one track and starts on patch `681`;
+- patch `681` is referenced by exactly that one SSEQ track and by no in-stream program change;
+- patch `681` owns only subpatch `524`;
+- subpatch `524` owns stock waveform `133`;
+- waveform `133` has only `0x1EFA` bytes of physical TBL storage, too small for the donor Toasty stream (`0x2A54`), so it must not be expanded into following live waveform allocations.
+
+The corrected liveness audit finds waveform record `533` genuinely unreachable from all stock SSEQ tracks. Its only patch owner is patch `68`, and patch 68 is absent from every initial track patch ID and every in-stream program change. Waveform 533's existing physical TBL allocation is only `0x1750` bytes, so the proof will use its **record and predictor slot only**, not overwrite or extend its original stock sample interval.
+
+Proposed v02 proof layout:
+
+```text
+stock routing kept intact:
+descriptor 0x3B
+  -> event 524
+  -> patch 681
+  -> subpatch 524
+
+proof-only change:
+subpatch 524
+  -> unused waveform record 533
+  -> new Toasty sample at ROM 0xF20000
+```
+
+Exact proof edits:
+
+- leave descriptor `0x3B`, SSEQ entry 524, and patch 681 unchanged;
+- replace isolated subpatch 524 at ROM `0x94B058` with the donor Toasty subpatch semantics, changing only its waveform ID from donor 49 to target waveform `533` (`0x0215`);
+- replace unused waveform record 533 at ROM `0x94F330` with:
+  - start offset `0x0056F9B0` relative to the MKMSZ waveform base `0x9B0650`, resolving to ROM `0xF20000`;
+  - encoded length `0x2A54`;
+  - no loop;
+  - donor pitch/correction field `0`;
+- replace unused predictor book 533 at ROM `0x972A38` with the donor Toasty order-2 / 8-predictor book;
+- copy the exact donor `0x2A54`-byte ADPCM stream to ROM `0xF20000..0xF22A53`.
+
+The clean ROM's global file table has no file claiming `0xF20000`; the highest stock file-table end is `0xEF6B60`, which is also the start of the ROM's trailing `0xFF` region. Thus `0xF20000..0xF22A53` is stock-unclaimed and byte-empty in the supported clean ROM. This is a **disposable proof allocation**, not yet a production allocation promise.
+
+This design deliberately touches no stock waveform sample interval used by any sequenced audio. The old waveform 133 bytes remain stock, and waveform 533's old `0x1750`-byte sample interval also remains untouched; only its unreachable metadata/predictor record is repointed.
+
+Expected runtime test: collecting an ordinary pickup should play the genuine MKT Toasty voice once, while background music remains unchanged. Music should no longer acquire pitched Toasty/ghost notes.
