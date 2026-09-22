@@ -11,7 +11,7 @@ The browser build compiles the Python package to a wheel and serves it with the 
 - Clean USA Rev. 0 big-endian `.z64` only.
 - A new output is produced; the CLI refuses in-place patching and existing-output overwrite.
 - Seed is trimmed; absent seed becomes a random 64-bit hex value.
-- Output reports applied modules, notes, CRC1/CRC2, and SHA-256.
+- CLI output reports applied modules, notes, CRC1/CRC2, and SHA-256. The browser completion panel reports seed, SHA-256, CRC1/CRC2, applied patches, and pickup mode, but intentionally omits the generated boot message and title edition so those remain in-game discoveries.
 - Pickup layout, progression-reward selection, boot phrase, and seeded palette use independent deterministic domains.
 
 ## Current configuration surface
