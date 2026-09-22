@@ -152,7 +152,14 @@ The MKT waveform-data/TBL base is ROM `0xAB4370`. Therefore the genuine encoded 
 
 The length is exactly 1,204 nine-byte N64 ADPCM frames, or 19,264 decoded PCM samples. At the bank's nominal 22.05 kHz rate this is about 0.874 seconds.
 
-This completes the donor-side `0x0244` → CTL/TBL waveform trace. No MKMSZ transplant compatibility is claimed by this section.
+**Rejected / corrected by direct audio validation.** The waveform at ROM `0xAECB9A..0xAEF5ED` decodes cleanly as N64 ADPCM, but the user listened to the extracted WAV and identified it as a **reverse-cymbal effect**, not Dan Forden saying “Toasty!”. Therefore the prior conclusion that retail event value `0x0244` ultimately selects patch 7 / subpatch 79 / waveform 49 for Toasty is wrong.
+
+The useful surviving evidence is:
+- retail Toasty/comment code reaches sound wrapper `0x800054A8` with table index `0x10`;
+- table entry `0x10` at ROM `0xA1AC8` contains `0x0244`;
+- waveform `0xAECB9A..0xAEF5ED` is a valid SN64 ADPCM sample with the documented predictor book, but it is **not Toasty**.
+
+The next bounded task is to re-trace how retail MKT interprets `0x0244` at runtime before any SN64 patch/waveform lookup, rather than assuming the prior patch-7 mapping. No further Toasty import proof should be built until the correct donor waveform is positively identified by decoded-audio validation.
 
 ## Music
 
