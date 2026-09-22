@@ -16,6 +16,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8001C528` | Pickup presentation loader | Static/runtime-confirmed | Called from pickup manager with record `+0x28` presentation pointer + 4; not the `+0x24` resource-selector lookup |
 | `0x800281A0` | Resource-entry resolver/actor setup wrapper | Static-confirmed | Receives pointer to one outer-selector entry, loads its file-relative descriptor offset, adds current stage resource base, then calls `0x80028128` |
 | `0x80028128` | Resource-backed actor constructor helper | Static-confirmed | Consumes direct descriptor pointer produced by `0x800281A0` |
+| `0x8001C2B4` | Dynamic texture/screen-image allocator | Static-confirmed | Searches IDs `0x200..0x2FF`; successful allocation initializes the 16-byte slot record at `0x802F83F0 + id*0x10`, sets active halfword `+0x0E = 1`, records backing pointer in `0x800FD940[id]`, and returns the ID; failure returns `-1` |
 | `0x8001E578` | Context-specific render family | Static-confirmed | Not a universal gameplay-HUD API |
 | `0x8001EAE4` | Render-node submit | Runtime-confirmed | Existing HUD call displaced by box wrapper |
 | `0x8002018C` | Render-node allocator | Runtime-confirmed | Allocates `0x58`-byte node |
