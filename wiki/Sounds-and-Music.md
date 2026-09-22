@@ -592,3 +592,126 @@ definition 580
 **Key conclusion:** patch **249** is retail-code-confirmed as the exact SN64 patch selected by definition 580's note-on event. This is not inferred from generic tooling.
 
 The user's prior audition still rejects the standalone waveform-262 WAV as a valid audible Toasty reconstruction. Since retail execution really does select patch 249/subpatch 263/waveform 262, the remaining discrepancy is downstream: the standalone extraction/decoding/playback reconstruction is missing some retail runtime behavior (for example waveform pitch/correction, envelope or another voice-start transform), rather than selecting the wrong program before note-on.
+
+
+### Retail Toasty voice-start transform
+
+**Static-confirmed from retail MKT USA Rev. 2 MIPS disassembly; audible identity still pending a pitch-corrected listening check.**
+
+The note-on path for definition 580 reaches:
+
+```text
+0x80092D68  note-on handler
+  -> 0x80092B2C  voice-slot allocator / arbiter
+  -> 0x80092674  voice-record initializer
+  -> 0x800913A4  pitch / volume / envelope parameter builder
+  -> 0x80097010  synth voice-start API
+```
+
+`0x80092B2C` is therefore not itself the pitch calculator. It selects/reuses a voice slot and delegates initialization.
+
+#### Waveform correction relocation during SN64 bank initialization
+
+A critical runtime conversion occurs in the SN64 waveform-record initialization loop around `0x800918C8`:
+
+```text
+0x800918C8  lw   t6,0x0C(a1)
+0x800918D0  sw   t6,0x14(a1)
+```
+
+The loader copies the on-disk waveform field at `+0x0C` to runtime field `+0x14`, then repurposes the runtime `+0x0C` slot for a live ADPCM wave-info pointer.
+
+For waveform 262, the original 24-byte disk record is:
+
+```text
+000D9E7E 00000E22 00000000 FFFFF733 FFFFFFFF 00000000
+```
+
+Thus the preserved runtime correction is:
+
+```text
+0xFFFFF733 = -2253 cents
+```
+
+The earlier standalone WAV reconstruction ignored this field and decoded the ADPCM stream directly at 22.05 kHz.
+
+#### Retail pitch calculation
+
+`0x800913A4` builds the pitch value in cents from the live voice, subpatch and waveform metadata. Its effective formula for this path is:
+
+```text
+pitch_cents =
+    waveform_correction
+  + pitch_bend_offset
+  + 100 * (note - root_key)
+  - detune
+```
+
+It then calls `0x80091340`, whose constants and loop implement the cents-to-ratio conversion:
+
+```text
+pitch_ratio = 2^(pitch_cents / 1200)
+```
+
+For the Toasty event:
+
+- note = `0x3C`;
+- root key = `0x3C`;
+- detune = 0;
+- subpatch pitch-wheel range bytes are both 0, so the pitch-bend contribution is 0;
+- waveform correction = `-2253` cents.
+
+Therefore:
+
+```text
+pitch_cents = -2253
+pitch_ratio = 2^(-2253/1200)
+            ~= 0.272154916
+```
+
+At the bank's nominal 22.05 kHz rate, the ADPCM stream is therefore consumed at an effective rate of approximately:
+
+```text
+22050 * 0.272154916 ~= 6001 samples/sec
+```
+
+Waveform 262 decodes to 6,432 PCM samples, so retail-speed playback lasts approximately:
+
+```text
+6432 / 6001 ~= 1.072 seconds
+```
+
+This is radically different from the rejected naive standalone reconstruction, which wrote the same 6,432 samples at 22.05 kHz and therefore lasted only about 0.292 seconds.
+
+#### Envelope and voice-start parameters
+
+Subpatch 263 contains:
+
+```text
+64 7F 40 00 3C 00 00 7F 00 00 01 06 00 02 7D 00 00 0A 7F 7F
+```
+
+The retail voice-start path converts the `+0x0C` attack value using exact integer arithmetic equivalent to multiplying by 1000 before passing it to the synth start call. For Toasty:
+
+```text
+attack = 2 -> 2000 microseconds = 2 ms
+```
+
+The note-off/release path at `0x800928FC` similarly converts the subpatch `+0x10` value:
+
+```text
+release/decay = 10 -> 10000 microseconds = 10 ms
+```
+
+and schedules a volume ramp to zero.
+
+Definition 580's track explicitly sets:
+
+- track volume `0x67` = 103;
+- track pan `0x40` = center.
+
+Subpatch 263 also has centered pan `0x40`, full-range note velocity/volume bytes `0x7F`, and the note-on itself uses velocity `0x7F`. The retail start path combines these values and passes the resulting volume/pan with the calculated pitch ratio and waveform pointer to `0x80097010`.
+
+The argument layout and behavior of `0x80097010` match the standard N64 `alSynStartVoiceParams` / `n_alSynStartVoiceParams` role: wavetable, floating-point pitch ratio, volume, pan, effects mix, and attack time are queued to the synth/mixer. External libultra source is used only to name/corroborate the API semantics; the MKT-specific values above come from retail disassembly.
+
+**Consequence:** the user's rejection of the prior waveform-262 WAV does not contradict the retail selection trace. That WAV omitted the required `-2253`-cent runtime correction and played the stream about 3.67× too fast. The next bounded validation is to generate a pitch-corrected waveform-262 WAV using the retail ratio `0.272154916` and have it auditioned before any further MKMSZ proof is built.
