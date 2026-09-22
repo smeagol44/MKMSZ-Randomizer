@@ -14,3 +14,4 @@ class OutfitConfig:
 class RandomizerConfig:
     seed: str | None = None
     outfit: OutfitConfig = field(default_factory=OutfitConfig)
+    edition_name: str = "SUB-ZERO"

@@ -22,6 +22,7 @@ from .runtime_v1 import (
     runtime_v1_fire_patches,
 )
 from .stage_selector import SafeStageSelectorPatch
+from .title_branding import TitleBrandingPatch
 from .xp_progression import XPProgressionPatch
 
 __all__ = [
@@ -40,6 +41,7 @@ __all__ = [
     "SafeStageSelectSkipAutoSavePatch",
     "SafeStageSelectorPatch",
     "SubZeroPalettePatch",
+    "TitleBrandingPatch",
     "XPProgressionPatch",
     "manager_persistence_fire_patches",
     "pickup_persistence_patches",

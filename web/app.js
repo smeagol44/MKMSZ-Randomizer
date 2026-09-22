@@ -1,6 +1,7 @@
 const runtimeStatus = document.querySelector("#runtimeStatus");
 const romFile = document.querySelector("#romFile");
 const outfitMode = document.querySelector("#outfitMode");
+const editionName = document.querySelector("#editionName");
 const seed = document.querySelector("#seed");
 const seedField = document.querySelector("#seedField");
 const colorField = document.querySelector("#colorField");
@@ -14,6 +15,7 @@ const outputCrc = document.querySelector("#outputCrc");
 const patchList = document.querySelector("#patchList");
 const pickupMode = document.querySelector("#pickupMode");
 const bootPhrase = document.querySelector("#bootPhrase");
+const titleEdition = document.querySelector("#titleEdition");
 const downloadButton = document.querySelector("#downloadButton");
 const log = document.querySelector("#log");
 
@@ -29,6 +31,11 @@ function setLog(message, error = false) {
 function updateModeUi() {
   colorField.hidden = outfitMode.value !== "rgb";
   seedField.style.opacity = "1";
+}
+
+function normalizeEditionName(value) {
+  const upper = value.toUpperCase().replace(/[^A-Z0-9 -]/g, "").slice(0, 12);
+  return upper;
 }
 
 function generateSeed() {
@@ -91,6 +98,10 @@ async function patchRom() {
   }
 
   const mode = outfitMode.value;
+  let editionValue = normalizeEditionName(editionName.value).trim().replace(/\s+/g, " ");
+  if (!editionValue) editionValue = "SUB-ZERO";
+  editionName.value = editionValue;
+
   let seedValue = seed.value.trim();
   if (!seedValue) {
     seedValue = generateSeed();
@@ -110,6 +121,7 @@ async function patchRom() {
     pyodide.globals.set("web_outfit_mode", mode);
     pyodide.globals.set("web_seed", seedValue);
     pyodide.globals.set("web_rgb", customColor.value);
+    pyodide.globals.set("web_edition_name", editionValue);
 
     setLog("Validating clean ROM and applying patches…");
 
@@ -125,9 +137,11 @@ _rgb_hex = str(web_rgb).lstrip("#")
 _rgb = tuple(int(_rgb_hex[i:i+2], 16) for i in (0, 2, 4))
 _boot_phrase = select_boot_phrase(_seed)
 
+_edition_name = str(web_edition_name)
 _config = RandomizerConfig(
     seed=_seed,
     outfit=OutfitConfig(mode=_mode, rgb=_rgb if _mode == "rgb" else None),
+    edition_name=_edition_name,
 )
 _result = patch_file(Path("/tmp/input.z64"), Path("/tmp/output.z64"), _config)
 web_patch_result = {
@@ -144,6 +158,7 @@ web_patch_result = {
         else "Off"
     ),
     "boot_phrase": " / ".join(part for part in _boot_phrase if part),
+    "title_edition": f"{_edition_name} EDITION",
 }
 `);
 
@@ -160,6 +175,7 @@ web_patch_result = {
     patchList.textContent = metadata.patches.length ? metadata.patches.join(", ") : "CRC refresh only";
     pickupMode.textContent = metadata.pickup_mode;
     bootPhrase.textContent = metadata.boot_phrase;
+    titleEdition.textContent = metadata.title_edition;
 
     resultPanel.hidden = false;
     setLog(`Success. Patched ${(outputBytes.byteLength / 1024 / 1024).toFixed(1)} MiB locally; no ROM data was uploaded.`);
@@ -188,6 +204,10 @@ function downloadOutput() {
 
 outfitMode.addEventListener("change", updateModeUi);
 customColor.addEventListener("input", () => { colorValue.value = customColor.value.toUpperCase(); });
+editionName.addEventListener("input", () => {
+  const normalized = normalizeEditionName(editionName.value);
+  if (editionName.value !== normalized) editionName.value = normalized;
+});
 patchButton.addEventListener("click", patchRom);
 downloadButton.addEventListener("click", downloadOutput);
 

@@ -18,6 +18,7 @@ from .patches import (
     SafeStageSelectorPatch,
     SafeStageSelectSkipAutoSavePatch,
     SubZeroPalettePatch,
+    TitleBrandingPatch,
     XPProgressionPatch,
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
@@ -48,6 +49,7 @@ def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
         BoxIndicatorPatch(),
         BootBrandingPatch(),
         BootLogoBypassPatch(),
+        TitleBrandingPatch(config.edition_name),
     ]
     if config.outfit.mode.lower() != "vanilla":
         patches.append(
