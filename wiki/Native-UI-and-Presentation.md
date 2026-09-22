@@ -143,3 +143,51 @@ The intended Toasty feature is now split into independently testable presentatio
 **Static-confirmed audio feasibility:** the retail MKT Toasty voice is a non-looping `0x2A54`-byte N64 ADPCM sample and MKMSZ uses a compatible native sound-bank grammar/playback family. A no-growth in-place sound proof is available through dormant raw sound ID 550. See [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer).
 
 **Pending:** runtime validation of the imported sound, then the remaining textured screen-space/object binding for the 97x100 image. General textured-image rendering is still not claimed as solved until that bounded proof succeeds.
+
+
+### Toasty visual-only proof v01
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+Disposable proof files:
+
+- `MKMSZR_toasty-visual_common-proof_v01.z64`
+- builder `MKMSZR_build_toasty_visual_v01.py`
+- ROM SHA-256 `e248994470d1b05d275337fa0139ecdaa6af8c89be4968b8d7af0211dc8486f6`
+- CRC1/CRC2 `92C82DEF / 82B2C418`
+
+This proof isolates only the unresolved textured gameplay-presentation question. It contains **no Toasty audio, no uppercut/contact hook, and no RNG**.
+
+The genuine decoded retail MKT Toasty art is remapped losslessly into a target-native CI8/BGR555 asset. The visible image is 78x85 pixels; the runtime texture allocation aligns the row stride to 96 pixels, for an 0x1FE0-byte indexed image. Transparent pixels and row padding use palette index zero.
+
+The proof uses MKMSZ's native dynamic texture infrastructure rather than direct framebuffer drawing:
+
+```text
+HUD hook
+  -> preserve displaced 0x8001EAE4 submission
+  -> 0x8001C2B4(78,85) dynamic texture allocation
+  -> file ID 0x1B raw-load into the texture backing store
+  -> 0x80073CEC(custom palette, dynamic slot, x, y, flags=0)
+```
+
+The wrapper validates that its saved dynamic texture slot is still active and reallocates/reloads the image if the texture table has been reset.
+
+Proof-only allocations:
+
+- HUD hook ROM `0x5D9CC`;
+- wrapper/code ROM `0x9AD84..0x9AEF3`;
+- proof state ROM `0x9AF10..0x9AF1F`;
+- custom 256-entry palette descriptor ROM `0xA1308..0xA150B`;
+- clean/free file ID `0x1B` points to raw image ROM `0xF30000..0xF31FDF`.
+
+These locations are **not production allocations**. In particular, the final feature must compose with the existing MKMSZR runtime/HUD ownership rather than copying this standalone cave layout.
+
+The deterministic visual cycle intentionally avoids combat-trigger variables:
+
+- slide in for 6 HUD frames from the right edge toward x=242;
+- hold at x=242 for 32 frames;
+- slide out to the right for 16 frames;
+- repeat every 150 HUD frames;
+- y=145.
+
+The proof's only intended runtime question is whether the genuine Toasty CI8 image renders with correct palette/transparency and stable slide/lifetime behavior during normal gameplay. If successful, the next bounded composition can combine the already runtime-confirmed Toasty audio with this visual path before introducing the final uppercut-contact / cosmetic-RNG trigger.
