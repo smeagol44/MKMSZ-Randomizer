@@ -104,15 +104,28 @@ Midway's preserved MKT/MK3 source identifies the Toasty voice through donor soun
 
 This is **donor-side static evidence only**. Numeric sound IDs are game-local unless compatibility is demonstrated. The project must not assume that donor `0x1095` can be passed directly to MKMSZ, just as donor strike/reaction indices cannot be assumed to retain their numeric meaning across games.
 
+Retail N64 tracing supersedes the old source-level numeric identifier for implementation purposes.
+
+**Static-confirmed in the supplied MKT USA Rev. 2 ROM:** the retail probability helper is at `0x8006E50C`. There is exactly one `randper(40)` call in the executable, at ROM `0x00039BF4`; this matches the preserved source Toasty/comment branch, which also uses `40/1000`.
+
+On the successful branch, the retail routine reaches MKT's native sound-table wrapper at `0x800054A8` with:
+
+```text
+a0 = 0x10
+a1 = 0
+```
+
+Therefore the **retail MKT Toasty sound-table index is `0x10`**, not source identifier `0x1095`.
+
+For `a1 = 0`, `0x800054A8` indexes the 16-bit table at `0x800A1AA8`. Entry `0x10` is at ROM `0x000A1AC8` and contains `0x0244`, which is the raw retail sound ID handed onward by the MKT audio path.
+
 The next bounded Toasty-audio task is therefore:
 
-1. locate the retail MKT N64 sample/bank data behind donor identifier `0x1095`;
-2. determine the MKT N64 sound-definition and sample-storage grammar used by that entry;
-3. compare it with MKMSZ's `0x80080A88 -> 0x8007EC4C` runtime definition path;
-4. decide whether the voice can be copied directly, repacked into an MKMSZ-native definition/bank, or requires sample conversion;
-5. identify conflict-free ROM/RAM ownership for a disposable proof.
+1. trace retail MKT raw sound ID `0x0244` into its runtime definition and CTL/TBL waveform metadata;
+2. locate the encoded Toasty waveform bytes;
+3. stop before any MKMSZ transplant comparison unless explicitly requested.
 
-No direct-import compatibility is claimed until that comparison is complete.
+No direct-import compatibility is claimed yet.
 
 ## Music
 
