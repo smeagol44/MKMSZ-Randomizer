@@ -401,3 +401,111 @@ Therefore `0x0244` is **flat runtime audio-definition index 580 into a 16-byte-r
 **Rejected / superseded shortcut:** do not equate `0x0244` directly with ZLIB-SSEQ entry 580 solely because both use 16-byte records. That association requires an explicit loader/base trace.
 
 This closes the requested ABI question. No further donor waveform should be extracted until the runtime definition-array base for the Toasty call is tied to its exact loaded ROM resource.
+
+
+### Runtime definition-array ownership
+
+**Static-confirmed from retail MKT USA Rev. 2 loader disassembly.** This closes the ownership gap left by the `triple_sound` ABI audit.
+
+The active definition table used by `0x8008AA50` is not part of the SN64 patch/waveform table itself. It is the decompressed **ZLIB-SSEQ definition table** loaded from ROM resource `0xAA7070`.
+
+#### Startup ownership chain
+
+The retail audio startup caller at `0x80082D94` first initializes the SN64 sample/control bank:
+
+```text
+0x80082DA8  a0 = 0x00A8F550
+0x80082DAC  jal 0x80089B50
+```
+
+It then explicitly initializes the sequence/event resource:
+
+```text
+0x80082DF0  a1 = 0x00AA7070
+0x80082DF8  jal 0x80093550
+```
+
+`0x80093550` reads the 0x20-byte SSEQ header from ROM `0xAA7070`. The header reports:
+
+- magic: `SSEQ`;
+- version/game ID: `2`;
+- entry count: `0x273` = 627;
+- compression flag/type byte at header `+0x10`: nonzero;
+- compressed definition-table size: `0x7A6`;
+- decompressed definition-table size: `0x2730`.
+
+The caller allocates exactly the returned `0x2730` bytes, obtains the active audio-manager pointer through `0x80089854`, and calls:
+
+```text
+0x80093614(manager, 0x00AA7070, 0, allocated_buffer, 0x2730)
+```
+
+Inside `0x80093614`, the decisive write is:
+
+```text
+0x800936E8  lw   t2,0x0C(t1)     ; manager->+0x0C
+0x800936F0  sw   t9,0x20(t2)     ; manager->+0x0C->+0x20 = allocated_buffer
+```
+
+That is the exact same pointer chain later consumed by `0x8008AA50`:
+
+```text
+0x8008AA68  lw   t7,0x0C(t6)
+0x8008AA70  lw   t8,0x20(t7)
+0x8008AA78  sll  t9,a0,4
+0x8008AA8C  addu a0,t8,t9
+```
+
+Therefore the runtime definition base used for `audio-definition ID * 16` is the heap buffer installed by the SSEQ loader.
+
+#### Exact ROM resource and definition 0x0244
+
+The SSEQ resource layout is:
+
+```text
+ROM 0xAA7070..0xAA708F   0x20-byte SSEQ header
+ROM 0xAA7090..0xAA7835   0x7A6-byte raw-DEFLATE definition table
+ROM 0xAA7836..           per-entry track streams
+```
+
+The compressed table at `0xAA7090` raw-DEFLATE-decompresses to exactly `0x2730` bytes, SHA-256:
+
+`6cdfcf946ba78f492aa731ee542aeca6faf34d9c61d51871565f23f87e59ef7e`
+
+There are 627 16-byte records. Audio-definition ID `0x0244` is decimal 580, so its record begins at decompressed-table offset:
+
+```text
+580 * 0x10 = 0x2440
+```
+
+Definition 580 is:
+
+```text
+00010100 00000030 00004E94 00000000
+```
+
+Interpreted with the retail SSEQ definition layout already used by the loader:
+
+- `+0x00`: one track;
+- `+0x04`: track-data length `0x30`;
+- `+0x08`: track-data offset `0x4E94` from the start of the track-data area;
+- `+0x0C`: runtime pointer/cache field, initially zero.
+
+The track-data area begins immediately after the compressed table at ROM `0xAA7836`, so definition 580 resolves to:
+
+```text
+0xAA7836 + 0x4E94 = 0xAAC6CA
+```
+
+Thus the exact ROM resource supplying `triple_sound` selector slot `0x10`'s downstream definition `0x0244` is:
+
+```text
+MKT ZLIB-SSEQ resource at ROM 0xAA7070
+  -> decompressed definition table
+  -> record 580 at raw offset 0x2440
+  -> track stream at ROM 0xAAC6CA, length 0x30
+```
+
+This now **confirms** the association `0x0244 -> SSEQ definition 580` through the actual retail loader and runtime pointer installation. The previously rejected shortcut was the unsupported leap from numeric equality alone; the relationship itself is now established by loader evidence.
+
+This does **not** rehabilitate the rejected waveform-262 Toasty candidate. The remaining error must be downstream in interpretation of SSEQ entry 580's track/program/patch behavior or later SN64 selection semantics.
