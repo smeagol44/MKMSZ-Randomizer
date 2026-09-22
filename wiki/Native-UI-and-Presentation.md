@@ -310,18 +310,25 @@ The user observed persistent `V05 ALLOC 1` during ordinary gameplay; the marker 
 This runtime-confirms that the dynamic allocator path is succeeding on the tested HUD route and returning an ID in the expected `0x200..0x2FF` range. Dynamic allocation itself is therefore exonerated for this failure. The remaining chain begins with the raw file load/backing-store contents, followed by palette/binding and `0x80073CEC` submission/context suitability.
 
 
-### Toasty visual diagnostic v06 — raw load/backing verification
+### Toasty visual diagnostic v06 — rejected loader-wrapper diagnostic
+
+**Runtime-confirmed failure on 2026-09-22; no load conclusion accepted.**
+
+The user observed that Temple reached the Mission Objective screen and stage music started, but gameplay never appeared. Therefore v06 is rejected as an intrusive diagnostic and its load marker cannot be used as evidence.
+
+v06 differed from the runtime-confirmed v05 baseline by interposing a 0x34-byte helper around `0x80065D64` and occupying the previously-unused tail `0x9A720..0x9A753` of the standalone selector cave. Even though that tail is zero in the clean ROM, the resulting runtime composition is not safe on this stage-entry route.
+
+Durable conclusion: do not wrap the raw loader and do not expand into that selector-cave tail for this diagnostic.
+
+
+### Toasty visual diagnostic v07 — non-interposed backing check
 
 **Implementation/static-confirmed; runtime pending manual validation.**
 
-v06 retains the runtime-confirmed v04 test harness and the v05 allocator/render behavior. The only texture-path change is that the existing JAL to raw global-file loader `0x80065D64` is routed through a 0x34-byte wrapper in the unused tail of the already-established standalone selector cave `0x9A720..0x9A753`.
+v07 returns to the runtime-confirmed v05 allocation/load path and keeps the stock raw-loader JAL `0x80065D64` plus its delay slot byte-for-byte unchanged. It uses no bytes beyond the existing 0x20-byte standalone selector mapper.
 
-The wrapper:
-1. calls the exact stock `0x80065D64` with the original file ID and destination;
-2. preserves the loader's return value;
-3. after the synchronous raw transfer returns, compares backing-buffer word `+0x1C` against the known Toasty bytes `01 01 01 02`;
-4. writes only a reserved diagnostic flag at proof state `+8`.
+After the loader returns, the existing Toasty wrapper temporarily calls a 28-byte helper placed entirely in its own previously-unused tail `0x9AEF4..0x9AF0F`. The original timer load is moved into that JAL's delay slot, and the helper recreates the displaced `sltiu t0,s2,150` in its return delay slot, preserving the surrounding cycle semantics.
 
-The native marker reports `V06 LOAD 1` when that exact word matches and `V06 LOAD 0` otherwise. The image bytes, file-table entry, palette, allocator parameters, timing cycle, and `0x80073CEC` call remain unchanged.
+The helper performs no calls and no table writes. It reads only backing halfword `+0x1C` from the allocator-provided destination and checks for the known Toasty value `0x0101`. The marker is stored in the existing proof-state block and displays `V07 L0` / `V07 L1`.
 
-If `LOAD 1` persists while Toasty remains absent, the raw file registration/transfer and backing data are exonerated, leaving palette/binding or textured submission/context as the next boundary.
+If `L1` persists and gameplay/audio remain normal while Toasty stays invisible, the raw file transfer/backing bytes are exonerated and the next boundary is palette/binding or `0x80073CEC` submission/context.
