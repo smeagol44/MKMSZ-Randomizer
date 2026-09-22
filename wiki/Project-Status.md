@@ -74,7 +74,7 @@ Two bounded manual proofs passed:
 
 The corrective production design is data-only: the patcher rasterizes uppercase `<NAME> EDITION` directly into the Candidate-B CI8 title image, updates only reserved title-palette entries, recompresses file `0x5E`, and relocates it from ROM `0xF90000` inside a guarded `0x31000`-byte high-ROM allocation. It leaves stock title code at `0x79C24` untouched and does not claim executable cave space.
 
-The first PR #41 wrapper allocation at `0x9ADE0` remains **Rejected / failed** because it overlaps permanent pickup-persistence ownership. PR #42 merged the corrected implementation as `cebfe39c92e96590efbf571ee338467e2b7dc368`.
+The first PR #41 wrapper allocation at `0x9ADE0` remains **Rejected / failed** because it overlaps permanent pickup-persistence ownership. PR #42 merged the corrected implementation as `cebfe39c92e96590efbf571ee338467e2b7dc368`. The public browser field was restored only after the runtime-confirmed `SEKTOR` configurability proof.
 
 ## Pending priorities
 
