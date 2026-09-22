@@ -13,8 +13,8 @@ This page owns MKMSZR research on the N64 game's sound-effect and music systems.
 | Ordinary-pickup SFX example | **Static-confirmed** | stock pickup callbacks use descriptor index `0x3B`, resolving to raw sound ID `0x020C` |
 | Music engine / sequence format | **Pending** | not yet mapped |
 | ROM sound-bank/sample format | **Pending** | not yet decoded |
-| Importing an MKT sound into MKMSZ | **Pending** | no compatibility claim yet |
-| Runtime custom-sound proof | **Pending** | no MKMSZR-authored sound call has yet been runtime-tested |
+| Importing an MKT sound into MKMSZ | **Runtime-confirmed proof** | v03 plays the audibly confirmed MKT Toasty voice correctly through MKMSZ's native audio engine |
+| Runtime custom-sound proof | **Runtime-confirmed proof** | Toasty sound-only v03 plays once correctly on the tested ordinary-pickup route |
 
 ## Native gameplay SFX path
 
@@ -826,3 +826,28 @@ This supersedes the rejected candidates:
 - `Fight!` waveform 262 reached from retail selector slot `0x10`.
 
 **Implementation consequence:** future MKMSZR Toasty sound proofs should use only the confirmed slot-`0x1B` / event-`0x0160` / patch-65 / subpatch-111 / waveform-77 voice. Frosty and Crispy are not required for the current feature.
+
+
+### Toasty sound proof v03 — runtime confirmed
+
+Disposable proof: `MKMSZR_toasty-sound_common-proof_v03.z64`.
+
+**Runtime-confirmed on 2026-09-22.** The user reported that the proof worked perfectly: collecting the tested ordinary pickup produced the correct audibly confirmed MKT Dan Forden “Toasty!” voice.
+
+The proof keeps MKMSZ's stock pickup event/SSEQ route and isolated patch ownership, but replaces the proof-only subpatch/waveform host with the confirmed donor Toasty data:
+
+```text
+MKT source selector 0x1B
+  -> retail event 0x0160
+  -> patch 65
+  -> subpatch 111
+  -> waveform 77
+  -> retail correction -2253 cents
+```
+
+This runtime-confirms:
+- MKT waveform 77 and its predictor metadata are binary-compatible with MKMSZ's SN64 audio path when transplanted correctly;
+- the `-2253`-cent waveform correction is required and plays correctly through MKMSZ's native pitch path;
+- a genuine MKT speech sample can coexist with normal MKMSZ gameplay audio on the tested route.
+
+The v03 pickup replacement is still a disposable routing proof, not final Toasty product behavior. Production should allocate a dedicated safe audio definition/route and invoke it from the final cosmetic Toasty trigger rather than replacing the ordinary-pickup sound.
