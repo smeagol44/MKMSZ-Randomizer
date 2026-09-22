@@ -30,9 +30,9 @@ from mkmszr.patches.box_indicator import (
     BoxIndicatorPatch,
 )
 from mkmszr.patches.flow_bypass import BootLogoBypassPatch, SafeStageSelectSkipAutoSavePatch
-from mkmszr.patches.title_branding import TitleBrandingPatch
 from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
 from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
+from mkmszr.patches.title_branding import TitleBrandingPatch
 from mkmszr.rom import RomImage
 
 
