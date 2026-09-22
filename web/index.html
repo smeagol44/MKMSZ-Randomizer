@@ -46,6 +46,14 @@
           </select>
         </div>
 
+        <div class="field">
+          <label for="editionName">Title character</label>
+          <input id="editionName" class="uppercase-input" type="text"
+                 value="SUB-ZERO" maxlength="12" autocomplete="off" spellcheck="false"
+                 inputmode="text" aria-describedby="editionNameHint">
+          <p class="hint" id="editionNameHint">Temporary freeform field. Up to 12 characters; the game appends “ EDITION”.</p>
+        </div>
+
         <div class="field" id="seedField">
           <label for="seed">Seed</label>
           <input id="seed" type="text" autocomplete="off" spellcheck="false"
@@ -72,6 +80,7 @@
           <div><dt>Applied patches</dt><dd id="patchList"></dd></div>
           <div><dt>Pickup mode</dt><dd id="pickupMode"></dd></div>
           <div><dt>Boot message</dt><dd id="bootPhrase"></dd></div>
+          <div><dt>Title edition</dt><dd id="titleEdition"></dd></div>
         </dl>
         <button id="downloadButton" type="button">Save patched ROM</button>
       </div>
