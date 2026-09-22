@@ -31,6 +31,23 @@
 
       <div class="grid">
         <div class="field">
+          <label for="mktN64File">Mortal Kombat Trilogy N64 ROM</label>
+          <input id="mktN64File" type="file" accept=".z64,.n64,.v64,application/octet-stream">
+        </div>
+
+        <div class="field">
+          <label for="mkmszPs1File">MKMSZ PlayStation ROM / ISO</label>
+          <input id="mkmszPs1File" type="file" accept=".bin,.cue,.iso,.img,application/octet-stream">
+        </div>
+
+        <div class="field">
+          <label for="mktPs1File">Mortal Kombat Trilogy PlayStation ROM / ISO</label>
+          <input id="mktPs1File" type="file" accept=".bin,.cue,.iso,.img,application/octet-stream">
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="field">
           <label for="outfitMode">Sub-Zero outfit</label>
           <select id="outfitMode">
             <option value="vanilla">Vanilla</option>
@@ -50,15 +67,13 @@
           <label for="editionName">Title character</label>
           <input id="editionName" class="uppercase-input" type="text"
                  value="SUB-ZERO" maxlength="12" autocomplete="off" spellcheck="false"
-                 inputmode="text" aria-describedby="editionNameHint">
-          <p class="hint" id="editionNameHint">Temporary freeform field. Up to 12 characters; the game appends “ EDITION”.</p>
+                 inputmode="text">
         </div>
 
         <div class="field" id="seedField">
           <label for="seed">Seed</label>
           <input id="seed" type="text" autocomplete="off" spellcheck="false"
                  placeholder="Leave blank for a random seed">
-          <p class="hint">Leave blank to generate one automatically. The seed controls the pickup layout and other seeded features.</p>
         </div>
 
         <div class="field color-field" id="colorField" hidden>
@@ -69,7 +84,6 @@
       </div>
 
       <button id="patchButton" type="button" disabled>Patch ROM</button>
-      <p class="hint">Patched builds also skip the post-legal logo screens and the automatic save prompt caused by Safe Stage Select. Normal later/manual save flows remain available.</p>
 
       <div id="result" class="result" hidden>
         <h2>Patch complete</h2>
@@ -88,7 +102,7 @@
 
     <footer>
       <p>This project does not distribute game ROMs. You must provide your own legally obtained copy.</p>
-      <span class="build-version">v0.DEV</span>
+      <span class="build-version">By Smeag · v0.DEV</span>
     </footer>
   </main>
 
