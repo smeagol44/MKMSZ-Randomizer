@@ -14,8 +14,6 @@ const outputSha = document.querySelector("#outputSha");
 const outputCrc = document.querySelector("#outputCrc");
 const patchList = document.querySelector("#patchList");
 const pickupMode = document.querySelector("#pickupMode");
-const bootPhrase = document.querySelector("#bootPhrase");
-const titleEdition = document.querySelector("#titleEdition");
 const downloadButton = document.querySelector("#downloadButton");
 const log = document.querySelector("#log");
 
@@ -128,15 +126,12 @@ async function patchRom() {
     await pyodide.runPythonAsync(`
 from pathlib import Path
 from mkmszr.config import OutfitConfig, RandomizerConfig
-from mkmszr.data.boot_phrases import select_boot_phrase
 from mkmszr.patcher import patch_file
 
 _mode = str(web_outfit_mode)
 _seed = str(web_seed)
 _rgb_hex = str(web_rgb).lstrip("#")
 _rgb = tuple(int(_rgb_hex[i:i+2], 16) for i in (0, 2, 4))
-_boot_phrase = select_boot_phrase(_seed)
-
 _edition_name = str(web_edition_name)
 _config = RandomizerConfig(
     seed=_seed,
@@ -157,8 +152,6 @@ web_patch_result = {
         if any(patch.name == "pickup-randomization" for patch in _result.patches)
         else "Off"
     ),
-    "boot_phrase": " / ".join(part for part in _boot_phrase if part),
-    "title_edition": f"{_edition_name} EDITION",
 }
 `);
 
@@ -174,8 +167,6 @@ web_patch_result = {
     outputCrc.textContent = `${metadata.crc1} / ${metadata.crc2}`;
     patchList.textContent = metadata.patches.length ? metadata.patches.join(", ") : "CRC refresh only";
     pickupMode.textContent = metadata.pickup_mode;
-    bootPhrase.textContent = metadata.boot_phrase;
-    titleEdition.textContent = metadata.title_edition;
 
     resultPanel.hidden = false;
     setLog(`Success. Patched ${(outputBytes.byteLength / 1024 / 1024).toFixed(1)} MiB locally; no ROM data was uploaded.`);
