@@ -33,6 +33,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--outfit", choices=modes, default="vanilla")
     parser.add_argument("--hue", type=float, help="hue in degrees for --outfit hue")
     parser.add_argument("--rgb", type=_parse_rgb, help="RRGGBB color for --outfit rgb")
+    parser.add_argument(
+        "--edition-name",
+        default="SUB-ZERO",
+        help="temporary uppercase title character name (max 12 chars)",
+    )
     return parser
 
 
@@ -49,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     config = RandomizerConfig(
         seed=effective_seed,
         outfit=OutfitConfig(mode=args.outfit, hue_degrees=args.hue, rgb=args.rgb),
+        edition_name=args.edition_name,
     )
 
     try:
