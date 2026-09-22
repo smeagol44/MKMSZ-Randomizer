@@ -117,15 +117,42 @@ a1 = 0
 
 Therefore the **retail MKT Toasty sound-table index is `0x10`**, not source identifier `0x1095`.
 
-For `a1 = 0`, `0x800054A8` indexes the 16-bit table at `0x800A1AA8`. Entry `0x10` is at ROM `0x000A1AC8` and contains `0x0244`, which is the raw retail sound ID handed onward by the MKT audio path.
+For `a1 = 0`, `0x800054A8` indexes the 16-bit table at `0x800A1AA8`. Entry `0x10` is at ROM `0x000A1AC8` and contains `0x0244`. Further bank tracing corrects the earlier terminology: `0x0244` is a retail MKT sound-definition/event value, **not** the final SN64 patch/waveform ID.
 
-The next bounded Toasty-audio task is therefore:
+### Retail MKT Toasty CTL/TBL trace
 
-1. trace retail MKT raw sound ID `0x0244` into its runtime definition and CTL/TBL waveform metadata;
-2. locate the encoded Toasty waveform bytes;
-3. stop before any MKMSZ transplant comparison unless explicitly requested.
+**Static-confirmed in the supplied MKT USA Rev. 2 ROM.** The retail event value `0x0244` ultimately selects SN64 patch `7`. The donor control bank is:
 
-No direct-import compatibility is claimed yet.
+- SN64 header ROM `0xA8F550`;
+- compressed control payload ROM `0xA8F588`;
+- raw-DEFLATE compressed size `0x17AE0`;
+- decompressed control payload size `0x1F720`.
+
+Within that decompressed control payload:
+
+1. patch `7` is at relative offset `0x001C`, bytes `01 00 00 4F`: one subpatch, starting at subpatch index `79`;
+2. subpatch `79` is at relative offset `0x0D0C`, bytes `69 7C 40 00 3C 00 00 7F 00 00 00 31 00 02 7D 00 00 0A 7F 7F`; its waveform/SFX ID is `49`;
+3. waveform record `49` is at relative offset `0x2CC0`, bytes `0003882A 00002A54 00000000 00000000 FFFFFFFF 00000000`.
+
+Waveform record `49` therefore specifies:
+
+- TBL-relative start `0x3882A`;
+- encoded length `0x2A54` bytes;
+- no loop (`0xFFFFFFFF`);
+- predictor book `49`, stored in the decompressed CTL at relative offset `0x81D0`;
+- predictor order `2`, predictor count `8`.
+
+The MKT waveform-data/TBL base is ROM `0xAB4370`. Therefore the genuine encoded Toasty voice occupies:
+
+- ROM start `0xAECB9A`;
+- ROM end-exclusive `0xAEF5EE`;
+- inclusive last byte `0xAEF5ED`;
+- length `0x2A54` bytes;
+- SHA-256 `bbc594750c7cd6fe9e14f161abe762af6f905801469af28659489493f90f33a2`.
+
+The length is exactly 1,204 nine-byte N64 ADPCM frames, or 19,264 decoded PCM samples. At the bank's nominal 22.05 kHz rate this is about 0.874 seconds.
+
+This completes the donor-side `0x0244` → CTL/TBL waveform trace. No MKMSZ transplant compatibility is claimed by this section.
 
 ## Music
 
