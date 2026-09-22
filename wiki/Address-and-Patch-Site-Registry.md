@@ -46,18 +46,20 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 
 Boot string pointer instructions live at ROM `0x7A22C`, `0x7A250`, `0x7A274`, `0x7A298`, `0x7A2BC`, `0x7A2E0`, `0x7A304`, `0x7A328`, `0x7A34C`, `0x7A370`, and `0x7A394`; every instruction is guarded before replacement.
 
-## Title branding production allocation
+## Title branding allocation correction
 
-The accepted Candidate-B title art, final `SUB-ZERO EDITION` placement, and exact production title allocation are runtime-confirmed. The user validated production-layout proof SHA-256 `47df5a735599c31f4e6deccfd386a736c7b8773d159ad2ca1547f98d55dbef83`; PR #41 merged the same guarded ownership into browser/CLI:
+The PR #41 wrapper allocation at ROM `0x9ADE0` / VA `0x8009A1E0` is **Rejected / failed**. It overlaps the permanent pickup-persistence composition already installed earlier in the production pipeline. The browser's zero-byte guard failure exposed the conflict before overwrite.
 
-| ROM | VA | Owner | Guard/original | Planned effect |
-|---:|---:|---|---|---|
-| `0x00079C24..0x79C2B` | `0x80079024..0x8007902B` | Title branding | `3C04800B 2484ED1C` | Call edition-text wrapper, then resume stock START draw setup |
-| `0x0009ADE0..0x9AE5F` | `0x8009A1E0..0x8009A25F` | Title branding | zero tail inside bootstrap allocation | Centered uppercase `<NAME> EDITION` wrapper; actual default wrapper ends at `0x9AE3C`, capacity remains bounded before mapper at `0x9AEFC` |
-| `0x000A5478` | file entry `0x5E` | Title branding | stock `4E3060 / 512440 / flag 1` | Repoint title package to relocated compressed Candidate-B package |
-| `0x00F90000..0xFBFD94` | — | Title branding | clean-ROM `0xFF` | Compressed file `0x5E`, size `0x2FD95` |
+| ROM | VA | Owner/status | Evidence |
+|---:|---:|---|---|
+| `0x00079C24..0x79C2B` | `0x80079024..0x8007902B` | Stock title START setup; corrective title design leaves it untouched | Static-confirmed |
+| `0x0009ADD8..0x9ADE7` | `0x8009A1D8..` | Pickup-persistence restore trampoline | Implementation-confirmed production ownership |
+| `0x0009ADE8..` | `0x8009A1E8..` | Pickup-persistence capture helper | Implementation-confirmed production ownership |
+| `0x0009AEC0..` | `0x8009A2C0..` | Pickup descriptor table / Fire translation through `0x9AEFB` | Implementation-confirmed production ownership |
+| `0x0009AEFC` | `0x8009A2FC` | Relocated selector/flow mapper | Production ownership |
+| `0x00F90000..` | — | Title file-`0x5E` relocation area | High-ROM allocation remains the corrective data-only title target; exact final end is configuration-dependent and pending the new runtime gate |
 
-The earlier standalone proof's `0x9AD84` helper and raw `0xEF7000..` file relocation are proof-only and conflict with production ownership; they are explicitly not reusable allocations.
+The old title-only proof's wrapper at `0x9ADE0` must not be reused. The corrective design under validation uses no title executable cave or title-menu hook.
 
 ## Proof-only sites
 
