@@ -19,7 +19,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8001BF70` | Gameplay HUD texture-slot initializer | Static-confirmed | Called six times from `0x8005BFB0` after image decode; initializes fixed HUD texture slots `0x11..0x16` in the same 16-byte slot/backing-pointer tables later referenced by textured 0x58-byte HUD nodes |
 | `0x8001C2B4` | Dynamic texture/screen-image allocator | Static-confirmed | Searches IDs `0x200..0x2FF`; successful allocation initializes the 16-byte slot record at `0x802F83F0 + id*0x10`, sets active halfword `+0x0E = 1`, records backing pointer in `0x800FD940[id]`, and returns the ID; failure returns `-1` |
 | `0x8001E578` | Context-specific render family | Static-confirmed | Not a universal gameplay-HUD API |
-| `0x8001EAE4` | Render-node submit | Runtime-confirmed | Existing HUD call displaced by box wrapper |
+| `0x8001EAE4` | Render-node submit | Runtime-confirmed | Gameplay HUD queue; v08 confirms additional textured-node submission, and v09 runtime-confirms texture slot binding through node halfword `+0x4A` |
 | `0x8002018C` | Render-node allocator | Runtime-confirmed | Allocates `0x58`-byte node |
 | `0x8002B1EC` | Player horizontal-velocity helper | Static-confirmed | Writes actor `+0x14` and `+0x58`; corrected movement primitive |
 | `0x8002E104` | Central XP award | Static-confirmed | Current XP at `0x8011200C` |
