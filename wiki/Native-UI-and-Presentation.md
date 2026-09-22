@@ -285,3 +285,30 @@ Durable conclusions:
 - the next allocator diagnostic should return to the v02-known-good helper/allocation footprint and expose allocator success with a smaller, less intrusive method.
 
 For faster manual iteration, future disposable Toasty proofs may include the already runtime-confirmed post-legal logo bypass and compact eight-stage A-button Safe Stage Select as a fixed test harness. Their guarded patches must remain separate from the visual diagnostic variable and must not claim the production bootstrap cave used by other systems.
+
+
+### Toasty visual diagnostic v04 — test harness confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+v04 returned to the v02-known-good marker/visual composition and added only the established disposable-test conveniences:
+- post-legal two-logo bypass;
+- compact eight-stage A-button Safe Stage Select;
+- selector-entry one-shot auto-save bypass.
+
+The user confirmed all three expected controls: the logos skip, A opens the safe selector, and normal music/SFX are present again. The Toasty image remains absent, as expected for this baseline.
+
+This establishes the v04 convenience composition as the fixed manual-test harness for subsequent Toasty visual diagnostics. It also confirms that v03's global audio loss was introduced by the v03 diagnostic itself, not by the logo/selector harness.
+
+
+### Toasty visual diagnostic v05 — allocator return only
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+Static inspection of `0x8001C2B4` shows that it searches dynamic IDs `0x200..0x2FF`; a successful new allocation initializes the 16-byte slot record (including active halfword `+0x0E = 1`) and returns the dynamic ID, while failure returns `-1`.
+
+v05 keeps the complete v04 harness and the v01/v02 texture allocation/load/render code byte-for-byte unchanged. Only the proven native-text helper changes, within the same previously runtime-safe helper/marker footprint. It reads only the saved slot word from the preceding HUD frame and displays:
+- `V05 ALLOC 1` when the saved value is below `0x300` (the expected successful `0x200..0x2FF` allocator return);
+- `V05 ALLOC 0` while the state remains initialized to `-1`.
+
+It does not read or write the dynamic texture table. The first HUD frame may show `0`; a successful allocator should make subsequent frames show `1`. If `1` persists while Toasty remains invisible, allocation itself is exonerated and the next bounded diagnostic should isolate the raw file load/backing-store contents.
