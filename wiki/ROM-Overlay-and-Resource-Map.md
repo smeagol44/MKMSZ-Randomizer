@@ -8,7 +8,7 @@ The global file table begins at ROM `0x000A5010` / VA `0x800A4410`. Entries are 
 
 Global file ID `0x5E` owns the normal title-screen image package. Clean USA Rev. 0 stores it compressed at ROM `0x4E3060..0x51243F` (end-exclusive `0x512440`), with decoded size `0x61494`.
 
-The accepted MKMSZR Candidate-B art modifies the six CI8 tile pixel regions and must be relocated because its compressed package exceeds the stock slot. The high-ROM title allocation begins at `0xF90000`; this storage path was visually exercised by the title-only proof and is not implicated in the later browser regression. The failed component was the separate executable wrapper at `0x9ADE0`, which collided with production pickup-persistence ownership. The corrective data-only design also bakes the edition line into file `0x5E`, so the final compressed end varies with the configured name and must remain within its guarded high-ROM capacity.
+The accepted MKMSZR Candidate-B art modifies the six CI8 tile pixel regions and the corrected production patch also rasterizes the configurable uppercase edition line into that same image. The package is recompressed losslessly and relocated from ROM `0xF90000` within a guarded `0x31000`-byte allocation ending at `0xFC0FFF`. The final compressed end varies with the configured name: the runtime-confirmed `SUB-ZERO` proof ends at `0xFC017F` (exclusive) and the runtime-confirmed `SEKTOR` proof ends at `0xFC014F` (exclusive). No title executable cave is used.
 
 The title palette descriptor is at ROM `0xB3360`; its count word is followed by the actual 256-entry palette at `0xB3364`. Offline reconstruction uses the verified BGR555 interpretation.
 
