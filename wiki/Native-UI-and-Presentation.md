@@ -79,18 +79,15 @@ Runtime testing corrected one earlier static assumption: mixed/lowercase text is
 
 The hyphen byte in `SUB-ZERO` renders more like a colon with this title-font configuration. That presentation quirk is accepted for the current temporary freeform edition field.
 
-### Production integration
+### Production integration correction
 
-The non-optional web/CLI integration uses the following guarded layout:
+The Candidate-B image itself and the accepted uppercase edition-line placement remain **Runtime-confirmed** presentation results. The first PR #41 browser/CLI implementation is **Rejected / failed** for composition, not for appearance.
 
-- compressed Candidate-B file `0x5E` at ROM `0xF90000..0xFBFD94`, flag `1`;
-- title text hook at ROM `0x79C24`, replacing only the stock `START` string-address load pair before the existing START draw;
-- title text wrapper at ROM `0x9ADE0` / VA `0x8009A1E0`, within the unused tail of the bootstrap allocation and bounded before the relocated selector mapper at ROM `0x9AEFC`;
-- build-selected uppercase `<NAME> EDITION`, default `SUB-ZERO`; the temporary browser/CLI field accepts at most 12 name characters and normalizes to uppercase before appending ` EDITION`. The supported temporary input set is A-Z, 0-9, spaces and hyphens.
+It placed an edition-text wrapper at ROM `0x9ADE0` / VA `0x8009A1E0`. That address is not free after the current production pipeline has installed pickup persistence: the restore trampoline begins at `0x9ADD8`, the capture helper at `0x9ADE8`, descriptor data at `0x9AEC0`, Fire translation at `0x9AEE8`, and the relocated selector mapper at `0x9AEFC`. The browser correctly failed the wrapper's zero-byte guard and refused to overwrite this owned code/data.
 
-The clean ROM is all `0xFF` across the planned `0xF90000..0xFBFD94` title allocation, and the current production pipeline has no owner there. The latest runtime-confirmed Sektor takeover resource ends below `0xF90000`; rejected/superseded larger Sektor proofs are not allocation promises.
+The earlier title-only production-layout proof did not execute the full patch pipeline, so its successful title rendering did not establish composition safety. This supersedes the prior claim that `0x9ADE0` was an unused bootstrap tail.
 
-**Runtime-confirmed production-layout proof:** `MKMSZR_title-branding_production-layout-proof_v01.z64`, SHA-256 `47df5a735599c31f4e6deccfd386a736c7b8773d159ad2ca1547f98d55dbef83`. The user confirmed the title renders correctly with the exact production hook and storage locations. PR #41 merged commit `da9da8d38a2f9b15e59b4f82ee21b0e15e9387e7`, enabling the feature non-optionally in browser/CLI. This title proof validates the new title path and allocation composition; unrelated gameplay routes retain their own evidence status.
+The high-ROM compressed file-`0x5E` relocation beginning at `0xF90000` is not implicated by this failure. The corrective implementation under validation bakes the configurable uppercase `<NAME> EDITION` line directly into the title's CI8 pixels at patch time, removing the title code hook and executable-cave requirement entirely. The live webapp temporarily omits title branding until that full-pipeline proof is manually validated.
 
 ## Pickup presentation descriptors
 
