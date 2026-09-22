@@ -18,6 +18,34 @@ Arbitrary null-terminated strings placed in custom RDRAM were runtime-confirmed.
 
 The production wrapper occupies ROM `0xAFA24..0xAFA97`, begins at VA `0x800AEE24`, and stores its string at VA `0x800AEE80`. It reads active-box state, rewrites the digit in `BOX 1 OF 4`, and draws at `x=230`, `y=210`. This area was originally legal-screen text, but the exact stock bytes are guarded and boot branding owns the adjacent strings.
 
+## Legal / boot branding
+
+The legal-screen text path is reused rather than replaced. The stock screen has 13 text submissions; production repoints those existing calls into one guarded packed text region at ROM `0xAF998..0xAFA23` plus the final license slot at `0xAFA98..0xAFABB`.
+
+The current MKMSZR layout is:
+
+```text
+MORTAL KOMBAT® MYTHOLOGIES
+R A N D O M I Z E R
+<CHAR> EDITION
+©2026 LA PAVADA INC.
+
+
+<seeded joke line 1>
+<seeded joke line 2>
+
+
+BY SMEAG
+
+NOT LICENSED BY NINTENDO
+```
+
+`<CHAR>` uses the same configured title-character value as the title screen, so the browser/CLI field drives both places. It remains uppercase and bounded to 12 name characters before ` EDITION` is appended.
+
+The stock legal font encodes the registered-sign glyph with ASCII `^` and the copyright glyph with ASCII `~`; production preserves that stock encoding rather than introducing a new font path. The packed region is exactly bounded for the worst-case 12-character edition name and leaves two zero bytes before the adjacent `BOX n OF 4` code allocation.
+
+**Evidence:** the underlying legal-screen renderer and prior branding path are Runtime-confirmed. The rearranged 2026 layout and configurable edition line are Implementation/CI-confirmed through the full shared patch pipeline, including a non-default `SEKTOR EDITION` build; visual runtime confirmation of this exact rearrangement remains pending.
+
 ## Context-specific renderer family
 
 The path beginning at `0x80073CEC` and calling `0x8001E578` is real, but evidence shows it is context-specific rather than a universal always-on HUD/sprite API. Its suitability as a generic presentation abstraction remains unproven.
