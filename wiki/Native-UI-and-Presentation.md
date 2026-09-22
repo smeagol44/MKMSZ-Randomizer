@@ -359,16 +359,29 @@ v08 contained no custom image, dynamic texture allocation, raw file load, palett
 This runtime-confirms that the actual gameplay-HUD queue can render an additional textured MKMSZR-owned node. The exact texture-binding halfword is still being isolated; v08 copied the full stock node and therefore does not by itself prove that `+0x4A` alone selects the texture.
 
 
-### Toasty visual diagnostic v09 — stock texture-slot binding
+### Toasty visual diagnostic v09 — stock texture-slot binding confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+v09 changed only the stock source-node selector from resident texture slot `0x12` to resident slot `0x13`, leaving the v08 clone wrapper byte-for-byte unchanged.
+
+Observed result:
+- the shifted clone changed visibly from the v08 C-like gold fragment to an equals-sign-like gold fragment;
+- the original top-left HUD simultaneously lost a small two-pixel portion of its gold frame.
+
+Because both source and clone inherited the same one-instruction slot change, the coupled visual change runtime-confirms that the node texture binding is live at halfword `+0x4A`. The small stock-HUD damage is an expected side effect of altering the source node before cloning; it is not treated as a new renderer failure.
+
+
+### Toasty visual diagnostic v10 — clone-only stock-slot rebind
 
 **Implementation/static-confirmed; runtime pending manual validation.**
 
-v09 is byte-for-byte identical to v08's clone wrapper and test harness. It changes only one clean-ROM instruction in the stock source-node construction:
+v10 returns the stock source node to its original slot `0x12` and keeps the v08 renderer socket/harness. After cloning the full 0x58-byte node inline, it changes only the clone's halfword `+0x4A` to resident slot `0x13`, then applies the same `+160,+80` XY shift and submits through `0x8001EAE4`.
 
-- ROM `0x5D1E0`: `li v0,0x12` -> `li v0,0x13`.
+No custom Toasty data, dynamic allocation, file-ID load, palette change, `0x80073CEC`, diagnostic text, audio, RNG, or trigger is present.
 
-The following stock instruction still stores that value to node halfword `+0x4A`, and both texture slots `0x12` and `0x13` are already initialized by the unmodified gameplay HUD setup. Because the v08 wrapper clones the stock node exactly, both the original source node and its shifted duplicate will now use resident slot `0x13`.
+Expected result:
+- the original top-left HUD should return to the intact v08 appearance;
+- the shifted clone should retain the v09 equals-sign-like texture appearance.
 
-Relative to a rebuilt v08 ROM, the only non-header byte difference is the low byte of that one immediate at ROM `0x5D1E3`; the entire v08 wrapper cave is identical.
-
-Expected result: gameplay remains healthy and the original/shifted textured element changes appearance consistently. That would runtime-confirm `+0x4A` as the live texture-slot binding field before a later proof points the proven HUD node family at a custom Toasty slot.
+Success would prove clone-local texture rebinding without perturbing stock HUD state and establish the exact mechanism to use for a later custom Toasty texture slot.
