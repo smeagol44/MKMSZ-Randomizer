@@ -348,19 +348,27 @@ Static re-audit of `0x8005BFB0` shows a native textured HUD path already present
 At the first such submit, VA `0x8005C6E0` / ROM `0x5D2E0`, the stock node carries texture slot `0x12`.
 
 
-### Toasty visual diagnostic v08 — stock textured HUD clone
+### Toasty visual diagnostic v08 — stock textured HUD clone confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+The user observed an additional small gold HUD-like textured fragment at the expected shifted gameplay position while the original top-left HUD remained intact. Gameplay loaded normally.
+
+v08 contained no custom image, dynamic texture allocation, raw file load, palette replacement, diagnostic text, Toasty audio, RNG, or trigger. It only cloned one already-built stock textured 0x58-byte HUD node inline, shifted its XY coordinates by `+160,+80`, and submitted the clone through the same `0x8001EAE4` queue.
+
+This runtime-confirms that the actual gameplay-HUD queue can render an additional textured MKMSZR-owned node. The exact texture-binding halfword is still being isolated; v08 copied the full stock node and therefore does not by itself prove that `+0x4A` alone selects the texture.
+
+
+### Toasty visual diagnostic v09 — stock texture-slot binding
 
 **Implementation/static-confirmed; runtime pending manual validation.**
 
-v08 is a fresh renderer-socket proof, not another custom-image attempt. It retains the runtime-confirmed logo-skip + Safe Stage Select harness, but removes the v01-v07 custom texture allocation/load/palette/`0x80073CEC` path entirely.
+v09 is byte-for-byte identical to v08's clone wrapper and test harness. It changes only one clean-ROM instruction in the stock source-node construction:
 
-At stock textured HUD submit `0x8005C6E0`, v08:
-1. preserves the stock delay slot and submits the original node unchanged;
-2. obtains one fresh 0x58-byte gameplay-HUD node through `0x8002018C`;
-3. copies all 22 words from the already-built stock textured node **inline**, with no helper abstraction;
-4. shifts all four XY pairs by `+160,+80`;
-5. submits the clone through the same `0x8001EAE4` gameplay-HUD queue.
+- ROM `0x5D1E0`: `li v0,0x12` -> `li v0,0x13`.
 
-No custom file ID, raw image load, dynamic texture allocation, palette replacement, native text marker, Toasty audio, RNG, or trigger is present.
+The following stock instruction still stores that value to node halfword `+0x4A`, and both texture slots `0x12` and `0x13` are already initialized by the unmodified gameplay HUD setup. Because the v08 wrapper clones the stock node exactly, both the original source node and its shifted duplicate will now use resident slot `0x13`.
 
-The only intended runtime question is whether a known stock gameplay-HUD texture can be duplicated visibly at the shifted position. Success would establish the exact textured gameplay socket needed before reconnecting the Toasty asset one variable at a time.
+Relative to a rebuilt v08 ROM, the only non-header byte difference is the low byte of that one immediate at ROM `0x5D1E3`; the entire v08 wrapper cave is identical.
+
+Expected result: gameplay remains healthy and the original/shifted textured element changes appearance consistently. That would runtime-confirm `+0x4A` as the live texture-slot binding field before a later proof points the proven HUD node family at a custom Toasty slot.
