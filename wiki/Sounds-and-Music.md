@@ -265,3 +265,62 @@ Expected runtime test: collecting an ordinary pickup should play the genuine MKT
 **Runtime-confirmed for foreign-sample playback; rejected as Toasty identification.** The v02 routing fix produced a normal one-shot sound effect on ordinary pickup, with no recurrence as background music. The heard effect matched the separately decoded donor WAV: a short reverse-cymbal sound.
 
 v02 therefore runtime-confirms the important lower-level result that MKMSZ can play an imported MKT N64 ADPCM sample using transplanted predictor-book metadata through the stock pickup SSEQ route. It does **not** confirm the sample as Toasty. The remaining blocker is donor identification/routing inside MKT, not basic cross-game SN64 waveform compatibility.
+
+
+### Corrected retail Toasty event trace
+
+**Static-confirmed; decoded-audio identity pending direct listening confirmation.** The prior `0x0244 -> patch 7` interpretation was wrong because `0x0244` is not an SN64 patch number. The retail call path is:
+
+```text
+forden/comment path
+  -> 0x800054A8(a0=0x10, a1=0)
+  -> table 0x800A1AA8[0x10] = 0x0244
+  -> 0x80005590
+  -> 0x8008AA50(sound/event id 0x0244)
+  -> ZLIB-SSEQ entry 580
+```
+
+`0x8008AA50` multiplies the event ID by `0x10` and indexes the runtime sequence/event-definition array before entering the low-level audio path. This establishes that retail value `0x0244` names **SSEQ event 580**, not SN64 patch 7.
+
+Retail MKT's ZLIB-SSEQ bank is at ROM `0xAA7070`. Its compressed 627-entry table expands to `0x2730` bytes. Entry 580 contains:
+- one track;
+- decompressed length `0x30`;
+- data offset `0x4E94`;
+- compressed track stream beginning at ROM `0xAAC6CA`.
+
+The decompressed track is:
+
+```text
+initial patch 0x00F9 (249)
+program change -> 0x31 (49)
+(no note is played)
+program change -> 0xF9 (249)
+play note 0x3C, velocity 0x7F
+stop note 0x3C
+end
+```
+
+Therefore the audible Toasty event note uses **SN64 patch 249**. Patch 49 is selected transiently but no note is emitted while it is active.
+
+Parsing patch 249 through the retail MKT SN64 bank gives:
+
+```text
+patch 249
+  -> intermediate record 263
+  -> waveform record 262
+```
+
+Waveform 262 metadata:
+- TBL-relative start `0xD9E7E`;
+- encoded length `0x0E22`;
+- no loop;
+- predictor book order 2, 8 predictors;
+- MKT waveform/TBL base `0xAB4370`;
+- physical donor ROM span `0xB8E1EE..0xB8F00F`;
+- raw ADPCM SHA-256 `7b2324798718047a1fc563b6aefeb62060e0056600d47de1a641653dcf0212b2`.
+
+The patch root key is `0x3C`, exactly matching the SSEQ note `0x3C`, so this event requests the sample at its natural key rather than intentionally pitch-shifting it.
+
+Direct SN64 ADPCM decoding yields 6,432 PCM samples, about 0.292 s at the bank's nominal 22.05 kHz rate. The generated WAV SHA-256 is `c2113d64bf843af167af000001ccf22824e042f1c39d4cacd12ba6074941ab04`.
+
+This waveform is the **correct static retail candidate reached by the Toasty event path**. Do not mark its audible identity runtime-confirmed until the extracted WAV is directly listened to and confirmed as Dan Forden's “Toasty!” voice.
