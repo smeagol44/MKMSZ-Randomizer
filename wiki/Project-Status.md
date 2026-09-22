@@ -19,7 +19,7 @@ Last consolidated: 2026-09-21.
 | Logo and selector-save bypasses | Production | Runtime-confirmed, legal screen and later/manual saves preserved |
 | Outfit recoloring | Production | Runtime-confirmed palette modes; static TLUT source transform |
 | Browser/CLI shared patch core | Production beta | CI builds/tests; release UX continues to mature |
-| Rebranded title screen | Temporarily rolled back; corrected composition pending runtime gate | Candidate-B art and the final standalone title appearance remain Runtime-confirmed. The first browser integration from PR #41 is **Rejected / failed**: the title wrapper at ROM `0x9ADE0` overlaps production pickup-persistence code already written earlier in the pipeline, so the web patcher correctly failed its guard. The live pipeline temporarily omits title branding while a data-only CI8 edition-line composition is validated. |
+| Rebranded title screen | Production beta | Candidate-B CI8/BGR555 title art plus configurable uppercase `<NAME> EDITION` are runtime-confirmed through the full current production pipeline. PR #42 merged corrected data-only composition as `cebfe39c92e96590efbf571ee338467e2b7dc368`; browser/CLI install it non-optionally. Temporary name field defaults to `SUB-ZERO`, max 12 characters, uppercase only. |
 
 ## Confirmed proofs, not product features
 
@@ -63,13 +63,18 @@ The 1.0 randomizer is not considered complete with stage-local shuffling alone. 
 
 Open Temple Map work: the legacy Lua global pool included the scripted Map as an 85th check. For 1.0, investigate separating the Map inventory reward from the Temple elevator/exit trigger so the elevator can still be raised correctly even when the Map item itself is shuffled elsewhere. Also prevent the Map item from being removed on the Temple -> Wind transition, which is stock behavior today.
 
-### Title-screen integration correction
+### Title-screen integration
 
-The Candidate-B title art, uppercase wording and final visual spacing remain **Runtime-confirmed** from the standalone title proofs. However, the first browser/CLI composition from PR #41 is **Rejected / failed** as a production allocation.
+The Candidate-B title art and the final title composition are **Runtime-confirmed** through the complete production patch pipeline.
 
-The browser traceback on 2026-09-22 showed the title patch guarding ROM `0x9ADE0` as zero after earlier production patches had already populated it. Static re-audit confirms the permanent cave is packed: restore trampoline begins at `0x9ADD8`, pickup capture helper begins at `0x9ADE8`, descriptor data begins at `0x9AEC0`, Fire translation occupies `0x9AEE8..0x9AEFB`, and the relocated selector mapper begins at `0x9AEFC`. Therefore the title wrapper claim at `0x9ADE0` was wrong.
+Two bounded manual proofs passed:
 
-The earlier `MKMSZR_title-branding_production-layout-proof_v01.z64` validated title rendering and the high-ROM file-`0x5E` relocation only; it did **not** reproduce the full production patch order and therefore did not validate cave composition. The live webapp has been temporarily rolled back to omit title branding while a full-pipeline, data-only title proof is validated.
+- default `SUB-ZERO`: `MKMSZR_title-branding_full-pipeline-proof_v02.z64`, SHA-256 `8f86e6f50fcc068c66986681a57b18f9882cf8f1779376222a46b76f10b56382`; the user reported the title looked correct and the title -> gameplay boundary worked;
+- non-default `SEKTOR`: `MKMSZR_title-branding_sektor-full-pipeline-proof_v03.z64`, SHA-256 `4401dc0ebfce1eb16e6c0b4eb1178dd2605e79a10c1a280cd7caa6307ca21c65`; the user reported it worked perfectly, looked good, and gameplay was running fine so far.
+
+The corrective production design is data-only: the patcher rasterizes uppercase `<NAME> EDITION` directly into the Candidate-B CI8 title image, updates only reserved title-palette entries, recompresses file `0x5E`, and relocates it from ROM `0xF90000` inside a guarded `0x31000`-byte high-ROM allocation. It leaves stock title code at `0x79C24` untouched and does not claim executable cave space.
+
+The first PR #41 wrapper allocation at `0x9ADE0` remains **Rejected / failed** because it overlaps permanent pickup-persistence ownership. PR #42 merged the corrected implementation as `cebfe39c92e96590efbf571ee338467e2b7dc368`.
 
 ## Pending priorities
 
