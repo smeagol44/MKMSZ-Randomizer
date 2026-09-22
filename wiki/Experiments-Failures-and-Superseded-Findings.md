@@ -41,6 +41,7 @@ Failures are retained because they define safety boundaries and prevent repeated
 - Early proof diagnostics used legal-screen string storage that production later assigned; the final box wrapper uses a guarded dedicated region.
 - **Toasty visual v01**: automatic HUD-cycle proof produced no visible image. Because it had no independent marker, it does not distinguish wrapper execution from texture-slot allocation, file loading, palette binding, or `0x80073CEC` context suitability. Do not repeat unchanged; next proof must add a proven text/quad diagnostic and isolate one variable at a time.
 - **Toasty visual v02**: the `V02 WRAPPER OK` native-text marker is runtime-confirmed visible during gameplay, while the Toasty image remains absent. Wrapper/hook execution is therefore exonerated; continue downstream with texture-slot allocation/state first, one variable at a time. Toasty audio v03 remains independently runtime-confirmed and must not be reworked as part of this diagnosis.
+- **Toasty visual v03**: persistent `V03 SLOT FAIL`, but the same proof also removed all normal game music/SFX. Treat the diagnostic as intrusive/rejected for allocator attribution; the slot result is not clean evidence against `0x8001C2B4`. Return to the v02-known-good diagnostic footprint before isolating allocator success again.
 
 ## Reverse Elbow failures
 
