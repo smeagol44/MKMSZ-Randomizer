@@ -301,14 +301,27 @@ The user confirmed all three expected controls: the logos skip, A opens the safe
 This establishes the v04 convenience composition as the fixed manual-test harness for subsequent Toasty visual diagnostics. It also confirms that v03's global audio loss was introduced by the v03 diagnostic itself, not by the logo/selector harness.
 
 
-### Toasty visual diagnostic v05 — allocator return only
+### Toasty visual diagnostic v05 — allocator return confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+The user observed persistent `V05 ALLOC 1` during ordinary gameplay; the marker did not fall back to zero, and the Toasty image remained absent.
+
+This runtime-confirms that the dynamic allocator path is succeeding on the tested HUD route and returning an ID in the expected `0x200..0x2FF` range. Dynamic allocation itself is therefore exonerated for this failure. The remaining chain begins with the raw file load/backing-store contents, followed by palette/binding and `0x80073CEC` submission/context suitability.
+
+
+### Toasty visual diagnostic v06 — raw load/backing verification
 
 **Implementation/static-confirmed; runtime pending manual validation.**
 
-Static inspection of `0x8001C2B4` shows that it searches dynamic IDs `0x200..0x2FF`; a successful new allocation initializes the 16-byte slot record (including active halfword `+0x0E = 1`) and returns the dynamic ID, while failure returns `-1`.
+v06 retains the runtime-confirmed v04 test harness and the v05 allocator/render behavior. The only texture-path change is that the existing JAL to raw global-file loader `0x80065D64` is routed through a 0x34-byte wrapper in the unused tail of the already-established standalone selector cave `0x9A720..0x9A753`.
 
-v05 keeps the complete v04 harness and the v01/v02 texture allocation/load/render code byte-for-byte unchanged. Only the proven native-text helper changes, within the same previously runtime-safe helper/marker footprint. It reads only the saved slot word from the preceding HUD frame and displays:
-- `V05 ALLOC 1` when the saved value is below `0x300` (the expected successful `0x200..0x2FF` allocator return);
-- `V05 ALLOC 0` while the state remains initialized to `-1`.
+The wrapper:
+1. calls the exact stock `0x80065D64` with the original file ID and destination;
+2. preserves the loader's return value;
+3. after the synchronous raw transfer returns, compares backing-buffer word `+0x1C` against the known Toasty bytes `01 01 01 02`;
+4. writes only a reserved diagnostic flag at proof state `+8`.
 
-It does not read or write the dynamic texture table. The first HUD frame may show `0`; a successful allocator should make subsequent frames show `1`. If `1` persists while Toasty remains invisible, allocation itself is exonerated and the next bounded diagnostic should isolate the raw file load/backing-store contents.
+The native marker reports `V06 LOAD 1` when that exact word matches and `V06 LOAD 0` otherwise. The image bytes, file-table entry, palette, allocator parameters, timing cycle, and `0x80073CEC` call remain unchanged.
+
+If `LOAD 1` persists while Toasty remains absent, the raw file registration/transfer and backing data are exonerated, leaving palette/binding or textured submission/context as the next boundary.
