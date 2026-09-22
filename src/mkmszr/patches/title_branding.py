@@ -1,4 +1,16 @@
-"""Non-optional MKMSZR title-screen branding.\n\nThe accepted Candidate-B art is a native 320x240 CI8 composite using the stock\ntitle palette. File 0x5E is decoded, its six title-tile pixel regions are\nreplaced, and a build-selected uppercase <NAME> EDITION line is rasterized\ninto the same CI8 image before the package is re-encoded.\n\nThe edition line is deliberately data-only: it does not claim an executable\ncode cave or title-menu hook, so it composes with the permanent native\nbootstrap/pickup-persistence cave.\n"""\n\nfrom __future__ import annotations
+"""Non-optional MKMSZR title-screen branding.
+
+The accepted Candidate-B art is a native 320x240 CI8 composite using the stock
+title palette. File 0x5E is decoded, its six title-tile pixel regions are
+replaced, and a build-selected uppercase <NAME> EDITION line is rasterized
+into the same CI8 image before the package is re-encoded.
+
+The edition line is deliberately data-only: it does not claim an executable
+code cave or title-menu hook, so it composes with the permanent native
+bootstrap/pickup-persistence cave.
+"""
+
+from __future__ import annotations
 
 import base64
 import struct
