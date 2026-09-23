@@ -45,7 +45,7 @@ A **proof** may intentionally use a one-off record edit, temporary resource plac
 Examples of the boundary:
 
 - the cross-stage item planner is implemented but remains pipeline-disconnected pending its production integration gate;
-- the MKT/Sektor line has extensive Runtime-confirmed proof evidence, but the current v62 standalone combo record still overlaps production bootstrap ownership;
+- the MKT/Sektor line has extensive Runtime-confirmed proof evidence, but the v62 standalone combo continuation still overlaps production bootstrap ownership and the v65-v70 missile helpers also use proof-only conflicting bootstrap space;
 - Toasty audio and visual paths are Runtime-confirmed in bounded proofs, while their final trigger/allocation/composition are still pending.
 
 Runtime success never converts an old proof cave or proof allocation into production-safe space by itself.
