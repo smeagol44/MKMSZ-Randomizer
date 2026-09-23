@@ -139,7 +139,7 @@ The compatibility work is intentionally split by information type:
 
 ## Reusable rejected/superseded lessons
 
-Task 13 preserves the architectural lessons without keeping a second proof diary here:
+The architectural lessons are preserved here without keeping a second proof diary:
 
 - behavioral recreation was a useful early experiment but is **not** the accepted final porting direction;
 - forced-X crossover is not MKT pass-through; donor behavior uses normal movement plus temporary repulsion suppression;
