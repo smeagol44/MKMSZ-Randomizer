@@ -2,7 +2,7 @@
 
 > **Scope:** This page owns the **MKMSZ host-side action/control ABI**: special-action descriptor and installer semantics, scheduler/context transfer, player movement/animation/strike primitives, callback lifetime and cleanup rules, and durable host-side findings from the Reverse Elbow proof line.
 >
-> Donor choreography, donor move phases, MKT strike/reaction meanings, no-repel semantics, combo translation, and reusable donor -> MKMSZ mappings are canonical in [MKT adapter primitives](MKT-Adapter-Primitives). The old behavioral-recreation narrative remains on [(Old) Foreign moves and Reptile](Foreign-Moves-and-Reptile) until its dedicated retirement task.
+> Donor choreography, donor move phases, MKT strike/reaction meanings, no-repel semantics, combo translation, and reusable donor -> MKMSZ mappings are canonical in [MKT adapter primitives](MKT-Adapter-Primitives). The old URL is retained only as a historical supersession stub at [Foreign moves and Reptile](Foreign-Moves-and-Reptile).
 
 ## Low Kick descriptor and special-action path
 
@@ -118,7 +118,7 @@ Those translation-layer gaps are tracked in [MKT adapter primitives](MKT-Adapter
 
 - [MKT adapter primitives](MKT-Adapter-Primitives) — canonical donor choreography and donor -> MKMSZ semantic translation.
 - [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer) — accepted genuine-port strategy and compatibility contract.
-- [(Old) Foreign moves and Reptile](Foreign-Moves-and-Reptile) — historical behavioral-Reverse-Elbow narrative retained until its dedicated retirement task.
+- [Foreign moves and Reptile](Foreign-Moves-and-Reptile) — historical supersession stub for the retired behavioral-recreation page.
 - [Function registry](Function-Registry) — flat canonical function semantics.
 - [Address and patch-site registry](Address-and-Patch-Site-Registry) — exact guarded patch sites.
 - [Memory and allocation map](Memory-and-Allocation-Map) — literal ownership/allocation and proof-vs-production boundaries.

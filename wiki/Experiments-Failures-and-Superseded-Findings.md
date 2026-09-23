@@ -1,111 +1,104 @@
 # Experiments, failures, and superseded findings
 
-Failures are retained because they define safety boundaries and prevent repeated dead ends.
+> **Scope:** This page is the cross-domain index of durable **Rejected / failed** and superseded findings. It records only enough detail to identify the attempted path, observed failure, reusable lesson, and canonical page containing the full evidence.
+>
+> It is **not** a proof-history page. Version chronology, artifact hashes, complete routes, and extended diagnostics stay with the owning domain.
 
-## Address and interpretation corrections
+Keep an entry here when the negative result establishes a safety constraint, rules out an architectural assumption, explains why an approach was abandoned, provides a meaningful negative control, or prevents expensive work from being repeated.
 
-| Earlier conclusion | Current conclusion | Why it changed |
-|---|---|---|
-| Current process global `0x802FCE20` | Effective address `0x802ECE20` | `0xCE20` is a signed low immediate paired with `lui 0x802F` |
-| `0x8004CC14` propels the player | Projectile setup helper | It writes the projectile actor `+0x14`; confirmed player helper `0x8002B1EC` writes actor `+0x14/+0x58` |
-| `0x8004B82C` is a player action | Ice-projectile flight callback | Caller/data-flow analysis identifies projectile ownership |
-| `0x8004AA4C` is a generic initializer | Scheduler context-transfer shim | Selector dispatch table `0x800A1050` and native call sites show transfer semantics |
-| A special callback may `jr ra` | Installed top-level callback must transfer/nonreturn | Installer enters it with `$ra` equal to callback entry; return self-reenters |
-| XP final threshold `7345` | `7354` | Actual halfword/value is `0x1CBA` |
+## Address, action, and lifecycle corrections
 
-## Pickup/resource failures
+| Attempt / scope | Observed failure or correction | What it established | Detailed owner |
+|---|---|---|---|
+| Treat current-process global as `0x802FCE20` | Address interpretation was wrong | Signed low immediate `0xCE20` paired with `lui 0x802F` yields effective address `0x802ECE20` | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| Use `0x8004CC14` as player propulsion | Movement model was based on projectile setup | `0x8004CC14` owns projectile setup; player velocity uses `0x8002B1EC` | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| Treat `0x8004B82C` as a player action | Caller/data flow contradicted the interpretation | It is the ice-projectile flight callback | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| Treat `0x8004AA4C` as a generic initializer | Later selector analysis showed scheduler transfer semantics | Action adapters must preserve target scheduler/context-transfer behavior | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| Return normally from a top-level callback installed by the special-action path | Reverse Elbow v3 immediately self-reentered/hung | Installed callbacks must transfer through proven scheduler/native cleanup rather than ordinary `jr ra` | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| Reverse Elbow v5 omitted native special lock `0x800BF308` | Lifecycle model remained unstable/incomplete | Native action-lock state is part of the host action contract | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| XP final threshold read as 7345 | Value was misread | Canonical value is `0x1CBA = 7354` | [XP and progression](XP-and-Progression) |
 
-| Attempt | Result | Durable lesson |
-|---|---|---|
-| Change callback/type only | Award or art could change independently/incompletely | Move complete identity `+0x10..+0x2B` |
-| Copy Prison key into Fire without resource import | Item absent/unusable | `+0x24` is stage-local; foreign bundle must be resident |
-| Treat zero outer slot as storage | Rejected | Zero is selector capacity, not physical bytes |
-| Reuse occupied no-pickup slot | Rejected without global reference trace | Other actors/scripts may own it |
-| Global pickup pool before import planner | Deferred | Stage-local production scope is the safe boundary |
+## Pickup, resource, and materialization failures
 
-## Enemy failures
+| Attempt / scope | Observed failure | What it established | Detailed owner |
+|---|---|---|---|
+| Change pickup callback/type only | Award and art could diverge or change incompletely | Ordinary pickup identity must move as the complete `+0x10..+0x2B` slice | [Pickups and item randomization](Pickups-and-Item-Randomization) |
+| Copy Prison key into Fire without importing its resource | Foreign item was absent/unusable | Pickup `+0x24` is stage-local; the foreign bundle must be resident | [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) |
+| Treat a zero outer resource slot as physical storage | Rejected before production use | Zero selector capacity is not evidence of free backing bytes | [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) |
+| Reuse an occupied no-pickup slot without a global reference trace | Rejected as unsafe | Non-pickup actors/scripts may still own the slot | [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) |
+| Build the global pickup pool before the import/materialization planner | Deferred as an unsafe ordering | Stage-local production was the bounded safe scope until destination resources could be materialized | [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) |
+| Destination-shell visual with logical award only | Rejected before runtime promotion | 1.0 requires the pickup visual/resource identity to match the randomized item | [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) |
 
-| Attempt | Result | Durable lesson |
-|---|---|---|
-| Fire type `0x0A -> 0x01` without Temple resource | Freeze at spawn | Constructor dereferences type-specific resource slot |
-| Add Temple file after all stock Fire allocations | Would exceed arena by `0x3098` | Use bounded replacement or redesign allocation |
-| Imported monk proof | Fighter works, normal death/despawn presentation absent | Residency/constructor success is not complete compatibility |
-| Apply ordinary policy to bosses | Rejected | Boss/state branches carry custom resources, process IDs, scripts, and transitions |
+## Enemy-randomization failures
 
-## UI failures
+| Attempt / scope | Observed failure | What it established | Detailed owner |
+|---|---|---|---|
+| Fire enemy type `0x0A -> 0x01` without Temple resource | Freeze at spawn | Constructor dereferences a type-specific resource slot; type substitution alone is insufficient | [Enemy randomization](Enemy-Randomization) |
+| Add Temple file after all stock Fire allocations | Would exceed the observed arena by `0x3098` | Foreign-enemy residency needs bounded replacement/reallocation, not append-after-stock | [Enemy randomization](Enemy-Randomization) |
+| Imported monk proof | Fighter functioned, but normal death/despawn presentation was absent | Residency + constructor success is not complete enemy compatibility | [Enemy randomization](Enemy-Randomization) |
+| Apply ordinary-enemy policy to bosses/minibosses | Rejected | Boss/state branches carry custom resources, process IDs, scripts, and transitions | [Enemy randomization](Enemy-Randomization) |
 
-- Direct framebuffer drawing was unstable.
-- A candidate universal sprite renderer was context-specific.
-- General helper abstraction failed where inline allocation/submission worked.
-- Textured-image rendering remains unproven; native text is the stable production path.
-- Early proof diagnostics used legal-screen string storage that production later assigned; the final box wrapper uses a guarded dedicated region.
-- **Toasty visual v01**: automatic HUD-cycle proof produced no visible image. Because it had no independent marker, it does not distinguish wrapper execution from texture-slot allocation, file loading, palette binding, or `0x80073CEC` context suitability. Do not repeat unchanged; next proof must add a proven text/quad diagnostic and isolate one variable at a time.
-- **Toasty visual v02**: the `V02 WRAPPER OK` native-text marker is runtime-confirmed visible during gameplay, while the Toasty image remains absent. Wrapper/hook execution is therefore exonerated; continue downstream with texture-slot allocation/state first, one variable at a time. Toasty audio v03 remains independently runtime-confirmed and must not be reworked as part of this diagnosis.
-- **Toasty visual v03**: persistent `V03 SLOT FAIL`, but the same proof also removed all normal game music/SFX. Treat the diagnostic as intrusive/rejected for allocator attribution; the slot result is not clean evidence against `0x8001C2B4`. Return to the v02-known-good diagnostic footprint before isolating allocator success again.
-- **Toasty visual v06**: wrapping raw loader `0x80065D64` and extending into standalone selector-cave tail `0x9A720..0x9A753` caused a Mission Objective + music hang before gameplay. Reject this diagnostic; do not infer loader success/failure from it. Subsequent load checks must leave the stock loader call untouched and avoid that cave tail.
-- **Toasty visual v07**: even with the stock raw-loader call restored exactly, adding a post-load helper call reproduced the same Mission Objective + music hang. Reject helper-based load instrumentation on this route; no loader conclusion is accepted. Preserved UI evidence also shows `0x80073CEC -> 0x8001E578` is not a universal gameplay renderer, so the v01-v05 renderer assumption is superseded. Continue with the actual textured gameplay-HUD node family instead.
-- **Toasty visual v11**: creating fixed slot `0x17` through a second `0x8001BF70` allocation produced a small multicolored/noisy clone instead of the v10 equals-sign control, while the stock HUD stayed intact. Reject that independent fixed-slot allocation recipe. v12 isolates slot-ID safety by aliasing `0x17` directly to slot `0x13` metadata/backing with no allocation or pixel copy.
+## UI and Toasty diagnostic failures
 
-## Reverse Elbow failures
+| Attempt / scope | Observed failure | What it established | Detailed owner |
+|---|---|---|---|
+| Direct framebuffer drawing | Unstable | Native HUD/textured-node systems are the supported rendering direction | [Native HUD and UI](Native-HUD-and-UI) |
+| Treat `0x80073CEC -> 0x8001E578` as a universal gameplay sprite renderer | Toasty diagnostics did not support the assumption | Renderer/context conclusions must come from the actual textured gameplay-HUD node family | [Toasty visual research](Toasty-Visual-Research) |
+| Toasty visual v01 without an independent marker | No visible image and no clean attribution | A negative visual proof needs an independent known-good execution marker | [Toasty visual research](Toasty-Visual-Research) |
+| Toasty visual v03 allocator diagnostic | Persistent slot failure coincided with loss of normal music/SFX | The instrumentation was intrusive; its slot result is not clean allocator evidence | [Toasty visual research](Toasty-Visual-Research) |
+| Toasty visual v06 raw-loader wrapper extending into selector-cave tail `0x9A720..0x9A753` | Mission Objective + music hang before gameplay | Do not wrap the stock raw loader or reuse that proof-cave tail for this diagnostic | [Toasty visual research](Toasty-Visual-Research) |
+| Toasty visual v07 post-load helper instrumentation | Reproduced the Mission Objective + music hang with the stock loader call restored | Helper-based load instrumentation on that route is rejected; it does not prove loader success/failure | [Toasty visual research](Toasty-Visual-Research) |
+| Toasty visual v11 independent fixed-slot `0x17` allocation through a second `0x8001BF70` call | Noisy/multicolored clone instead of the known-good control | Reject that fixed-slot allocation recipe; later diagnostics must isolate slot identity without assuming it | [Toasty visual research](Toasty-Visual-Research) |
 
-| Version/approach | Failure |
-|---|---|
-| v1 | Minimal movement, incomplete animation, facing/input misunderstanding |
-| v2 | Correct mirrored command, but contact could hard-hang through experimental victim callback |
-| v3 | Immediate hang regardless of enemy; normal return self-reentered top-level callback |
-| v4/v5 | Incomplete scheduler/action-root emulation; v5 omitted special lock `0x800BF308` |
-| v7 | Pass-through behavior not established; only bounded lifecycle/Y gating improved |
-| v8 | Intended 4x speed, per-tick velocity, forced crossover, and expanded HUD were not observed; attacking still stops motion |
+The earlier blanket statement that textured-image rendering was unproven is superseded: later Toasty work confirms the image/texture path at its documented bounded scope. The rejected entries above remain useful only for the diagnostic paths they rule out.
 
-Stable baseline is v6's selector-3 scheduler bridge, lock, correct player velocity helper, bounded loops, and native restore. Experiments that change one observable at a time can distinguish movement, interaction, and diagnostic failures.
+## Reverse Elbow and MKT-adapter failures
 
-## Flow and inventory rejections
+| Attempt / scope | Observed failure | What it established | Detailed owner |
+|---|---|---|---|
+| Reverse Elbow v1-v2 early behavioral recreation | Minimal movement/incomplete presentation; experimental victim callback could hard-hang on contact | Separate host lifecycle, movement calibration, victim semantics, and donor semantics instead of changing them together | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| Reverse Elbow v3 ordinary return | Immediate hang with or without an enemy | Callback self-reentry is a host lifecycle hazard, not an enemy-contact issue | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| Reverse Elbow v4-v5 incomplete scheduler/action-root emulation | Unstable/incomplete action lifecycle | Native scheduler transfer, lock, bounded loops, and cleanup are required together | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| Reverse Elbow v8: velocity `0xD0000`, locomotion index `controller+0x6E6`, per-tick reapply, forced crossover `+0x3800` | Intended speed/pass-through was not observed; attacks could stop motion; expanded diagnostics were absent | These exact parameters are failed-proof reproduction data, not accepted movement values | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| Forced-X crossover as donor pass-through | Did not reproduce donor behavior | MKT pass-through is ordinary movement plus temporary three-tick repulsion suppression, not a teleport/fixed-position write | [MKT adapter primitives](MKT-Adapter-Primitives) |
+| Direct retail-instruction relocation as a general port strategy | Rejected architecturally | PROCESS/OBJECT layouts, scheduler ABI, tables, heaps, callbacks, and resource formats are engine-local | [MKT compatibility overview](MKT-to-MKMSZ-Compatibility-Layer) |
+| Reuse donor strike/reaction numbers as target numbers | Sektor v61 long combo caused catastrophic world/background corruption when selector `0x02` was copied numerically | Translate reaction meaning into MKMSZ-native semantics; numeric equality is not compatibility | [MKT adapter primitives](MKT-Adapter-Primitives), [Sektor takeover proof history](Sektor-Takeover-Proof-History) |
+| Copy donor animation callback/control words blindly | Rejected by the cross-engine ABI boundary | Visual frames may transfer while callback/control tokens require explicit semantic mapping | [MKT adapter primitives](MKT-Adapter-Primitives) |
 
-- Start-button selector shortcut was intermittent; only A-button route is production.
-- Broad boot-routine deletion was rejected because fade/title normalization must run.
-- Global save disabling was rejected; the accepted implementation uses the native selector one-shot flag.
-- Tablet `0x24` was rejected as key placeholder because it is consumable; Glass `0x08` is made inert instead.
-- Auto-spill/global inventory scan is intentionally outside the accepted four-box design.
+## Fighter-asset and Sektor proof failures
 
-## Proof/production allocation conflicts
+| Attempt / scope | Observed failure | What it established | Detailed owner |
+|---|---|---|---|
+| Use zero-filled-looking ROM `[0xA1308,0xA1544)` as a Sektor helper cave | Input-specific hard hangs | The range contains live action/dispatch records; zero bytes are semantic data, not free space | [Sektor takeover proof history](Sektor-Takeover-Proof-History), [Memory and allocation map](Memory-and-Allocation-Map) |
+| Sektor v20 accumulated raw-resource growth | Whole-scene corruption before Crouch Low Kick was selected | The failure was a composition/resource-pressure boundary, not evidence against that animation mapping | [Sektor takeover proof history](Sektor-Takeover-Proof-History) |
+| Sektor v44 generated shapes at unaligned offsets such as `+0x5037E` and `+0x51D81` | Immediate crouch hard-hang before a frame appeared | Generated shape records must be 4-byte aligned for target word loads | [Sektor takeover proof history](Sektor-Takeover-Proof-History), [MKT fighter asset translation](MKT-Fighter-Asset-Translation) |
+| Tight-pack donor/WIMP rows as `width * height` | Diagonal/slashed frames | Preserve source row pitch `align4(width)`; visible width is not storage stride | [MKT fighter asset translation](MKT-Fighter-Asset-Translation) |
+| Put decoded byte lengths such as `0x00000FEA` / `0x00001054` into an MKMSZ image wrapper | Target interpreted the header as type 0 | Target wrapper type is encoded in header byte `+3 & 0x3F`; decoded length is not a raw-wrapper type declaration | [MKT fighter asset translation](MKT-Fighter-Asset-Translation) |
+| Copy MKT codec 22/24/15 streams directly into MKMSZ | Rejected as an asset path | Decode donor formats offline, translate palette/geometry, then generate target-native assets | [MKT fighter asset translation](MKT-Fighter-Asset-Translation) |
+| PS1-derived Sektor Run interpretation used by v55/v56 | Imported even poses were malformed | That PS1 pixel interpretation is rejected; preserved Midway/WIMP source plus calibrated target conversion became the successful bounded route | [MKT fighter asset translation](MKT-Fighter-Asset-Translation), [Sektor takeover proof history](Sektor-Takeover-Proof-History) |
+| Treat Sektor v62 standalone combo continuation `[0x9AD90,0x9ADA0)` as reusable production space | It overlaps production bootstrap composite `[0x9AD84,0x9AF20)` | Runtime success of a proof does not make its allocation production-safe | [Sektor takeover proof history](Sektor-Takeover-Proof-History), [Memory and allocation map](Memory-and-Allocation-Map) |
 
-Historical proof offsets are evidence, not allocations. The Temple XP proof and foreign-key callback use temporary caves that conflict with current production owners. Their old runtime results do not establish compatibility with a new layout; reallocation and validation of the changed composition are separate technical work.
+## Flow, inventory, and run-lifecycle rejections
 
+| Attempt / scope | Observed failure / rejection | What it established | Detailed owner |
+|---|---|---|---|
+| Start-button selector shortcut | Intermittent | Production selector uses the A-button route | [Stage flow and selector](Stage-Flow-and-Selector) |
+| Broad boot-routine deletion | Rejected | Fade/title normalization still has to run | [Stage flow and selector](Stage-Flow-and-Selector) |
+| Disable saving globally | Rejected | Selector-only suppression uses the native one-shot flag; normal post-stage saving remains | [Stage flow and selector](Stage-Flow-and-Selector) |
+| Tablet `0x24` as foreign-key placeholder | Consumable | Use inert Glass `0x08` for LIVE masking instead | [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle) |
+| Auto-spill/global inventory scan | Intentionally rejected design | Four boxes remain explicit backing stores with controlled switching; no hidden global scan | [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle) |
 
 ## XP productionization failure
 
-| Attempt | Result | Durable lesson |
-|---|---|---|
-| Runtime V2 XP production integration | Temple music loaded, then game hung immediately before the stage became visible; no progression pickup had executed | Static/CI evidence alone did not establish native allocation/stage-init safety |
-| V2 repartition + progression stage-entry restore combined in one production step | Failure source became ambiguous between the repartition and the new restore path | Disposable tests changing one runtime-critical variable at a time can isolate the cause |
+| Attempt / scope | Observed failure | What it established | Detailed owner |
+|---|---|---|---|
+| V2 production integration with stage-entry progression restore calling native tier evaluator `0x80074FBC` | Temple music loaded, then the game hung before gameplay became visible | Static/CI success did not establish stage-init timing safety | [XP and progression](XP-and-Progression) |
+| V2 repartition and restore-helper behavior changed together | Failure source was initially ambiguous | Runtime-critical variables need isolated disposable diagnostics | [XP and progression](XP-and-Progression) |
+| Diagnostic A: keep V2 allocation/reward path but redirect only the progression stage-entry JAL back to the existing load/mask wrapper | Temple loaded and progression pickups at 85/258 worked, but combat XP path was absent by design | V2 allocation/reward path was viable on the tested route; the restore helper was the bounded suspect | [XP and progression](XP-and-Progression) |
+| Diagnostic B: restore persistent XP at stage entry but omit the tier evaluator there | Temple/Wind/title->Fire routes retained XP and unlocked moves | **Accepted correction:** restore XP at stage entry; evaluate tiers only on the Runtime-confirmed progression-pickup acquisition path | [XP and progression](XP-and-Progression) |
 
-The initial isolation plan tested the V2 allocation/reward callback **without** the progression stage-entry restore hook. Stage-load success would implicate the restore path; a continued hang would leave repartition/state relocation implicated. Diagnostic A and B below resolved this investigation.
+## Allocation rule
 
+Historical proof offsets are evidence, not reusable allocations. A proof-only cave, zero-filled region, or successful standalone footprint does not become production-safe without current ownership analysis and validation of the composed layout.
 
-### XP Diagnostic A follow-up
-
-| Attempt | Result | Durable lesson |
-|---|---|---|
-| Diagnostic A: failed production build with only the progression stage-entry JAL redirected back to the existing four-box load/mask wrapper | Temple loaded and played normally; progression rewards at 85/258 worked; no combat XP; no EXPERIENCE combo text | V2 allocation and reward callback path are viable on the tested Temple route; failure is inside the progression restore-helper path |
-| Restore-helper review | The helper calls native tier evaluator `0x80074FBC` before normal stage gameplay is visible | The evaluator call became the next bounded suspect, subsequently isolated by Diagnostic B |
-
-
-### XP Diagnostic B resolution
-
-| Attempt | Result | Durable lesson |
-|---|---|---|
-| Diagnostic B: restore persistent XP but omit native tier evaluator during stage initialization | Temple loaded; XP 85/258 rewards unlocked moves; Temple -> Wind retained XP/moves; title -> Fire retained XP/moves | Stage-entry XP restore is safe; native tier state already established at acquisition persists across tested routes |
-| Native tier evaluator `0x80074FBC` called from progression stage-init restore | Earlier production build hung before gameplay display | **Rejected at this timing**. The accepted design calls the evaluator on the runtime-confirmed progression-pickup acquisition path |
-
-Diagnostic B supersedes the failed restore-helper design and is the accepted production behavior.
-
-
-## Global item materialization correction
-
-| Attempt / interpretation | Result | Durable lesson |
-|---|---|---|
-| Use destination pickup graphics and change only the logical award callback | Rejected before runtime promotion | Violates the 1.0 requirement that a randomized pickup visually match the item it contains |
-| Treat foreign-resource importing as optional polish | Superseded | Exact cross-stage model/resource materialization is core 1.0 infrastructure |
-| Keep the logical-item catalog separate from physical materialization | Retained | Useful for shuffle/solver semantics, but every accepted placement must still materialize the randomized item's real visual/resource identity |
-
-The disposable destination-shell diagnostic is a rejected alternative, not a required validation step or production direction.
+Canonical allocation ownership is [Memory and allocation map](Memory-and-Allocation-Map). Feature-specific proof details remain on their owning pages.

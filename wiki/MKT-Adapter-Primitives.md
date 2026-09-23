@@ -2,7 +2,7 @@
 
 > **Scope:** This page owns reusable **donor -> MKMSZ semantic translation** for MKT-derived fighter actions and combo behavior. It explains what donor operations mean and how those meanings map onto established MKMSZ host primitives.
 >
-> It does **not** own the MKMSZ host action ABI; that remains canonical in [Player actions and special moves](Player-Actions-and-Special-Moves). Fighter image/codec/palette/storage conversion remains canonical in [MKT fighter asset translation](MKT-Fighter-Asset-Translation). Version-by-version Sektor history remains on [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) until Audit Task 14 creates the dedicated proof-history owner.
+> It does **not** own the MKMSZ host action ABI; that remains canonical in [Player actions and special moves](Player-Actions-and-Special-Moves). Fighter image/codec/palette/storage conversion remains canonical in [MKT fighter asset translation](MKT-Fighter-Asset-Translation). Version-by-version Sektor history is canonical in [Sektor takeover proof history](Sektor-Takeover-Proof-History).
 
 ## Current conclusion
 
@@ -34,6 +34,46 @@ The compatibility layer separates three concerns:
 Only layer 2 belongs here. Layer 3 is canonical in [Player actions and special moves](Player-Actions-and-Special-Moves) and [Function registry](Function-Registry).
 
 Numeric equality is not semantic compatibility. A donor function address, process-field offset, strike index, reaction selector, animation callback token, or heap pointer must not be transplanted merely because the target has a similar-looking number or record.
+
+## Reverse Elbow donor command and historical proof selection
+
+Reverse Elbow was chosen as the first bounded foreign-move probe because it was genuinely absent from MKMSZ while avoiding the additional projectile/effect dependencies of Acid Spit, Force Ball, Invisibility, and similar specials. Slide was not a useful first donor proof because MKMSZ already has a native Slide. This is historical proof-selection rationale, not a current product requirement.
+
+Source-lineage material identifies the Reptile Low Kick special descriptor as ground-only, with no extra-condition callback, an input-history window of `0x10`, and mirrored direction tokens. Its semantic command is therefore **Back -> Forward + Low Kick**. The symbolic recognition/dispatch chain is:
+
+```text
+Reptile Low Kick close handler
+-> secret-move search
+-> facing-aware history match
+-> restricted transfer
+-> do_reptile_dash
+-> body-propell action PROP_REP_DASH
+```
+
+| Donor symbol | Value | Meaning |
+|---|---:|---|
+| `PROP_REP_DASH` | `0x17` | Body-propell action selector |
+| `ACT_REPTILE_DASH` | `0x216` | Fighter action/state |
+| `ANIM_REP_DASH` | `0x0B` in animation table 2 | Return animation |
+
+The donor choreography is a bounded phase machine:
+
+```text
+set Reptile dash action
+-> use ordinary run animation
+-> accelerate toward opponent
+-> first strike/contact 0x15
+-> continue through the victim under temporary no-repel
+-> stop / brief pause
+-> face opponent
+-> select ANIM_REP_DASH
+-> accelerate back
+-> return strike/contact 0x16
+-> stop
+-> recover / exit
+```
+
+Source lineage also shows the male-ninja family sharing generic movement/reaction machinery, strike tables, and animation heaps while retaining character-specific IDs and close/special handlers. That supported selective semantic adaptation rather than copying an entire donor binary. Exact retail closure, strike records, no-repel state, and frame provenance are documented below and in [MKT fighter asset translation](MKT-Fighter-Asset-Translation).
 
 ## Retail provenance / exact reference addresses
 
