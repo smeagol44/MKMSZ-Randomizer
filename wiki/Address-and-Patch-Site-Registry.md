@@ -15,6 +15,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x0000E028` | — | Stage selector | JAL `0x8002830C` | JAL debug menu `0x8000D0B8` |
 | `0x00015CD0` | — | Stage selector | load from `0x800C11E0` | JAL compact-index mapper |
 | `0x0001674C` | — | Four-box input | `3C03802F 9463CE18` | Call switching action routine, then resume `0x80015B54` |
+| `0x0001C9A0..0x0001C9AF` | `0x8001BDA0` | Rainbow outfit | guarded first four frame-setup instructions | `rainbow` mode only: tail-jump through uncached helper `0xA01AF700`, which replays displaced instructions and resumes `0x8001BDB0` |
 | `0x000396CC` | `0x80038ACC` | Persistence | `3C03800A 8C63A910` | Restore collected flags, resume `0x80038AD4` |
 | `0x0003A018` | `0x80039418` | Persistence | `ACA2002C` | Capture stage/ordinal after collected store while preserving displaced store |
 | `0x0005D9CC` | HUD function | Box indicator | JAL `0x8001EAE4` | JAL native box-indicator wrapper |
@@ -41,6 +42,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x00063724` | combo XP UI | XP progression UI | JAL native text renderer | Suppress combo EXPERIENCE value |
 | `0x000A6FFC..` | `0x800A63FC` | XP progression | guarded signed stage-cap halfwords | Main-stage caps become `20000` |
 | `0x000A5478` | file entry `0x5E` | Title branding | guarded stock file-table entry | Repoint title package to generated high-ROM copy |
+| `0x000A5664` | file entry `0x87` | Rainbow outfit | stock `0x00748920..0x0078E300`, raw flag `0` | `rainbow` mode only: repoint intact Sub-Zero file plus 64-palette bank to `0x00F20000..0x00F679E0` |
 | `0x000B3364` palette base | `0x800B2764` | Title branding | selected guarded Candidate-B-unused CI8 entries | Replace 15 entries with grayscale antialias ramp |
 
 Boot string pointer instructions live at ROM `0x7A22C`, `0x7A250`, `0x7A274`, `0x7A298`, `0x7A2BC`, `0x7A2E0`, `0x7A304`, `0x7A328`, `0x7A34C`, `0x7A370`, and `0x7A394`; every instruction is guarded before replacement.
@@ -54,7 +56,8 @@ The following production writers target continuous owned regions. Their **exact 
 | `rom.production.inventory_action_cave` | `inventory_boxes.py`; guarded cave bytes and CI bounds | Emit the four-box action routine |
 | `rom.production.inventory_helper_cave` | `inventory_boxes.py`; guarded former selector-cave tail and CI bounds | Emit switch/mask helper composition |
 | `rom.production.bootstrap_composite` | native payload/persistence/flow writers; guarded pre-production bytes and capacity checks | Emit bootstrap, persistence helpers/tables, relocated selector mapper, and selector-only save-bypass write |
-| `rom.production.payload_source` | output-expansion guard plus exact Runtime V2 size checks | Emit the reloadable `0x300`-byte Runtime V2 code payload |
+| `rom.production.payload_source` | output-expansion guard plus exact Runtime V2 size checks | Emit the reloadable `0x3B0`-byte Runtime V2 code payload |
+| `rom.production.rainbow_file_87` | `rainbow_palette.py`; guarded stock file entry, frame-setup bytes, destination `FF` capacity, and exact bank size | `rainbow` mode only: copy stock file `0x87` intact and append 64 full BGR555 palettes |
 | `rom.production.title_high` | title builder capacity/clean-output guard | Emit the recompressed generated file `0x5E` package |
 
 Runtime-only slices such as the Runtime V2 inventory/XP payload subranges and persistent state are **not ROM patch sites**. Their canonical bounds and ownership remain only in the Memory Map; Core Runtime owns how those slices compose.
