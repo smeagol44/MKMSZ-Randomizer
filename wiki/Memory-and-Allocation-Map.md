@@ -142,6 +142,7 @@ These rows describe specific disposable artifacts. They do not classify the same
 |---|---:|---|---|---|---|---|
 | <code>rom.proof.fire_resource_relocation</code> | <code>[0x00F00000,0x00F02BE8)</code> | <code>proof-only</code> | Foreign Prison-key-in-Fire resource proof | Runtime-confirmed bounded proof | no | Architecture evidence only. The location is not a production allocation promise. |
 | <code>rom.proof.sektor_v62_file_87</code> | <code>[0x00F40000,0x00F8E3FC)</code> | <code>proof-only</code> | Sektor v62 relocated fighter file <code>0x87</code> | Runtime-confirmed bounded combo route | no | Does not overlap current title allocation, but larger historical Sektor proof footprints crossed into the later title-owned high-ROM area; proof-history bounds remain artifact-specific. |
+| <code>rom.proof.rainbow_v01_file_87</code> | <code>[0x00F20000,0x00F679E0)</code> | <code>proof-only</code> | Rainbow outfit v01 relocated stock Sub-Zero file <code>0x87</code> plus 64-palette bank | Runtime-confirmed full-production-composition proof | no | Artifact-specific relocation; the stock file body is preserved byte-for-byte before the appended palette bank. This does not reserve <code>0xF20000</code> for production. |
 
 ### Known rejected/conflicting ROM uses
 
@@ -185,6 +186,15 @@ The canonical coordinate in this table is the **physical** interval. <code>displ
 | <code>rdram.production.xp_state</code> | <code>[0x1AF760,0x1AF768)</code> | KSEG0 <code>[0x801AF760,0x801AF768)</code>; KSEG1 <code>[0xA01AF760,0xA01AF768)</code> | <code>production</code> | Progression acquired-count + persistent-XP words | Persistent MKMSZR state | Run lifecycle / stage transition | Runtime-confirmed on bounded Diagnostic B routes | yes | <code>xp_progression.py</code> state <code>+0x40/+0x44</code> | Full nine-tier run remains a validation limit, not an allocation ambiguity. |
 | <code>rdram.production.state_reserved_tail</code> | <code>[0x1AF768,0x1AF820)</code> | KSEG0 <code>[0x801AF768,0x801AF820)</code>; KSEG1 <code>[0xA01AF768,0xA01AF820)</code> | <code>production</code> | Unassigned remainder of the versioned V2 state reservation | Persistent MKMSZR state | Run lifecycle | Implementation/CI-confirmed reservation boundary | yes | <code>runtime_v2.py</code> owns full state <code>[0x1AF720,0x1AF820)</code> | **Reserved, not free.** New sub-owners require an explicit layout change/composition check. |
 | <code>rdram.stock.pickup_context_pointer</code> | <code>[0x2ECE20,0x2ECE24)</code> | KSEG0 <code>0x802ECE20</code>; KSEG1 <code>0xA02ECE20</code> | <code>stock-known</code> | Live pickup-manager process/context pointer slot | Stage runtime | Stage manager construction/gameplay | Static-confirmed; runtime use confirmed by persistence | conditional | <code>addresses.py</code>, <code>pickup_persistence.py</code> | Corrects superseded <code>0x802FCE20</code>; surrounding overlay/runtime space is not inferred from this word. |
+
+### Rainbow v01 proof-only RDRAM composition
+
+The runtime-confirmed rainbow outfit v01 proof reuses the same already-reserved physical 1 KiB block, but with an artifact-specific repartition. These rows overlap the normal production sublayout intentionally because the proof ROM is a mutually exclusive composition; they do **not** change current browser/CLI ownership.
+
+| <code>region_id</code> | Physical <code>[start, end_exclusive)</code> | <code>display_aliases</code> | Class | Owner/scope | Evidence | Production safe | Notes |
+|---|---:|---|---|---|---|---|---|
+| <code>rdram.proof.rainbow_v01_code</code> | <code>[0x1AF420,0x1AF7D0)</code> | KSEG0 <code>[0x801AF420,0x801AF7D0)</code>; KSEG1 <code>[0xA01AF420,0xA01AF7D0)</code> | <code>proof-only</code> | Full-production rainbow proof code payload | Runtime-confirmed proof | no | Proof repartition expands code from the normal V2 <code>0x300</code> bytes to <code>0x3B0</code>; rainbow helper is at KSEG0 <code>0x801AF700</code>, size <code>0xCC</code>. |
+| <code>rdram.proof.rainbow_v01_state</code> | <code>[0x1AF7D0,0x1AF820)</code> | KSEG0 <code>[0x801AF7D0,0x801AF820)</code>; KSEG1 <code>[0xA01AF7D0,0xA01AF820)</code> | <code>proof-only</code> | Full-production rainbow proof persistent state | Runtime-confirmed proof | no | Existing state semantics are repacked for this artifact; rainbow phase uses proof state offset <code>+0x48</code>. |
 
 ### The 1 KiB reservation and arena boundary
 
