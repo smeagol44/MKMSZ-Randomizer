@@ -547,7 +547,7 @@ Manual testing reproduced the same Toasty corruption pattern as before without a
 
 ### Toasty visual diagnostic v34 — backing-pointer identity check
 
-**Implementation/static-confirmed; runtime pending manual validation.**
+**Runtime-confirmed negative control on 2026-09-23.**
 
 v34 returns to the v32/v27 visual baseline and changes only diagnostic instrumentation. After all nine dynamic allocations/raw loads, a compact helper snapshots each saved slot's current backing pointer from `0x800ED940[id]`. Every HUD frame, the wrapper compares the current pointer for each saved slot against that captured value.
 
@@ -556,3 +556,18 @@ Any mismatch draws `V34 PTR MUT` through the proven native-text path while leavi
 Interpretation:
 - corruption + `V34 PTR MUT` -> backing-pointer replacement/reuse is implicated;
 - corruption with no marker -> pointer identity is stable and the next bounded diagnostic should inspect the backing pixel bytes themselves.
+
+
+Manual testing reproduced the same Temple/Earth/Fire corruption pattern as the preceding baseline and did not report `V34 PTR MUT`; Fortress remained clean. Therefore each saved dynamic slot continued to resolve through `0x800ED940[id]` to the same backing pointer captured after load on the tested routes. Backing-pointer replacement/reuse is rejected as the direct cause of the visible corruption.
+
+### Toasty visual diagnostic v35 — narrow-buffer pixel-integrity check
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v35 returns to the v32/v27 visual baseline and adds only a per-HUD-frame integrity pass over the six narrow 7-pixel side-piece backing buffers. The existing allocator-aligned 32-byte row pitch is preserved. For each narrow buffer the builder computes two independent expected values from the exact padded payload written by the raw loader: a wrapping 32-bit word sum and a 32-bit word XOR.
+
+At runtime the wrapper resolves each narrow piece's current backing pointer through the already-established saved slot ID and `0x800ED940[id]`, recomputes both checksums over the complete padded buffer, and compares them with the build-time values. Any mismatch draws the proven native-text marker `V35 PIX MUT` while the Toasty image remains active.
+
+Interpretation:
+- corruption + `V35 PIX MUT` -> actual backing CI8 bytes are changing after load;
+- corruption with no marker -> the narrow backing bytes are intact, pushing the remaining defect into texture upload/cache/TMEM/render interpretation rather than slot record, backing pointer, or source-buffer integrity.
