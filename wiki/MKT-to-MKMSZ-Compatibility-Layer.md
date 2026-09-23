@@ -60,6 +60,7 @@ Current evidence supports these **conceptual** transfers:
 | Normal-combo record structure | Compatible at the tested Sektor v62 scope | [MKT adapter primitives](MKT-Adapter-Primitives) |
 | Strike geometry/damage/reaction **meaning** | Transfer semantically, not by raw numeric IDs | [MKT adapter primitives](MKT-Adapter-Primitives) |
 | Three-tick no-repel behavior | Donor semantic is Static-confirmed; target shim is Pending | [MKT adapter primitives](MKT-Adapter-Primitives) |
+| Projectile actor/process split | Target-native resource-actor creation, facing-aware placement, and child-process binding are Static-confirmed; generic adapter wrappers remain Pending | [MKT adapter primitives](MKT-Adapter-Primitives), [Player actions and special moves](Player-Actions-and-Special-Moves) |
 
 ## What requires translation
 
@@ -92,6 +93,7 @@ Donor table indices and selectors must be identified by meaning and mapped to MK
 - **Movement / stop / face / animation selection / animation advance:** target primitives identified.
 - **Fighter asset translation:** donor descriptors/pixels/palettes can be converted into MKMSZ-native target assets for proven formats; generated Type-5 is the accepted target storage direction.
 - **Normal-combo grammar:** transferable at the bounded Sektor v62 scope when game-local reaction semantics are translated.
+- **Projectile host primitives:** resource-backed secondary-actor creation, facing-aware relative placement, child projectile-process binding, and the generic projectile collision/strike path are statically identified. v69 Runtime-confirms the resolved player-animation cursor path; v70 Runtime-confirms a genuine donor rocket frame can reach the live projectile.
 - **Rejected-path lessons:** forced crossover, raw selector reuse, blind callback-token reuse, unsafe callback returns, and direct donor codec consumption all remain reusable architectural constraints.
 
 ### Translation-required or incomplete
@@ -101,6 +103,7 @@ Donor table indices and selectors must be identified by meaning and mapped to MK
 - generic three-tick no-repel shim in MKMSZ;
 - general donor strike/reaction semantic map;
 - generic donor animation-control-token translator;
+- generic projectile actor/process wrapper and donor projectile callback/state/effect translation;
 - arbitrary donor special-move command/action integration;
 - production-safe allocation/composition for imported fighters or moves.
 
@@ -149,6 +152,7 @@ The architectural lessons are preserved here without keeping a second proof diar
 - projectile setup is not the player-propulsion primitive;
 - omitting native action lifecycle state can destabilize the action;
 - imported fighter bytes must be translated into the target asset representation rather than copied as donor codecs.
+- v70's hardcoded Ice-path spawn/acceleration tuning is superseded as the implementation strategy; donor projectile choreography should run through generic target actor/process primitives instead.
 
 Detailed Reverse Elbow failures remain on [Player actions and special moves](Player-Actions-and-Special-Moves). Detailed donor semantic consequences are on [MKT adapter primitives](MKT-Adapter-Primitives). Sektor vNN failure/supersession chronology is canonical in [Sektor takeover proof history](Sektor-Takeover-Proof-History).
 
@@ -158,6 +162,8 @@ The compatibility layer should become more generic by filling semantic gaps, **n
 
 Useful next adapter research, after current project priorities permit it, is:
 
+- a minimal generic projectile adapter over the now-identified MKMSZ resource-actor, relative-placement, and child-process primitives, validated first with Sektor `do_robo_zap -> rocket1_proc`;
+- donor projectile callback/state/effect/palette translation without inheriting Ice presentation;
 - a reusable donor phase/action runner over the proven MKMSZ lifecycle;
 - a narrow MKMSZ no-repel hook implementing the donor three-tick semantics;
 - one exact victim-reaction translation that preserves target interruption/cleanup;
