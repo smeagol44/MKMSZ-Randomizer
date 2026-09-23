@@ -21,7 +21,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x00066F64` | arena construction | Arena reservation | `0x2442F420` | `0x2442F820` |
 | `0x00066FE0` | `0x800663E0` | Bootstrap | guarded native sequence | Call native bootstrap stub |
 | `0x00066FE8` | arena construction | Arena reservation | `0x2442F420` | `0x2442F820` |
-| `0x0007A3F4` | `0x800797F4` | Logo bypass | two logo JAL pairs then fade JAL | `beq zero,zero,+3`; preserves fade/title |
+| `0x0007A3F4` | `0x800797F4` | Logo bypass | `0C01F113 00000000 0C01F143 00000000 0C018576 24040080` | first word `0x10000003` (`beq zero,zero,+3`); preserves fade/title |
 | `0x0007B900..0x0007B94B` | `0x8007AD00` | Four-box mask | guarded stock sanitizer body | Replace with stage-local key mask-copy routine |
 | `0x0007B94C..0x0007B97F` | `0x8007AD4C` | Four-box load | guarded stock default-loader body | Rebuild live inventory from authoritative backing box |
 | `0x0009B7DC` | `0x8009ABDC` | Stage selector | 12 stock pointers | Eight safe stage labels plus zeros |
