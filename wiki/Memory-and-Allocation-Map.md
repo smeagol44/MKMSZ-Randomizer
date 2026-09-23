@@ -260,7 +260,7 @@ In particular, this first map deliberately leaves unclassified:
 - historical proof extents whose exact bounds were not preserved well enough to promote;
 - sparse individual patch sites that are already canonically guarded by the [patch-site registry](Address-and-Patch-Site-Registry).
 
-## Relationship to the decomp map
+## Relationship to MKMSZR Project Atlas
 
 Allocation ownership and decomp/readiness answer different questions.
 
@@ -270,7 +270,7 @@ Allocation ownership and decomp/readiness answer different questions.
 - A production cave/allocation is an ownership overlay, not a decomp-readiness score.
 - Overlay reuse remains stage-qualified.
 
-No <code>MKMSZ-Decomp-Map</code> data or repository is changed by this task. Structured export/integration is a later phase only after this human-readable schema survives normal maintenance.
+[MKMSZR Project Atlas](https://github.com/smeagol44/MKMSZR-Project-Atlas) is a derivative visualization of this page and other canonical Wiki owners. Its ROM/RDRAM views snapshot bounded intervals from this page and retain the source commit for provenance; the Wiki remains authoritative. Atlas updates must not infer free space from gaps, padding, or unclassified cells.
 
 ## Related canonical references
 
