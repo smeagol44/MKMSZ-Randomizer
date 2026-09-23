@@ -6,9 +6,11 @@
 
 ## Current unresolved boundary
 
-**Pending manual runtime validation:** v15 is **Runtime-confirmed** for genuine Toasty CI8 pixels, the 78x85 image with 96-byte aligned stride, dynamic texture allocation, raw-file load into the allocated backing store, node `+0x4A` binding, and submission through the gameplay-HUD queue. v16 remains **Implementation/static-confirmed; runtime pending manual validation.** for binding the genuine Toasty TLUT through node palette selector `+0x4C`.
+**Current boundary:** v15 is **Runtime-confirmed** for genuine Toasty CI8 pixels through the gameplay-HUD textured-node path. v16 is **Runtime-confirmed as a palette-binding failure that nevertheless proves the clone-local palette-selector route is live**: changing only the clone to selector `0x11` changed the rendered colors substantially, but the image became pale/pink/green and visually corrupted rather than correctly colored.
 
-Therefore the exact visual question still open is: **does v16 render the already-confirmed v15 Toasty image with the genuine palette, without disturbing the stock HUD or gameplay route?** Final product trigger, production-safe allocation/composition, and combination with the separately solved audio path remain **Pending** after that bounded palette check.
+Static reconciliation found the cause: the preserved v01 palette bytes are MKMSZ **source BGR555/A1B5G5R5 words**, while the gameplay renderer's runtime palette-pointer table points directly to already hardware-ready **RGBA5551 TLUT words**. v16 registered the source words directly and therefore bypassed the normal MKMSZ source-to-hardware palette conversion.
+
+v17 is **Implementation/static-confirmed; runtime pending manual validation.** It keeps v16's selector/pointer/code/image/geometry paths byte-for-byte unchanged and changes only the 512 custom TLUT bytes by applying the exact BGR555-source -> RGBA5551-hardware channel/alpha conversion.
 
 ## Final evidence status by proof
 
@@ -29,7 +31,8 @@ Therefore the exact visual question still open is: **does v16 render the already
 | v13 | **Runtime-confirmed failure on 2026-09-22; implementation bug identified statically afterward.** | A second signed-address bug used the wrong slot-record page; again not evidence against slot `0x17`. |
 | v14 | **Runtime-confirmed on 2026-09-22.** | Corrected fixed-slot alias reproduces the v10 control and confirms record/backing bases. |
 | v15 | **Runtime-confirmed on 2026-09-22.** | Genuine Toasty CI8 pixels render through a dynamic gameplay-HUD texture slot; wrong stock-HUD colors isolate palette selection as the remaining visible defect. |
-| v16 | **Implementation/static-confirmed; runtime pending manual validation.** | Node `+0x4C` palette-selector path and genuine Toasty TLUT registration are established statically/implementation-wise; runtime color validation is still Pending. |
+| v16 | **Runtime-confirmed failure on 2026-09-23; useful selector evidence.** | The clone's colors changed strongly, proving the custom `+0x4C` selector/pointer route is live, but the palette was registered in MKMSZ source BGR555 form instead of hardware RGBA5551 form, producing the wrong colors/transparency. |
+| v17 | **Implementation/static-confirmed; runtime pending manual validation.** | Identical v16 image/selector/pointer/render code; only the 512 custom TLUT bytes are converted from source BGR555/A1B5G5R5 to hardware RGBA5551. |
 
 ## Generic renderer conclusions produced by this investigation
 
@@ -42,7 +45,7 @@ These reusable conclusions are canonical in [Native HUD and UI](Native-HUD-and-U
 | Node halfword `+0x4A` selects the texture slot, including clone-local rebinding | v09-v10 **Runtime-confirmed** |
 | Fixed-slot record base is `0x802E83F0`; backing-pointer base is `0x800ED940` | v14 **Runtime-confirmed** control, supported by static audit |
 | Dynamic CI8 allocation can feed genuine imported pixels into an added gameplay-HUD node | v15 **Runtime-confirmed** |
-| Node halfword `+0x4C` is the gameplay renderer palette selector | v16 **Implementation/static-confirmed; runtime pending manual validation.** |
+| Node halfword `+0x4C` is the gameplay renderer palette selector | v16 **Runtime-confirmed** that clone-local selector `0x11` changes palette resolution; v16's palette bytes themselves were in the wrong source representation |
 
 ## Rejected or superseded Toasty visual approaches
 
@@ -360,20 +363,41 @@ This confirms the important composition boundary:
 The remaining visible defect is palette selection, not the image source/stride/renderer socket.
 
 
-### Toasty visual diagnostic v16 — genuine palette selector
+### Toasty visual diagnostic v16 — selector live, TLUT representation wrong
+
+**Runtime-confirmed failure on 2026-09-23; palette-selector route itself is confirmed.**
+
+The user observed the same large Toasty pixel field in the same gameplay position, but its appearance changed from v15's blue/cyan stock-HUD coloring to a pale pink/green/black corrupted-looking image. Stock HUD/gameplay remained intact.
+
+This is positive evidence that clone node `+0x4C = 0x11` successfully selects the custom palette path. The defect is the bytes supplied to that path.
+
+The preserved v01 palette is a source-format descriptor: count `0x100` followed by 256 MKMSZ source words in BGR555/A1B5G5R5 form. That format is appropriate before MKMSZ's native source-to-hardware upload conversion, but v16 pointed the gameplay renderer's runtime TLUT pointer directly at those source words. The runtime pointer table instead references already hardware-ready RGBA5551 TLUT data.
+
+This explains both symptoms: channel order is wrong and the source high alpha/control bit lands in the wrong hardware bit position, so color and transparency are both corrupted.
+
+### Toasty visual diagnostic v17 — hardware-ready TLUT
 
 **Implementation/static-confirmed; runtime pending manual validation.**
 
-Static audit of gameplay renderer `0x8001F7A8` identifies node halfword `+0x4C` as the palette selector. The v08-v15 source HUD node sets `+0x4C = 0x10`. The renderer resolves it through:
-- selector table `0x80290A00 + selector*8`, taking the first halfword as palette index;
-- palette-pointer table `0x802E73E0 + palette_index*4`;
-- native CI8 TLUT upload before textured drawing.
+v17 is intentionally identical to v16 except for the 512-byte custom TLUT payload. Each source word is converted as:
 
-Preserved Temple RAM shows selector entry `0x10` maps to palette index `0x10`; selector entry `0x11` is unused, and palette-pointer entry `0x11` is zero on that captured route.
+```text
+source BGR555/A1B5G5R5:
+  A = bit15
+  B = bits14..10
+  G = bits9..5
+  R = bits4..0
 
-v16 therefore leaves v15's dynamic texture allocation, genuine image bytes, 96-byte stride, geometry, and gameplay render submission unchanged. It adds the genuine 256-entry Toasty A1B5G5R5 TLUT in the existing zero-guarded proof-data cave, registers selector/palette index `0x11` to that TLUT, and changes **only the clone's** node `+0x4C` from inherited stock `0x10` to custom `0x11`.
+hardware RGBA5551:
+  bits15..11 = R
+  bits10..6  = G
+  bits5..1   = B
+  bit0       = A
+```
 
-Expected result: the v15 Toasty image remains in the same place and size but renders with its genuine colors. Stock HUD nodes retain selector `0x10`.
+The indexed Toasty image, dynamic slot, 96-byte stride, selector `0x11`, pointer registration, clone geometry, gameplay-HUD submission, logo skip, Safe Stage Select, and audio exclusion are unchanged from v16.
+
+ROM-level comparison against a rebuilt v16 confirms every non-header difference is confined to the custom 0x200-byte TLUT region. Offline decode also round-trips every palette entry exactly at 5-bit channel/alpha precision.
 
 ## Related canonical owners
 
