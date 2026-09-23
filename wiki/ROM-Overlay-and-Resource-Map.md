@@ -88,6 +88,9 @@ For embedded images, the native path calls `0x8000322C`. Compression type 4 disp
 
 Global file ID `0x5E` is the normal title-screen image package. The clean USA Rev. 0 package decodes to `0x61494` bytes.
 
+The package uses the game's **MSB-first LZW-style stream**. A matching encoder/decoder pair is **Static-confirmed** by byte-exact stock decode/re-encode: decoding the stock package and re-encoding it yields the original compressed size `0x2F3E0` and round-trips to the same `0x61494` decoded bytes.
+
+The accepted Candidate-B artwork recompresses to `0x2FD95` bytes, which is `0x9B5` larger than the stock slot. It therefore cannot safely remain in the original stock storage extent and requires relocation. The literal stock extent, production destination allocation, capacity, and build-dependent compressed endpoints remain canonical in [Memory and allocation map](Memory-and-Allocation-Map); this page records the package/codec mechanics only.
 The accepted MKMSZR title path is **data-only**:
 
 1. decode the existing `0x5E` package;
