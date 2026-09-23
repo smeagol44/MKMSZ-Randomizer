@@ -17,7 +17,9 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80065E00` | Type-5 fighter-image decoder | Static-confirmed | Decodes native fighter data in 2-row x 4-pixel blocks from a per-image model/dictionary table; stock Sub-Zero frames use this path |
 | `0x80015088` | Stage transition handler | Static-confirmed | Copies selection to current-stage state |
 | `0x8001C528` | Pickup presentation loader | Static/runtime-confirmed | Called from pickup manager with record `+0x28` presentation pointer + 4; not the `+0x24` resource-selector lookup |
+| `0x80024650` | Active actor-list insertion helper | Static-confirmed | Used by the Zap animation token-`0x0B` secondary-actor path after resource-backed construction |
 | `0x800281A0` | Resource-entry resolver/actor setup wrapper | Static-confirmed | Receives pointer to one outer-selector entry, loads its file-relative descriptor offset, adds current stage resource base, then calls `0x80028128` |
+| `0x8002830C` | Generic controller/process allocator/clone | Static-confirmed | Allocates a controller/process with supplied class/type and callback, links it into the controller list, and inherits current controller actor/animation/context fields; used by projectile bridge `0x8004CBC4` |
 | `0x80028128` | Resource-backed actor constructor helper | Static-confirmed | Consumes direct descriptor pointer produced by `0x800281A0` |
 | `0x8001BF70` | Gameplay HUD texture-slot initializer | Static-confirmed | Called six times from `0x8005BFB0` after image decode; initializes fixed HUD texture slots `0x11..0x16`; backing pointers are written through table base `0x800ED940`. v11's attempt to create independent fixed slot `0x17` with a second call is rejected: it rendered corrupted/noisy content despite intact stock HUD. |
 | `0x8001C2B4` | Dynamic texture/screen-image allocator | Static-confirmed | Searches IDs `0x200..0x2FF`; successful allocation initializes the 16-byte slot record at `0x802E83F0 + id*0x10`, sets active halfword `+0x0E = 1`, records backing pointer in `0x800ED940[id]`, and returns the ID; failure returns `-1` |
@@ -29,7 +31,10 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8002E104` | Central XP award | Static-confirmed | Current XP at `0x8011200C` |
 | `0x8002EC78`, `0x8002ECF4` | Player construction path | Static-confirmed | Not enemy loader |
 | `0x8002FCDC` | Lower-level fighter allocator | Static-confirmed | Stores fighter type at actor `+0x78` |
+| `0x80030974` | Animation control-token `0x0B` handler | Static-confirmed | Drives the Zap/resource secondary-actor creation path; reaches `0x80034510` and stages the created actor in controller secondary-actor fields |
+| `0x80031208` | Facing-aware actor XY adjustment | Static-confirmed | Applies requested X/Y displacement to an actor and negates the X adjustment when horizontally flipped; semantic target for donor owner-relative placement helpers |
 | `0x80032CD4` | Special-action callback installer | Static-confirmed | Installed top-level callback must transfer/nonreturn |
+| `0x80034510` | Animation-stream resource actor creation helper | Static-confirmed | Consumes the resource entry following token `0x0B`, reaches `0x800281A0 -> 0x80028128`, and participates in staging a secondary actor while preserving the owner actor |
 | `0x80038770` | Generic stage key/crystal pickup | Static-confirmed | Stage-dependent parameter mapping |
 | `0x800388FC` | Potion pickup | Runtime-confirmed | Adds inventory ID `0x01` |
 | `0x8003892C` | Shield pickup | Runtime-confirmed | Adds ID `0x06` |
@@ -45,7 +50,10 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8004AA4C` | Special-action scheduler context-transfer shim | Static-confirmed | Dispatch table at `0x800A1050`; not a generic initializer |
 | `0x8004AB84` | Complete ice-projectile action root | Static-confirmed | Includes special lock behavior |
 | `0x8004B82C` | Ice-projectile flight callback | Static-confirmed | Supersedes old player-action interpretation |
+| `0x8004CBC4` | Projectile child-process bridge | Static-confirmed | Allocates a child controller/process through `0x8002830C` with projectile class/tag `0x700`, copies parent/opponent context, binds the staged secondary actor from parent `+0x714` to child actor `+0x6E0`, then clears staging state |
 | `0x8004CC14` | Projectile setup helper | Static-confirmed | Writes projectile actor `+0x14`; not player propulsion |
+| `0x8004CC50` | Generic projectile flight/collision loop | Static-confirmed | Runs projectile collision/lifetime checks with a supplied strike selector; routes strike resolution through `0x8004CE6C/0x8004CF3C` and reaches target-native teardown on terminal paths |
+| `0x8004CE6C` | Projectile strike-record resolver | Static-confirmed | Uses projectile fighter type plus supplied selector to resolve the target fighter strike table before dispatch |
 | `0x8005BFB0` | Gameplay HUD function | Static/runtime-confirmed | Contains 13 submit calls |
 | `0x800615D8` | Frontend fade/normalization | Static/runtime-confirmed | Preserved after logo bypass with argument `0x80` |
 | `0x8006352C` | Auxiliary trigger-record spawner | Static-confirmed | Hardcodes fighter type `7` |

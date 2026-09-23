@@ -143,6 +143,7 @@ These rows describe specific disposable artifacts. They do not classify the same
 |---|---:|---|---|---|---|---|
 | <code>rom.proof.fire_resource_relocation</code> | <code>[0x00F00000,0x00F02BE8)</code> | <code>proof-only</code> | Foreign Prison-key-in-Fire resource proof | Runtime-confirmed bounded proof | no | Architecture evidence only. The location is not a production allocation promise. |
 | <code>rom.proof.sektor_v62_file_87</code> | <code>[0x00F40000,0x00F8E3FC)</code> | <code>proof-only</code> | Sektor v62 relocated fighter file <code>0x87</code> | Runtime-confirmed bounded combo route | no | Does not overlap current title allocation, but larger historical Sektor proof footprints crossed into the later title-owned high-ROM area; proof-history bounds remain artifact-specific. |
+| <code>rom.proof.sektor_v70_file_87</code> | <code>[0x00F40000,0x00F8E790)</code> | <code>proof-only</code> | Sektor v70 chest + straight-missile fighter file <code>0x87</code> | Partially Runtime-confirmed missile presentation/flight route | no | File size <code>0x4E790</code> is <code>0x24C</code> above the Runtime-confirmed v49 Fortress-working footprint. Fortress/Prison allocation safety was not revalidated; do not promote this as a new safe envelope. |
 
 ### Known rejected/conflicting ROM uses
 
@@ -151,6 +152,7 @@ These rows describe specific disposable artifacts. They do not classify the same
 | Sektor v01-v07 “zero cave” helper | <code>[0xA1308,0xA1544)</code> | **Rejected / failed.** Overwrote live stock action/dispatch records. Restoring stock bytes in v08 removed the input-specific hangs. |
 | Toasty visual v06 selector-cave tail | <code>[0x9A720,0x9A754)</code> | **Rejected / failed on that route.** The interval now also lies inside <code>rom.production.inventory_helper_cave</code>. |
 | Sektor v62 standalone combo continuation | <code>[0x9AD90,0x9ADA0)</code> | Runtime-valid proof semantics, but **allocation conflicts** with <code>rom.production.bootstrap_composite</code>. Must be relocated before integration. |
+| Sektor v65-v70 missile helper code | known entry begins at <code>0x9ADA0</code> inside <code>rom.production.bootstrap_composite</code>; full historical extent is not promoted here | **Proof-only/conflicting.** Runtime results validate bounded chest/projectile semantics, not this allocation. Reallocate before any integration. |
 | Old title executable wrapper | starts at <code>0x9ADE0</code>; full historical extent is not promoted here | **Rejected / failed composition.** Its entry lies inside <code>rom.production.bootstrap_composite</code>; current title implementation is data-only. |
 | Prison-key award callback proof | entry at <code>0x8F6EC</code>; full proof body is not promoted here | Runtime-confirmed proof result, but its entry lies inside <code>rom.production.inventory_action_cave</code>; not reusable without reallocation/revalidation. |
 

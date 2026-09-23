@@ -284,6 +284,108 @@ The failed v3 self-reentry and incomplete v5 lifecycle remain in [Player actions
 
 **Coverage:** **Known target lifecycle primitives; generic action runner Pending.**
 
+
+## Sektor straight-missile translation
+
+The v63-v70 line establishes why Sektor's straight missile should be treated as the first **generic projectile-adapter validation case**, not as an Ice-Blast recreation. Full proof chronology and artifact identities remain in [Sektor takeover proof history](Sektor-Takeover-Proof-History); donor asset/codec/storage details remain in [MKT fighter asset translation](MKT-Fighter-Asset-Translation).
+
+### Donor `do_robo_zap`
+
+Source-lineage `do_robo_zap` performs this setup choreography:
+
+```text
+zap_init_special_act(act_robo_zap)
+rocket1_proc -> child program
+robo_open_chest_fast
+setup_proj_obj
+projectile z-order = behind owner
+adjust_xy(7,45) relative to Sektor/facing
+create_proj_proc(rocket1_proc)
+i_am_a_sitting_duck
+sleep 0x20
+robo_close_chest
+```
+
+Semantic translation:
+
+| Donor operation | Meaning | MKMSZ-side adapter status |
+|---|---|---|
+| `zap_init_special_act` | establish grounded special-action ownership, face opponent, disable ordinary control/blocking, mark special state | **Partial adapter:** target lifecycle/lock/cleanup primitives are established, but no generic donor special-entry wrapper exists |
+| `robo_open_chest_fast` | play donor chest-open firing presentation; frame count depends on opponent reaction state | **Partial:** player animation cursor/control is established; generic timed donor animation playback and opponent-state query remain to be wrapped |
+| `setup_proj_obj` | create a projectile/resource actor before the child process exists | **Target primitive identified; generic wrapper Pending** |
+| set `ozval = 0` | projectile presentation layer behind owner | **Translation required**; donor z/layer semantics are engine-local |
+| `adjust_xy(7,45)` | owner-relative, facing-aware chest placement | **Target primitive identified; coordinate calibration Pending** |
+| `create_proj_proc(rocket1_proc)` | create child process and bind projectile actor plus owner/opponent context | **Target primitive identified; generic wrapper Pending** |
+| `i_am_a_sitting_duck` | attacker enters projectile recovery/locked state | **Partial:** target action lock/recovery exists; semantic wrapper Pending |
+| `sleep 0x20` | hold/recovery interval | **Covered primitive** |
+| `robo_close_chest` | reverse/close presentation then leave the action | **Partial:** animation/cleanup primitives exist; generic reverse/recovery composition Pending |
+
+The donor values `(7,45)` are **donor-space data**. They must not be replaced with ad-hoc target pixel shifts. v70's hardcoded target-space spawn correction is therefore rejected as an adapter strategy even though it was useful as a diagnostic.
+
+### Donor `rocket1_proc`
+
+The straight-rocket child process is semantically:
+
+```text
+bind projectile PID/ownership
+play robot projectile sound
+select robot rocket animation family
+find animation part 4   ; horizontal/flat rocket
+initial speed = 0x70000 if opponent reacting else 0x40000
+animation rate = 3
+smoke counter = 0
+strike semantic = donor 0x12
+projectile_flight_call(rocket1_flight_call)
+rocket_explode_fx
+```
+
+The per-tick `rocket1_flight_call`:
+- emits smoke on the donor cadence;
+- increases horizontal speed by **1/16 of current speed per tick**;
+- caps magnitude at `0x0E0000`;
+- reapplies projectile velocity through the donor facing-aware velocity helper;
+- returns to the generic projectile-flight loop.
+
+This means acceleration, cap, animation-part selection, smoke cadence, strike meaning, and explosion are donor program/data semantics. The adapter should preserve them and translate only the engine-facing operations.
+
+### Target projectile actor/process primitives
+
+**Static-confirmed.** The clean MKMSZ Ice/Zap path separates projectile actor creation from projectile process creation, which is structurally compatible with the donor split.
+
+Target resource-actor creation:
+- primary Zap animation slot `0x24` contains control token `0x0B`;
+- token `0x0B` dispatches to `0x80030974`;
+- that path calls `0x80034510`, which consumes the following resource entry and reaches the established resource-backed actor constructor `0x800281A0 -> 0x80028128`;
+- the created secondary actor is captured in controller staging fields including `+0x714/+0x648`, while the owner actor remains at `+0x6E0`;
+- `0x80024650` inserts the created actor into the active actor list.
+
+Target relative placement:
+- `0x80031208(actor, x_adjust, y_adjust)` applies facing-aware actor-relative displacement by negating the X adjustment when the actor is horizontally flipped.
+
+Target projectile-process creation:
+- `0x8004CBC4(callback)` allocates a child controller/process through `0x8002830C` with class/tag `0x700`;
+- it copies relevant parent/opponent context;
+- it binds child actor `+0x6E0` to the parent's staged secondary actor at `+0x714`;
+- it tags the actor with `0x700` and clears the staging fields.
+
+The reusable target vocabulary is therefore:
+
+```text
+actor = create_resource_actor(resource_entry)
+place_relative(actor, owner, donor_x, donor_y)
+process = start_projectile_process(actor, translated_program)
+```
+
+This is the intended basis for Sektor missile, Acid Spit, spear/net-style projectiles, and similar donor moves. It is **not** a claim that all such moves are already compatible; strike semantics, effects, palette binding, interruption, cleanup, and donor callback behavior remain translation-specific.
+
+### v69/v70 runtime boundary
+
+- **v69 Runtime-confirmed:** current controller/process `+0x6E4` can be temporarily redirected after the stock helper and advanced once through `0x800304C0` to display the genuine chest-open frame on the player without hanging.
+- **v70 Partially Runtime-confirmed:** the genuine horizontal rocket frame reaches the live projectile and travels, but stock Ice helper clones/tint remain, spawn placement is wrong, and the observed flight does not reproduce donor acceleration.
+
+The durable lesson is not “tune the Ice projectile until it looks like Sektor.” The accepted direction is to compose the target primitives above under donor `do_robo_zap/rocket1_proc` semantics.
+
+
 ## Primitive coverage table
 
 | Donor primitive / semantic | Donor evidence | MKMSZ semantic target | Coverage | Canonical detail |
@@ -297,6 +399,12 @@ The failed v3 self-reentry and incomplete v5 lifecycle remain in [Player actions
 | select animation | `get_char_ani` | Native animation selection | **Covered primitive** | Player Actions |
 | advance animation | `do_next_a9_frame` / playback | Native animation advance | **Covered primitive** | Player Actions |
 | donor frame/texture resource | donor heap-relative descriptors/codecs | Rebuilt MKMSZ descriptors + native storage | **Covered asset path for proven formats** | [MKT fighter asset translation](MKT-Fighter-Asset-Translation) |
+| projectile resource actor creation | `setup_proj_obj` / donor projectile object | resource-backed secondary actor path via token `0x0B`, `0x80030974 -> 0x80034510 -> 0x800281A0/0x80028128` | **Target primitive identified; wrapper Pending** | This page + Function Registry |
+| owner-relative placement | `adjust_xy_a5` | facing-aware actor displacement `0x80031208` | **Target primitive identified; donor-unit calibration Pending** | This page + Function Registry |
+| projectile child process | `create_proj_proc` | `0x8004CBC4 -> 0x8002830C` child controller/process binding | **Target primitive identified; wrapper Pending** | This page + Function Registry |
+| projectile flight callback | `projectile_flight_call(callback)` | MKMSZ projectile loop/collision family around `0x8004CC50` | **Partial adapter; callback ABI Pending** | This page + Player Actions |
+| projectile per-tick state | donor `p_store*` fields | adapter-owned child-process scratch/state | **Missing generic ABI** | This page |
+| projectile effect | `rocket_smoke`, `rocket_explode_fx` | target-native effect/SFX semantics | **Missing generic effect translation** | This page |
 | animation callback/control token | donor script callback semantics | Equivalent MKMSZ-native control token/callback | **Missing generic translator** | This page |
 | strike check | donor strike index + record | Native strike dispatch with translated semantics | **Partial adapter** | This page + Player Actions |
 | victim reaction | donor selector/function | MKMSZ-native semantically equivalent reaction | **Missing generic map** | This page |
@@ -310,11 +418,14 @@ The failed v3 self-reentry and incomplete v5 lifecycle remain in [Player actions
 ## Known missing generic adapter functions
 
 1. **Donor action-phase runner** — express donor phase ordering, sleeps, branch-on-contact, timeout, facing changes, and guaranteed native cleanup without rewriting scheduler glue per move.
-2. **Velocity/facing conversion policy** — normalize donor movement requests into MKMSZ-native values after explicit unit validation.
-3. **No-repel gate** — implement the donor three-tick countdown at a narrow MKMSZ separation hook, without forced crossover or teleport behavior.
-4. **Strike/reaction translator** — map donor geometry/damage/flags/reaction meaning to MKMSZ-native strike and victim-reaction primitives.
-5. **Animation-control-token translator** — map donor animation callbacks/control tokens; visual-frame import alone is insufficient for scripts containing engine callbacks.
-6. **Generic combo semantic mapper** — preserve proven normal-combo structure while resolving every game-local strike/reaction selector semantically and validating it.
+2. **Projectile actor/process wrapper** — expose the now-identified target actor creation, relative placement, child-process binding, owner/opponent context, and cleanup as a reusable adapter API instead of replaying Ice choreography.
+3. **Projectile callback/state ABI** — translate donor `projectile_flight_call`-style per-tick callbacks and donor `p_store*` scratch into target child-process state without move-specific hardcoding.
+4. **Velocity/facing conversion policy** — normalize donor movement/projectile velocity requests into MKMSZ-native units after explicit calibration.
+5. **Projectile effect/palette translation** — bind projectile-local palette semantics and map donor smoke/explosion/SFX effects without inheriting Ice presentation.
+6. **No-repel gate** — implement the donor three-tick countdown at a narrow MKMSZ separation hook, without forced crossover or teleport behavior.
+7. **Strike/reaction translator** — map donor geometry/damage/flags/reaction meaning to MKMSZ-native strike and victim-reaction primitives.
+8. **Animation-control-token translator** — map donor animation callbacks/control tokens; visual-frame import alone is insufficient for scripts containing engine callbacks.
+9. **Generic combo semantic mapper** — preserve proven normal-combo structure while resolving every game-local strike/reaction selector semantically and validating it.
 
 These are design gaps, not permission to invent target semantics. Each becomes covered only when the MKMSZ-side behavior is established and validated at the appropriate scope.
 
@@ -330,6 +441,7 @@ The following failures remain reusable architectural evidence:
 - **Projectile setup used as player propulsion:** superseded by the corrected native player-velocity helper.
 - **Omitting native lifecycle state such as the special-action lock:** rejected by the unstable early proof path.
 - **Blind copying of donor animation callback/control words:** rejected by the ABI boundary; keep target-native control words until donor token meaning is explicitly translated.
+- **v70 Ice-path tuning as the final missile implementation:** superseded. Hardcoded target-space spawn shifts and a grafted acceleration callback did not reproduce donor placement/flight and left Ice helper/palette behavior visible. Preserve donor `do_robo_zap/rocket1_proc` semantics over generic target projectile primitives instead.
 
 Detailed v1-v8 Reverse Elbow history remains canonical in [Player actions and special moves](Player-Actions-and-Special-Moves). The old behavioral-recreation page remains historical until its own retirement task.
 
@@ -337,10 +449,12 @@ Detailed v1-v8 Reverse Elbow history remains canonical in [Player actions and sp
 
 The smallest useful next adapter research is to:
 
+- turn the identified MKMSZ projectile actor/process primitives into a minimal generic `create_projectile / place_relative / start_projectile` adapter contract;
+- validate that contract with Sektor's donor `do_robo_zap -> rocket1_proc` ordering before adding explosion/damage polish;
+- calibrate donor placement/velocity units instead of introducing target-specific offsets;
+- map projectile-local palette/effect/strike semantics without inheriting Ice behavior;
 - locate the narrowest MKMSZ fighter-separation hook for the donor no-repel countdown;
 - establish one exact donor victim-reaction translation without bypassing MKMSZ interruption/cleanup;
-- validate a reusable donor phase runner against one bounded move rather than hardcoding a second choreography;
-- expand combo translation only through semantically resolved reaction selectors;
 - keep every proof allocation separate from production-owned space.
 
 These are post-1.0 research items unless the current roadmap changes.

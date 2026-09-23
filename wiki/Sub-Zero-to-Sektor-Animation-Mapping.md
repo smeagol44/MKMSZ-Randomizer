@@ -344,6 +344,7 @@ The takeover remains **proof-only**, but the current slot mapping is much broade
 | Throw attacker `0x23` | The attacker-side Sektor/mechanical-arm presentation is mapped through the flattened target representation; later takeover routes carried the Grab/Throw repair successfully. Victim-side grabbed/thrown reactions remain a separate gap. |
 | Ordinary Run | The full twelve-pose Sektor Run is Runtime-confirmed in v58. This is distinct from the separate Push animation that earlier proofs had misidentified. |
 | Gameplay combo graph | v62 Runtime-confirms the tested Sektor MKT combo strings after translating donor reaction selectors to MKMSZ-native semantics. This is semantic/gameplay proof coverage, not production integration. |
+| Straight-missile presentation | v69 Runtime-confirms the genuine chest-open pose can be installed safely on the player for one frame through the resolved animation cursor. v70 Runtime-confirms a genuine horizontal rocket frame can reach and travel as the projectile. The helper-clone/palette/spawn/flight behavior is still wrong, so this is **partial presentation coverage**, not an accepted special-move mapping. |
 | Alternate Scorpion/type-`0x12` palette | v60 Runtime-confirms the first yellow/gold Cyrax-style alternate palette on its tested route. This is proof-history evidence rather than an animation-slot mapping rule. |
 
 Coverage statements are deliberately bounded. A later takeover proof can demonstrate that a composition works without proving every mapped slot individually, and a static mapping does not become Runtime-confirmed merely because neighboring states were exercised.
@@ -353,7 +354,7 @@ Coverage statements are deliberately bounded. A later takeover proof can demonst
 The current canonical gaps are:
 
 - primary Victory `0x0D` still lacks an accepted genuine-Sektor mapping in the takeover line;
-- generic projectile/Zap `0x24` and Dizzy `0x25` remain outside the common mapped set;
+- generic projectile/Zap `0x24` is now **partially exercised** by the v69/v70 Sektor missile diagnostics: chest and horizontal rocket visuals are proven independently, but the inherited Ice helper/palette/spawn/flight behavior is not accepted. Dizzy `0x25` remains outside the common mapped set;
 - Low Hit `0x1D` still lacks a practical direct runtime trigger despite its exact mapping;
 - victim-side Grab/Throw presentation remains pending; inherited primary `fb_*` slots beginning at `0x26` are candidates only after call-site ownership is established;
 - later primary reaction/presentation families and Mythologies-specific secondary states are not exhaustively mapped;

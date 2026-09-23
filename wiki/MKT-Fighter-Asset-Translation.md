@@ -20,7 +20,7 @@ donor frame descriptor + donor compressed/raw pixels + donor palette
 The stable compatibility conclusions are:
 
 - MKT fighter frame structure is conceptually compatible with MKMSZ, but pointer bases and dimension ordering are not byte-compatible and must be rebuilt.
-- MKT N64 codecs `22` and `24`, and the codec-`15` mechanical-arm path, are donor formats only. Their bytes are decoded offline; MKMSZ does not consume those streams directly.
+- MKT N64 codecs `16`, `22`, and `24`, plus the codec-`15` mechanical-arm path, are donor formats only. Their bytes are decoded offline; MKMSZ does not consume those streams directly. Codec `16` is now losslessly decoded for the Sektor straight-missile horizontal rocket frames.
 - Four-byte row pitch is part of both the proven imported N64 fighter path and preserved Midway WIMP raw-image storage. Visible width and stored row pitch must be kept distinct.
 - Donor palettes must be translated into MKMSZ source-palette semantics before rendering. Palette binding is a resource-lifetime problem as well as a color-conversion problem.
 - Generated native Type-5 is the accepted target storage format for imported fighter art. Its format contract remains canonical in [Data structures and encodings](Data-Structures-and-Encodings).
@@ -154,6 +154,55 @@ The first successful runtime rendering of a genuine retail MKT fighter frame ins
 Sektor's mechanical-arm throw uses a donor codec-`15` arm path plus holder/body art. The current adapter decodes the arm sprites offline using the donor `uncompress_8` grammar, composites them with `RBSHOLDER4` using donor anchors, and encodes the flattened result as ordinary MKMSZ Type-5 frames.
 
 The important compatibility boundary is structural: MKMSZ does not import the incompatible MKT slave-animation ABI merely to display the composite. The donor multi-object presentation can be flattened into a target-native fighter frame when target gameplay timing must remain stock.
+
+### MKT codec 16 and Sektor straight-missile assets
+
+**Static-confirmed.** Retail MKT's image decompression dispatcher masks the top header byte with `0x3F`; codec `16` dispatches to the compact four-bit/RLE decoder at donor VA `0x80082820`. The decoder grammar is:
+
+- header low 24 bits: decoded byte count;
+- command bit 7 set: zero run of `(cmd & 0x7F) + 7`;
+- high nibble 0: low nibble is the palette index and the next byte is the run count;
+- high nibble 1..6: repeat the low-nibble palette index that many times;
+- high nibble 7: literal run of `low_nibble + 3` pixels, packed two four-bit indices per following byte.
+
+Sektor's straight missile uses the **horizontal rocket pair** selected by donor animation part 4 rather than the full directional rocket family:
+
+| Donor shape | Visible geometry | Anchor | Image | Codec | Exact donor decode |
+|---:|---:|---:|---:|---:|---:|
+| robot `+0x2668` / `ROCKETD1` | `39x9` | `(+26,+3)` | `+0x49700` | 16 | 360 bytes = `9 * align4(39)`; 130 codec bytes including header |
+| robot `+0x267C` / `ROCKETD2` | `42x10` | `(+30,+4)` | `+0x49784` | 16 | 440 bytes = `10 * align4(42)`; 141 codec bytes including header |
+
+Both decode losslessly to palette indices `0..15`. For MKMSZ Type-5 generation the odd-height `39x9` image uses a transparently padded even backing height while retaining its visible descriptor.
+
+The donor has a dedicated `ROCKET_P` palette. The bounded takeover proofs mapped its first 16 donor colors deterministically into the resident Sektor TLUT rather than introducing a second runtime palette allocation. That is an asset-translation convenience, not evidence that a projectile automatically inherits the player's active palette; v70 shows projectile palette binding remains a separate target-lifecycle concern.
+
+### Chest-open launch art
+
+The MKT robot-family secondary animation slot 0 is the chest-open family. The first audited launch shapes are:
+
+| Donor shape | Visible geometry | Anchor | Codec |
+|---:|---:|---:|---:|
+| robot `+0x29A0` / `RBCHEST1` | `46x115` | `(+19,-5)` | 22 |
+| robot `+0x29B4` / `RBCHEST2A` | `47x113` | `(+20,-7)` | 22 |
+
+The fully-open donor visual is multipart: `RBCHEST2A` is accompanied by `RBCHEST2B` at robot `+0x29C8`. The first missile proofs intentionally reduced the runtime gate to one flattened/representative fully-open chest pose rather than importing the complete open/close choreography. Donor animation/lifecycle semantics remain owned by [MKT adapter primitives](MKT-Adapter-Primitives).
+
+### v63-v70 missile storage audit
+
+The v59/v62 takeover corpus contains 158 generated frames, 64 entropy models, 40,737 shared patterns, a `0x335A9` table/dictionary, and file `0x87 = 0x4E3FC`.
+
+An exact dry pack of **four** new lossless frames — two chest codec-22 poses plus both horizontal codec-16 missile poses — produced:
+- 1,485 extra `2x4` blocks;
+- 604 genuinely new shared patterns;
+- dictionary growth `0xBCC`;
+- best-fit existing entropy group 56;
+- stream delta `0x560`;
+- predicted file `0x87 = 0x4F5A8`.
+
+That is `0x11AC` larger than v59/v62 and `0x1064` above the Runtime-confirmed v49 Fortress-working footprint `0x4E544`. It did **not** prove that `0x4F5A8` fails; it established that naive lossless four-frame growth leaves the known working envelope.
+
+The compact proof therefore reduced the first runtime requirement to **one fully-open chest pose + one horizontal rocket pose** and quantized those two target buffers only against the existing 40,737-pattern dictionary with exact transparency masks. v64 reaches file `0x87 = 0x4E788`, only `0x244` above the v49 working footprint. v69/v70 then refine the code/lifecycle side while retaining the compact asset strategy. Fortress/Prison allocation boundaries were not revalidated for v64-v70, so these larger footprints remain **proof-specific**, not new safe-size ceilings.
+
 
 ### Preserved WIMP raw images
 
@@ -310,6 +359,9 @@ These figures are proof-instance data, not format requirements or production all
 | v55 | 158 frames; 52 models | 40,595 patterns; table/dictionary `0x32E03`; padded streams `0x136A4` | `0x4D0A4` | Nonzero normal-class guard plus compact packing; PS1 Run pixels later rejected |
 | v56 | 158 frames; 64 models | 40,833 patterns; table `0x33789`; padded streams `0x1408C` | `0x4E414` | Corrected-cursor PS1 buffers increased real pattern pressure, but the source interpretation still failed visually |
 | v58 | 158 frames; 64 models | 40,737 patterns; table `0x335A9`; padded streams `0x14254`; 160 supplemental WIMP patterns | `0x4E3FC` | Stride-corrected WIMP Run composition is Runtime-confirmed and remains below the v49 working footprint |
+| v64 | 160 frames; 64 models | one chest + one rocket frame quantized into the existing dictionary/model structure | `0x4E788` | Compact missile/chest asset proof; above the v49 working footprint and not Fortress-revalidated |
+| v69 | 159 frames; compact chest-only diagnostic | single chest pose retained; missile asset omitted | `0x4E71C` | Runtime-confirmed safe one-frame chest presentation on the tested route |
+| v70 | 160 frames; compact chest + rocket diagnostic | genuine horizontal rocket frame added back | `0x4E790` | Runtime-confirmed rocket presentation/flight path on the tested route; spawn/palette/flight semantics remain wrong |
 
 ### Bounded file-size evidence
 
@@ -321,6 +373,7 @@ The Sektor proof line demonstrates that **loaded file footprint alone can break 
 | file `0x87 = 0x5100C` | Runtime-confirmed later Fortress failure from footprint alone |
 | file `0x87 = 0x4E544` | Runtime-confirmed Fortress gameplay + Inventory in v49 |
 | file `0x87 = 0x4E3FC` | v58 remains below the proven v49 working footprint; ordinary Run is Runtime-confirmed |
+| file `0x87 = 0x4E71C..0x4E790` | v69/v70 run on the tested missile route, but Fortress/Prison memory boundaries were not revalidated; do **not** promote these as general safe footprints |
 
 The practical rule is to treat resource footprint as a guarded runtime constraint, keep proof allocations separate from production ownership, and prefer compaction/reclamation over assuming a larger fighter file will be safe.
 
@@ -345,6 +398,10 @@ This table is intentionally limited to **stable asset/codec/storage conclusions*
 | v56 | Cursor-corrected PS1 decode still produces invalid speckled bodies; PS1 POVBQ Run pixels are rejected as the current N64 donor source |
 | v57 | Preserved WIMP/MK3 source selected; first extraction is rejected because it ignored `align4(xsize)` source stride |
 | v58 | Runtime-confirmed stride-corrected full Run; preserves the WIMP-derived even poses and native Type-5 packing inside the bounded working footprint |
+| v63 | Rejected storage assumption: replacing a file-`0x87` bank classified as dead caused normal hit/blood corruption and a hard hang |
+| v64 | Compact one-chest/one-rocket Type-5 composition reaches the special path at `0x4E788`; presentation/lifecycle remains wrong |
+| v69 | Runtime-confirms the single chest asset itself can be installed safely for one frame through the resolved target cursor |
+| v70 | Runtime-confirms the genuine horizontal rocket asset reaches and travels as the live projectile; target palette/spawn/flight translation remains incomplete |
 
 For exact proof ROM identities and the broader animation/gameplay chronology, see [Sektor takeover proof history](Sektor-Takeover-Proof-History). Pre-test wording is retained there only as explicitly superseded historical context.
 
