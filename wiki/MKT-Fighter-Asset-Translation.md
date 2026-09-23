@@ -2,7 +2,7 @@
 
 > **Scope:** This page owns stable donor-to-target fighter-asset translation for the MKT/Sektor work: donor frame descriptors, dimensions and anchors, donor image formats, palette conversion/binding, MKMSZ Type-5 generation, and fighter-resource storage/packing strategy.
 >
-> It does **not** own the normative MKMSZ Type-5 grammar, which remains in [Data structures and encodings](Data-Structures-and-Encodings); animation-slot mapping, which remains in [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping); or the full version-by-version proof diary. Until Audit Task 14 creates the dedicated Sektor proof-history owner, detailed vNN chronology remains in [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer) and [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping).
+> It does **not** own the normative MKMSZ Type-5 grammar, which remains in [Data structures and encodings](Data-Structures-and-Encodings); animation-slot mapping/current coverage, which remains in [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping); or the full version-by-version proof diary, which is canonical in [Sektor takeover proof history](Sektor-Takeover-Proof-History).
 
 ## Current conclusion
 
@@ -294,7 +294,7 @@ The practical rule is to treat resource footprint as a guarded runtime constrain
 
 ## Asset-translation proof chronology
 
-This table is intentionally limited to asset/codec/storage conclusions. Full per-version routes, hashes, animation mapping, and gameplay results remain in the existing MKT/Sektor pages until Audit Task 14 creates `Sektor-Takeover-Proof-History`.
+This table is intentionally limited to **stable asset/codec/storage conclusions**. Full per-version identities, routes, final statuses, animation/gameplay results, and supersession are canonical in [Sektor takeover proof history](Sektor-Takeover-Proof-History).
 
 | Proof | Asset-translation result |
 |---|---|
@@ -314,7 +314,7 @@ This table is intentionally limited to asset/codec/storage conclusions. Full per
 | v57 | Preserved WIMP/MK3 source selected; first extraction is rejected because it ignored `align4(xsize)` source stride |
 | v58 | Runtime-confirmed stride-corrected full Run; preserves the WIMP-derived even poses and native Type-5 packing inside the bounded working footprint |
 
-For the exact proof ROM identities and the broader animation/gameplay chronology, see [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) and [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer). Some older sections there intentionally retain pre-test status wording; Task 14 is the planned reconciliation into the dedicated proof-history owner.
+For exact proof ROM identities and the broader animation/gameplay chronology, see [Sektor takeover proof history](Sektor-Takeover-Proof-History). Pre-test wording is retained there only as explicitly superseded historical context.
 
 ## Current compatibility boundaries
 
@@ -326,8 +326,9 @@ For the exact proof ROM identities and the broader animation/gameplay chronology
 ## Related pages
 
 - [Data structures and encodings](Data-Structures-and-Encodings) — canonical MKMSZ record and Type-5 format grammar.
-- [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer) — current genuine donor-port strategy and existing detailed proof chronology.
-- [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) — slot mapping, current coverage, and existing vNN history pending Task 14.
+- [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer) — current genuine donor-port strategy and compatibility contract.
+- [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) — slot mapping, mapping policy, current coverage, and gaps.
+- [Sektor takeover proof history](Sektor-Takeover-Proof-History) — canonical vNN identities, routes, results, supersession, and proof-specific allocation history.
 - [Player actions and special moves](Player-Actions-and-Special-Moves) — target action/control ABI; not asset encoding.
 - [PS1 research](PS1-Research) — MKMSZ PS1 platform facts.
 - [N64–PS1 comparison](N64-PS1-Comparison) — transfer-safety rules across platforms.

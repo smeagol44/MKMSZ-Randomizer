@@ -278,5 +278,6 @@ No <code>MKMSZ-Decomp-Map</code> data or repository is changed by this task. Str
 - [Address quick reference](Address-Quick-Reference) — derivative orientation-only lookup.
 - [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle) — four-box and run-lifecycle behavior.
 - [XP and progression](XP-and-Progression) — progression semantics and runtime evidence.
-- [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) — fighter proof footprints and allocation-boundary evidence.
+- [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) — canonical slot mapping/current coverage.
+- [Sektor takeover proof history](Sektor-Takeover-Proof-History) — fighter proof footprints, versioned allocation-boundary evidence, and supersession.
 - [Experiments, failures and superseded findings](Experiments-Failures-and-Superseded-Findings) — failure index and proof/production conflict history.

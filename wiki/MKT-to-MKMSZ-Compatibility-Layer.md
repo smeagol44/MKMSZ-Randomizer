@@ -2,7 +2,7 @@
 
 > **Scope:** This page owns the accepted **MKT -> MKMSZ porting strategy and current compatibility contract**. It is the architectural entry point, not a proof diary.
 >
-> Donor semantic translation belongs to [MKT adapter primitives](MKT-Adapter-Primitives). Fighter image/codec/palette/storage translation belongs to [MKT fighter asset translation](MKT-Fighter-Asset-Translation). The MKMSZ host action ABI belongs to [Player actions and special moves](Player-Actions-and-Special-Moves). Sektor slot mapping and the still-unextracted vNN chronology remain on [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) until Audit Task 14.
+> Donor semantic translation belongs to [MKT adapter primitives](MKT-Adapter-Primitives). Fighter image/codec/palette/storage translation belongs to [MKT fighter asset translation](MKT-Fighter-Asset-Translation). The MKMSZ host action ABI belongs to [Player actions and special moves](Player-Actions-and-Special-Moves). Sektor slot mapping/current coverage belongs to [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping), while the canonical vNN chronology belongs to [Sektor takeover proof history](Sektor-Takeover-Proof-History).
 
 ## Current conclusion
 
@@ -124,7 +124,8 @@ The compatibility work is intentionally split by information type:
 - [MKT adapter primitives](MKT-Adapter-Primitives) owns donor -> MKMSZ semantic translation: scheduler/yield/control transfer, movement, animation operations, strike/reaction translation, no-repel, combo semantics, cleanup, coverage, and missing generic shims.
 - [MKT fighter asset translation](MKT-Fighter-Asset-Translation) owns donor fighter descriptors, dimensions/anchors, codecs, palettes, MKMSZ Type-5 generation, storage/packing, and asset compatibility limits.
 - [Player actions and special moves](Player-Actions-and-Special-Moves) owns the **host-side MKMSZ action ABI**, helper meanings, scheduler bridge, callback lifetime, action lock, cleanup, and Reverse Elbow host proof history.
-- [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) owns the slot mapping, mapping policy, current coverage, and—until Audit Task 14—the complete reachable Sektor vNN proof chronology.
+- [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) owns the slot mapping, mapping policy, current coverage, and current gaps.
+- [Sektor takeover proof history](Sektor-Takeover-Proof-History) owns the vNN proof/build chronology, final evidence statuses, artifact identities, routes, supersession, and proof-specific allocation conflicts.
 - [Toasty audio research](Toasty-Audio-Research) owns Toasty donor-audio identity, rejected candidates, and audio proof chronology.
 - [Toasty visual research](Toasty-Visual-Research) owns Toasty visual diagnostics and image/render proof chronology.
 - [Audio system](Sounds-and-Music) owns generic MKMSZ host audio mechanics.
@@ -132,13 +133,9 @@ The compatibility work is intentionally split by information type:
 
 ## Sektor proof-history boundary
 
-**Audit Task 13 does not perform the Sektor vNN extraction.**
+[Sektor takeover proof history](Sektor-Takeover-Proof-History) is now the canonical version chronology. This overview keeps only the accepted cross-game strategy and compatibility contract.
 
-The version chronology needed by Task 14 remains reachable in [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping), which still contains the detailed v28-v62 sequence, including proof identities, routes, failures, allocation/file-size observations, and final bounded runtime results.
-
-[MKT fighter asset translation](MKT-Fighter-Asset-Translation) also retains the asset/storage-specific proof chronology needed to preserve codec and packing conclusions. Its own boundary explicitly defers the full per-version reconciliation to Task 14.
-
-The old giant compatibility page's historical revisions remain available in Git history, but this overview no longer treats duplicated vNN chronology as current architecture.
+[Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) retains the four slot tables, mapping policy, current coverage, and current gaps. [MKT fighter asset translation](MKT-Fighter-Asset-Translation) retains stable codec/palette/Type-5/storage conclusions and bounded packing evidence, but defers exact vNN identities/routes/status reconciliation to Proof History.
 
 ## Reusable rejected/superseded lessons
 
@@ -153,7 +150,7 @@ Task 13 preserves the architectural lessons without keeping a second proof diary
 - omitting native action lifecycle state can destabilize the action;
 - imported fighter bytes must be translated into the target asset representation rather than copied as donor codecs.
 
-Detailed Reverse Elbow failures remain on [Player actions and special moves](Player-Actions-and-Special-Moves). Detailed donor semantic consequences are on [MKT adapter primitives](MKT-Adapter-Primitives). Sektor vNN failure/supersession chronology remains untouched for Task 14.
+Detailed Reverse Elbow failures remain on [Player actions and special moves](Player-Actions-and-Special-Moves). Detailed donor semantic consequences are on [MKT adapter primitives](MKT-Adapter-Primitives). Sektor vNN failure/supersession chronology is canonical in [Sektor takeover proof history](Sektor-Takeover-Proof-History).
 
 ## Current research direction
 
@@ -175,6 +172,7 @@ These are proof/research goals, not current 1.0 product blockers.
 - [MKT fighter asset translation](MKT-Fighter-Asset-Translation)
 - [Player actions and special moves](Player-Actions-and-Special-Moves)
 - [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping)
+- [Sektor takeover proof history](Sektor-Takeover-Proof-History)
 - [Toasty audio research](Toasty-Audio-Research)
 - [Toasty visual research](Toasty-Visual-Research)
 - [Audio system](Sounds-and-Music)
