@@ -55,7 +55,7 @@ The stage mapping is Temple Map `0x0D`; Wind `0x0E..0x10`; Earth `0x11..0x13`; W
 - Saves serialize the filtered live view through the established game path; loads rebuild live state from authoritative backing data and current-stage masking.
 - Title-menu START was the destructive live-window boundary in stock behavior and is explicitly intercepted.
 
-Normal save logic is preserved. Only selector-triggered immediate stage-entry save is suppressed, as documented in [Flow bypasses](Flow-Bypasses).
+Normal save logic is preserved. Only selector-triggered immediate stage-entry save is suppressed, as documented in [Stage flow and selector](Stage-Flow-and-Selector).
 
 
 ## Progression lifecycle evidence

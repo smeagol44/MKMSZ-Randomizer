@@ -27,7 +27,7 @@ The product is **beta**. Production means a guarded implementation is in the rep
 | Pickups and seeded placement | [Pickups and item randomization](Pickups-and-Item-Randomization) |
 | Persistence and four-box inventory | [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle) |
 | Stage resources and all 84 records | [Stage catalogs](Stage-Catalogs) |
-| Stage selection and frontend flow | [Stage flow and selector](Stage-Flow-and-Selector), [flow bypasses](Flow-Bypasses) |
+| Stage selection and frontend flow | [Stage flow and selector](Stage-Flow-and-Selector) |
 | Enemies and resource import | [Enemy randomization](Enemy-Randomization) |
 | Pickup-driven XP and progression history | [XP and progression](XP-and-Progression) |
 | HUD, text, and presentation | [Native UI and presentation](Native-UI-and-Presentation) |

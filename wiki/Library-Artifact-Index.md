@@ -10,7 +10,7 @@ Current technical facts are reproduced in this Wiki. The external `MKMSZR Resear
 | Persistence/inventory handoffs | Bitset and four-box proof history | [Persistence and inventory](Persistence-Inventory-and-Lifecycle) |
 | UI reports | Node/text experiments and screenshots | [Native UI](Native-UI-and-Presentation) |
 | Enemy reports | Stream decompilation and foreign fighter import | [Enemy randomization](Enemy-Randomization) |
-| Stage flow reports | Selector and bypass traces | [Stage selector](Stage-Flow-and-Selector), [flow bypasses](Flow-Bypasses) |
+| Stage flow reports | Selector and bypass traces | [Stage flow and selector](Stage-Flow-and-Selector) |
 | PS1 reports/filesystem inventory | Executable, files, save and structure analysis | [PS1 research](PS1-Research) |
 | Specialist handoffs | Narrow chronological experiment detail | Owning domain plus [failures](Experiments-Failures-and-Superseded-Findings) |
 | Ghidra N64 archive | Reconstructed clean-ROM analysis project | Address/function provenance |
