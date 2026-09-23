@@ -74,7 +74,7 @@ The following are **not** assumed byte- or number-compatible:
 - victim-reaction selectors;
 - animation callback/control tokens;
 - donor heap-relative pointers and resource bases;
-- MKT N64 codecs 22/24/15;
+- MKT N64 codecs 16/22/24/15;
 - donor palette representation/binding;
 - proof allocations or file-size envelopes.
 
