@@ -45,6 +45,11 @@ Direction tokens are `8=Left` and `9=Right`. The Reverse Elbow proof used the se
 | `0x800328FC` | Exit action / restore control |
 | `0x8004AA4C` | Scheduler context-transfer shim using table `0x800A1050` |
 | `0x8004AB84` | Complete ice-projectile action root |
+| `0x80030974` | Animation token-`0x0B` secondary-resource actor handler |
+| `0x80031208` | Facing-aware actor-relative XY adjustment |
+| `0x8004CBC4` | Projectile child-process bridge; binds staged secondary actor into a new child controller/process |
+| `0x8004CC50` | Generic projectile flight/collision loop |
+| `0x8004CE6C` | Projectile strike-record resolver |
 | `0x800BF308` | Special-action lock; native action roots set it |
 
 `0x8004B82C` is the ice-projectile flight callback. `0x8004CC14` is projectile setup that writes a projectile actor's `+0x14` and selects animation. Neither is the player propulsion helper. The older recommendation to use `0x8004CC14` for player movement is **Rejected / failed**.
@@ -52,6 +57,40 @@ Direction tokens are `8=Left` and `9=Right`. The Reverse Elbow proof used the se
 The current process/controller pointer is at effective address `0x802ECE20`, not `0x802FCE20`.
 
 Function-level semantics are indexed in [Function registry](Function-Registry); this page owns how the helpers compose into the host action lifecycle.
+
+## Projectile actor/process host ABI
+
+The v63-v70 Sektor missile work and follow-up static trace expose a target-native projectile split that should be reused by donor adapters rather than treating Ice Blast as one monolithic move.
+
+**Static-confirmed target composition:**
+
+```text
+animation token 0x0B
+-> 0x80030974
+-> 0x80034510
+-> 0x800281A0 -> 0x80028128   ; resource-backed secondary actor
+-> stage actor in controller +0x714/+0x648
+-> 0x80024650                  ; insert actor
+
+0x80031208(actor, dx, dy)      ; facing-aware relative placement
+
+0x8004CBC4(callback)
+-> 0x8002830C(class 0x700, callback)
+-> copy parent/opponent context
+-> child +0x6E0 = parent staged actor +0x714
+-> tag/clear staging state
+```
+
+This establishes distinct host primitives for **resource actor creation**, **relative placement**, and **child projectile process creation**. The exact function meanings remain indexed in [Function registry](Function-Registry); donor-side semantics and the reusable adapter vocabulary remain in [MKT adapter primitives](MKT-Adapter-Primitives).
+
+The projectile collision/strike path is likewise separate from Ice freeze presentation: `0x8004CC50` drives the generic projectile loop, `0x8004CE6C` resolves a fighter-local strike record from the supplied selector, and `0x8004CF3C -> 0x8002BA04` reaches the normal target strike/collision core. A donor strike index is still **not** portable numerically.
+
+### Resolved player animation cursor
+
+The current controller/process animation cursor is `+0x6E4`. v69 is **Runtime-confirmed** for one narrow use: after the stock special helper completes, temporarily redirecting `+0x6E4` to the imported chest script, advancing once through `0x800304C0`, and restoring the cursor displays the genuine chest-open frame on the player without hanging.
+
+That runtime result proves the host cursor/update mechanism only. It does not make a one-frame post-helper injection the final donor-animation runner.
+
 
 ## Installer, scheduler, and context-transfer semantics
 
@@ -99,7 +138,9 @@ Established:
 - descriptor parsing/matching and special-action installation path;
 - bounded scheduler sleep/context transfer primitives;
 - player velocity/stop/facing helpers;
-- animation select/advance helpers;
+- animation select/advance helpers and the resolved controller animation cursor at `+0x6E4`;
+- resource-backed secondary-actor construction, facing-aware relative actor placement, and projectile child-process binding;
+- generic projectile collision/strike resolution path;
 - strike dispatch and collision/reaction entry points;
 - native action lock and exit/control restoration;
 - callback self-reentry hazard and bounded cleanup requirement.
@@ -110,7 +151,8 @@ Not established here:
 - generic donor velocity-unit conversion;
 - a generic no-repel shim;
 - arbitrary donor victim-reaction translation;
-- donor animation control-token translation.
+- donor animation control-token translation;
+- a production-ready generic wrapper that composes the identified projectile actor/process primitives with donor callback/state/effect semantics.
 
 Those translation-layer gaps are tracked in [MKT adapter primitives](MKT-Adapter-Primitives).
 
