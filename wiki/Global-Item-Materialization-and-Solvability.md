@@ -19,7 +19,7 @@ The normative 1.0 acceptance requirements remain owned by [1.0 requirements and 
 | Current ordinary pickup behavior and stage-local shuffle | [Pickups and stage-local randomization](Pickups-and-Item-Randomization) |
 | Ordinary `0x30`-byte record grammar | [Data structures and encodings](Data-Structures-and-Encodings) |
 | Global logical pool, materializer, retries, solver, Map question | **This page** |
-| File table, loader, selector/resource grammar | [ROM, overlay, and resource map](ROM-Overlay-and-Resource-Map) until Audit Task 6 refocuses it |
+| File table, loader, selector/resource grammar | [Resource and overlay system](ROM-Overlay-and-Resource-Map) |
 | Concrete per-stage pickup/resource records and stage-specific capacities | Eight pages under [Stage catalogs](Stage-Catalogs) |
 | Release requirements / acceptance gates | [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap) |
 | Native XP tier behavior and progression persistence | [XP and progression](XP-and-Progression) |
@@ -323,7 +323,7 @@ The following remain unresolved before global item materialization/solvability c
 
 - [Pickups and stage-local randomization](Pickups-and-Item-Randomization) — current production ordinary pickup behavior.
 - [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap) — normative release requirements and acceptance gates.
-- [ROM, overlay, and resource map](ROM-Overlay-and-Resource-Map) — current file/loader/resource grammar; deeper refactor is Audit Task 6.
+- [Resource and overlay system](ROM-Overlay-and-Resource-Map) — canonical global file-table, loader, overlay, and resource-selector grammar.
 - [Memory and allocation map](Memory-and-Allocation-Map) — literal ROM/RDRAM ownership and proof/production allocation boundaries.
 - [Data structures and encodings](Data-Structures-and-Encodings) — canonical ordinary-record grammar.
 - [Stage catalogs](Stage-Catalogs) — all 84 concrete ordinary records and stage-local resource instances.
