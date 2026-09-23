@@ -15,6 +15,7 @@ from .patches import (
     NativePayloadSpec,
     PickupPersistencePatch,
     PickupRandomizationPatch,
+    RainbowPalettePatch,
     SafeStageSelectorPatch,
     SafeStageSelectSkipAutoSavePatch,
     SubZeroPalettePatch,
@@ -51,10 +52,13 @@ def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
         BootLogoBypassPatch(),
         TitleBrandingPatch(config.edition_name),
     ]
-    if config.outfit.mode.lower() != "vanilla":
+    outfit_mode = config.outfit.mode.lower()
+    if outfit_mode == "rainbow":
+        patches.append(RainbowPalettePatch())
+    elif outfit_mode != "vanilla":
         patches.append(
             SubZeroPalettePatch(
-                config.outfit.mode,
+                outfit_mode,
                 hue_degrees=config.outfit.hue_degrees,
                 rgb=config.outfit.rgb,
             )
