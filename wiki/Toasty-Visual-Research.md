@@ -456,7 +456,7 @@ This localizes the defect to the narrow-column backing layout rather than geomet
 
 ### Toasty visual diagnostic v23 — narrow-column stride correction
 
-**Implementation/static-confirmed; runtime pending manual validation.**
+**Runtime-confirmed partial success on 2026-09-23.**
 
 v23 leaves v22's nine-node geometry, palette, dynamic allocations, file IDs, HUD compositor code, logo skip, and Safe Stage Select unchanged. It changes only the raw payload layout for the 7-pixel side columns.
 
@@ -473,3 +473,14 @@ If the two side columns become clean while the center remains unchanged, this co
 - [Project status](Project-Status) — current maturity and project priority only.
 - [Toasty audio research](Toasty-Audio-Research) — current Toasty audio owner.
 - [Native UI and presentation](Native-UI-and-Presentation) — old-slug compatibility/supersession index.
+
+
+### Toasty visual diagnostic v24 — secondary-rectangle normalization
+
+**Runtime-confirmed negative control on 2026-09-23; hypothesis rejected.**
+
+v24 preserves the v23 image bytes, hardware TLUT, allocator-aligned side-row storage, nine-piece composition, texture-slot/palette bindings, placement, and test harness. The only renderer-side change is that the cloned nodes also receive explicit values for the second known pair of screen-space vertex coordinates at `+0x28/+0x2A/+0x38/+0x3A` instead of inheriting them from the live stock HUD source node.
+
+Manual testing reproduced the **exact same corruption in the exact same stages** as v23: Fire and Earth retain their small edge artifacts, while the previously clean stages remain clean. Therefore those inherited secondary rectangle coordinates are not the cause of the stage-dependent variance.
+
+The next bounded discriminator should keep the entire v23/v24 image/geometry/state layout fixed and change only dynamic texture allocation order. If the corruption moves or changes, it follows dynamic slot identity/lifecycle; if it remains on the same edge pixels, the suspect moves back toward narrow-piece renderer/data behavior rather than allocation identity.
