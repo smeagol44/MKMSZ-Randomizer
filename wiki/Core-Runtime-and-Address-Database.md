@@ -24,11 +24,13 @@ Core Runtime owns how the reserved block is composed; the Memory Map owns its ab
 |---|---|---|
 | `[+0x000,+0x1D4)` | Runtime V2 initialization plus pickup-persistence core | `rdram.production.runtime_core` |
 | `[+0x1D4,+0x200)` | Four-box filtered-save helper | `rdram.production.inventory_payload` |
-| `[+0x200,+0x300)` | XP callback, threshold table, and XP-only restore helper | `rdram.production.xp_payload` |
-| `[+0x300,+0x320)` | `MKSV` V2 state header | `rdram.production.state_header` |
-| `[+0x320,+0x340)` | Eight ordinary-pickup persistence bitsets | `rdram.production.pickup_state` |
-| `[+0x340,+0x348)` | Progression acquired-count and persistent-XP words | `rdram.production.xp_state` |
-| `[+0x348,+0x400)` | Reserved persistent-state tail | `rdram.production.state_reserved_tail` |
+| `[+0x200,+0x2E0)` | XP callback, threshold table, XP-only restore helper, and bounded padding | `rdram.production.xp_payload` |
+| `[+0x2E0,+0x3B0)` | Optional runtime feature tail; `rainbow` owns `[+0x2E0,+0x3AC)`, final 4 bytes remain reserved | `rdram.production.optional_runtime_tail` |
+| `[+0x3B0,+0x3D0)` | `MKSV` V2 state header | `rdram.production.state_header` |
+| `[+0x3D0,+0x3F0)` | Eight ordinary-pickup persistence bitsets | `rdram.production.pickup_state` |
+| `[+0x3F0,+0x3F8)` | Progression acquired-count and persistent-XP words | `rdram.production.xp_state` |
+| `[+0x3F8,+0x3FC)` | Optional rainbow phase word | `rdram.production.rainbow_phase` |
+| `[+0x3FC,+0x400)` | Reserved persistent-state tail | `rdram.production.state_reserved_tail` |
 
 These offsets are composition contracts, not a second allocation registry. New code/state owners must fit the versioned layout and pass the same composition/bounds checks before production use.
 
