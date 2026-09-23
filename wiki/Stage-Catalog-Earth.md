@@ -1,12 +1,33 @@
 # Earth stage catalog
 
-**Evidence status:** Static-confirmed from the clean USA N64 ROM; file-to-RDRAM mappings were also matched against captured runtime memory. Ordinary-pickup behavior and persistence are runtime-confirmed at representative locations, but the complete 84-record set has not been collected exhaustively one record at a time.
+> **Scope:** Stage-local catalog for Earth, compact selector `3` / native stage ID `3`. Shared record grammar, resource notation, evidence labels, and safety rules are owned by [Stage catalogs](Stage-Catalogs).
 
-This page is the self-contained decoded catalog for native stage ID `3`. It includes every ordinary pickup record and every recognized resource slot/record. Values are big-endian. Unknown fields remain named by offset instead of being assigned unsupported semantics.
+## Stage identity and evidence
+
+- **Static-confirmed:** all 20 ordinary pickup records, all 65 stock outer slots, and the recognized resource records below are decoded from the clean USA N64 ROM.
+- **Runtime-confirmed:** the complete `0x225B0`-byte stage resource file was matched byte-for-byte at RDRAM `0x802434B8` during live Earth gameplay.
+- **Runtime-confirmed:** the all-eight-stage persistence validation collected/restored a representative Earth ordinary pickup. The 20 Earth records have not been individually exhausted one by one in runtime testing.
+- Earth's three stage key pickups use stage-qualified overlay callback VA `0x802F52B0`; this address is Earth-overlay evidence, not a globally resident callback identity.
+
+## File mapping
+
+| Property | Value |
+|---|---:|
+| Stage ID | `3` |
+| Global resource file ID | `0x88` |
+| File-table entry ROM | `0x000A5670` |
+| Resource ROM range | `0x006BAEC0..0x006DD46F` |
+| File size | `0x225B0` (140720 bytes) |
+| File-table flag | `0` |
+| Verified runtime base | `0x802434B8` |
+| Outer slots | `65` |
+| Outer-table end | `0x104` |
+| First descriptor | `0x104` |
+| Empty logical slots | `41, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64` |
+| Unknown/nonstandard slots | `3, 35, 38, 43` |
+| Pickup records | `20` |
 
 ## Ordinary pickup records
-
-A record is `0x30` bytes. Position and metadata (`+0x00..+0x0F`) and the collected flag (`+0x2C`) belong to the destination. The production randomizer moves the seven-word identity slice `+0x10..+0x2B`. `Token` and `Requires` are production logic metadata, not bytes stored in the native record.
 
 | # | Decoded identity | ROM base | RDRAM base | X | Y | Z | +0C | +10 type | +14 parameter | +18 callback | +1C | +20 | +24 slot | +28 presentation | +2C collected | Token | Requires |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|
@@ -31,28 +52,32 @@ A record is `0x30` bytes. Position and metadata (`+0x00..+0x0F`) and the collect
 | 19 | Eye | `0x000E15E4` | — | `0x00019070` | `0xFFFA3200` | `0x00000000` | `0x00000006` | `0x0000000A` | `0x00000000` | `0x8003895C` | `0x00000020` | `0x00000020` | `18` | `0x800B1D38` | `0x00000000` | — | earth-four-square |
 | 20 | Shield | `0x000E1614` | — | `0x00049CF7` | `0xFFF2B200` | `0x00000000` | `0x00000006` | `0x00000007` | `0x00000000` | `0x8003892C` | `0x00000020` | `0x00000020` | `19` | `0x800B1D38` | `0x00000000` | — | earth-four-square |
 
-## Resource-file catalog
+## Pickup-to-resource usage
 
-Generated conservatively from the clean USA N64 ROM. Recognized bundles distinguish embedded model/data offsets from records that reference external resource IDs; `unknown/nonstandard` is intentionally not guessed.
+| ROM base | Callback | Parameter | Slot | Presentation |
+|---:|---:|---:|---:|---:|
+| `0x000E1284` | `0x802F52B0` | `0x00000000` | 0 | `0x800B1D18` |
+| `0x000E12B4` | `0x802F52B0` | `0x00000001` | 1 | `0x800B1D18` |
+| `0x000E12E4` | `0x802F52B0` | `0x00000002` | 2 | `0x800B1D18` |
+| `0x000E1314` | `0x8003898C` | `0x00000000` | 20 | `0x800B1D38` |
+| `0x000E1344` | `0x80038A1C` | `0x00000000` | 13 | `0x800B1D38` |
+| `0x000E1374` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
+| `0x000E13A4` | `0x80038A1C` | `0x00000000` | 13 | `0x800B1D38` |
+| `0x000E13D4` | `0x80038A58` | `0x00000000` | 15 | `0x800B1C14` |
+| `0x000E1404` | `0x80038A58` | `0x00000000` | 15 | `0x800B1C14` |
+| `0x000E1434` | `0x80038A1C` | `0x00000000` | 13 | `0x800B1D38` |
+| `0x000E1464` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
+| `0x000E1494` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
+| `0x000E14C4` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
+| `0x000E14F4` | `0x80038A1C` | `0x00000000` | 13 | `0x800B1D38` |
+| `0x000E1524` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
+| `0x000E1554` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
+| `0x000E1584` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
+| `0x000E15B4` | `0x80038A1C` | `0x00000000` | 13 | `0x800B1D38` |
+| `0x000E15E4` | `0x8003895C` | `0x00000000` | 18 | `0x800B1D38` |
+| `0x000E1614` | `0x8003892C` | `0x00000000` | 19 | `0x800B1D38` |
 
-## File mapping
-
-| Property | Value |
-|---|---:|
-| Stage ID | `3` |
-| File-table entry ROM | `0x000A5670` |
-| Resource ROM range | `0x006BAEC0..0x006DD46F` |
-| File size | `0x225B0` (140720 bytes) |
-| File-table flag | `0` |
-| Verified runtime base | `0x802434B8` |
-| Outer slots | `65` |
-| Outer-table end | `0x104` |
-| First descriptor | `0x104` |
-| Empty logical slots | `41, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64` |
-| Unknown/nonstandard slots | `3, 35, 38, 43` |
-| Pickup records | `20` |
-
-## Outer slots
+## Outer resource slots
 
 | Slot | Name | Outer offset | Format | Frames | Pickup users |
 |---:|---|---:|---|---:|---:|
@@ -122,41 +147,7 @@ Generated conservatively from the clean USA N64 ROM. Recognized bundles distingu
 | 63 | Unused logical slot | `0` | empty | — | 0 |
 | 64 | Unused logical slot | `0` | empty | — | 0 |
 
-## Pickup usage
-
-| ROM base | Callback | Parameter | Slot | Presentation |
-|---:|---:|---:|---:|---:|
-| `0x000E1284` | `0x802F52B0` | `0x00000000` | 0 | `0x800B1D18` |
-| `0x000E12B4` | `0x802F52B0` | `0x00000001` | 1 | `0x800B1D18` |
-| `0x000E12E4` | `0x802F52B0` | `0x00000002` | 2 | `0x800B1D18` |
-| `0x000E1314` | `0x8003898C` | `0x00000000` | 20 | `0x800B1D38` |
-| `0x000E1344` | `0x80038A1C` | `0x00000000` | 13 | `0x800B1D38` |
-| `0x000E1374` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
-| `0x000E13A4` | `0x80038A1C` | `0x00000000` | 13 | `0x800B1D38` |
-| `0x000E13D4` | `0x80038A58` | `0x00000000` | 15 | `0x800B1C14` |
-| `0x000E1404` | `0x80038A58` | `0x00000000` | 15 | `0x800B1C14` |
-| `0x000E1434` | `0x80038A1C` | `0x00000000` | 13 | `0x800B1D38` |
-| `0x000E1464` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
-| `0x000E1494` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
-| `0x000E14C4` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
-| `0x000E14F4` | `0x80038A1C` | `0x00000000` | 13 | `0x800B1D38` |
-| `0x000E1524` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
-| `0x000E1554` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
-| `0x000E1584` | `0x800389BC` | `0x00000000` | 14 | `0x800B1D38` |
-| `0x000E15B4` | `0x80038A1C` | `0x00000000` | 13 | `0x800B1D38` |
-| `0x000E15E4` | `0x8003895C` | `0x00000000` | 18 | `0x800B1D38` |
-| `0x000E1614` | `0x8003892C` | `0x00000000` | 19 | `0x800B1D38` |
-
-## Stage-specific notes
-
-- The complete 0x225B0-byte ROM resource file matches RDRAM at 0x802434B8 byte-for-byte in live Earth gameplay.
-- All 20 standard 0x30-byte pickup records are contiguous and mapped, including the three Earth icons and six ordinary item/resource slots.
-- The supplied Lua comments identify the two slot-15 pickups as mana and substitute Herbs in the virtual item pool; the native callback remains distinct from Herbs.
-- Many outer slots intentionally alias the same descriptor. Pickup-user absence and descriptor aliasing do not make an occupied selector safe to repurpose.
-
 ## Recognized bundle records
-
-Offsets below are relative to the stage resource-file base.
 
 | Slot | Frame | Record | Storage | Resource/data value | Inferred end | Dimensions words |
 |---:|---:|---:|---|---:|---:|---|
@@ -372,15 +363,24 @@ Offsets below are relative to the stage resource-file base.
 | 42 | 5 | `0x16F10` | embedded-data | `0x16F24` | `0x170E0` | `0x0050004C` / `0x0030FFD4` |
 | 42 | 6 | `0x170CC` | embedded-data | `0x170E0` | `0x1728C` | `0x00600032` / `0x0034FFBE` |
 
-## Safety interpretation
+## Earth-specific notes, constraints, and pending questions
 
-Zero outer entries are free logical selectors only. They do not imply unused physical bytes inside the original file. New payload data must be appended to an expanded/relocated file or placed in storage proven safe by a complete reference analysis. Inferred model/data ends use the next discovered model-data start and are boundaries for analysis, not yet proof that trailing bytes are independently movable.
+- The complete `0x225B0`-byte ROM resource file matches RDRAM at `0x802434B8` byte-for-byte in live Earth gameplay.
+- All 20 standard `0x30`-byte pickup records are contiguous and mapped, including the three Earth icons and six ordinary item/resource slots.
+- The supplied Lua comments identify the two slot-`15` pickups as mana and substitute Herbs in the virtual item pool; the native callback `0x80038A58` and presentation pointer `0x800B1C14` remain distinct from Herbs.
+- Earth progression metadata remains stage-local: Earth Four Square requires `earth-square`; Earth Triangle requires `earth-four-square`; later location requirements are preserved row-by-row in the ordinary-pickup table.
+- Many outer slots intentionally alias the same descriptor. Pickup-user absence and descriptor aliasing do not make an occupied selector safe to repurpose.
+- Slots `3, 35, 38, 43` remain `unknown/nonstandard`; no gameplay owner or stronger structure meaning is inferred here.
+- Empty stock selectors `41, 44..64` are logical selector capacity only. Per the shared schema, they are not evidence of free physical file bytes or production-safe allocation space.
+- No Earth-specific cross-stage resource-import proof is promoted by this catalog; materialization feasibility in another destination must remain bounded to the proof and destination actually tested.
 
-## Interpretation boundaries
+## Related owners
 
-- A zero outer-table entry is a free logical selector, not proof of unused physical bytes.
-- An occupied slot with no ordinary-pickup user can still be referenced by another actor or script and is protected until traced.
-- Inferred data ends support cataloging; they do not prove that trailing ranges are independently movable.
-- Foreign resources require bounded storage, loader/arena validation, guarded references, and runtime testing.
-
-Catalog lineage: generated from the preserved clean-ROM catalog artifacts and checked against the production pickup definitions in `src/mkmszr/data/pickups.py`. The tables above are reproduced here so this Wiki does not depend on an external archive for current technical facts.
+- [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, and eight-stage index.
+- [Data structures and encodings](Data-Structures-and-Encodings) — ordinary `0x30`-byte record grammar.
+- [Resource and overlay system](ROM-Overlay-and-Resource-Map) — global file-table, loader, overlay, and selector/resource grammar.
+- [Memory and allocation map](Memory-and-Allocation-Map) — literal ROM/RDRAM ownership and lifecycle.
+- [Address and patch-site registry](Address-and-Patch-Site-Registry) — exact guarded patch sites.
+- [Pickups and stage-local randomization](Pickups-and-Item-Randomization) — current production ordinary-pickup behavior and modeled Earth dependencies.
+- [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) — generalized cross-stage materializer/solver rules, not Earth-local resource claims.
+- [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle) — collected-state persistence and stage-transition lifecycle.
