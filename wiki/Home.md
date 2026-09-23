@@ -33,7 +33,8 @@ The product is **beta**. Production means a guarded implementation is in the rep
 | Native gameplay HUD and UI | [Native HUD and UI](Native-HUD-and-UI) |
 | Legal/title presentation and branding | [Presentation and branding](Presentation-and-Branding) |
 | Toasty visual diagnostics | [Toasty visual research](Toasty-Visual-Research) |
-| Sounds and music | [Sounds and music](Sounds-and-Music) |
+| Audio system | [Audio system](Sounds-and-Music) |
+| Toasty audio donor/proof research | [Toasty audio research](Toasty-Audio-Research) |
 | MKT→MKMSZ move/character compatibility | [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer) |\n| Sub-Zero ↔ Sektor animation catalog | [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) |
 | MKMSZ player-action host architecture | [Player actions and special moves](Player-Actions-and-Special-Moves) |
 | Historical Reverse Elbow recreation branch | [(Old) Foreign moves and Reptile](Foreign-Moves-and-Reptile) |

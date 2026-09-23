@@ -2,7 +2,7 @@
 
 > **Scope:** This page is the canonical owner for the Toasty visual target, donor presentation findings relevant to the image path, the complete v01-v16 visual proof chronology, rejected/superseded Toasty diagnostics, and the evidence provenance for generic renderer conclusions discovered during that investigation.
 >
-> Reusable gameplay-HUD/text/render behavior is canonical in [Native HUD and UI](Native-HUD-and-UI). Stable render-node grammar belongs to [Data structures and encodings](Data-Structures-and-Encodings). Toasty audio remains in [Sounds and music](Sounds-and-Music) and is not modified by this page.
+> Reusable gameplay-HUD/text/render behavior is canonical in [Native HUD and UI](Native-HUD-and-UI). Stable render-node grammar belongs to [Data structures and encodings](Data-Structures-and-Encodings). Toasty audio remains in [Toasty audio research](Toasty-Audio-Research) and is not modified by this page.
 
 ## Current unresolved boundary
 
@@ -62,7 +62,7 @@ The intended Toasty feature is now split into independently testable presentatio
 
 **Static-confirmed donor behavior:** MKT's `forden_peek` creates the genuine 97x100 `TOASTY` image with its 64-color `TOASTY_P` palette, slides it in from the right for 6 ticks, stops it for `0x20` ticks while playing the Toasty voice, reverses horizontal velocity, slides it out for `0x10` ticks, then deletes it. The donor `randper(40)` gate is 40/1000 = 4%, approximately one qualifying event in 25.
 
-**Runtime-confirmed audio:** Toasty audio proof v03 reproduces the intended retail voice and the user reported it as perfect. Audio is considered solved for this workstream and must remain untouched while the visual path is isolated. See [Sounds and music](Sounds-and-Music).
+**Runtime-confirmed audio:** Toasty audio proof v03 reproduces the intended retail voice and the user reported it as perfect. Audio is considered solved for this workstream and must remain untouched while the visual path is isolated. See [Toasty audio research](Toasty-Audio-Research).
 
 **Historical pre-v08 boundary — superseded by v15/v16:** the remaining textured screen-space/object binding for the Toasty image was still unresolved at this point. The later v08-v15 diagnostics establish the gameplay textured-node/image path; v16 narrows the current boundary to runtime validation of the genuine palette. The already runtime-confirmed audio v03 remains outside these visual diagnostics.
 
@@ -382,5 +382,5 @@ Expected result: the v15 Toasty image remains in the same place and size but ren
 - [Memory and allocation map](Memory-and-Allocation-Map) — literal proof/production allocation ownership; proof caves are not production allocations.
 - [Runtime validation status](Runtime-Validation-Status) — concise cross-domain evidence matrix.
 - [Project status](Project-Status) — current maturity and project priority only.
-- [Sounds and music](Sounds-and-Music) — current Toasty audio owner.
+- [Toasty audio research](Toasty-Audio-Research) — current Toasty audio owner.
 - [Native UI and presentation](Native-UI-and-Presentation) — old-slug compatibility/supersession index.

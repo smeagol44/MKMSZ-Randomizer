@@ -25,7 +25,7 @@
 - [Persistence/inventory](Persistence-Inventory-and-Lifecycle)
 - [Native HUD/UI](Native-HUD-and-UI)
 - [Presentation/branding](Presentation-and-Branding)
-- [Sounds/music](Sounds-and-Music)
+- [Audio system](Sounds-and-Music)
 - [Palette/recoloring](Palette-and-Recoloring)
 - [XP/progression](XP-and-Progression)
 - [Web patcher/product](Web-Patcher-and-Product)
@@ -38,6 +38,7 @@
 - [Reptile/foreign moves](Foreign-Moves-and-Reptile)
 - [PS1 research](PS1-Research)
 - [N64–PS1 comparison](N64-PS1-Comparison)
+- [Toasty audio research](Toasty-Audio-Research)
 - [Toasty visual research](Toasty-Visual-Research)
 - [Failures/superseded](Experiments-Failures-and-Superseded-Findings)
 
