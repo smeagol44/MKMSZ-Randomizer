@@ -1,10 +1,14 @@
 # Address and patch-site registry
 
-All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” means current pipeline ownership; proof sites are not written by the product.
+> **Scope:** This page is the canonical owner for **exact guarded ROM edits**: patch location, expected/original bytes or guard condition, replacement/effect, and the feature that performs the edit.
+>
+> It does **not** decide whether a continuous ROM/RDRAM interval is available or who owns a cave/reservation. Continuous ownership, lifecycle, conflicts, and production-safe bounds belong to [Memory and allocation map](Memory-and-Allocation-Map). Function meanings belong to [Function registry](Function-Registry).
 
-## Production hooks and code/data regions
+All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” means current browser/CLI pipeline ownership; proof-only sites are not written by the product. Multi-byte generated bodies may be validated by implementation/tests instead of reproducing every emitted word here, but their guarded write site and effect remain indexed here.
 
-| ROM | VA | Owner | Guard/original | Production effect |
+## Production guarded edits
+
+| ROM site | VA / context | Owner | Expected / guard | Replacement / effect |
 |---:|---:|---|---|---|
 | `0x0000DD60` | — | Stage selector | `0x2414000A` | Last compact menu index becomes `7` |
 | `0x0000DD64` | — | Stage selector | `0x2A82000B` | Entry count becomes `8` |
@@ -12,54 +16,54 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x00015CD0` | — | Stage selector | load from `0x800C11E0` | JAL compact-index mapper |
 | `0x0001674C` | — | Four-box input | `3C03802F 9463CE18` | Call switching action routine, then resume `0x80015B54` |
 | `0x000396CC` | `0x80038ACC` | Persistence | `3C03800A 8C63A910` | Restore collected flags, resume `0x80038AD4` |
-| `0x0003A018` | `0x80039418` | Persistence | `ACA2002C` | Capture stage/ordinal after collected store |
-| `0x0005D9CC` | HUD function | Box indicator | JAL `0x8001EAE4` | JAL wrapper at `0x800AEE24` |
-| `0x00066F64` | — | Arena | `0x2442F420` | `0x2442F820` |
-| `0x00066FE0` | `0x800663E0` | Bootstrap | guarded native sequence | Call stub at `0x8009A184` |
-| `0x00066FE8` | — | Arena | `0x2442F420` | `0x2442F820` |
+| `0x0003A018` | `0x80039418` | Persistence | `ACA2002C` | Capture stage/ordinal after collected store while preserving displaced store |
+| `0x0005D9CC` | HUD function | Box indicator | JAL `0x8001EAE4` | JAL native box-indicator wrapper |
+| `0x00066F64` | arena construction | Arena reservation | `0x2442F420` | `0x2442F820` |
+| `0x00066FE0` | `0x800663E0` | Bootstrap | guarded native sequence | Call native bootstrap stub |
+| `0x00066FE8` | arena construction | Arena reservation | `0x2442F420` | `0x2442F820` |
 | `0x0007A3F4` | `0x800797F4` | Logo bypass | two logo JAL pairs then fade JAL | `beq zero,zero,+3`; preserves fade/title |
-| `0x0007B900..0x7B94B` | `0x8007AD00` | Four-box mask | stock sanitizer | Stage-local key mask-copy routine |
-| `0x0007B94C..0x7B97F` | `0x8007AD4C` | Four-box load | stock default loader | Rebuild live inventory from backing box |
-| `0x0008F6E8..` | `0x8008EAE8` | Four-box input | guarded cave | Switch action routine |
-| `0x0009A6C8..` | `0x80099AC8` | Four-box helper | former selector cave tail | Switch/mask helper |
-| `0x0009AD84..` | `0x8009A184` | Bootstrap | zero/free region | Stub; capacity `0x19C` |
-| `0x0009AEFC` | `0x8009A2FC` | Selector/flow | relocated mapper | Compact mapping plus selector-save flag |
-| `0x0009B7DC` | `0x8009ABDC` | Selector | 12 stock pointers | Eight safe stage labels plus zeros |
-| `0x000A5154` | file entry `0x1B` | Native payload | guarded stock entry | Payload ROM/RDRAM descriptor |
-| `0x000A6BE4` | `0x800A5FE4` | Four-box keys | obsolete default template | Item `0x0D..0x22` stage map |
-| `0x000A6C48..0xA6CEF` | `0x800A6048..0x800A60EF` | Four-box state | guarded stock data | Four boxes, state, `MKBX` |
+| `0x0007B900..0x0007B94B` | `0x8007AD00` | Four-box mask | guarded stock sanitizer body | Replace with stage-local key mask-copy routine |
+| `0x0007B94C..0x0007B97F` | `0x8007AD4C` | Four-box load | guarded stock default-loader body | Rebuild live inventory from authoritative backing box |
+| `0x0009B7DC` | `0x8009ABDC` | Stage selector | 12 stock pointers | Eight safe stage labels plus zeros |
+| `0x000A5154` | file entry `0x1B` | Native payload | guarded stock file-table entry | Point file `0x1B` at the production payload source/destination descriptor |
+| `0x000A6BE4..0x000A6C0B` | `0x800A5FE4..0x800A600B` | Four-box keys | guarded obsolete default-inventory template | Write item-`0x0D..0x22` stage map |
+| `0x000A6C48..0x000A6CEF` | `0x800A6048..0x800A60EF` | Four-box state | guarded stock data | Four backing boxes, active state, and `MKBX` magic |
 | `0x000A6E88` | item-use table | Glass mask | `0x80071F58` | Inert `0x80071F50` |
-| `0x000AF998..0xAFA23` | boot strings | Branding | guarded legal text | Product title, spaced RANDOMIZER, configurable `<CHAR> EDITION`, 2026 credit, seeded joke, author |
-| `0x000AFA24..0xAFA97` | `0x800AEE24..` | Box indicator | guarded legal-text region | Wrapper and `BOX 1 OF 4` |
-| `0x000AFA98..0xAFABB` | boot strings | Branding | guarded license text | `NOT LICENSED BY NINTENDO` |
-| `0x0078E16C..` | palette data | Outfit | 64 BGR555 colors | Clothing indices `0x21..0x3F` transformed |
+| `0x000AF998..0x000AFA23` | boot strings | Branding | guarded legal-text storage | Product title, spaced RANDOMIZER, configurable `<CHAR> EDITION`, 2026 credit, seeded joke, author |
+| `0x000AFA24..0x000AFA97` | `0x800AEE24..` | Box indicator | guarded legal-text region | Native wrapper and `BOX 1 OF 4` text |
+| `0x000AFA98..0x000AFABB` | boot strings | Branding | guarded license text | `NOT LICENSED BY NINTENDO` |
+| `0x0078E16C..` | palette data | Outfit | guarded 64-color BGR555 source palette | Transform clothing indices `0x21..0x3F` |
 | `0x0002EDA8` | `0x8002E1A8` | XP progression | `AC24200C` | NOP central XP store |
 | `0x00054CE8` | `0x800540E8` | XP progression | `AC23200C` | NOP direct XP store |
 | `0x00057D60` | `0x80057160` | XP progression | `AC23200C` | NOP direct XP store |
 | `0x00057E2C` | `0x8005722C` | XP progression | `AC23200C` | NOP direct XP store |
-| `0x00063704` | — | XP progression UI | JAL native text renderer | Suppress combo EXPERIENCE label |
-| `0x00063724` | — | XP progression UI | JAL native text renderer | Suppress combo EXPERIENCE value |
-| `0x000A6FFC..` | `0x800A63FC` | XP progression | guarded signed stage caps | Main stages -> 20000 |
-| `0x00F10000..` | `0x801AF420` | Native payload | output expansion | V2 code payload source, 0x300 bytes |
-| payload `+0x200` | cached `0x801AF620` / uncached `0xA01AF620` | XP progression | zero extension before overlay | Progression callback; threshold table/restore helper follow |
-| state V2 `+0x40/+0x44` | cached `0x801AF760/0x801AF764` | XP progression state | initialized/validated by MKSV V2 | Acquired count / persistent XP |
+| `0x00063704` | combo XP UI | XP progression UI | JAL native text renderer | Suppress combo EXPERIENCE label |
+| `0x00063724` | combo XP UI | XP progression UI | JAL native text renderer | Suppress combo EXPERIENCE value |
+| `0x000A6FFC..` | `0x800A63FC` | XP progression | guarded signed stage-cap halfwords | Main-stage caps become `20000` |
+| `0x000A5478` | file entry `0x5E` | Title branding | guarded stock file-table entry | Repoint title package to generated high-ROM copy |
+| `0x000B3364` palette base | `0x800B2764` | Title branding | selected guarded Candidate-B-unused CI8 entries | Replace 15 entries with grayscale antialias ramp |
 
 Boot string pointer instructions live at ROM `0x7A22C`, `0x7A250`, `0x7A274`, `0x7A298`, `0x7A2BC`, `0x7A2E0`, `0x7A304`, `0x7A328`, `0x7A34C`, `0x7A370`, and `0x7A394`; every instruction is guarded before replacement.
 
-## Title branding production allocation
+## Allocation-backed generated writes
 
-The corrected title implementation is **Runtime-confirmed** through the full current production pipeline and uses data-only storage. It does not own an executable title cave.
+The following production writers target continuous owned regions. Their **exact interval bounds, aliases, lifecycle, containment, and conflict status are deliberately not duplicated here**; use the named Memory Map region as the canonical allocation record.
 
-| ROM | VA | Owner/status | Production effect |
-|---:|---:|---|---|
-| `0x00079C24..0x79C2B` | `0x80079024..0x8007902B` | Stock title START setup | Left untouched by corrected title branding |
-| `0x000A5478` | file entry `0x5E` | Title branding | Repoint compressed title package to generated high-ROM copy |
-| `0x000B3364` palette base | `0x800B2764` | Title branding, selected unused CI8 entries only | Replace 15 guarded Candidate-B-unused palette entries with grayscale antialias ramp |
-| `0x00F90000..0xFC0FFF` | — | Title branding | Guarded `0x31000`-byte capacity for generated compressed file `0x5E`; actual end varies with name |
+| Memory Map region | Writer / guard | Patch effect |
+|---|---|---|
+| `rom.production.inventory_action_cave` | `inventory_boxes.py`; guarded cave bytes and CI bounds | Emit the four-box action routine |
+| `rom.production.inventory_helper_cave` | `inventory_boxes.py`; guarded former selector-cave tail and CI bounds | Emit switch/mask helper composition |
+| `rom.production.bootstrap_composite` | native payload/persistence/flow writers; guarded pre-production bytes and capacity checks | Emit bootstrap, persistence helpers/tables, relocated selector mapper, and selector-only save-bypass write |
+| `rom.production.payload_source` | output-expansion guard plus exact Runtime V2 size checks | Emit the reloadable `0x300`-byte Runtime V2 code payload |
+| `rom.production.title_high` | title builder capacity/clean-output guard | Emit the recompressed generated file `0x5E` package |
 
-Observed compressed ends: `SUB-ZERO` proof end-exclusive `0xFC017F`; `SEKTOR` proof end-exclusive `0xFC014F`.
+Runtime-only slices such as the Runtime V2 inventory/XP payload subranges and persistent state are **not ROM patch sites**. Their canonical bounds and ownership remain only in the Memory Map; Core Runtime owns how those slices compose.
 
-The PR #41 allocation at `0x9ADE0` / `0x8009A1E0` is **Rejected / failed** and must not be reused. It overlaps production pickup-persistence code/data beginning with the restore trampoline/capture helper and continuing through the descriptor/Fire-translation area to the relocated selector mapper.
+## Title branding boundary
+
+The corrected title implementation is **Runtime-confirmed** through the full production pipeline and is data-only. Its file-entry and palette edits are indexed above, while the generated package allocation is `rom.production.title_high` in the Memory Map.
+
+The stock START setup at ROM `0x00079C24..0x00079C2B` is intentionally left untouched and therefore is not a patch-site row. The rejected executable-wrapper attempt beginning at `0x9ADE0` is documented as an allocation conflict in the Memory Map; it is not current production.
 
 ## Proof-only sites
 
@@ -67,13 +71,15 @@ The PR #41 allocation at `0x9ADE0` / `0x8009A1E0` is **Rejected / failed** and m
 |---|---|---|
 | ROM `0xB44AA` / RAM `0x800B38AA` | First ordinary Fire enemy type `0x0A -> 0x09` | Runtime-confirmed, not production |
 | Fire resource entry ROM `0xA52E0` | Relocated/expanded Fire pickup resources | Runtime-confirmed architecture proof |
-| VA `0x8008EAEC` / ROM `0x8F6EC` | Dedicated Prison-key award callback | Runtime-confirmed proof; conflicts with production cave ownership |
+| VA `0x8008EAEC` / ROM `0x8F6EC` | Dedicated Prison-key award callback | Runtime-confirmed proof; conflicts with production allocation `rom.production.inventory_action_cave` |
 | Fire overlay tail ROM `0xE2148..0xE216B` | Foreign fighter file load/allocation sequence | Runtime-confirmed monk import proof |
 | Seven Fire type-`0x0A` halfwords | Replace ordinary Fire Hulk types with Temple monk type `0x01` | Runtime-confirmed bounded proof |
 
+Proof rows identify exact edits useful for reproduction; they do not grant allocation ownership. Where a proof overlaps current production, the Memory Map owns that conflict statement.
+
 ## Frontend save-bypass payload
 
-The relocated selector mapper at `0x8009A2FC` is exactly:
+The relocated selector mapper emitted inside `rom.production.bootstrap_composite` is exactly:
 
 ```text
 3C03800C 8C6311E0 2C610006 50200001
@@ -81,3 +87,11 @@ The relocated selector mapper at `0x8009A2FC` is exactly:
 ```
 
 It reads the compact index, adds 2 for indices `6` and `7`, and writes nonzero byte `0x15` to `0x80291C0C` in the return delay slot. That is the game's native one-shot stage-entry save bypass; `0x800798A8` and all later/manual save flows remain unchanged.
+
+## Related canonical owners
+
+- [Memory and allocation map](Memory-and-Allocation-Map) — continuous ROM/RDRAM intervals, availability, lifecycle, conflicts, and production ownership.
+- [Core runtime and native payload](Core-Runtime-and-Address-Database) — bootstrap/payload architecture and runtime composition.
+- [Function registry](Function-Registry) — function semantics.
+- [Resource and overlay system](ROM-Overlay-and-Resource-Map) — file-table, overlay, and resource-loading grammar.
+- [Address quick reference](Address-Quick-Reference) — derivative convenience subset only.

@@ -1,6 +1,10 @@
 # Function registry
 
-Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-specific even when displayed as absolute VAs.
+> **Scope:** This page is the canonical owner for **function semantics**: what a routine does, its relevant calling/behavioral meaning, evidence level, and stage/overlay scope where applicable.
+>
+> It does **not** own continuous allocation ranges or exact ROM patch guards/replacements. Those belong to [Memory and allocation map](Memory-and-Allocation-Map) and [Address and patch-site registry](Address-and-Patch-Site-Registry). [Address quick reference](Address-Quick-Reference) is derivative only.
+
+Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-specific even when displayed as absolute VAs. A function that is patched may still appear here for semantics; the edit itself remains canonical in the patch-site registry.
 
 ## Global N64 functions
 
@@ -12,7 +16,6 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80003314` | Type-5 fighter-image wrapper | Static-confirmed | Resolves image-relative model/dictionary pointer, compressed stream at image `+0x0C`, packed dimensions, output arena pointer; calls `0x80065E00`; advances output by `align4(width) * align2(height)` |
 | `0x80065E00` | Type-5 fighter-image decoder | Static-confirmed | Decodes native fighter data in 2-row x 4-pixel blocks from a per-image model/dictionary table; stock Sub-Zero frames use this path |
 | `0x80015088` | Stage transition handler | Static-confirmed | Copies selection to current-stage state |
-| `0x80015B54` | Resume after four-box input hook | Implementation-confirmed | Common configured-control convergence |
 | `0x8001C528` | Pickup presentation loader | Static/runtime-confirmed | Called from pickup manager with record `+0x28` presentation pointer + 4; not the `+0x24` resource-selector lookup |
 | `0x800281A0` | Resource-entry resolver/actor setup wrapper | Static-confirmed | Receives pointer to one outer-selector entry, loads its file-relative descriptor offset, adds current stage resource base, then calls `0x80028128` |
 | `0x80028128` | Resource-backed actor constructor helper | Static-confirmed | Consumes direct descriptor pointer produced by `0x800281A0` |
@@ -38,7 +41,6 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80038A58` | Mana pickup | Static-confirmed | Native mana, distinct from Herbs despite legacy Lua substitution |
 | `0x80038A90` | Strength urn pickup | Static-confirmed | Adds ID `0x0B` |
 | `0x80038ACC` | Pickup manager | Static/runtime-confirmed | Production restore hook |
-| `0x80039418` | Pickup collected-flag store site | Static/runtime-confirmed | Production capture hook |
 | `0x800490CC` | Shinnok Amulet pickup | Static-confirmed | Adds ID `0x23`; outside ordinary tables |
 | `0x8004AA4C` | Special-action scheduler context-transfer shim | Static-confirmed | Dispatch table at `0x800A1050`; not a generic initializer |
 | `0x8004AB84` | Complete ice-projectile action root | Static-confirmed | Includes special lock behavior |
@@ -47,8 +49,11 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8005BFB0` | Gameplay HUD function | Static/runtime-confirmed | Contains 13 submit calls |
 | `0x800615D8` | Frontend fade/normalization | Static/runtime-confirmed | Preserved after logo bypass with argument `0x80` |
 | `0x8006352C` | Auxiliary trigger-record spawner | Static-confirmed | Hardcodes fighter type `7` |
-| `0x80064C18` | Native gameplay SFX wrapper | Static-confirmed | Indexes 10-byte descriptor table at `0x800A1730`; resolves raw sound ID and variation parameters, then calls `0x80080A88` |\n| `0x80080A88` | Raw sound-ID playback entry | Static-confirmed | Selects a 16-byte runtime sound definition by raw ID and dispatches through `0x8007EC4C` |\n| `0x8007EC4C` | Low-level sound-definition/voice allocator | Static-confirmed | Consumes resolved runtime sound definition and allocates/starts native audio voices |\n| `0x80065D64` | Raw global-file loader | Runtime-confirmed | Used by native bootstrap |
-| `0x80066390` | Arena synchronization helper | Implementation-confirmed | Bootstrap call |
+| `0x80064C18` | Native gameplay SFX wrapper | Static-confirmed | Indexes 10-byte descriptor table at `0x800A1730`; resolves raw sound ID and variation parameters, then calls `0x80080A88` |
+| `0x80080A88` | Raw sound-ID playback entry | Static-confirmed | Selects a 16-byte runtime sound definition by raw ID and dispatches through `0x8007EC4C` |
+| `0x8007EC4C` | Low-level sound-definition/voice allocator | Static-confirmed | Consumes resolved runtime sound definition and allocates/starts native audio voices |
+| `0x80065D64` | Raw global-file loader | Runtime-confirmed | Used by native bootstrap |
+| `0x80066390` | Arena-pointer synchronization helper | Implementation-confirmed | Production bootstrap uses it after arena relocation to synchronize the main arena-pointer state |
 | `0x80071500` | Ordinary-enemy command interpreter | Static-confirmed | Stream pointer from `0x800C11E4` |
 | `0x800719F0` | Enemy spawn-parameter helper | Static-confirmed | Receives spawn index and type |
 | `0x80071B20` | Shared enemy/fighter constructor | Static/runtime-confirmed | Uses resource slot table `0x800B14C0` |
@@ -92,3 +97,11 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80090BCC` | Save initialization |
 
 See [N64–PS1 comparison](N64-PS1-Comparison) before transferring any concept between ports.
+
+
+## Related canonical references
+
+- [Core runtime and native payload](Core-Runtime-and-Address-Database) — bootstrap/payload call composition and lifecycle.
+- [Memory and allocation map](Memory-and-Allocation-Map) — continuous ROM/RDRAM ownership and availability.
+- [Address and patch-site registry](Address-and-Patch-Site-Registry) — exact guarded edit sites, displaced/original words, and replacement effects.
+- [Address quick reference](Address-Quick-Reference) — derivative orientation-only subset.
