@@ -11,6 +11,7 @@ from .manager_persistence import (
 )
 from .native_payload import NativePayloadPatch, NativePayloadSpec
 from .palette import SubZeroPalettePatch
+from .rainbow_palette import RainbowPalettePatch
 from .pickup_persistence import (
     PICKUP_PERSISTENCE_PAYLOAD,
     PickupPersistencePatch,
@@ -41,6 +42,7 @@ __all__ = [
     "SafeStageSelectSkipAutoSavePatch",
     "SafeStageSelectorPatch",
     "SubZeroPalettePatch",
+    "RainbowPalettePatch",
     "TitleBrandingPatch",
     "XPProgressionPatch",
     "manager_persistence_fire_patches",
