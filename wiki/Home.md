@@ -32,7 +32,7 @@ The product is **beta**. Production means a guarded implementation is in the rep
 | Pickup-driven XP and progression history | [XP and progression](XP-and-Progression) |
 | Native gameplay HUD and UI | [Native HUD and UI](Native-HUD-and-UI) |
 | Legal/title presentation and branding | [Presentation and branding](Presentation-and-Branding) |
-| Toasty visual diagnostics (temporary owner until Task 11) | [Native UI and presentation](Native-UI-and-Presentation) |
+| Toasty visual diagnostics | [Toasty visual research](Toasty-Visual-Research) |
 | Sounds and music | [Sounds and music](Sounds-and-Music) |
 | MKT→MKMSZ move/character compatibility | [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer) |\n| Sub-Zero ↔ Sektor animation catalog | [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) |
 | MKMSZ player-action host architecture | [Player actions and special moves](Player-Actions-and-Special-Moves) |

@@ -1,0 +1,386 @@
+# Toasty visual research
+
+> **Scope:** This page is the canonical owner for the Toasty visual target, donor presentation findings relevant to the image path, the complete v01-v16 visual proof chronology, rejected/superseded Toasty diagnostics, and the evidence provenance for generic renderer conclusions discovered during that investigation.
+>
+> Reusable gameplay-HUD/text/render behavior is canonical in [Native HUD and UI](Native-HUD-and-UI). Stable render-node grammar belongs to [Data structures and encodings](Data-Structures-and-Encodings). Toasty audio remains in [Sounds and music](Sounds-and-Music) and is not modified by this page.
+
+## Current unresolved boundary
+
+**Pending manual runtime validation:** v15 is **Runtime-confirmed** for genuine Toasty CI8 pixels, the 78x85 image with 96-byte aligned stride, dynamic texture allocation, raw-file load into the allocated backing store, node `+0x4A` binding, and submission through the gameplay-HUD queue. v16 remains **Implementation/static-confirmed; runtime pending manual validation.** for binding the genuine Toasty TLUT through node palette selector `+0x4C`.
+
+Therefore the exact visual question still open is: **does v16 render the already-confirmed v15 Toasty image with the genuine palette, without disturbing the stock HUD or gameplay route?** Final product trigger, production-safe allocation/composition, and combination with the separately solved audio path remain **Pending** after that bounded palette check.
+
+## Final evidence status by proof
+
+| Proof | Final evidence status | Durable result / limit |
+|---|---|---|
+| v01 | **Runtime-confirmed failure on 2026-09-22.** | No visible image. With no independent marker, the failure could not distinguish hook execution, allocation, load/binding, palette, or renderer-context suitability. |
+| v02 | **Runtime-confirmed on 2026-09-22.** | `V02 WRAPPER OK` proves the gameplay HUD hook/wrapper executes; visual failure is downstream. |
+| v03 | **Runtime-confirmed failure on 2026-09-22; allocator conclusion remains unresolved.** | The diagnostic is rejected/intrusive because `V03 SLOT FAIL` coincided with loss of all normal music/SFX; it is not clean evidence against `0x8001C2B4`. |
+| v04 | **Runtime-confirmed on 2026-09-22.** | Logo/selector/save-bypass test harness is valid and normal audio returns; image remains absent as expected for the baseline. |
+| v05 | **Runtime-confirmed on 2026-09-22.** | Dynamic allocator returns an expected `0x200..0x2FF` ID on the tested HUD route; allocation is exonerated. |
+| v06 | **Runtime-confirmed failure on 2026-09-22; no load conclusion accepted.** | Loader-wrapper plus selector-cave-tail instrumentation hangs after Mission Objective/music; reject this diagnostic. |
+| v07 | **Runtime-confirmed failure on 2026-09-22; no load conclusion accepted.** | Post-load helper reproduces the same hang with the stock loader call intact; reject helper-based load instrumentation on this route. |
+| v08 | **Runtime-confirmed on 2026-09-22.** | Gameplay-HUD queue renders an additional cloned textured node. |
+| v09 | **Runtime-confirmed on 2026-09-22.** | Node halfword `+0x4A` is a live texture-slot binding. |
+| v10 | **Runtime-confirmed on 2026-09-22.** | Clone-local `+0x4A` rebinding works without altering the stock source HUD node. |
+| v11 | **Runtime-confirmed failure on 2026-09-22.** | Reject the second-`0x8001BF70` independent fixed-slot allocation recipe; renderer submission itself remains valid. |
+| v12 | **Runtime-confirmed failure on 2026-09-22; implementation bug identified statically afterward.** | The alias implementation used the wrong backing-pointer table base; the result is not evidence that slot `0x17` is unusable. |
+| v13 | **Runtime-confirmed failure on 2026-09-22; implementation bug identified statically afterward.** | A second signed-address bug used the wrong slot-record page; again not evidence against slot `0x17`. |
+| v14 | **Runtime-confirmed on 2026-09-22.** | Corrected fixed-slot alias reproduces the v10 control and confirms record/backing bases. |
+| v15 | **Runtime-confirmed on 2026-09-22.** | Genuine Toasty CI8 pixels render through a dynamic gameplay-HUD texture slot; wrong stock-HUD colors isolate palette selection as the remaining visible defect. |
+| v16 | **Implementation/static-confirmed; runtime pending manual validation.** | Node `+0x4C` palette-selector path and genuine Toasty TLUT registration are established statically/implementation-wise; runtime color validation is still Pending. |
+
+## Generic renderer conclusions produced by this investigation
+
+These reusable conclusions are canonical in [Native HUD and UI](Native-HUD-and-UI); this page owns the Toasty proof provenance that established them.
+
+| Generic conclusion | Toasty evidence |
+|---|---|
+| `0x80073CEC -> 0x8001E578` is real but context-specific and is not accepted as a universal gameplay sprite API | Preserved renderer correction after v07; v01-v05 renderer assumption superseded |
+| The normal gameplay-HUD queue accepts an additional MKMSZR-owned textured node | v08 **Runtime-confirmed** |
+| Node halfword `+0x4A` selects the texture slot, including clone-local rebinding | v09-v10 **Runtime-confirmed** |
+| Fixed-slot record base is `0x802E83F0`; backing-pointer base is `0x800ED940` | v14 **Runtime-confirmed** control, supported by static audit |
+| Dynamic CI8 allocation can feed genuine imported pixels into an added gameplay-HUD node | v15 **Runtime-confirmed** |
+| Node halfword `+0x4C` is the gameplay renderer palette selector | v16 **Implementation/static-confirmed; runtime pending manual validation.** |
+
+## Rejected or superseded Toasty visual approaches
+
+- **v01-v05 direct use of `0x80073CEC` as the final gameplay renderer:** superseded by preserved evidence showing that renderer family is context-specific. v02 wrapper execution and v05 allocator success remain valid independent findings.
+- **v03 allocator-state diagnostic:** rejected because its expanded helper footprint also killed normal music/SFX; `SLOT FAIL` cannot be attributed cleanly to the allocator.
+- **v06 loader wrapper / selector-cave-tail use:** rejected because it introduced a Mission Objective + music hang before gameplay.
+- **v07 post-load helper instrumentation:** rejected because it reproduced the same hang while leaving the stock loader call intact; no raw-load conclusion is accepted.
+- **v11 independent fixed-slot allocation recipe:** rejected because the new slot produced noisy/multicolored output despite the known-good node submission path.
+- **v12 and v13 alias implementations:** rejected as implementation bugs caused by two separate address-base/sign-extension mistakes. Their failures do not establish that slot `0x17` is unusable.
+- **Do not infer production safety from any proof cave/allocation.** The final feature still needs production-safe composition with existing MKMSZR runtime/HUD ownership.
+
+## Complete visual chronology
+
+## Toasty presentation target
+
+The intended Toasty feature is now split into independently testable presentation and audio pieces.
+
+**Static-confirmed donor behavior:** MKT's `forden_peek` creates the genuine 97x100 `TOASTY` image with its 64-color `TOASTY_P` palette, slides it in from the right for 6 ticks, stops it for `0x20` ticks while playing the Toasty voice, reverses horizontal velocity, slides it out for `0x10` ticks, then deletes it. The donor `randper(40)` gate is 40/1000 = 4%, approximately one qualifying event in 25.
+
+**Runtime-confirmed audio:** Toasty audio proof v03 reproduces the intended retail voice and the user reported it as perfect. Audio is considered solved for this workstream and must remain untouched while the visual path is isolated. See [Sounds and music](Sounds-and-Music).
+
+**Historical pre-v08 boundary — superseded by v15/v16:** the remaining textured screen-space/object binding for the Toasty image was still unresolved at this point. The later v08-v15 diagnostics establish the gameplay textured-node/image path; v16 narrows the current boundary to runtime validation of the genuine palette. The already runtime-confirmed audio v03 remains outside these visual diagnostics.
+
+
+### Toasty visual-only proof v01 — build intent before manual test
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+Disposable proof files:
+
+- `MKMSZR_toasty-visual_common-proof_v01.z64`
+- builder `MKMSZR_build_toasty_visual_v01.py`
+- ROM SHA-256 `e248994470d1b05d275337fa0139ecdaa6af8c89be4968b8d7af0211dc8486f6`
+- CRC1/CRC2 `92C82DEF / 82B2C418`
+
+This proof isolates only the unresolved textured gameplay-presentation question. It contains **no Toasty audio, no uppercut/contact hook, and no RNG**.
+
+The genuine decoded retail MKT Toasty art is remapped losslessly into a target-native CI8/BGR555 asset. The visible image is 78x85 pixels; the runtime texture allocation aligns the row stride to 96 pixels, for an 0x1FE0-byte indexed image. Transparent pixels and row padding use palette index zero.
+
+The proof uses MKMSZ's native dynamic texture infrastructure rather than direct framebuffer drawing:
+
+```text
+HUD hook
+  -> preserve displaced 0x8001EAE4 submission
+  -> 0x8001C2B4(78,85) dynamic texture allocation
+  -> file ID 0x1B raw-load into the texture backing store
+  -> 0x80073CEC(custom palette, dynamic slot, x, y, flags=0)
+```
+
+The wrapper validates that its saved dynamic texture slot is still active and reallocates/reloads the image if the texture table has been reset.
+
+Proof-only allocations:
+
+- HUD hook ROM `0x5D9CC`;
+- wrapper/code ROM `0x9AD84..0x9AEF3`;
+- proof state ROM `0x9AF10..0x9AF1F`;
+- custom 256-entry palette descriptor ROM `0xA1308..0xA150B`;
+- clean/free file ID `0x1B` points to raw image ROM `0xF30000..0xF31FDF`.
+
+These locations are **not production allocations**. In particular, the final feature must compose with the existing MKMSZR runtime/HUD ownership rather than copying this standalone cave layout.
+
+The deterministic visual cycle intentionally avoids combat-trigger variables:
+
+- slide in for 6 HUD frames from the right edge toward x=242;
+- hold at x=242 for 32 frames;
+- slide out to the right for 16 frames;
+- repeat every 150 HUD frames;
+- y=145.
+
+The proof's only intended runtime question is whether the genuine Toasty CI8 image renders with correct palette/transparency and stable slide/lifetime behavior during normal gameplay. If successful, the next bounded composition can combine the already runtime-confirmed Toasty audio with this visual path before introducing the final uppercut-contact / cosmetic-RNG trigger.
+
+
+### Toasty visual proof v01 — no visible output
+
+Disposable proof:
+- builder: `MKMSZR_build_toasty_visual_v01.py`
+- ROM: `MKMSZR_toasty-visual_common-proof_v01.z64`
+
+**Runtime-confirmed failure on 2026-09-22.** This proof was intended to display Toasty automatically during ordinary gameplay; no input, uppercut, RNG event, or sound trigger was required. The user observed that **nothing appeared on screen**.
+
+The proof architecture was deliberately visual-only:
+- HUD call at ROM `0x0005D9CC` redirected to wrapper VA `0x8009A184`;
+- wrapper preserved the displaced HUD submit call;
+- deterministic cycle: 6-frame slide in, 32-frame hold, 16-frame slide out, blank until frame 150, then repeat;
+- dynamic CI8 texture slot requested through `0x8001C2B4`;
+- raw image resource registered through clean-ROM file ID `0x1B`, ROM `0xF30000`;
+- raw-file loader `0x80065D64` used for the image;
+- textured renderer `0x80073CEC` used for draw submission;
+- dedicated 256-entry palette descriptor at VA `0x800A0708`;
+- image payload is the genuine retail MKT Toasty image converted to target-native CI8, visible 78x85 with stride 96;
+- no Toasty sound import, combat hook, or RNG was present.
+
+**Evidence limit:** because v01 had no independent diagnostic marker, the negative result does not distinguish among:
+1. wrapper/hook not executing as intended;
+2. dynamic texture-slot allocation failing;
+3. raw image load/binding failing;
+4. palette/descriptor incompatibility;
+5. `0x80073CEC` being unsuitable from this gameplay HUD context.
+
+Do not repeat v01 unchanged. The next bounded proof should first establish wrapper execution with an already-proven visible diagnostic (native text or simple render-node quad), then isolate texture-slot allocation/load from textured submission one variable at a time. The successful Toasty audio v03 result is unaffected by this visual failure.
+
+
+### Toasty visual diagnostic v02 — wrapper confirmed
+
+Disposable proof:
+- builder: `MKMSZR_build_toasty_visual_v02.py`
+- ROM: `MKMSZR_toasty-visual-marker_common-proof_v02.z64`
+
+**Runtime-confirmed on 2026-09-22.** The user observed the native `V02 WRAPPER OK` marker continuously during normal gameplay, while the Toasty image still never appeared.
+
+v02 changed only the wrapper's displaced HUD-submit call target so it passed through a tiny helper that:
+1. executes the original `0x8001EAE4` submit;
+2. preserves its return value;
+3. draws the diagnostic through runtime-confirmed native text `0x80073E74`;
+4. returns into the otherwise unchanged v01 texture path.
+
+This closes the first v01 ambiguity: the HUD hook/wrapper **does execute** in gameplay. The unresolved visual failure is downstream of wrapper execution, beginning with dynamic texture allocation/state, raw-load/binding, palette compatibility, or `0x80073CEC` context suitability.
+
+The Toasty audio v03 proof remains independently runtime-confirmed and is not modified by these visual diagnostics.
+
+
+### Toasty visual diagnostic v03 — intrusive / rejected diagnostic
+
+**Runtime-confirmed failure on 2026-09-22; allocator conclusion remains unresolved.**
+
+The user observed persistent `V03 SLOT FAIL` during ordinary gameplay and the Toasty image remained absent. However, unlike v02, **all normal game music and sound effects were also absent** in this proof.
+
+v03 had expanded the diagnostic helper beyond the v02 marker footprint so it could inspect the saved slot and dynamic-texture table before returning into the otherwise unchanged v01/v02 texture path. Because that diagnostic change introduced an unrelated global audio regression, its `SLOT FAIL` result is not accepted as clean evidence that `0x8001C2B4` itself fails. The diagnostic may be perturbing runtime state or occupying unsafe zero-initialized executable/data space.
+
+Durable conclusions:
+- v02 remains the clean runtime proof that the HUD hook/wrapper executes;
+- v03 is a **Rejected / intrusive diagnostic** for allocator-state attribution;
+- do not change the loader, palette, or `0x80073CEC` based on v03 alone;
+- the next allocator diagnostic should return to the v02-known-good helper/allocation footprint and expose allocator success with a smaller, less intrusive method.
+
+For faster manual iteration, future disposable Toasty proofs may include the already runtime-confirmed post-legal logo bypass and compact eight-stage A-button Safe Stage Select as a fixed test harness. Their guarded patches must remain separate from the visual diagnostic variable and must not claim the production bootstrap cave used by other systems.
+
+
+### Toasty visual diagnostic v04 — test harness confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+v04 returned to the v02-known-good marker/visual composition and added only the established disposable-test conveniences:
+- post-legal two-logo bypass;
+- compact eight-stage A-button Safe Stage Select;
+- selector-entry one-shot auto-save bypass.
+
+The user confirmed all three expected controls: the logos skip, A opens the safe selector, and normal music/SFX are present again. The Toasty image remains absent, as expected for this baseline.
+
+This establishes the v04 convenience composition as the fixed manual-test harness for subsequent Toasty visual diagnostics. It also confirms that v03's global audio loss was introduced by the v03 diagnostic itself, not by the logo/selector harness.
+
+
+### Toasty visual diagnostic v05 — allocator return confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+The user observed persistent `V05 ALLOC 1` during ordinary gameplay; the marker did not fall back to zero, and the Toasty image remained absent.
+
+This runtime-confirms that the dynamic allocator path is succeeding on the tested HUD route and returning an ID in the expected `0x200..0x2FF` range. Dynamic allocation itself is therefore exonerated for this failure. The remaining chain begins with the raw file load/backing-store contents, followed by palette/binding and `0x80073CEC` submission/context suitability.
+
+
+### Toasty visual diagnostic v06 — rejected loader-wrapper diagnostic
+
+**Runtime-confirmed failure on 2026-09-22; no load conclusion accepted.**
+
+The user observed that Temple reached the Mission Objective screen and stage music started, but gameplay never appeared. Therefore v06 is rejected as an intrusive diagnostic and its load marker cannot be used as evidence.
+
+v06 differed from the runtime-confirmed v05 baseline by interposing a 0x34-byte helper around `0x80065D64` and occupying the previously-unused tail `0x9A720..0x9A753` of the standalone selector cave. Even though that tail is zero in the clean ROM, the resulting runtime composition is not safe on this stage-entry route.
+
+Durable conclusion: do not wrap the raw loader and do not expand into that selector-cave tail for this diagnostic.
+
+
+### Toasty visual diagnostic v07 — rejected post-load helper
+
+**Runtime-confirmed failure on 2026-09-22; no load conclusion accepted.**
+
+v07 left the stock `0x80065D64` raw-loader call and delay slot unchanged, but added one post-return helper call inside the Toasty wrapper to inspect backing bytes. The user observed the **same failure boundary as v06**: Mission Objective appears, stage music starts, but gameplay never becomes visible.
+
+This exonerates the v06 loader interposition itself as the unique cause. The common new factor is extra helper-call instrumentation around the Toasty HUD wrapper. v07 is therefore rejected as an intrusive load diagnostic; no conclusion about the raw image bytes is accepted.
+
+Do not continue instrumenting the loader from this branch. The raw global-file loader already has independent runtime confirmation elsewhere, and older preserved UI evidence already established a more important renderer boundary.
+
+
+### Renderer correction from preserved UI evidence
+
+**Runtime-confirmed historical evidence, re-integrated 2026-09-22.**
+
+The earlier UI campaign had already established that `0x80073CEC -> 0x8001E578` is a real but context-specific 2D renderer family. Duplicating that family affected startup/title/inventory/PAUSED graphics, but did **not** duplicate the normal gameplay HUD, safe selector, stage-objective screen, or several other UI systems. A direct gameplay invocation of `0x80073CEC` also produced no visible sprite.
+
+Therefore the v01-v05 assumption that `0x80073CEC` could serve as the final Toasty gameplay renderer is **Rejected / superseded**. The useful v02/v05 results still stand for wrapper execution and dynamic allocation, but further Toasty rendering work should use the actual gameplay-HUD queue.
+
+Static re-audit of `0x8005BFB0` shows a native textured HUD path already present there:
+- six HUD resources are decoded through `0x8000322C`;
+- six corresponding texture slots are initialized through `0x8001BF70`, using slots `0x11..0x16`;
+- textured 0x58-byte HUD nodes store the texture slot in halfword `+0x4A` and submit through the already runtime-confirmed `0x8001EAE4` queue.
+
+At the first such submit, VA `0x8005C6E0` / ROM `0x5D2E0`, the stock node carries texture slot `0x12`.
+
+
+### Toasty visual diagnostic v08 — stock textured HUD clone confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+The user observed an additional small gold HUD-like textured fragment at the expected shifted gameplay position while the original top-left HUD remained intact. Gameplay loaded normally.
+
+v08 contained no custom image, dynamic texture allocation, raw file load, palette replacement, diagnostic text, Toasty audio, RNG, or trigger. It only cloned one already-built stock textured 0x58-byte HUD node inline, shifted its XY coordinates by `+160,+80`, and submitted the clone through the same `0x8001EAE4` queue.
+
+This runtime-confirms that the actual gameplay-HUD queue can render an additional textured MKMSZR-owned node. The exact texture-binding halfword is still being isolated; v08 copied the full stock node and therefore does not by itself prove that `+0x4A` alone selects the texture.
+
+
+### Toasty visual diagnostic v09 — stock texture-slot binding confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+v09 changed only the stock source-node selector from resident texture slot `0x12` to resident slot `0x13`, leaving the v08 clone wrapper byte-for-byte unchanged.
+
+Observed result:
+- the shifted clone changed visibly from the v08 C-like gold fragment to an equals-sign-like gold fragment;
+- the original top-left HUD simultaneously lost a small two-pixel portion of its gold frame.
+
+Because both source and clone inherited the same one-instruction slot change, the coupled visual change runtime-confirms that the node texture binding is live at halfword `+0x4A`. The small stock-HUD damage is an expected side effect of altering the source node before cloning; it is not treated as a new renderer failure.
+
+
+### Toasty visual diagnostic v10 — clone-local texture binding confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+The user observed the shifted equals-sign-like textured clone while the normal top-left HUD returned to its intact appearance. This cleanly separates clone-local texture selection from stock HUD state.
+
+v10 leaves the stock source node on slot `0x12`, clones the full 0x58-byte textured HUD node inline, changes only the clone's halfword `+0x4A` to resident slot `0x13`, shifts it by `+160,+80`, and submits through `0x8001EAE4`.
+
+This runtime-confirms that MKMSZR can rebind the texture of an added gameplay-HUD node independently without altering the source HUD node.
+
+
+### Toasty visual diagnostic v11 — rejected independent fixed-slot allocation
+
+**Runtime-confirmed failure on 2026-09-22.**
+
+The normal stock HUD remained intact, but the shifted clone no longer matched the v10 equals-sign control. Instead it became a small multicolored/noisy fragment.
+
+v11 had created fixed slot `0x17` by calling `0x8001BF70` a second time immediately after stock slot `0x13`, reusing the same decoded source and dimensions but allocating a new backing region. Because v10 already proved clone-local rebinding and the stock HUD stayed healthy, this result does **not** invalidate the gameplay textured-node renderer. It rejects only the assumption that this extra fixed-slot allocation is an equivalent independent copy of slot `0x13`.
+
+Static re-audit confirms the renderer consumes the slot's format word, line-width field, and backing-pointer table entry. The failure can therefore be caused by fixed-slot reuse/overwrite or by the extra backing allocation/lifetime rather than by node submission itself.
+
+Do not use v11's `0x17` allocation recipe for Toasty.
+
+
+### Toasty visual diagnostic v12 — rejected alias implementation
+
+**Runtime-confirmed failure on 2026-09-22; implementation bug identified statically afterward.**
+
+The normal HUD remained intact, but the shifted clone changed again into a different bright/white fragmented pattern rather than the v10 equals-sign control.
+
+A subsequent instruction-level audit found the v12 helper copied the slot backing pointer from the **wrong table base**. The gameplay renderer at `0x8001F7A8`, fixed-slot initializer `0x8001BF70`, and dynamic allocator `0x8001C2B4` all index the backing-pointer table as:
+
+```text
+lui ...,0x800F
+... index * 4 ...
+lw/sw ...,-0x26C0(...)
+```
+
+which resolves to **`0x800ED940`**, not `0x800FD940`. v12 used a `0x8010` high half and therefore aliased an unrelated address range. Its runtime image is not evidence that slot `0x17` itself is unusable.
+
+The renderer directly consumes the node texture ID at `+0x4A`, record `0x802E83F0 + id*0x10` fields `+0x00` and `+0x08`, and backing pointer `0x800ED940[id]`. This static mapping also shows that the same renderer addressing arithmetic can represent dynamic IDs `0x200..0x2FF`; runtime use through the gameplay queue is still pending.
+
+
+### Toasty visual diagnostic v13 — rejected alias implementation, second signed-address bug
+
+**Runtime-confirmed failure on 2026-09-22; implementation bug identified statically afterward.**
+
+The normal HUD remained intact, but the shifted clone became another distinct gold/white fragmented pattern rather than the v10 equals-sign control.
+
+The v13 backing-pointer correction was real, but a second sign-extension error remained in the alias helper. The fixed/dynamic slot record base is formed by stock code as:
+
+```text
+lui   ...,0x802F
+addiu ...,...,0x83F0   # signed immediate = -0x7C10
+```
+
+which resolves to **`0x802E83F0`**, not `0x802F83F0`. v13 still used the latter page for the copied slot metadata. Therefore it combined the correct slot-`0x13` backing pointer with unrelated format/stride metadata, explaining the changed but still incorrect fragment.
+
+This result is not evidence against slot `0x17` itself.
+
+
+### Toasty visual diagnostic v14 — fully corrected fixed-slot alias
+
+**Runtime-confirmed on 2026-09-22.**
+
+v14 is intentionally identical to v13 except for the single slot-table high-half instruction:
+- v13 alias metadata page: `0x8030` plus signed negative offsets -> wrong `0x802Fxxxx` page;
+- v14 alias metadata page: `0x802F` plus the same signed offsets -> correct `0x802Exxxx` page.
+
+The exact copied records are now:
+- slot `0x13`: `0x802E8520`;
+- slot `0x17`: `0x802E8560`;
+- backing pointers remain `0x800ED98C` -> `0x800ED99C`.
+
+Relative to v13, v14 changes only one non-header ROM byte. No allocation, pixel copy, new cave, renderer change, audio change, or Toasty asset is introduced.
+
+Observed result: intact normal HUD plus the same shifted equals-sign texture seen in runtime-confirmed v10. This confirms the corrected slot-record base `0x802E83F0` and backing-pointer base `0x800ED940`, and closes the fixed-slot alias control.
+
+
+### Toasty visual diagnostic v15 — actual Toasty pixels confirmed
+
+**Runtime-confirmed on 2026-09-22.**
+
+The user observed a large, clearly non-HUD textured image at the intended shifted gameplay position. Its silhouette/pose matches the genuine Toasty CI8 source, while its colors are strongly blue/cyan/black because v15 intentionally inherited the stock HUD palette. The stock gameplay route remained functional.
+
+This confirms the important composition boundary:
+- dynamic CI8 allocation through `0x8001C2B4(78,85)` works with the gameplay HUD renderer;
+- the 96-byte aligned backing stride is accepted;
+- raw Toasty pixels loaded through file ID `0x1B` reach the allocated backing store;
+- node `+0x4A` can point the added gameplay-HUD node at that dynamic texture.
+
+The remaining visible defect is palette selection, not the image source/stride/renderer socket.
+
+
+### Toasty visual diagnostic v16 — genuine palette selector
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+Static audit of gameplay renderer `0x8001F7A8` identifies node halfword `+0x4C` as the palette selector. The v08-v15 source HUD node sets `+0x4C = 0x10`. The renderer resolves it through:
+- selector table `0x80290A00 + selector*8`, taking the first halfword as palette index;
+- palette-pointer table `0x802E73E0 + palette_index*4`;
+- native CI8 TLUT upload before textured drawing.
+
+Preserved Temple RAM shows selector entry `0x10` maps to palette index `0x10`; selector entry `0x11` is unused, and palette-pointer entry `0x11` is zero on that captured route.
+
+v16 therefore leaves v15's dynamic texture allocation, genuine image bytes, 96-byte stride, geometry, and gameplay render submission unchanged. It adds the genuine 256-entry Toasty A1B5G5R5 TLUT in the existing zero-guarded proof-data cave, registers selector/palette index `0x11` to that TLUT, and changes **only the clone's** node `+0x4C` from inherited stock `0x10` to custom `0x11`.
+
+Expected result: the v15 Toasty image remains in the same place and size but renders with its genuine colors. Stock HUD nodes retain selector `0x10`.
+
+## Related canonical owners
+
+- [Native HUD and UI](Native-HUD-and-UI) — reusable gameplay HUD/text/render-node conclusions.
+- [Data structures and encodings](Data-Structures-and-Encodings) — stable render-node structure grammar.
+- [Memory and allocation map](Memory-and-Allocation-Map) — literal proof/production allocation ownership; proof caves are not production allocations.
+- [Runtime validation status](Runtime-Validation-Status) — concise cross-domain evidence matrix.
+- [Project status](Project-Status) — current maturity and project priority only.
+- [Sounds and music](Sounds-and-Music) — current Toasty audio owner.
+- [Native UI and presentation](Native-UI-and-Presentation) — old-slug compatibility/supersession index.

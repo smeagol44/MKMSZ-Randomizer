@@ -38,7 +38,7 @@
 - [Reptile/foreign moves](Foreign-Moves-and-Reptile)
 - [PS1 research](PS1-Research)
 - [N64–PS1 comparison](N64-PS1-Comparison)
-- [Toasty visual diagnostics (temporary)](Native-UI-and-Presentation)
+- [Toasty visual research](Toasty-Visual-Research)
 - [Failures/superseded](Experiments-Failures-and-Superseded-Findings)
 
 **Stage catalogs**
