@@ -17,7 +17,8 @@ Supported product modes are:
 - legacy red/green;
 - seed-derived hue;
 - explicit hue;
-- explicit RGB.
+- explicit RGB;
+- runtime `rainbow`.
 
 The source-palette transformation is **Runtime-confirmed** across multiple modes. Unit coverage checks bounds, channel conversion, determinism, and preservation of untouched entries.
 
@@ -43,9 +44,9 @@ The current product feature configures the normal player outfit. It does not cla
 - Do not reuse donor palette words directly without the explicit donor-to-MKMSZ channel/order conversion owned by the fighter-asset adapter.
 - Presentation RNG changes must remain isolated from gameplay/randomizer RNG namespaces.
 
-## Rainbow runtime proof
+## Rainbow runtime mode
 
-**Runtime-confirmed on 2026-09-23; proof-only, not yet a product mode.**
+**Production / Runtime-confirmed.** The browser and CLI expose `rainbow` as a normal outfit mode. The integrated patcher reproduces the manually validated v01 artifact byte-for-byte for seed `RAINBOW64`.
 
 Disposable full-composition proof:
 
@@ -54,20 +55,20 @@ Disposable full-composition proof:
 - CRC1/CRC2: `E0AD24EF / 4993529C`;
 - seed: `RAINBOW64`.
 
-The proof composes the current production randomizer systems while excluding Sektor and unrelated proof-only experiments. The user reported the requested manual rainbow/regression test worked successfully.
+The original proof composed the then-current production randomizer systems while excluding Sektor and unrelated proof-only experiments. The user reported the requested manual rainbow/regression test worked successfully. The production module preserves that mechanism exactly.
 
 The rainbow path keeps the established clothing boundary: only palette indices `0x21..0x3F` vary. It precomputes 64 full BGR555 palettes distributed around the hue wheel; every non-clothing entry is preserved exactly from the stock Sub-Zero palette in every generated palette.
 
 Unlike the production static recolor, the proof is a runtime palette feature. It hooks native fighter frame setup at `0x8001BDA0`, applies only to normal Sub-Zero fighter type `4`, and uses the native palette allocation/refcount path so the actor is rebound coherently before the prior palette handle is released. This deliberately avoids treating the route-specific observed TLUT address `0x803BD410` as a stable global write target.
 
-Proof-only composition details:
+Production composition details:
 
 - the existing 1 KiB MKMSZR reservation remains `0x801AF420..0x801AF81F`, but is repartitioned for this artifact as `0x3B0` bytes of code plus `0x50` bytes of state;
-- rainbow phase state uses proof state offset `+0x48`;
+- rainbow phase state uses production state offset `+0x48`;
 - the rainbow helper occupies cached `0x801AF700` / uncached `0xA01AF700`, size `0xCC`;
 - clean Sub-Zero file `0x87` is relocated byte-for-byte to ROM `0xF20000..0xF679DF`, then extended with the 64-palette bank; final file size is `0x479E0`.
 
-This runtime result establishes feasibility and the tested composition only. It does **not** by itself promote the proof repartition or high-ROM relocation to production ownership. Browser/CLI exposure remains pending a guarded production integration.
+The normal patch pipeline now owns this guarded composition. The proof identity remains the runtime evidence anchor: SHA-256 `4f9aff72c3f81d20e7f3d8f3e59f07cff8f7c6e5a1c0ce81d1a1bbb91ab92060`, CRC1/CRC2 `E0AD24EF / 4993529C`. Other seeds change seeded randomizer content as usual; the rainbow mechanism itself is not seed-randomized.
 
 ## Related pages
 
