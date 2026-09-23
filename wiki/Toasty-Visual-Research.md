@@ -512,10 +512,26 @@ MIPS load/store immediates are signed. Because `0x9Dxx >= 0x8000`, those instruc
 
 ### Toasty visual diagnostic v32 — saved-slot state-address alias correction
 
-**Implementation/static-confirmed; runtime pending manual validation.**
+**Runtime-confirmed negative result on 2026-09-23.**
 
 v32 returns to the v27 image/palette/allocation-order/render baseline and changes only the high-half used for the nine saved-slot state accesses. The instruction count, state-word ROM/VA ownership, image payloads, TLUT, file-table records, draw order, geometry, and dynamic allocation order remain unchanged.
 
 The corrected address formation uses the carry-adjusted LUI high half for signed `0x9Dxx` load/store immediates, so the effective addresses are the intended `0x800A9D40..0x800A9D60` rather than the accidental `0x80099D40..0x80099D60`.
 
 ROM comparison against a rebuilt v27 confirms every non-CRC difference is confined to the LUI immediates in the init and compositor code that access these saved slot IDs.
+
+Manual testing in Temple, Earth, and Fire produced essentially the same residual edge corruption seen on the stronger pre-v32 builds; Fortress remained clean. Therefore the signed-address alias was a real builder bug but is **not accepted as the cause of the visible stage-dependent corruption**.
+
+
+### Toasty visual diagnostic v33 — dynamic-slot lifecycle marker
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v33 preserves the v32/v27 image data, hardware TLUT, nine-piece geometry, allocator-aligned payloads, allocation order, corrected saved-state addresses, and render-node composition. It adds only a per-HUD-frame validation pass over the nine saved dynamic texture IDs.
+
+For each piece the wrapper checks:
+- saved ID is within allocator range `0x200..0x2FF`;
+- slot record `0x802E83F0 + id*0x10` remains active at halfword `+0x0E == 1`;
+- record `+0x08/+0x0A` still matches the piece's expected requested width/height.
+
+If any invariant fails, the wrapper draws the proven native-text marker `V33 SLOT MUT` at the lower-left while continuing to render the Toasty image. A marker on the corrupt stages would directly support slot reset/reuse as the cause. If corruption remains without the marker, the next diagnostic should move down to backing-pointer/pixel-storage integrity rather than more allocation-order permutations.
