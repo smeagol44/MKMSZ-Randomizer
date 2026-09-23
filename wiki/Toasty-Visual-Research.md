@@ -399,6 +399,71 @@ The indexed Toasty image, dynamic slot, 96-byte stride, selector `0x11`, pointer
 
 ROM-level comparison against a rebuilt v16 confirms every non-header difference is confined to the custom 0x200-byte TLUT region. Offline decode also round-trips every palette entry exactly at 5-bit channel/alpha precision.
 
+
+### Toasty visual diagnostic v17 — hardware-ready TLUT confirmed
+
+**Runtime-confirmed on 2026-09-23.**
+
+The custom image became recognizably Toasty-colored after changing only the custom 0x200-byte palette payload from source BGR555/A1B5G5R5 words to hardware RGBA5551 TLUT words. The remaining image was still mosaicked, but color/transparency were substantially corrected.
+
+This runtime-confirms the custom palette selector/pointer route and the hardware-TLUT representation. The residual defect was therefore texture footprint/addressing rather than palette selection.
+
+
+### Toasty visual diagnostic v18 — 64x64 single-node crop
+
+**Runtime-confirmed partial result on 2026-09-23.**
+
+Reducing the custom image from the full 78x85 footprint to a 64x64 crop produced a clearly recognizable Toasty face, but the 64x64 content appeared twice vertically and the lower body was missing.
+
+This was important positive evidence: the indexed pixels, corrected TLUT, dynamic-slot path, and gameplay-HUD submission all worked well enough to render a recognizable image. The remaining defect was tied to larger/taller texture layout rather than source identity.
+
+
+### Toasty visual diagnostic v19 — two 64x32 slices
+
+**Runtime-confirmed on 2026-09-23.**
+
+v19 split the proven 64x64 crop into two independent 64x32 CI8 allocations/nodes stacked vertically. The user observed a coherent Toasty image rather than repeated/mosaicked blocks, establishing that the gameplay-HUD renderer can compose a larger custom image from multiple smaller nodes.
+
+The visible result was still vertically cropped because only the original 64-row crop was represented.
+
+
+### Toasty visual diagnostic v20 — three vertical slices, full 85px height
+
+**Runtime-confirmed on 2026-09-23.**
+
+v20 retained the 64-pixel-wide crop and extended it to the original 85-pixel height using three independent slices: 64x32, 64x32, and 64x21. The user observed a clean, coherent Toasty portrait with the expected full vertical extent.
+
+This is the current strongest visual success. It runtime-confirms the multi-node composition strategy for the full height, with the image still intentionally cropped by 7 pixels on each horizontal side.
+
+
+### Toasty visual diagnostic v21 — direct full-width 78px slices rejected
+
+**Runtime-confirmed failure on 2026-09-23.**
+
+Changing only the three slice widths from 64 to the full source width 78 caused severe horizontal striping/corruption across the image. The previously stable palette and vertical composition remained otherwise unchanged.
+
+This rejects the direct 78-pixel-wide-node composition used by v21. It does not reject the source image or multi-node composition itself.
+
+
+### Toasty visual diagnostic v22 — full-width side-column corruption
+
+**Runtime-confirmed partial failure on 2026-09-23.**
+
+v22 reconstructed the 78-pixel source width as three columns per vertical band: 7 + 64 + 7 pixels, producing nine textured HUD nodes total. The 64-pixel center column remained visually coherent, while both 7-pixel side columns were corrupted/glitchy.
+
+This localizes the defect to the narrow-column backing layout rather than geometry, palette, or the center 64-pixel path. The v22 builder packed each 7-pixel row tightly as 7 bytes even though the dynamic CI8 allocator uses aligned backing rows.
+
+
+### Toasty visual diagnostic v23 — narrow-column stride correction
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v23 leaves v22's nine-node geometry, palette, dynamic allocations, file IDs, HUD compositor code, logo skip, and Safe Stage Select unchanged. It changes only the raw payload layout for the 7-pixel side columns.
+
+The allocator's CI8 backing row pitch is 32-byte aligned: the already runtime-confirmed 78-pixel allocation uses stride 96, while 64 uses stride 64. Therefore a 7-pixel allocation uses a 32-byte backing row. v23 keeps the visible node width at 7 but pads every source row to 32 bytes before the raw load.
+
+If the two side columns become clean while the center remains unchanged, this confirms row-pitch mismatch as the v22 defect and establishes a complete 78x85 Toasty image through nine composed HUD nodes.
+
 ## Related canonical owners
 
 - [Native HUD and UI](Native-HUD-and-UI) — reusable gameplay HUD/text/render-node conclusions.
