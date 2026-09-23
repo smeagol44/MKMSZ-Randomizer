@@ -100,7 +100,7 @@ No title executable cave is required by the accepted path. The production high-R
 
 The title palette descriptor is at ROM `0x000B3360`; the count word is followed by the 256-entry palette at `0x000B3364`. Offline reconstruction uses the verified BGR555 interpretation.
 
-This page owns the **file/package mechanics**. Branding design, visual acceptance, and title-proof chronology remain in [Native UI and presentation](Native-UI-and-Presentation) until their later dedicated refactor task.
+This page owns the **file/package mechanics**. Branding design, visual acceptance, and title-proof chronology belong to [Presentation and branding](Presentation-and-Branding).
 
 ## Overlay identity rules
 
@@ -159,4 +159,4 @@ Concrete stage-relative selectors, records, resource IDs, file ranges, runtime b
 - [Data structures and encodings](Data-Structures-and-Encodings) — canonical stable record/structure/codec grammar outside the selector/loading rules owned here.
 - [Function registry](Function-Registry) — canonical function semantics.
 - [Pickups and stage-local randomization](Pickups-and-Item-Randomization) — current production ordinary-pickup behavior.
-- [Native UI and presentation](Native-UI-and-Presentation) — current title/branding behavior and evidence until its later split.
+- [Presentation and branding](Presentation-and-Branding) — current title/legal branding behavior and visual evidence.

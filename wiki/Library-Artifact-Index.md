@@ -8,7 +8,7 @@ Current technical facts are reproduced in this Wiki. The external `MKMSZR Resear
 | Core runtime/address database | Disassembly traces, bootstrap experiments, address provenance | [Core runtime](Core-Runtime-and-Address-Database), registries |
 | Pickup/resource reports | Original callback tests, cross-stage import proof, parser outputs | [Pickups](Pickups-and-Item-Randomization), [stage catalogs](Stage-Catalogs) |
 | Persistence/inventory handoffs | Bitset and four-box proof history | [Persistence and inventory](Persistence-Inventory-and-Lifecycle) |
-| UI reports | Node/text experiments and screenshots | [Native UI](Native-UI-and-Presentation) |
+| UI reports | Node/text experiments and screenshots | [Native HUD and UI](Native-HUD-and-UI); Toasty visual chronology remains temporarily at [Native UI and presentation](Native-UI-and-Presentation) until Task 11 |
 | Enemy reports | Stream decompilation and foreign fighter import | [Enemy randomization](Enemy-Randomization) |
 | Stage flow reports | Selector and bypass traces | [Stage flow and selector](Stage-Flow-and-Selector) |
 | PS1 reports/filesystem inventory | Executable, files, save and structure analysis | [PS1 research](PS1-Research) |

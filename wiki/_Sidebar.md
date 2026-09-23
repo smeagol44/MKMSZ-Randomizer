@@ -23,7 +23,8 @@
 - [Pickups/randomization](Pickups-and-Item-Randomization)
 - [Global materialization/solvability](Global-Item-Materialization-and-Solvability)
 - [Persistence/inventory](Persistence-Inventory-and-Lifecycle)
-- [Native UI](Native-UI-and-Presentation)
+- [Native HUD/UI](Native-HUD-and-UI)
+- [Presentation/branding](Presentation-and-Branding)
 - [Sounds/music](Sounds-and-Music)
 - [Palette/recoloring](Palette-and-Recoloring)
 - [XP/progression](XP-and-Progression)
@@ -37,6 +38,7 @@
 - [Reptile/foreign moves](Foreign-Moves-and-Reptile)
 - [PS1 research](PS1-Research)
 - [N64–PS1 comparison](N64-PS1-Comparison)
+- [Toasty visual diagnostics (temporary)](Native-UI-and-Presentation)
 - [Failures/superseded](Experiments-Failures-and-Superseded-Findings)
 
 **Stage catalogs**
