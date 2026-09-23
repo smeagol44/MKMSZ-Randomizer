@@ -39,7 +39,7 @@ def test_candidate_b_asset_is_exact_native_pixel_image() -> None:
 
 def test_embedded_edition_font_covers_all_allowed_input() -> None:
     glyphs = title._edition_font()
-    required = set(title.EDITION_ALLOWED + title.EDITION_SUFFIX)
+    required = set(title.EDITION_ALLOWED).union(title.EDITION_SUFFIX)
     assert required <= set(glyphs)
 
 

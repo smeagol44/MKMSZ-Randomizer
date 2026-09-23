@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Benchmark MKMSZ stock Type-5 fighter compression against a generated encoder.
 
 This tool does not modify the ROM. It:
@@ -16,11 +15,11 @@ character artwork differences.
 """
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+import argparse
+from collections import Counter
 from functools import lru_cache
 from hashlib import sha256
 from pathlib import Path
-import argparse
 
 SUPPORTED_SHA256 = "9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6"
 FILE87_ROM = 0x748920
