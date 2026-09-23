@@ -83,9 +83,9 @@ def test_v38_descriptor_and_bitset_design_is_exact() -> None:
 
 
 def test_pickup_persistence_code_fits_confirmed_regions() -> None:
-    assert len(PICKUP_PERSISTENCE_PAYLOAD) == CODE_SIZE == 0x300
+    assert len(PICKUP_PERSISTENCE_PAYLOAD) == CODE_SIZE == 0x3B0
     assert PICKUP_PERSISTENCE_ACTUAL_CODE_SIZE == 0x1D4
-    assert PICKUP_PERSISTENCE_PAYLOAD[0x200:] == bytes(0x100)
+    assert PICKUP_PERSISTENCE_PAYLOAD[0x200:] == bytes(0x1B0)
     assert len(RESTORE_TRAMPOLINE) == 0x10
     assert len(LOADER_STUB) == 84
     assert len(CAPTURE_HELPER) == 0xD8
