@@ -1,12 +1,33 @@
 # Water stage catalog
 
-**Evidence status:** Static-confirmed from the clean USA N64 ROM; file-to-RDRAM mappings were also matched against captured runtime memory. Ordinary-pickup behavior and persistence are runtime-confirmed at representative locations, but the complete 84-record set has not been collected exhaustively one record at a time.
+> **Scope:** Stage-local catalog for Water, compact selector `2` / native stage ID `2`. Shared record grammar, resource notation, evidence labels, and safety rules are owned by [Stage catalogs](Stage-Catalogs). Cross-stage Health-urn materialization/conversion mechanics are deliberately not owned here.
 
-This page is the self-contained decoded catalog for native stage ID `2`. It includes every ordinary pickup record and every recognized resource slot/record. Values are big-endian. Unknown fields remain named by offset instead of being assigned unsupported semantics.
+## Stage identity and evidence
+
+- **Static-confirmed:** all nine ordinary pickup records, all 29 stock outer slots, and the recognized resource records below are decoded from the clean USA N64 ROM.
+- **Runtime-confirmed:** the complete `0x64E0`-byte stage resource file was matched byte-for-byte at RDRAM `0x802504A8` during live Water gameplay.
+- **Runtime-confirmed:** the all-eight-stage persistence validation collected/restored a representative Water ordinary pickup. The nine Water records have not been individually exhausted one by one in runtime testing.
+- Water's three stage key pickups use stage-qualified overlay callback VA `0x802F2448`; this address is Water-overlay evidence, not a globally resident callback identity.
+
+## File mapping
+
+| Property | Value |
+|---|---:|
+| Stage ID | `2` |
+| Global resource file ID | `0x75` |
+| File-table entry ROM | `0x000A558C` |
+| Resource ROM range | `0x00611780..0x00617C5F` |
+| File size | `0x64E0` (25824 bytes) |
+| File-table flag | `0` |
+| Verified runtime base | `0x802504A8` |
+| Outer slots | `29` |
+| Outer-table end | `0x74` |
+| First descriptor | `0x74` |
+| Empty logical slots | `8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19` |
+| Unknown/nonstandard slots | `none` |
+| Pickup records | `9` |
 
 ## Ordinary pickup records
-
-A record is `0x30` bytes. Position and metadata (`+0x00..+0x0F`) and the collected flag (`+0x2C`) belong to the destination. The production randomizer moves the seven-word identity slice `+0x10..+0x2B`. `Token` and `Requires` are production logic metadata, not bytes stored in the native record.
 
 | # | Decoded identity | ROM base | RDRAM base | X | Y | Z | +0C | +10 type | +14 parameter | +18 callback | +1C | +20 | +24 slot | +28 presentation | +2C collected | Token | Requires |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|
@@ -20,28 +41,21 @@ A record is `0x30` bytes. Position and metadata (`+0x00..+0x0F`) and the collect
 | 8 | Water Three Bars | `0x000BAC64` | — | `0xFFDAFD0E` | `0x00297100` | `0x00000000` | `0x00000004` | `0x00000000` | `0x00000001` | `0x802F2448` | `0x00000020` | `0x00000020` | `5` | `0x800B1D18` | `0x00000000` | `water-three-bars` | water-triangle |
 | 9 | Water Moon | `0x000BAC94` | — | `0xFFFDD5A4` | `0x0024B100` | `0x00000000` | `0x00000004` | `0x00000000` | `0x00000002` | `0x802F2448` | `0x00000020` | `0x00000020` | `6` | `0x800B1D18` | `0x00000000` | `water-moon` | water-three-bars |
 
-## Resource-file catalog
+## Pickup-to-resource usage
 
-Generated conservatively from the clean USA N64 ROM. Recognized bundles distinguish embedded model/data offsets from records that reference external resource IDs; `unknown/nonstandard` is intentionally not guessed.
+| ROM base | Callback | Parameter | Slot | Presentation |
+|---:|---:|---:|---:|---:|
+| `0x000BAB14` | `0x800389EC` | `0x00000000` | 28 | `0x800B1D38` |
+| `0x000BAB44` | `0x800389EC` | `0x00000000` | 28 | `0x800B1D38` |
+| `0x000BAB74` | `0x80038A58` | `0x00000000` | 26 | `0x800B1C14` |
+| `0x000BABA4` | `0x800389BC` | `0x00000000` | 25 | `0x800B1D38` |
+| `0x000BABD4` | `0x800388FC` | `0x00000000` | 27 | `0x800B1BAC` |
+| `0x000BAC04` | `0x80038A1C` | `0x00000000` | 24 | `0x800B1D38` |
+| `0x000BAC34` | `0x802F2448` | `0x00000000` | 4 | `0x800B1D18` |
+| `0x000BAC64` | `0x802F2448` | `0x00000001` | 5 | `0x800B1D18` |
+| `0x000BAC94` | `0x802F2448` | `0x00000002` | 6 | `0x800B1D18` |
 
-## File mapping
-
-| Property | Value |
-|---|---:|
-| Stage ID | `2` |
-| File-table entry ROM | `0x000A558C` |
-| Resource ROM range | `0x00611780..0x00617C5F` |
-| File size | `0x64E0` (25824 bytes) |
-| File-table flag | `0` |
-| Verified runtime base | `0x802504A8` |
-| Outer slots | `29` |
-| Outer-table end | `0x74` |
-| First descriptor | `0x74` |
-| Empty logical slots | `8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19` |
-| Unknown/nonstandard slots | `none` |
-| Pickup records | `9` |
-
-## Outer slots
+## Outer resource slots
 
 | Slot | Name | Outer offset | Format | Frames | Pickup users |
 |---:|---|---:|---|---:|---:|
@@ -75,30 +89,7 @@ Generated conservatively from the clean USA N64 ROM. Recognized bundles distingu
 | 27 | Potion | `0x258` | embedded-data-bundle | 8 | 1 |
 | 28 | Health urn | `0x6474` | external-resource-id-bundle | 4 | 2 |
 
-## Pickup usage
-
-| ROM base | Callback | Parameter | Slot | Presentation |
-|---:|---:|---:|---:|---:|
-| `0x000BAB14` | `0x800389EC` | `0x00000000` | 28 | `0x800B1D38` |
-| `0x000BAB44` | `0x800389EC` | `0x00000000` | 28 | `0x800B1D38` |
-| `0x000BAB74` | `0x80038A58` | `0x00000000` | 26 | `0x800B1C14` |
-| `0x000BABA4` | `0x800389BC` | `0x00000000` | 25 | `0x800B1D38` |
-| `0x000BABD4` | `0x800388FC` | `0x00000000` | 27 | `0x800B1BAC` |
-| `0x000BAC04` | `0x80038A1C` | `0x00000000` | 24 | `0x800B1D38` |
-| `0x000BAC34` | `0x802F2448` | `0x00000000` | 4 | `0x800B1D18` |
-| `0x000BAC64` | `0x802F2448` | `0x00000001` | 5 | `0x800B1D18` |
-| `0x000BAC94` | `0x802F2448` | `0x00000002` | 6 | `0x800B1D18` |
-
-## Stage-specific notes
-
-- The complete 0x64E0-byte ROM resource file matches RDRAM at 0x802504A8 byte-for-byte in live Water gameplay.
-- All nine standard 0x30-byte pickup records are contiguous and mapped: three Water icons, two Health urns, and one each of Extra-life urn, Herbs, mana, and Potion.
-- The supplied Lua comments identify slot 26 as mana and substitute Herbs in the virtual item pool; the native callback and presentation remain distinct from Herbs.
-- Occupied selectors without ordinary pickup users remain protected because other Water actors or scripts may reference them.
-
 ## Recognized bundle records
-
-Offsets below are relative to the stage resource-file base.
 
 | Slot | Frame | Record | Storage | Resource/data value | Inferred end | Dimensions words |
 |---:|---:|---:|---|---:|---:|---|
@@ -222,15 +213,25 @@ Offsets below are relative to the stage resource-file base.
 | 28 | 2 | `0x64B4` | external-resource-id | `0x291` | `` | `0x000F0011` / `0x00060009` |
 | 28 | 3 | `0x64C8` | external-resource-id | `0x292` | `` | `0x00100011` / `0x00070009` |
 
-## Safety interpretation
+## Water-specific notes, constraints, and pending questions
 
-Zero outer entries are free logical selectors only. They do not imply unused physical bytes inside the original file. New payload data must be appended to an expanded/relocated file or placed in storage proven safe by a complete reference analysis. Inferred model/data ends use the next discovered model-data start and are boundaries for analysis, not yet proof that trailing bytes are independently movable.
+- The complete `0x64E0`-byte ROM resource file matches RDRAM at `0x802504A8` byte-for-byte in live Water gameplay.
+- All nine standard `0x30`-byte pickup records are contiguous and mapped: three Water icons, two Health urns, and one each of Extra-life urn, Herbs, mana, and Potion.
+- The supplied Lua comments identify slot `26` as mana and substitute Herbs in the virtual item pool; the native callback `0x80038A58` and presentation pointer `0x800B1C14` remain distinct from Herbs.
+- Water's progression metadata remains stage-local: Water Three Bars requires `water-triangle`; Water Moon requires `water-three-bars`; the second Health urn requires `water-moon`.
+- Slot `28` is Water's Health-urn resource: an `external-resource-id-bundle` with four records using external IDs `0x28F..0x292`; both Water Health-urn pickup records select this slot.
+- **Static-confirmed Water source fact:** the raw payloads behind Health-urn IDs `0x28F..0x292` were located in Water's compressed source package, global file ID `0x73` (file-table entry ROM `0x000A5574`), with raw byte lengths `340, 272, 272, 272`. The cross-stage conversion method and Proof G/H outcomes are owned by [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
+- Water's slot-`27` Potion is an embedded-data bundle. Its embedded frames supplied the Water side of the storage-form equivalence check against Fire external Potion payloads `0x27F..0x286`; the generalized conclusion remains on [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
+- Occupied selectors without ordinary pickup users remain protected because other Water actors or scripts may reference them. Slot `7`, for example, aliases outer offset `0x10C` used by the Water Moon bundle but has no ordinary-pickup user.
+- Empty stock selectors `8, 9, 11..19` are logical selector capacity only. Per the shared schema, they are not evidence of free physical file bytes or production-safe allocation space.
 
-## Interpretation boundaries
+## Related owners
 
-- A zero outer-table entry is a free logical selector, not proof of unused physical bytes.
-- An occupied slot with no ordinary-pickup user can still be referenced by another actor or script and is protected until traced.
-- Inferred data ends support cataloging; they do not prove that trailing ranges are independently movable.
-- Foreign resources require bounded storage, loader/arena validation, guarded references, and runtime testing.
-
-Catalog lineage: generated from the preserved clean-ROM catalog artifacts and checked against the production pickup definitions in `src/mkmszr/data/pickups.py`. The tables above are reproduced here so this Wiki does not depend on an external archive for current technical facts.
+- [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, and eight-stage index.
+- [Data structures and encodings](Data-Structures-and-Encodings) — ordinary `0x30`-byte record grammar.
+- [Resource and overlay system](ROM-Overlay-and-Resource-Map) — global file-table, loader, overlay, and selector/resource grammar.
+- [Memory and allocation map](Memory-and-Allocation-Map) — literal ROM/RDRAM ownership and lifecycle.
+- [Address and patch-site registry](Address-and-Patch-Site-Registry) — exact guarded patch sites.
+- [Pickups and stage-local randomization](Pickups-and-Item-Randomization) — current production ordinary-pickup behavior and modeled Water dependencies.
+- [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) — cross-stage materializer, external-to-embedded conversion, proof history, solver, and production gates.
+- [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle) — collected-state persistence and stage-transition lifecycle.

@@ -1,12 +1,33 @@
 # Prison stage catalog
 
-**Evidence status:** Static-confirmed from the clean USA N64 ROM; file-to-RDRAM mappings were also matched against captured runtime memory. Ordinary-pickup behavior and persistence are runtime-confirmed at representative locations, but the complete 84-record set has not been collected exhaustively one record at a time.
+> **Scope:** Stage-local catalog for Prison, compact selector `4` / native stage ID `4`. Shared record grammar, resource notation, evidence labels, and safety rules are owned by [Stage catalogs](Stage-Catalogs). General extension-selector/materializer interpretation and proof chronology remain owned by [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
 
-This page is the self-contained decoded catalog for native stage ID `4`. It includes every ordinary pickup record and every recognized resource slot/record. Values are big-endian. Unknown fields remain named by offset instead of being assigned unsupported semantics.
+## Stage identity and evidence
+
+- **Static-confirmed:** all 10 ordinary pickup records, all 12 stock outer slots, and the recognized resource records below are decoded from the clean USA N64 ROM.
+- **Runtime-confirmed:** the Prison resource-file mapping was matched against captured runtime memory at `0x801FB798`.
+- **Runtime-confirmed:** representative Prison ordinary-pickup collection/persistence is established, but all 10 Prison records have not been individually exhausted one by one in runtime testing.
+- **Runtime-confirmed, proof-only:** Prison is the destination used for the six-Herbs extension-selector proof, single imported embedded Potion proof, converted Health-urn proof, and the composed five-import visual stress proof. Exact stage-local configurations are preserved below; the generalized conclusions remain with the global materialization owner.
+
+## File mapping
+
+| Property | Value |
+|---|---:|
+| Stage ID | `4` |
+| Global resource file ID | `0x49` |
+| File-table entry ROM | `0x000A537C` |
+| Resource ROM range | `0x0041C680..0x00420F6F` |
+| File size | `0x48F0` (18672 bytes) |
+| File-table flag | `0` |
+| Verified runtime base | `0x801FB798` |
+| Outer slots | `12` |
+| Outer-table end | `0x30` |
+| First descriptor | `0x30` |
+| Empty logical slots | `none` |
+| Unknown/nonstandard slots | `none` |
+| Pickup records | `10` |
 
 ## Ordinary pickup records
-
-A record is `0x30` bytes. Position and metadata (`+0x00..+0x0F`) and the collected flag (`+0x2C`) belong to the destination. The production randomizer moves the seven-word identity slice `+0x10..+0x2B`. `Token` and `Requires` are production logic metadata, not bytes stored in the native record.
 
 | # | Decoded identity | ROM base | RDRAM base | X | Y | Z | +0C | +10 type | +14 parameter | +18 callback | +1C | +20 | +24 slot | +28 presentation | +2C collected | Token | Requires |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|
@@ -21,28 +42,22 @@ A record is `0x30` bytes. Position and metadata (`+0x00..+0x0F`) and the collect
 | 9 | Herbs | `0x000CA1B0` | — | `0x00680700` | `0x0001CC00` | `0x00000000` | `0x00000006` | `0x00000001` | `0x00000000` | `0x800389BC` | `0x00000020` | `0x00000020` | `8` | `0x800B1D38` | `0x00000000` | — | prison-l1, prison-l2, prison-l3 |
 | 10 | Herbs | `0x000CA1E0` | — | `0x007A8000` | `0x0001CC00` | `0x00000000` | `0x00000006` | `0x00000001` | `0x00000000` | `0x800389BC` | `0x00000020` | `0x00000020` | `8` | `0x800B1D38` | `0x00000000` | — | prison-l1 |
 
-## Resource-file catalog
+## Pickup-to-resource usage
 
-Generated conservatively from the clean USA N64 ROM. Recognized bundles distinguish embedded model/data offsets from records that reference external resource IDs; `unknown/nonstandard` is intentionally not guessed.
+| ROM base | Callback | Parameter | Slot | Presentation |
+|---:|---:|---:|---:|---:|
+| `0x000CA030` | `0x80038770` | `0x00000000` | 0 | `0x800B1D18` |
+| `0x000CA060` | `0x80038770` | `0x00000001` | 1 | `0x800B1D18` |
+| `0x000CA090` | `0x80038770` | `0x00008002` | 2 | `0x800B1D18` |
+| `0x000CA0C0` | `0x80038A90` | `0x00000000` | 11 | `0x800B1D38` |
+| `0x000CA0F0` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
+| `0x000CA120` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
+| `0x000CA150` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
+| `0x000CA180` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
+| `0x000CA1B0` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
+| `0x000CA1E0` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
 
-## File mapping
-
-| Property | Value |
-|---|---:|
-| Stage ID | `4` |
-| File-table entry ROM | `0x000A537C` |
-| Resource ROM range | `0x0041C680..0x00420F6F` |
-| File size | `0x48F0` (18672 bytes) |
-| File-table flag | `0` |
-| Verified runtime base | `0x801FB798` |
-| Outer slots | `12` |
-| Outer-table end | `0x30` |
-| First descriptor | `0x30` |
-| Empty logical slots | `none` |
-| Unknown/nonstandard slots | `none` |
-| Pickup records | `10` |
-
-## Outer slots
+## Outer resource slots
 
 | Slot | Name | Outer offset | Format | Frames | Pickup users |
 |---:|---|---:|---|---:|---:|
@@ -59,24 +74,7 @@ Generated conservatively from the clean USA N64 ROM. Recognized bundles distingu
 | 10 | Non-pickup/unknown resource | `0x2E6C` | embedded-data-bundle | 8 | 0 |
 | 11 | Strength urn | `0x1C68` | embedded-data-bundle | 8 | 1 |
 
-## Pickup usage
-
-| ROM base | Callback | Parameter | Slot | Presentation |
-|---:|---:|---:|---:|---:|
-| `0x000CA030` | `0x80038770` | `0x00000000` | 0 | `0x800B1D18` |
-| `0x000CA060` | `0x80038770` | `0x00000001` | 1 | `0x800B1D18` |
-| `0x000CA090` | `0x80038770` | `0x00008002` | 2 | `0x800B1D18` |
-| `0x000CA0C0` | `0x80038A90` | `0x00000000` | 11 | `0x800B1D38` |
-| `0x000CA0F0` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
-| `0x000CA120` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
-| `0x000CA150` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
-| `0x000CA180` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
-| `0x000CA1B0` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
-| `0x000CA1E0` | `0x800389BC` | `0x00000000` | 8 | `0x800B1D38` |
-
-## Recognized bundle records
-
-Offsets below are relative to the stage resource-file base.
+## Recognized bundle/list records
 
 | Slot | Frame | Record | Storage | Resource/data value | Inferred end | Dimensions words |
 |---:|---:|---:|---|---:|---:|---|
@@ -148,19 +146,25 @@ Offsets below are relative to the stage resource-file base.
 | 11 | 6 | `0x1D08` | embedded-data | `0x234C` | `0x2450` | `0x00110015` / `0x0009000C` |
 | 11 | 7 | `0x1D1C` | embedded-data | `0x2450` | `0x2624` | `0x00120015` / `0x0009000C` |
 
-## Expansion capacity
+## Prison-specific notes, constraints, and proof-local evidence
 
-This stage has no empty logical resource slots. Its 12-entry outer table ends at `0x30`, exactly where the first descriptor begins. Appending payload bytes to a relocated copy would enlarge the file physically, but it would not by itself create a new selector: adding another outer entry would overwrite the first descriptor. A safe expansion therefore requires either relocating/rebasing the descriptor region (and every affected relative reference), changing the lookup design, or first proving that an existing non-pickup slot is globally unused and safe to repurpose.
+- The stock resource file has exactly 12 outer slots. Its outer table occupies file-relative `0x0000..0x002F`; the first descriptor starts immediately at `0x30`. **No stock outer slot is empty.** Inserting a 13th stock-table word in place would overwrite the first descriptor.
+- That stock-table layout does **not** mean Prison lacks ordinary-pickup selector expansion capacity. The later extension-selector mechanism avoids inserting into the stock table. The lookup mechanics and their interpretation are canonical in [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
+- **Disposable Proof D — Runtime-confirmed, proof-only:** the stock `0x48F0`-byte Prison resource file was relocated/expanded by four bytes. A selector word appended at file-relative `0x48F0` pointed to the existing Herbs descriptor `0x255C`, producing selector `0x123C` (`0x48F0 / 4`). All six Prison Herbs ordinary records were changed from stock selector `8` to `0x123C`. Two early Herbs were manually collected and rendered/awarded like vanilla Herbs; the other four were not individually runtime-tested in that proof.
+- **Disposable Proof F — Runtime-confirmed, proof-only:** stock Prison selectors remained intact. Extension selector `0x123C` pointed to an appended, file-relative-pointer-rebased copy of Water's embedded Potion bundle. One early Prison Herbs location became Potion while the remaining Herbs records stayed stock. The imported Potion and an untouched Herbs control both rendered and awarded correctly.
+- **Disposable Proof H — Runtime-confirmed, proof-only:** extension selector `0x123C` pointed to an appended self-contained Health-urn bundle converted from external-resource IDs to embedded type-4 blocks. One early Prison Herbs became an Urn of Vitality while another Herbs remained untouched; both rendered and awarded correctly. The generalized external-to-embedded conversion conclusion is not owned by this stage page.
+- **Composed five-import stress proof — Runtime-confirmed, proof-only:** Prison's resource file expanded from `0x48F0` to `0x7CB4`. Five contiguous extension-selector words began at file-relative `0x48F0`, yielding selectors `0x123C..0x1240`. The first five stock Herbs locations were replaced by Potion, Urn of Vitality, Formula, Eye, and Shield; another Herbs record remained byte-for-byte vanilla as a control. All five imported models and expected awards, plus the untouched Herbs control, were manually confirmed in Prison.
+- The Proof D/F/H and five-import constructions expand a **relocated proof copy** of the stage resource file. They do not convert any ROM range, appended selector word, or appended payload region into a production allocation.
+- Occupied stock slots with zero ordinary-pickup users remain protected. Prison-specific proof success does not establish those selectors as repurposable for production or prove that another stage can use the same resource layout.
+- Current limits remain bounded to the documented routes: the six-Herbs proof observed two of six modified pickups; the single-import proofs observed their chosen location plus a stock control; the composed proof observed five imported visuals plus a stock control. These results do not constitute exhaustive runtime validation of all Prison pickup/resource combinations.
 
-## Safety interpretation
+## Related owners
 
-Zero outer entries are free logical selectors only. They do not imply unused physical bytes inside the original file. New payload data must be appended to an expanded/relocated file or placed in storage proven safe by a complete reference analysis. Inferred model/data ends use the next discovered model-data start and are boundaries for analysis, not yet proof that trailing bytes are independently movable.
-
-## Interpretation boundaries
-
-- A zero outer-table entry is a free logical selector, not proof of unused physical bytes.
-- An occupied slot with no ordinary-pickup user can still be referenced by another actor or script and is protected until traced.
-- Inferred data ends support cataloging; they do not prove that trailing ranges are independently movable.
-- Foreign resources require bounded storage, loader/arena validation, guarded references, and runtime testing.
-
-Catalog lineage: generated from the preserved clean-ROM catalog artifacts and checked against the production pickup definitions in `src/mkmszr/data/pickups.py`. The tables above are reproduced here so this Wiki does not depend on an external archive for current technical facts.
+- [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, and eight-stage index.
+- [Data structures and encodings](Data-Structures-and-Encodings) — ordinary `0x30`-byte record grammar.
+- [Resource and overlay system](ROM-Overlay-and-Resource-Map) — global file-table, loader, overlay, and selector/resource grammar.
+- [Memory and allocation map](Memory-and-Allocation-Map) — literal ROM/RDRAM ownership, lifecycle, and proof/production allocation boundaries.
+- [Address and patch-site registry](Address-and-Patch-Site-Registry) — exact guarded ROM edit sites.
+- [Pickups and stage-local randomization](Pickups-and-Item-Randomization) — current production ordinary-pickup behavior and modeled stage dependencies.
+- [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) — extension-selector/materializer mechanics, external-to-embedded interpretation, planner/deduplication, solver rules, and full proof chronology.
+- [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle) — collected-state persistence and stage-transition lifecycle.

@@ -131,16 +131,14 @@ Diagnostic B behavior is the production design.
 - Game Over/new-run reset behavior remains pending as part of the shared MKMSZR lifecycle work.
 
 
-## 1.0 required-Power-Upgrades rule
+## Required-Power-Upgrades implementation implications
 
-The full randomizer should retain a seed-specific required number of Power Upgrades, as in the legacy Lua concept. This is separate from the fixed nine native thresholds/rewards that exist in the world.
+The canonical 1.0 solvability requirement, including the seed-specific required number of Power Upgrades, is R3 in [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). This page owns the native XP/progression behavior and the implementation constraints that requirement must preserve.
 
-Requirements:
+Implementation implications for the progression subsystem:
 
-- generate the required count deterministically from its own RNG namespace;
-- do not let rejected global-layout attempts change that required count;
-- show the requirement in the randomizer HUD;
-- include the requirement in the whole-run solver's completion predicate;
-- preserve the current runtime-confirmed threshold behavior for each collected reward.
+- the required-count generator must use its own deterministic namespace and remain independent of rejected global-layout attempts;
+- the whole-run solver and native randomizer HUD consume the required-count result, but their normative product behavior remains owned by the Roadmap and their respective implementation pages;
+- each collected progression reward must preserve the current Runtime-confirmed native threshold behavior.
 
-The exact min/max policy remains to be finalized with the global solver.
+The exact allowed minimum/maximum required-count policy remains Pending with the global solver, as tracked by the Roadmap and [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).

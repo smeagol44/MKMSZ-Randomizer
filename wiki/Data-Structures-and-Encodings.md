@@ -1,5 +1,7 @@
 # Data structures and encodings
 
+> **Scope:** This page is the canonical owner for stable, version-independent record layouts, structure grammar, target codecs, and encoding constraints. Donor-fighter descriptors, palette conversion, Sektor encoder benchmarks, supplemental donor history, and fighter-resource packing belong to [MKT fighter asset translation](MKT-Fighter-Asset-Translation).
+
 ## Ordinary pickup record (`0x30` bytes)
 
 | Offset | Size | Meaning | Randomized? |
@@ -108,83 +110,48 @@ The node is 22 words. Four vertex X/Y pairs occur at `+0x08/+0x0A`, `+0x18/+0x1A
 
 N64 source colors are 16-bit BGR555 values with a preserved high control/alpha bit. Sub-Zero's 64-color source TLUT begins at ROM `0x78E16C`; clothing entries are indices `0x21..0x3F`. Those indices define the mapped clothing-transform range; other palettes require independent mappings.
 
+## Native image dispatch
+
+**Static-confirmed.** MKMSZ image decoder `0x8000322C` selects the compression type from header byte `+3` (the low byte of the big-endian header word), masked with `0x3F`.
+
+- Type `0` is raw and returns `src + 4`; a type-0 wrapper therefore requires the low header byte to remain zero.
+- Fighter type `5` uses exact header `0x05000000` and dispatches through `0x80003314 -> 0x80065E00`.
+- Type `5` is distinct from ordinary embedded-image type `4`.
+
+Donor-specific source codecs and conversion pipelines are documented in [MKT fighter asset translation](MKT-Fighter-Asset-Translation).
 
 ## Native fighter image type 5
 
-**Static-confirmed.** Stock Sub-Zero fighter frames in global file ID `0x87` predominantly use a dedicated native fighter codec selected by exact image header `0x05000000`. This is distinct from ordinary embedded-image type 4 and explains why the rejected v13 pickup-style type-4 fighter experiment was not a faithful stock-fighter storage path.
+**Static-confirmed; generated fighter use is Runtime-confirmed on bounded Sektor proof routes.** Stock Sub-Zero fighter frames in global file ID `0x87` predominantly use native image type `5`.
 
 The type-5 wrapper is:
 
 | Offset | Meaning |
 |---:|---|
-| `+0x00` | exact header `0x05000000` |
-| `+0x04` | signed image-relative pointer to the type-5 model/dictionary table |
-| `+0x08` | packed decode dimensions, high 16 bits height / low 16 bits width |
-| `+0x0C` | compressed bitstream |
+| `+0x00` | Exact header `0x05000000` |
+| `+0x04` | Signed image-relative pointer to the type-5 model/dictionary table |
+| `+0x08` | Packed decode dimensions, high 16 bits height / low 16 bits width |
+| `+0x0C` | Compressed bitstream |
 
-`0x80003314` resolves the table pointer and calls `0x80065E00`. The output arena reservation is `align4(width) * align2(height)`.
+`0x80003314` resolves the table pointer and calls `0x80065E00`. The output arena reservation is `align4(width) * align2(height)`. A fighter's visible descriptor dimensions may remain unpadded while the type-5 backing buffer uses decoder-aligned dimensions.
 
-The table begins with `u16 rows_per_block` and `u16 model_count`, followed by 104-byte model entries. Stock Sub-Zero's main table at file-0x87 offset `+0x14AC` begins `0002 0004`: 2 rows per block and four models. A model contains a pattern-table relative offset, bits-per-pixel, 13 normal-code extra-bit counts, three zero-run extra-bit counts, 13 pattern-index bases, and three zero-run bases.
+The table begins with `u16 rows_per_block` and `u16 model_count`, followed by 104-byte model entries. Stock Sub-Zero's main table at file-`0x87` offset `+0x14AC` begins `0002 0004`: two rows per block and four models. A model contains:
 
-The decoder consumes the stream MSB-first. The first 6 bits select the model. Each output unit is a `rows_per_block x 4` pixel block; stock fighter data uses two rows, so ordinary blocks are 2x4 pixels. A 4-bit symbol below 13 selects a normal pattern-index class; symbols 13..15 encode transparent block runs. Pattern entries store the 2x4 pixel indices packed at the selected model's bit depth.
+- a pattern-table relative offset;
+- bits per pixel;
+- 13 normal-code extra-bit counts;
+- three zero-run extra-bit counts;
+- 13 pattern-index bases;
+- three zero-run bases.
 
-This format is now the preferred compact-storage target for Sektor.
+The decoder consumes the stream MSB-first. The first 6 bits select the model. Each output unit is a `rows_per_block x 4` pixel block; stock fighter data uses two rows, so ordinary blocks are `2x4` pixels. A 4-bit symbol below 13 selects a normal pattern-index class. Symbols `13..15` encode transparent-block runs. Generated streams use the zero-run relation `zero_base + extra + 1` blocks. Pattern entries store the block's palette indices packed at the selected model's bit depth.
 
-Generated Sektor encoder v2 is **Implementation-confirmed** to use more of the native grammar: nontransparent 2x4 patterns are frequency-ordered into multiple normal classes using stock-compatible extra-bit/base tables, while symbols `13..15` encode transparent-block runs as `zero_base + extra + 1` blocks. The build independently decodes every emitted stream and requires exact equality with the donor-decoded aligned pixel buffer before a proof ROM is written. v46 is the first runtime-pending composition using these wider generated-code paths. A simple offline proof encoder can use a one-model, 5-bits-per-pixel dictionary because the imported Sektor palette indices are `0..31`. Runtime validation of such generated type-5 data is still pending.
+### Stable generation and packing constraints
 
+- Multiple model records may point to the same physical pattern table while retaining independent normal-class widths/bases and transparent-run classes. The model selector, not physical dictionary duplication, defines the entropy model.
+- Generated fighter shapes must begin on a 4-byte boundary. Unaligned generated shape records are known unsafe.
+- MKMSZR generated-fighter encoders currently require every normal-pattern class width to satisfy `normal_bits >= 1`. Zero-bit normal classes are not established as native-decoder-safe; the guarded requirement is intentionally stronger than the software decoder alone requires.
+- For lossless generated assets, the build independently decodes every emitted stream and requires exact equality with the selected aligned indexed-pixel target buffer before writing the proof ROM.
+- Decode dimensions, visible fighter dimensions, and source-row storage pitch are separate concepts and must not be conflated.
 
-### Stock Sub-Zero Type-5 recompression benchmark
-
-**Static/implementation-confirmed.** The clean USA Rev 0 file ID `0x87` contains 341 stock Type-5 fighter frames sharing the table at file offset `+0x14AC`. Their Type-5-owned region runs from the shared table through the final frame at `+0x41684`.
-
-The 341 frames decode to exactly **1,418,312 raw indexed-pixel bytes**. Stock Midway storage for the same corpus is:
-
-- shared table/dictionaries: **112,636 bytes**;
-- padded compressed streams: **139,068 bytes**;
-- shape/descriptor/wrapper overhead: **10,912 bytes**;
-- total: **262,616 bytes** (`0x401D8`), equivalent to about **5.4007x** reduction versus the decoded pixels.
-
-The project encoder-v2 strategy was then generalized to the stock four-model arrangement and run on the exact same decoded pixels. The benchmark preserves each frame's stock model assignment and each stock model's normal/zero-run class widths, but rebuilds frequency-ordered dictionaries containing only patterns actually used by the 341-frame corpus. Result:
-
-- generated shared table/dictionaries: **111,878 bytes**;
-- generated padded compressed streams: **139,008 bytes**;
-- identical shape/descriptor/wrapper overhead: **10,912 bytes**;
-- generated total: **261,798 bytes** (`0x3FEA6`), about **5.4176x** reduction.
-
-The generated result is **818 bytes (0.311%) smaller than stock Midway** for the exact same decoded artwork. Stream coding itself is essentially at parity: generated streams use only 466 fewer bits across all 341 frames. Most of the measured win comes from omitting 128 stock dictionary patterns not used by this scanned Type-5 corpus.
-
-This benchmark does **not** mean the current Sektor resource layout is already globally optimal. The Sektor proof builders still partition frames into multiple generated dictionaries/tables for bounded integration, so duplicate patterns and per-group model overhead remain. The benchmark instead shows that the native Type-5 grammar and encoder-v2 coding strategy are no longer the main compression gap. The remaining high-value work is model/dictionary grouping, cross-animation pattern sharing, dead-stock reclamation, and whole-resource packing.
-
-Reproducible tool: `tools/benchmark_type5_encoder.py`.
-
-
-### Shared-dictionary multi-model packing
-
-**Static/implementation-confirmed in v54.** Type-5 model records do not require distinct physical pattern arrays. Multiple model records may use the same pattern-table relative offset while carrying independent normal-class widths/bases and transparent-run classes. The first 6 stream bits select the entropy model; pattern indices then resolve through that model's bases into the shared physical dictionary.
-
-The optimized Sektor v54 uses **16 model records over one shared 5-bpp dictionary**. Splitting the 129 inherited v53 frames into smaller entropy groups reduces stream bits enough to retain seven flattened Throw keyframes while keeping file ID `0x87 = 0x4E154`, below the runtime-confirmed Fortress-working v49 footprint. Independent software decode verifies every emitted frame against its exact source pixels. This is a packing optimization only; it does not alter the Type-5 pixel grammar or visible artwork.
-
-
-### Type-5 zero-bit normal-class compatibility boundary
-
-**Strong inference from v54 runtime failure; guarded in v55.** v54 Sweep Fall hard-hung after its second visible pose. Static tracing places the next pose in the first generated model on that action path whose normal-pattern class table contains a **0-bit** width. Stock/runtime-confirmed generated layouts had not established zero-bit normal classes as native-decoder-safe.
-
-v55 therefore treats `normal_bits >= 1` as a compatibility requirement for generated fighter Type-5 models. Its optimizer searches class widths from 1 through 16 bits and asserts the constraint across all 52 emitted model records. This is deliberately stronger than the software decoder requires. The causal link remains a strong inference until v55 Sweep Fall is runtime-tested successfully.
-
-### PS1 MKT POVBQ supplemental conversion
-
-**Static/implementation-confirmed in v55.** PS1 MKT `CHARS1/ROBOT.DAT` stores the ordinary robot Run bank through the POVBQ path rather than the N64 fighter representation. v55 decodes the required PS1 frames offline, using their 12-byte descriptors, padded width, palette ID, shared POVBQ table, 6-bit model selector, seven normal symbols, and two transparent-run symbols. The decoded indexed pixels are then palette-converted and encoded into MKMSZ native Type-5; PS1 compressed bytes are never copied directly into N64 resources.
-
-For the six even Run poses absent from MKT N64, the final shared Sektor dictionary requires only **18 supplemental 2x4 patterns**. After those are admitted, the palette-converted PS1 target buffers are represented exactly: zero color-space RMSE and 100% exact opaque indices. v55's final shared dictionary contains 40,595 patterns and is addressed by 52 Type-5 entropy models.
-
-
-### PS1 POVBQ output-cursor correction (v56)
-
-**Static/implementation-confirmed correction.** The first v55 PS1 Run importer copied the POVBQ vector decode incompletely. A decoded vector is 2 rows x 4 pixels. After writing row 1, the cursor moves to row 2; after writing row 2, it must return to row 1 **and advance four pixels to the next block column**. v55 omitted that final +4 advance, so every vector in a row pair overwrote the same four-column strip. Software round-trip checks did not catch the bug because both encoding and validation consumed the same malformed target buffers.
-
-v56 fixes the cursor progression and independently compares the six required PS1 Run frames against the separate PS1 decoder implementation. All six match byte-for-byte and each uses more than 30 nonzero columns, explicitly rejecting the former four-column collapse.
-
-Correct full-body PS1 frames materially increase dictionary pressure. The v56 proof therefore uses a bounded shared-dictionary approximation: 256 representative supplemental 2x4 patterns with **exact transparency masks**, 64 Type-5 entropy models, 40,833 total dictionary patterns, and file ID `0x87 = 0x4E414`. The six even Run poses are not claimed lossless: their selected-target color RMSE is about 4.504 in 5-bit RGB units with 36.3% exact opaque indices, while geometry/transparency silhouettes are preserved exactly.
-
-
-**Runtime correction:** fixing the +4 block-column cursor is necessary but not sufficient. v56 demonstrates that the resulting PS1 robot Run buffers still have incorrect internal pixel/color structure; even native-palette renders of PS1 odd poses are visibly speckled. The current PS1 POVBQ interpretation for this fighter bank is therefore **Rejected / unresolved**. Do not treat v56's VQ error metrics as evidence of source-image correctness, and do not optimize Type-5 packing against these buffers until the PS1 source decode itself is independently validated.
+Sektor-specific encoder benchmarks, donor conversion history, palette binding, proof-version storage results, and whole-resource packing policy are owned by [MKT fighter asset translation](MKT-Fighter-Asset-Translation).

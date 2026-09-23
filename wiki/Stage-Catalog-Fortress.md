@@ -1,12 +1,33 @@
 # Fortress stage catalog
 
-**Evidence status:** Static-confirmed from the clean USA N64 ROM; file-to-RDRAM mappings were also matched against captured runtime memory. Ordinary-pickup behavior and persistence are runtime-confirmed at representative locations, but the complete 84-record set has not been collected exhaustively one record at a time.
+> **Scope:** Stage-local catalog for Fortress, compact selector `7` / native stage ID `9`. Shared record grammar, resource notation, evidence labels, and safety rules are owned by [Stage catalogs](Stage-Catalogs). General extension-selector/materializer mechanics and composed-proof chronology remain owned by [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
 
-This page is the self-contained decoded catalog for native stage ID `9`. It includes every ordinary pickup record and every recognized resource slot/record. Values are big-endian. Unknown fields remain named by offset instead of being assigned unsupported semantics.
+## Stage identity and evidence
+
+- **Static-confirmed:** all 9 ordinary pickup records, all 7 stock outer slots, and the recognized resource records below are decoded from the clean USA N64 ROM.
+- **Runtime-confirmed:** the complete Fortress resource file was byte-matched against captured runtime memory at `0x801F4E20`.
+- **Runtime-confirmed:** representative Fortress ordinary-pickup collection/persistence is established, but all 9 Fortress records have not been individually exhausted one by one in runtime testing.
+- **Implementation/static-confirmed, proof-only; runtime Pending:** the composed five-import stress ROM contains the equivalent Fortress construction for Potion, Urn of Vitality, Formula, Eye, and Shield, with another Herbs record retained byte-for-byte as a control. The Fortress half has not been manually runtime-tested and must not inherit Prison's Runtime-confirmed status.
+
+## File mapping
+
+| Property | Value |
+|---|---:|
+| Stage ID | `9` |
+| Global resource file ID | `0x43` |
+| File-table entry ROM | `0x000A5334` |
+| Resource ROM range | `0x003B9700..0x003BCD1F` |
+| File size | `0x3620` (13856 bytes) |
+| File-table flag | `0` |
+| Verified runtime base | `0x801F4E20` |
+| Outer slots | `7` |
+| Outer-table end | `0x1C` |
+| First descriptor | `0x1C` |
+| Empty logical slots | `none` |
+| Unknown/nonstandard slots | `none` |
+| Pickup records | `9` |
 
 ## Ordinary pickup records
-
-A record is `0x30` bytes. Position and metadata (`+0x00..+0x0F`) and the collected flag (`+0x2C`) belong to the destination. The production randomizer moves the seven-word identity slice `+0x10..+0x2B`. `Token` and `Requires` are production logic metadata, not bytes stored in the native record.
 
 | # | Decoded identity | ROM base | RDRAM base | X | Y | Z | +0C | +10 type | +14 parameter | +18 callback | +1C | +20 | +24 slot | +28 presentation | +2C collected | Token | Requires |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|
@@ -20,40 +41,7 @@ A record is `0x30` bytes. Position and metadata (`+0x00..+0x0F`) and the collect
 | 8 | Herbs | `0x000C4984` | — | `0x0043ED00` | `0xFFFAF200` | `0x00000000` | `0x00000006` | `0x00000001` | `0x00000000` | `0x800389BC` | `0x00000020` | `0x00000020` | `3` | `0x800B1D38` | `0x00000000` | — | — |
 | 9 | Herbs | `0x000C49B4` | — | `0x002F9C00` | `0xFFFAF200` | `0x00000000` | `0x00000006` | `0x00000001` | `0x00000000` | `0x800389BC` | `0x00000020` | `0x00000020` | `3` | `0x800B1D38` | `0x00000000` | — | — |
 
-## Resource-file catalog
-
-Generated conservatively from the clean USA N64 ROM. Recognized bundles distinguish embedded model/data offsets from records that reference external resource IDs; `unknown/nonstandard` is intentionally not guessed.
-
-## File mapping
-
-| Property | Value |
-|---|---:|
-| Stage ID | `9` |
-| File-table entry ROM | `0x000A5334` |
-| Resource ROM range | `0x003B9700..0x003BCD1F` |
-| File size | `0x3620` (13856 bytes) |
-| File-table flag | `0` |
-| Verified runtime base | `0x801F4E20` |
-| Outer slots | `7` |
-| Outer-table end | `0x1C` |
-| First descriptor | `0x1C` |
-| Empty logical slots | `none` |
-| Unknown/nonstandard slots | `none` |
-| Pickup records | `9` |
-
-## Outer slots
-
-| Slot | Name | Outer offset | Format | Frames | Pickup users |
-|---:|---|---:|---|---:|---:|
-| 0 | Crystal (Jataaka) | `0x48` | embedded-data-bundle | 8 | 1 |
-| 1 | Crystal (Kia) | `0x1C` | embedded-data-bundle | 8 | 1 |
-| 2 | Crystal (Sareena) | `0x74` | embedded-data-bundle | 8 | 1 |
-| 3 | Herbs | `0x1338` | embedded-data-bundle | 8 | 6 |
-| 4 | Non-pickup/unknown resource | `0x2490` | embedded-data-bundle | 8 | 0 |
-| 5 | Non-pickup/unknown resource (aliases Herbs descriptor) | `0x1338` | embedded-data-bundle | 8 | 0 |
-| 6 | Non-pickup/unknown resource | `0x1C48` | embedded-data-bundle | 8 | 0 |
-
-## Pickup usage
+## Pickup-to-resource usage
 
 | ROM base | Callback | Parameter | Slot | Presentation |
 |---:|---:|---:|---:|---:|
@@ -67,16 +55,19 @@ Generated conservatively from the clean USA N64 ROM. Recognized bundles distingu
 | `0x000C4984` | `0x800389BC` | `0x00000000` | 3 | `0x800B1D38` |
 | `0x000C49B4` | `0x800389BC` | `0x00000000` | 3 | `0x800B1D38` |
 
-## Stage-specific notes
+## Outer resource slots
 
-- The complete 0x3620-byte ROM resource file matches RDRAM at 0x801F4E20 byte-for-byte in live Fortress gameplay.
-- All nine standard 0x30-byte pickup records are contiguous and mapped: the Jataaka, Kia, and Sareena crystals plus six Herbs pickups.
-- The crystal callback parameters are raw 0x00008000, 0x00008001, and 0x00008002; their low selectors correspond to inventory IDs 0x20, 0x21, and 0x22 through the stage-dependent callback, while the high-bit meaning remains unresolved.
-- All seven selectors are occupied. Slot 5 aliases the Herbs descriptor used by slot 3, while slots 4 and 6 have no ordinary pickup users; none is considered safe to repurpose without tracing other Fortress actors or scripts.
+| Slot | Name | Outer offset | Format | Frames | Pickup users |
+|---:|---|---:|---|---:|---:|
+| 0 | Crystal (Jataaka) | `0x48` | embedded-data-bundle | 8 | 1 |
+| 1 | Crystal (Kia) | `0x1C` | embedded-data-bundle | 8 | 1 |
+| 2 | Crystal (Sareena) | `0x74` | embedded-data-bundle | 8 | 1 |
+| 3 | Herbs | `0x1338` | embedded-data-bundle | 8 | 6 |
+| 4 | Non-pickup/unknown resource | `0x2490` | embedded-data-bundle | 8 | 0 |
+| 5 | Non-pickup/unknown resource (aliases Herbs descriptor) | `0x1338` | embedded-data-bundle | 8 | 0 |
+| 6 | Non-pickup/unknown resource | `0x1C48` | embedded-data-bundle | 8 | 0 |
 
-## Recognized bundle records
-
-Offsets below are relative to the stage resource-file base.
+## Recognized bundle/list records
 
 | Slot | Frame | Record | Storage | Resource/data value | Inferred end | Dimensions words |
 |---:|---:|---:|---|---:|---:|---|
@@ -137,19 +128,23 @@ Offsets below are relative to the stage resource-file base.
 | 6 | 6 | `0x1CE8` | embedded-data | `0x22BC` | `0x23A8` | `0x00100017` / `0x0008000F` |
 | 6 | 7 | `0x1CFC` | embedded-data | `0x23A8` | `0x2558` | `0x00100017` / `0x0008000F` |
 
-## Expansion capacity
+## Fortress-specific notes, constraints, and proof-local evidence
 
-This stage has no empty logical resource slots. Its 7-entry outer table ends at `0x1C`, exactly where the first descriptor begins. Appending payload bytes to a relocated copy would enlarge the file physically, but it would not by itself create a new selector: adding another outer entry would overwrite the first descriptor. A safe expansion therefore requires either relocating/rebasing the descriptor region (and every affected relative reference), changing the lookup design, or first proving that an existing non-pickup slot is globally unused and safe to repurpose.
+- The stock resource file has exactly **7 occupied outer slots**. Its outer table occupies file-relative `0x0000..0x001B`; the first descriptor starts immediately at `0x1C`. There is no empty stock logical selector.
+- Adding an eighth stock-table word in place would overwrite that first descriptor. This is a **Static-confirmed stock-layout fact**, not a claim that Fortress lacks all ordinary-pickup selector expansion paths.
+- Slot `5` aliases the Herbs descriptor `0x1338` used by slot `3`. Slots `4` and `6` have no ordinary-pickup users, but all three remain protected until other Fortress actor/script references are resolved.
+- The crystal callback parameters are raw `0x00008000`, `0x00008001`, and `0x00008002`; their low selectors correspond to inventory IDs `0x20`, `0x21`, and `0x22` through the stage-dependent callback, while the high-bit meaning remains unresolved.
+- **Composed five-import stress construction — Implementation/static-confirmed, proof-only; runtime Pending:** the disposable proof replaces the first five stock Herbs locations with Potion, Urn of Vitality, Formula, Eye, and Shield, retains another Herbs record byte-for-byte as a control, and supplies five contiguous extension-selector entries plus self-contained imported bundles. The generalized construction details remain on [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
+- The successful Prison half of that same stress ROM does **not** validate Fortress. No Fortress runtime observation has yet confirmed the five imported models, awards, control Herbs behavior, arena/headroom behavior, or the composed file/resource path.
+- Current Fortress-specific Pending work is therefore explicit: manually validate the Fortress half of the five-import stress proof, preserve the untouched Herbs control, and keep any proof allocation/extension-selector placement separate from production ownership until the production-composition gate is satisfied.
 
-## Safety interpretation
+## Related owners
 
-Zero outer entries are free logical selectors only. They do not imply unused physical bytes inside the original file. New payload data must be appended to an expanded/relocated file or placed in storage proven safe by a complete reference analysis. Inferred model/data ends use the next discovered model-data start and are boundaries for analysis, not yet proof that trailing bytes are independently movable.
-
-## Interpretation boundaries
-
-- A zero outer-table entry is a free logical selector, not proof of unused physical bytes.
-- An occupied slot with no ordinary-pickup user can still be referenced by another actor or script and is protected until traced.
-- Inferred data ends support cataloging; they do not prove that trailing ranges are independently movable.
-- Foreign resources require bounded storage, loader/arena validation, guarded references, and runtime testing.
-
-Catalog lineage: generated from the preserved clean-ROM catalog artifacts and checked against the production pickup definitions in `src/mkmszr/data/pickups.py`. The tables above are reproduced here so this Wiki does not depend on an external archive for current technical facts.
+- [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, catalog lineage, and eight-stage index.
+- [Data structures and encodings](Data-Structures-and-Encodings) — ordinary `0x30`-byte record grammar.
+- [Resource and overlay system](ROM-Overlay-and-Resource-Map) — global file-table, loader, overlay, and selector/resource grammar.
+- [Memory and allocation map](Memory-and-Allocation-Map) — literal ROM/RDRAM ownership, lifecycle, and proof/production allocation boundaries.
+- [Address and patch-site registry](Address-and-Patch-Site-Registry) — exact guarded ROM edit sites.
+- [Pickups and stage-local randomization](Pickups-and-Item-Randomization) — current production ordinary-pickup behavior and modeled stage dependencies.
+- [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) — extension-selector/materializer mechanics, planner/deduplication, external-to-embedded conversion, solver rules, and full composed-proof chronology.
+- [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle) — collected-state persistence and stage-transition lifecycle.

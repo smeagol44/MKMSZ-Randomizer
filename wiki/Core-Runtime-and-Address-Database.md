@@ -1,61 +1,82 @@
-# Core runtime and address database
+# Core runtime and native payload
 
-This page explains the production native foundation. For flat lookups use [Function registry](Function-Registry), [patch-site registry](Address-and-Patch-Site-Registry), and [runtime map](Runtime-and-Memory-Map).
+> **Scope:** This page is the canonical owner for MKMSZR's **native runtime architecture**: arena-reservation mechanism, file-`0x1B` payload loading/bootstrap, Runtime V2 composition, pickup-persistence hook architecture, and stage-init composition.
+>
+> It does **not** own continuous ROM/RDRAM allocation intervals, exact guarded ROM edits, or function semantics. Those belong respectively to [Memory and allocation map](Memory-and-Allocation-Map), [Address and patch-site registry](Address-and-Patch-Site-Registry), and [Function registry](Function-Registry). The stable `Core-Runtime-and-Address-Database` slug is retained for existing links.
 
 ## Clean target and invariants
 
 Only the 16 MiB USA Rev. 0 big-endian ROM is supported: SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`. Every stock edit uses an expected-byte guard. A patch failure stops the build before output, and the clean input is never modified in place.
 
-## Arena reservation
+## Arena reservation mechanism
 
-Two independent arena-start constructions must agree. At ROM `0x00066F64` and `0x00066FE8`, `addiu v0,v0,0xF420` (`0x2442F420`) becomes `addiu v0,v0,0xF820` (`0x2442F820`). The protected interval is `0x801AF420..0x801AF81F`; the game arena starts at `0x801AF820`.
+Production reserves one 1 KiB block immediately below the game's shifted main-arena start. Architecturally, stock construction begins the arena at KSEG0 `0x801AF420`; production moves the start to `0x801AF820` so the native runtime and persistent state are outside arena ownership. Both arena-start constructions must move together.
 
-The runtime code/state split is versioned, not generic free space. Production runtime V2 uses code `0x801AF420..0x801AF71F` (0x300 bytes) and persistent state `0x801AF720..0x801AF81F` (0x100 bytes). Inventory owns payload `+0x1D4..+0x1FF`; XP progression owns the extension `+0x200..+0x2FF`.
+The **exact continuous reservation and every current sub-owner** are canonical in [Memory and allocation map](Memory-and-Allocation-Map). The two guarded ROM instructions that move the arena start, including expected and replacement words, are canonical in the [patch-site registry](Address-and-Patch-Site-Registry).
+
+After relocation, the bootstrap synchronizes the arena-pointer global at `0x800EECD0` through helper `0x80066390`. [Function registry](Function-Registry) owns the helper's function semantics. The `0x801AF820` anchor does not imply that later RDRAM is generically free.
+
+## Runtime V2 composition
+
+Core Runtime owns how the reserved block is composed; the Memory Map owns its absolute intervals, aliases, lifecycle, and availability.
+
+| Runtime-relative slice | Architectural role | Canonical Memory Map owner |
+|---|---|---|
+| `[+0x000,+0x1D4)` | Runtime V2 initialization plus pickup-persistence core | `rdram.production.runtime_core` |
+| `[+0x1D4,+0x200)` | Four-box filtered-save helper | `rdram.production.inventory_payload` |
+| `[+0x200,+0x300)` | XP callback, threshold table, and XP-only restore helper | `rdram.production.xp_payload` |
+| `[+0x300,+0x320)` | `MKSV` V2 state header | `rdram.production.state_header` |
+| `[+0x320,+0x340)` | Eight ordinary-pickup persistence bitsets | `rdram.production.pickup_state` |
+| `[+0x340,+0x348)` | Progression acquired-count and persistent-XP words | `rdram.production.xp_state` |
+| `[+0x348,+0x400)` | Reserved persistent-state tail | `rdram.production.state_reserved_tail` |
+
+These offsets are composition contracts, not a second allocation registry. New code/state owners must fit the versioned layout and pass the same composition/bounds checks before production use.
 
 ## Payload registration and bootstrap
 
-| Component | ROM | VA/RDRAM | Limit |
-|---|---:|---:|---:|
-| Global file table | `0xA5010` | `0x800A4410` | 12-byte entries |
-| MKMSZR file ID `0x1B` entry | `0xA5154` | — | guarded stock entry |
-| Payload bytes | `0xF10000` | `0x801AF420` / uncached `0xA01AF420` | production V2 code `0x300` |
-| Bootstrap hook | `0x66FE0` | `0x800663E0` | stage-load path |
-| Bootstrap stub | `0x9AD84` | `0x8009A184` | capacity `0x19C` |
-| Raw loader | — | `0x80065D64` | synchronous in proven path |
-| Arena pointer global | — | `0x800EECD0` | synchronized by bootstrap |
-| Arena sync helper | — | `0x80066390` | native routine |
+Global file ID `0x1B` is the production transport for the reloadable native payload. Its file-table semantics belong to [Resource and overlay system](ROM-Overlay-and-Resource-Map), while exact ownership of the patched file entry, generated ROM payload source, runtime destination, and bootstrap composite belongs to [Memory and allocation map](Memory-and-Allocation-Map).
 
-The bootstrap loads file `0x1B`, synchronizes the arena pointer, and transfers to the payload through the uncached alias where required. Tests assert file-table contents, emitted MIPS words, hook/stub capacity, and arena consistency.
+The stage-load bootstrap is called from the guarded production hook and:
 
-## Pickup persistence integration
+1. loads file `0x1B` synchronously through raw loader `0x80065D64` into the reserved runtime base, using the uncached alias where required;
+2. synchronizes the relocated arena pointer;
+3. enters the Runtime V2 initialization/persistence path; and
+4. returns to the stock stage-load flow with the arena boundary and runtime state composed.
 
-Capture at VA `0x80039418` / ROM `0x3A018` preserves the displaced `sw v0,0x2C(a1)`, with `a1` as the record and `s2` as manager ordinal. Restore hooks the manager at VA `0x80038ACC` / ROM `0x396CC`, before the first collected-flag read, then resumes at `0x80038AD4`.
+The bootstrap stub itself lives inside Memory Map region `rom.production.bootstrap_composite`. The generated payload source is `rom.production.payload_source`. Exact bootstrap-hook bytes remain in the patch-site registry, and function meanings for the loader/synchronization helper remain in Function Registry.
 
-The manager context pointer is at effective address `0x802ECE20`; context `+0x6F4` is record count and `+0x6F8` is base. This corrects the superseded `0x802FCE20` reading.
+## Pickup-persistence hook architecture
 
-## Cave ownership
+Persistence is composed around the stock pickup manager rather than replacing the manager wholesale.
 
-| ROM/VA | Current production owner |
-|---|---|
-| `0x9AD84` / `0x8009A184` | Bootstrap stub and relocated selector mapper tail |
-| `0x9A6C8` / `0x80099AC8` | Four-box switch/mask helper |
-| `0x8F6E8` / `0x8008EAE8` | Four-box action routine |
-| `0xAFA24..0xAFA97` / `0x800AEE24..` | Box-indicator wrapper and string |
-| `0xAF9BE..0xAFA23`, `0xAFA98..0xAFABB` | Boot branding/license strings |
-| payload `+0x1D4..+0x1FF` | Inventory filtered-save helper |
-| payload `+0x200..+0x2FF` | XP progression callback, threshold table, XP-only restore helper |
+- **Capture:** after the stock collected flag is stored, the helper records the stage/manager ordinal in the persistent bitset while preserving the displaced store. At that point `a1` is the pickup record and `s2` is the manager ordinal.
+- **Restore:** before the manager's first collected-flag read, the restore path reconstructs collected state from the persistent bitset and then resumes the stock manager.
+- **Context:** the live manager/process pointer is at effective address `0x802ECE20`; context `+0x6F4` is record count and `+0x6F8` is the record base. This corrects the superseded `0x802FCE20` reading.
 
-Historical proof patches used some of these areas before production assigned them. Archive offsets are therefore not automatically safe in a current build.
+The exact capture/restore ROM edits are canonical in the patch-site registry. The manager's function meaning is canonical in Function Registry. Absolute persistent-state ranges are canonical in the Memory Map.
 
-A separate Sektor proof correction established that ROM `0xA1308..` / VA `0x800A0708..` is **not a free zero cave**. The live pointer table at VA `0x800A09C4` references 0x78-byte action/dispatch records spanning this area; records 7-11 are intentionally zero-filled semantic entries. Writing helper code over records 7-10 caused input-specific hard hangs on forward movement, crouch, and airborne-forward drift. Restoring those records in Sektor proof v08 removed the hangs. Treat zero-filled dispatch records as owned data, not padding.
+## Production allocation boundary
+
+This page no longer maintains a competing flat cave/allocation table. Current production cave and runtime ownership is canonical in [Memory and allocation map](Memory-and-Allocation-Map), including:
+
+- `rom.production.inventory_action_cave`;
+- `rom.production.inventory_helper_cave`;
+- `rom.production.bootstrap_composite`;
+- `rom.production.box_indicator`;
+- `rom.production.payload_source`; and
+- all `rdram.production.*` Runtime V2 code/state sub-owners.
+
+Historical proof use does not make any of those ranges reusable. The Memory Map also owns the required negative example `rom.stock.false_zero_cave`: the zero-filled action/dispatch records around ROM `0xA1308` are live stock data, not padding.
 
 ## Preserved analysis project
 
 The canonical N64 Ghidra program was reconstructed from the clean ROM rather than an old RDRAM dump. The archived project hash is SHA-256 `fbe071…`; it is provenance, not needed to use the address tables in this Wiki.
 
 
-## XP progression stage-init rule
+## Stage-init composition and XP rule
 
-Diagnostic B established the production-safe stage-load composition. The stage-init restore helper writes persistent XP back to `0x8011200C` and then performs the existing four-box reconstruction. It does **not** call native tier evaluator `0x80074FBC` there.
+Diagnostic B established the production-safe stage-load composition. The stage-init restore path writes persistent XP back to `0x8011200C` and then performs the existing four-box reconstruction. It does **not** call native tier evaluator `0x80074FBC` there.
 
-Calling the evaluator at this pickup-manager initialization point is **Rejected / failed**: the earlier build hung before gameplay became visible. The evaluator remains runtime-confirmed on the progression-pickup acquisition path.
+Calling the evaluator at this pickup-manager initialization point is **Rejected / failed**: the earlier build hung before gameplay became visible. The evaluator remains Runtime-confirmed on the progression-pickup acquisition path.
+
+This page owns that composition rule. Exact XP patch sites belong to the patch-site registry, `0x80074FBC` semantics belong to Function Registry, and persistent XP/state intervals belong to the Memory Map.

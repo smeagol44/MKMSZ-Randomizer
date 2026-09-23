@@ -1,206 +1,62 @@
 # Runtime validation status
 
-This matrix states the narrowest claim supported by evidence. “Runtime-confirmed” never means exhaustive unless the scope says so.
+> **Scope:** This page is the canonical summary of **runtime evidence scope** by subsystem. It records the narrowest runtime-confirmed claim, the relevant static/implementation-confirmed scope, and what remains unestablished. Detailed mechanisms and proof chronology belong to the owning domain pages.
+>
+> **Rule:** “Runtime-confirmed” is always bounded to the documented ROM/build, route, state, and lifecycle boundary. It does not mean exhaustive coverage.
 
-| Domain | Runtime-confirmed scope | Static/CI scope | Not yet established |
+Current project maturity and priorities are owned by [Project status](Project-Status). Release requirements and final acceptance gates are owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap).
+
+## Evidence matrix
+
+| Domain | Runtime-confirmed scope | Static / implementation-confirmed scope | Not yet established / limit |
 |---|---|---|---|
-| Selector | A-button title route; all eight compact destinations | Guards, table, range, mapper | Intermittent Start shortcut is not production |
-| Arena/bootstrap | Reserved block loads and executes | Both arena sites, file-table entry, hook/stub bounds | Expansion beyond the 1 KiB contract |
-| Pickup persistence | At least one ordinary pickup in every stage; multiple Fire records; Temple completion | All 84 records and bit mappings | Every record individually; Game Over reset |
-| Pickup randomization | `TEST153` first Fire location became predicted Shield and behaved normally | All 84 identities; deterministic namespaces; 250-seed access-model tests | Full seeded playthrough; broad arbitrary-layout runtime coverage |
-| Four-box inventory | Switching, live/backing copies, transition survival, foreign-key masking | Input/remap hooks and lifecycle routines | Every save/load/Game Over edge |
-| Native UI | Arbitrary custom text and persistent box indicator | Node structure, hook, string/cave guards | General textured-image API |
-| Flow bypasses | Logos skipped; selector entry avoids only immediate auto-save | Exact owning routine and branch guards | No known open item |
-| Palette | Multiple player-outfit modes visibly recolor clothing; v60 first Scorpion/type `0x12` renders correctly as a yellow/gold Cyrax-style Sektor via its alternate lower-32 TLUT | 64-entry source TLUT and BGR555 transform; proof-specific alternate TLUT at relocated file `0x87 +0x458D0` / ROM `0xF858D0` | Undead Scorpion/type `0x11`; arbitrary enemy palettes |
-| Enemy substitution | Fire `0x0A -> 0x09`; imported Temple monk in Fire | Stream formats, constructor/resource tables | Death presentation; arbitrary mixes; bosses |
-| XP progression | Temple proof: three progression pickups plus one vanilla Herbs control, first two tested at `85` and `258`; no combat/kill/combo XP, tier advance, no inventory award, coexistence. Diagnostic B (`BCBDBF`): V2 allocation and XP-only restore, Temple -> Wind and title -> Fire retention of XP 258/two moves | Central award, direct stores, cap table, save field, V2 storage, deterministic nine-reward generation | Final art, full nine-tier run, Game Over/new-run reset |
-| Reverse Elbow / MKT port | v6 host-action lifecycle repeats without global hang; v08/A1.7 renders genuine SCCOMBO10; Sektor direct replacements through Jump Kick / Flip Kick / Flip Punch are runtime-confirmed clean; v26 confirms Low-Punch chain/crossover behavior, v27 confirms the exact 13-word Standing Low Kick, v28 confirms the exact 13-word Standing High Kick, v29 confirms Knee, v30 confirms Sweep, v31 confirms Roundhouse, v32 confirms Jump, and v33 confirms all three aerial attacks; v62 runtime-confirms the Sektor MKT combo-string graph on the tested route after v61's donor reaction-selector failure was corrected with MKMSZ-native selector translation; v20 remains the accumulated raw-size failure case | v27 redirects slot 0x12 to an appended exact retail script and keeps file 0x87 at 0x58944; v28 does the same for slot 0x11 High Kick and keeps file 0x87 at 0x588BC. v25+ proof ROMs use the runtime-confirmed post-legal logo bypass | v34 runtime-confirms Forward Flip, Back Flip, and High Hit; Low Hit remains pending because the tested route did not expose a practical crouching-hit case. v35 runtime-confirms Sweep Fall + Sweep Getup; v36 runtime-confirms Knockdown; v37 runtime-confirms normal Getup; v39 runtime-confirms Stumble on the tested route. v39 Prison is a runtime-confirmed failure: initial room renders correctly, then the scene/framebuffer catastrophically corrupts at the first doorway/encounter activation. v40 uses the same selector/helper composition with file 0x87 reduced to v11 size 0x4D820, and the same Prison doorway works normally. v41 restores only the file-0x87 allocation size to 0x578BC by appending unreachable 0xFF tail bytes; the same Prison doorway corrupts again. Runtime-confirmed: allocation footprint alone is sufficient to trigger the failure at 0x578BC. Exact lower threshold remains unknown. v42 runtime-confirms generated native type-5 storage for one genuine Sektor stance frame with no visible difference from raw and no Prison-door regression. v43 compacts all five idle frames, reduces file 0x87 to 0x49BAC, and is runtime-confirmed clean including Prison's first doorway. v44 runtime-confirms compressed Walk F/B and Turn plus shared-Walk dictionary use, but Crouch hard-hangs before frame 1 because its generated shape records were not 4-byte aligned; this packing bug is rejected. v45 corrects alignment for the same locomotion composition at file 0x87 size 0x52740 and is runtime-confirmed clean, including repeated Crouch transitions and Prison's first doorway. v46 runtime-confirms all 34 compressed Sektor frames/actions, including Crouch Hit, and Prison's first doorway itself survives. New failure boundary: after crossing that Prison doorway, opening Inventory hard-hangs; Inventory works before the door and the failure has not been observed in other stages so far. v47 preserves the exact v46 action/content set while relocating most compressed image streams into 42 file-local-unreferenced stock Sub-Zero frame intervals, reducing file 0x87 to 0x52BC0. Runtime-confirmed: Prison first doorway followed by Inventory now works, isolating v46's Inventory hang as memory/headroom-sensitive on that route. Fortress regression is now bounded: v45 (0x52740) and v47 (0x52BC0) both hang on Mission Objective before music/gameplay; v40 (0x4D820) loads Fortress normally. v47 reclamation is therefore not the onset. v48 pads v40 with unreachable 0xFF bytes to exactly 0x52740 and runtime-confirms the same pre-music Fortress hang: file-0x87 allocation footprint alone is sufficient to fail Fortress at that size. Exact lower threshold is not required. v49 (real locomotion, no stock-hole reuse) is 0x4E544; v50 (same locomotion with conservative stock-hole reuse) is 0x4C320, below working v40. Both are runtime-confirmed in Fortress: stage music/gameplay load normally and Inventory opens normally. This confirms Type-5 locomotion and the conservative locomotion-hole reclamation strategy are Fortress-safe on the tested route. v51 keeps the full 34-frame v46/v47 action set while merging the same already-proved dead intervals into five contiguous reclaimed regions; file 0x87 becomes 0x5100C. Runtime: Prison first doorway + Inventory passes, but Fortress still hangs on Mission Objective; this time stage music starts before the hang, indicating later initialization progress than v45/v47/v48. v52 is an exact-size control based on working v49: only inert tail padding raises file 0x87 from 0x4E544 to 0x5100C; runtime pending. Low Hit remains pending; prioritize compact fighter storage/encoder work |
-| PS1 | No new runtime test in this consolidation | Executable/resource/save/pickup/enemy mappings | Fire type substitution, UI hook, playable Scorpion moves |
+| Stage flow and selector | A-button title route reaches all eight compact safe destinations. Post-legal logos are skipped, and selector entry suppresses only the immediate unwanted auto-save while later/manual saves remain intact. | Selector table/range/mapper and flow behavior are owned by [Stage flow and selector](Stage-Flow-and-Selector); exact guarded edit sites and expected/replacement bytes are owned by the [Address and patch-site registry](Address-and-Patch-Site-Registry). | The intermittent Start shortcut is not production behavior. |
+| Core runtime / bootstrap | The reserved 1 KiB block is loaded and executed through the native payload path on the tested routes. | Both arena-reservation sites, file-table entry, bootstrap hook/stub bounds, and current production reservation contract. See [Core runtime and address database](Core-Runtime-and-Address-Database). | Expansion beyond the current 1 KiB production contract is not established by this evidence. |
+| Ordinary-pickup persistence | At least one ordinary pickup in every main stage has been collected, persisted, reconstructed, and absent on revisit; multiple Fire records were also exercised. | All 84 ordinary records and persistence bit mappings are cataloged. See [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle) and [Stage catalogs](Stage-Catalogs). | All 84 records have not been individually runtime-exhausted. Game Over/new-run reset remains pending. |
+| Stage-local pickup randomization | Seed `TEST153` made the first Fire ordinary location the predicted Shield and it rendered/awarded normally. | All 84 ordinary identities are implemented in the current stage-local mode; deterministic namespaces and access-model tests are Implementation/CI-confirmed. See [Pickups and item randomization](Pickups-and-Item-Randomization). | No representative full seeded playthrough establishes broad arbitrary-layout runtime coverage; this interim stage-local model is not the 1.0 global model. |
+| Cross-stage item materialization | Bounded proofs establish external-to-embedded ordinary resource conversion and Prison with five simultaneous imported item visuals while an untouched Herbs control remains correct. | The pure cross-stage resource planner is implemented but disconnected from the normal browser/CLI pipeline. | Fortress stress validation, destination-safe key/crystal award handling, guarded production allocation/composition, and the final integration proof remain pending. See [Global item materialization and solvability](Global-Item-Materialization-and-Solvability). |
+| Global generation / solvability | No native global-run runtime claim yet. | Current stage-local deterministic generation/rejection behavior is Implementation/CI-confirmed; the 1.0 global deterministic retry and whole-run solver contract is specified. | Global logical shuffle, deterministic retry attempts, final access/completion rules, and representative full-seed runtime validation remain pending. See [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) and [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). |
+| Four-box inventory / lifecycle | Box switching, live/backing copies, transition preservation, and foreign-key masking work on the documented routes. | Input/remap hooks, backing-box ownership, masking behavior, and lifecycle routines are established. See [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle). | Every save/load boundary, HP/lives/continues policy, and Game Over/new-run reset are not yet established. |
+| XP progression | Diagnostic B behavior is Runtime-confirmed through XP `85` and `258` / two tiers, including Temple -> Wind and title -> Fire retention. Progression pickups advance tiers without combat/kill/combo XP or inventory awards on the tested routes. | Central award path, direct XP stores, cap table, save field, V2 storage, and deterministic nine-reward generation are established. See [XP and progression](XP-and-Progression). | Full nine-tier runtime coverage, final art, and Game Over/new-run reset remain pending. |
+| Native HUD / UI | Native text drawing and persistent `BOX n OF 4` are Runtime-confirmed. The gameplay-HUD queue also accepts additional textured nodes, and clone-local texture-slot rebinding is Runtime-confirmed through the Toasty diagnostics. | Render-node layout, text path, texture-slot binding, allocator behavior, and relevant hook/string guards are established. See [Native HUD and UI](Native-HUD-and-UI) and [Function registry](Function-Registry). | The complete 1.0 randomizer HUD is pending; Toasty-specific asset/palette/product questions are tracked separately below. |
+| Presentation / branding | The redesigned legal-screen boot presentation and seeded phrase are Runtime-confirmed. The current data-only title composition with Candidate-B art and configurable uppercase `<NAME> EDITION` is Runtime-confirmed through the production composition. | Current file/resource edits and deterministic phrase namespace are guarded/implemented. See [Presentation and branding](Presentation-and-Branding). | Broader presentation changes are not implied; the earlier executable-wrapper title composition is rejected and not production evidence. |
+| Palette / recoloring | Multiple player outfit modes visibly recolor clothing. The v60 proof also Runtime-confirms the first Scorpion/type `0x12` alternate palette as the intended yellow/gold Cyrax-style Sektor on its tested route. | Stock 64-entry TLUT structure, BGR555 transforms, and the v60 proof-specific alternate-TLUT edit are established. See [Palette and recoloring](Palette-and-Recoloring). | Undead Scorpion/type `0x11` and arbitrary enemy palette behavior remain outside the confirmed scope. |
+| Enemy randomization | Fire `0x0A -> 0x09` substitution works. A Temple monk resource imported into Fire spawns and functions in rendering, AI, movement, collision, and combat on the tested route. | Enemy stream formats, constructor/resource tables, and cross-stage resource dependency are established. See [Enemy randomization](Enemy-Randomization). | Normal monk death/despawn presentation, arbitrary mixed rosters, compatibility policy, allocation/product integration, bosses, and scripted encounters remain pending. |
+| MKT / Sektor takeover | The bounded takeover line is Runtime-confirmed, not production-integrated. Generated native Type-5 fighter storage is runtime-proven; v52 Runtime-confirms that file-`0x87` footprint `0x5100C` alone is sufficient to reproduce the later Fortress Mission Objective hang; v53 passes Fortress, Prison, Inventory, representative common actions, and demo movies; v56 Runtime-confirms the PS1-derived even-Run path as a visual failure while Sweep Fall/Getup, Grab/Throw, Fortress/Inventory, and Prison/Inventory pass on that route; v58 Run, v59 complete Combo visuals, and v62 tested MKT combo strings are Runtime-confirmed. | Donor-to-MKMSZ action mapping, Type-5 encode/decode/round-trip checks, source asset conversion, and current slot/mapping tables are established to the scopes recorded by the owners. See [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping), [Sektor takeover proof history](Sektor-Takeover-Proof-History), [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer), and [Player actions and special moves](Player-Actions-and-Special-Moves). | This remains proof-only. The v62 standalone combo record conflicts with production bootstrap ownership and must be reallocated before integration. Player-victim grab/throw reactions, specials, rare presentation families, and other untested states remain outside the confirmed scope. |
+| Toasty audio | Sound proof v03 Runtime-confirms the audibly identified MKT Toasty voice through MKMSZ's native audio path. | The accepted donor chain is slot `0x1B` / event `0x0160` / patch 65 / subpatch 111 / waveform 77; host playback mechanics are established. See [Toasty audio research](Toasty-Audio-Research) for donor/proof history and [Audio system](Sounds-and-Music) for MKMSZ host mechanics. | Final product trigger, production-safe allocation/composition, and integration with the visual effect remain pending. Frosty/Crispy are not required by the current feature. |
+| Toasty visual | Textured-node submission and clone-local rebinding are Runtime-confirmed (v08-v10). v14 confirms the corrected fixed-slot alias control. v15 Runtime-confirms genuine Toasty CI8 pixels through a dynamic gameplay-HUD texture slot with the expected source shape; its intentionally wrong stock-HUD colors do not establish the final palette. | v16 is Implementation/static-confirmed for the genuine Toasty TLUT through the node palette-selector path. See [Toasty visual research](Toasty-Visual-Research). | v16 still needs manual runtime validation of the genuine palette. Final trigger/allocation/composition remain pending. The rejected v11-v13 fixed-slot experiments do not invalidate the confirmed gameplay textured-node path. |
+| Browser / CLI patch core | No separate gameplay-runtime claim is inferred from the product surfaces themselves. | Browser and CLI use the shared patch core; supported-ROM validation, guarded writes, deterministic build logic, and CI composition checks are established. See [Web patcher and product](Web-Patcher-and-Product) and [Testing and CI](Testing-and-CI). | CI/static success does not establish final gameplay behavior; final 1.0 runtime validation must exercise the normal production composition. |
+| PS1 research | No new PS1 runtime claim is established by the current N64 consolidation. | Executable/resource/save/pickup/enemy mappings and bounded donor/reference findings are static research. See [PS1 research](PS1-Research) and [N64–PS1 comparison](N64-PS1-Comparison). | PS1 Fire substitution, UI hook, playable Scorpion moves, and any N64 transfer not separately demonstrated remain unestablished. |
 
 ## Runtime environment lineage
 
-Historical N64 proof runs used BizHawk `2.11.1`, Ares64, CPU emulation `1`, and P1 controller `2` where explicitly recorded. State-specific observations remain bound to their ROM and save-state identity. The Wiki reproduces conclusions and exact addresses, while hashes and original captures remain historical provenance.
+Historical N64 proof runs used BizHawk `2.11.1`, Ares64, CPU emulation `1`, and P1 controller `2` where explicitly recorded.
+
+A runtime observation remains bound to the exact proof/production ROM identity, stage or frontend route, relevant save-state identity, and lifecycle boundary that were actually exercised. Later successful proofs can supersede an earlier **status** without retroactively widening its route coverage. The owning history pages retain proof hashes, build sizes, detailed routes, and rejected controls where those details are needed.
+
+PS1 findings remain platform-specific unless transfer to N64 is separately demonstrated.
 
 ## Production vs proof
 
-“Production” requires current guarded code and tests. “Proof” may intentionally use a temporary cave, a one-off record edit, or a narrow replacement. For example, the Temple XP result is runtime-confirmed but its cave conflicts with production, and the Temple-monk import proves resource residency but lacks the monk's normal death presentation.
+**Production** evidence applies to guarded code that is part of the normal browser/CLI composition for the supported ROM and has the relevant implementation/CI gates. **Runtime-confirmed production** additionally means that production composition was manually observed on the stated route.
 
+A **proof** may intentionally use a one-off record edit, temporary resource placement, isolated patch, or allocation that is unsuitable for production. A proof can establish feasibility or a failure boundary without becoming a product feature.
 
-### v53 common-animation takeover
+Examples of the boundary:
 
-**Runtime-confirmed.** Fortress, Prison, Inventory, representative common actions, and demo movies all pass without hangs. Expected remaining gaps are placeholder/unported animation states.
+- the cross-stage item planner is implemented but remains pipeline-disconnected pending its production integration gate;
+- the MKT/Sektor line has extensive Runtime-confirmed proof evidence, but the current v62 standalone combo record still overlaps production bootstrap ownership;
+- Toasty audio and visual paths are Runtime-confirmed in bounded proofs, while their final trigger/allocation/composition are still pending.
 
-v53 removes the proof palette helper and restores the stock frame-setup path, stock arena start `0x801AF420`, zero file-ID `0x1B` entry, and unused helper bootstrap/payload state. Sektor colors become the native player palette by replacing the lower 32 entries of the stock 64-entry TLUT; upper 32 stock entries remain valid fallback colors.
+Runtime success never converts an old proof cave or proof allocation into production-safe space by itself.
 
-The proof ports 33 common primary slots through `0x22` (all except Victory `0x0D` and Elbow/Combo `0x10`) using 129 unique Sektor frames. Unported/rare states retain stock control scripts but all 413 remaining direct stock-Type5 shape references are redirected to one safe Sektor stance shape. The complete stock 341-frame Type-5 corpus is therefore reclaimed.
+## Chronology ownership
 
-Two shared 5-bpp Type-5 models use stock model-0 class geometry with 19,939 and 15,869 patterns. 118 Sektor frames fit inside the reclaimed stock Type-5 region and 11 overflow into the relocated file tail. File `0x87 = 0x473D8`, leaving `0x716C` bytes relative to the runtime-confirmed Fortress-working v49 size `0x4E544`.
+This page no longer owns version-by-version proof diaries.
 
-Primary runtime gates: Fortress stage load + Inventory; Prison first doorway + Inventory; representative movement/ground/aerial/fall/recovery actions; observe rare/unported states only for bounded placeholder behavior.
+- Sektor vNN proof/build chronology, including v52 allocation failure, v53-v59 takeover work, v60 alternate palette, and v61/v62 combo-string results: [Sektor takeover proof history](Sektor-Takeover-Proof-History). Slot mapping/current gaps remain in [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping); donor/adapter interpretation remains in [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer).
+- Sektor v60 alternate-palette proof chronology and proof-specific mechanics are canonical in [Sektor takeover proof history](Sektor-Takeover-Proof-History). [Palette and recoloring](Palette-and-Recoloring) owns current production player-outfit recoloring behavior.
+- Toasty audio donor identification, rejected candidates, and v01-v03 proof history: [Toasty audio research](Toasty-Audio-Research). MKMSZ host mechanics remain in [Audio system](Sounds-and-Music).
+- Toasty visual diagnostics: [Toasty visual research](Toasty-Visual-Research).
+- XP proof and Diagnostic A/B history: [XP and progression](XP-and-Progression).
 
-
-### v54 expanded takeover
-
-**Partially runtime-tested; superseded by v55 for Run / Sweep Fall / Throw presentation.**
-
-Final disposable proof: `MKMSZR_mkt-sektor-run-combo-throw_common-proof_v54.z64`.
-
-Identity:
-- SHA-256 `7f11e7e462a8e9a5fb028a62e5281989480dd3eb19bdc5d281241113caf1876a`;
-- CRC1/CRC2 `A6256DA8 / 9F9B13D5`;
-- file ID `0x87 = 0x4E154`;
-- `0x3F0` bytes below the runtime-confirmed Fortress-working v49 footprint `0x4E544`.
-
-v54 adds six genuine Sektor Run frames while preserving MKMSZ's native run loop and omitting MKT's footstep callback. Primary `0x10` keeps MKMSZ's exact 17-word four-segment Elbow/Combo grammar and replaces only its 13 visual positions with ten genuine `RBELBOCOMBO` poses.
-
-The Throw interpretation is corrected: MKMSZ's attacker Throw body at `+0x8F8` is 12 words with nine visual positions `[0,1,3,4,5,6,7,9,10]`. Later shape references previously counted as extra Throw frames belong to the adjacent reaction/flip block at `+0x928` and are left outside Throw ownership.
-
-Sektor's longer slave-arm throw is downsampled into seven exact offline-flattened mechanical-arm composites:
-`+0x2318,+0x2340,+0x237C,+0x2390,+0x23B8,+0x23CC,+0x2408`,
-with genuine `RBSTANCE7` at entry/exit. MKT codec 15 is decoded offline; the MKT slave-animation ABI is not imported.
-
-The generated corpus totals 152 frames: 129 inherited v53 + 6 Run + 10 Combo + 7 Throw keyframes. One shared 5-bpp dictionary is addressed by 16 entropy-model records; independent software decode checks every frame byte-for-byte against its exact source pixels. The optional v53 cross-check verifies all 129 inherited frames against the runtime-confirmed v53 ROM.
-
-Runtime test matrix:
-- Run;
-- full Elbow/Combo;
-- Grab/Throw;
-- Fortress -> gameplay -> Inventory;
-- Prison -> first doorway -> Inventory.
-
-
-
-Runtime result for v54 on 2026-09-21:
-- **Run mapping failed semantically:** ordinary Run still displayed the stance fallback, while the imported six-pose cycle appeared during Push. Static correction: `+0x1B0` is Push; the actual twelve-visual Run loop is `+0xEE8`.
-- **Sweep Fall failed:** gameplay/emulation hard-hung after the second visible pose. Static correlation: the next frame is the first one assigned to a v54 Type-5 model containing a 0-bit normal class. This is a strong causal inference, not yet runtime-confirmed as the sole cause.
-- **Throw mostly worked:** grab/throw gameplay and composite geometry were usable, but the mechanical arm rendered red because codec-15 indices were interpreted through the body palette, and the arm choreography appeared one native MKMSZ visual tick ahead of the actual grab.
-
-### v55 Run / Sweep-Fall / Throw repair
-
-**Partially runtime-confirmed; Run failed visually; Sweep Fall still pending.**
-
-Disposable proof: `MKMSZR_sektor-run-sweep-throw_common-proof_v55.z64`.
-
-Identity:
-- SHA-256 `13dd4c9247bf4b1154d3b7563412333c6e21f68569155f742e683fbc29635ebc`;
-- CRC1/CRC2 `A624ABE8 / 48D2A010`;
-- file ID `0x87 = 0x4D0A4`;
-- `0x14A0` (5,280 bytes) below runtime-confirmed Fortress-working v49 `0x4E544`.
-
-v55 keeps the v54 Combo content but repairs the three observed problem areas. The true MKMSZ Run loop at `+0xEE8` contains twelve distinct visuals. Odd Sektor poses `RBRUN1/3/5/7/9/11` come from MKT N64; the six even poses come from PS1 MKT `CODE/ROBOT.BIN +0x140C` / `CHARS1/ROBOT.DAT`, which preserves the full twelve-frame run that N64 cut. Push remains a separate seven-visual loop at `+0x1B0`.
-
-The six PS1-derived even poses are decoded from PS1 POVBQ, palette-converted into the native Sektor TLUT, and re-encoded as MKMSZ Type-5. Shared-dictionary optimization needs only 18 supplemental 2x4 patterns; the converted PS1 targets are reproduced exactly (`VQ_RMSE = 0`, 100% exact opaque pixels).
-
-All 52 generated Type-5 model records now require every normal class width to be at least 1 bit. Throw's seven flattened arm phases use the genuine MKT `MECARM_P` gray-metal ramp mapped as `1->17, 2->19, 3->20, 4->22, 5->24, 6->25, 7->26`. The nine attacker slots are shifted to `stance, stance, arm1..arm7`, delaying visuals by one native MKMSZ slot without changing victim/gameplay timing.
-
-Two clean builds are byte-identical. Independent structural audit confirms the 12 distinct Run shape roots, separate 7-frame Push loop, one-slot Throw shift, stock Throw separators, 52 Type-5 models with minimum normal width 1 bit, and the exact file-table footprint. The builder additionally round-trips all 158 emitted Type-5 frames and optionally verifies all 129 inherited v53 frames byte-for-byte.
-
-Runtime test matrix:
-- ordinary Run: all twelve poses, no stance fallback;
-- Push: still animates separately and remains stable;
-- Sweep Fall + Sweep Getup: specifically reproduce the former hard-hang route;
-- Grab/Throw: gray arm and one-tick visual sync correction;
-- full Elbow/Combo regression;
-- Fortress -> gameplay -> Inventory;
-- Prison -> first doorway -> Inventory.
-
-Runtime result on 2026-09-21:
-- Grab/Throw: **Runtime-confirmed** on the tested route. Mechanical arm color now reads as metal/gray and the one-slot visual delay feels synchronized; user described the result as “perfect” and “awesome.”
-- Fortress -> gameplay -> Inventory: **Runtime-confirmed pass**.
-- Prison -> first doorway -> Inventory: **Runtime-confirmed pass**.
-- Run: **Runtime-confirmed failure**. Odd N64 poses render, but every PS1-derived even pose collapses to a few tiny artifacts. Static postmortem found the PS1 POVBQ emitter failed to advance its destination pointer by four pixels after each 2x4 block; all blocks overwrote the same four-column strip.
-- Full combo: gameplay reaches **6 hits**, but at least one middle impact uses an incorrect/neutral visual; visual mapping remains incomplete.
-- Sweep Fall + Sweep Getup: still pending a v55 runtime result.
-
-
-### v56 corrected PS1 Run decode
-
-**Static/implementation-confirmed; runtime pending.**
-
-Disposable proof: `MKMSZR_sektor-run-decode_common-proof_v56.z64`.
-
-Identity:
-- SHA-256 `eea8d47b4ed2fb94be891724097a97c74c94bff4703cd6f66a5bc5da25d892c0`;
-- CRC1/CRC2 `A6256A28 / 73BE34AB`;
-- file ID `0x87 = 0x4E414`;
-- `0x130` (304 bytes) below runtime-confirmed Fortress-working v49 `0x4E544`.
-
-v56 changes only the six PS1-derived even Run poses relative to v55. The PS1 POVBQ output pointer now advances by four pixels after each 2x4 vector, matching the independent decoder implementation for all six donor frames. A separate cross-check also requires each corrected source frame to occupy more than 30 nonzero columns, specifically rejecting the v55 four-column overwrite failure.
-
-The corrected full-body PS1 frames add much more real pattern content than v55's malformed strips. To stay under the known Fortress-safe footprint, v56 uses 256 representative supplemental patterns with exact transparency masks and 64 Type-5 entropy models. The six even poses are therefore a bounded visual approximation rather than lossless: color-space RMSE ~4.504 in 5-bit RGB units and 36.3% exact opaque indices, while pose geometry and transparency silhouettes remain exact. The final shared dictionary has 40,833 patterns.
-
-Two independent clean builds are byte-identical and builder-side Type-5 round-trip passes for all 158 emitted frames.
-
-Runtime test matrix:
-- ordinary Run: verify twelve full-body poses with no tiny-artifact frames;
-- Push regression;
-- Grab/Throw regression;
-- full Combo regression (known missing middle visual remains expected);
-- Sweep Fall + Sweep Getup;
-- Fortress -> gameplay -> Inventory;
-- Prison -> first doorway -> Inventory.
-
-
-Runtime result on 2026-09-21:
-- ordinary Run: **Runtime-confirmed visual failure**. N64-derived odd poses are clean; PS1-derived even poses render as heavily speckled/checkerboard full-body frames.
-- Sweep Fall -> Sweep Getup: **Runtime-confirmed pass** on the tested route; the former hard hang is gone.
-- Grab/Throw: **Runtime-confirmed pass**; remains visually/timing-correct.
-- Fortress -> gameplay -> Inventory: **Runtime-confirmed pass**.
-- Prison -> first doorway -> Inventory: **Runtime-confirmed pass**.
-
-Postmortem: v56 fixed the four-column output-cursor bug, but the resulting PS1 Run source itself still decodes with corrupted-looking internal pixel/color structure. The earlier “PS1 ideal” comparison was only the output of that same unverified pipeline, not ground truth. Rendering PS1 odd Run poses with their native PS1 palette shows the same speckling even before N64 conversion. Therefore the PS1 POVBQ Run donor path is **Rejected / unresolved**, and further Type-5/VQ tuning against those buffers is not meaningful.
-
-
-### v58 stride-corrected full Run
-
-**Runtime-confirmed on 2026-09-21 for ordinary Run.**
-
-Disposable proof: `MKMSZR_sektor-run-stride_common-proof_v58.z64`.
-
-- SHA-256 `bc15eed845b9d97c785acf828e593d5683d6a8f905bfb475b751160774d973e2`
-- CRC1/CRC2 `A6256DD8 / DB8E6E81`
-- file `0x87 = 0x4E3FC`, leaving `0x148` bytes relative to runtime-confirmed Fortress-working v49 `0x4E544`
-
-v58 corrects the v57 ROBO8 source-row bug by reading Midway WIMP images with `align4(xsize)` source pitch. The final `+0xEE8` Run loop contains twelve distinct Sektor poses. Builder-side Type-5 round-trip and two-build reproducibility checks pass. Runtime result: the user reported that Running works perfectly; the former diagonal/slashed even-frame corruption is gone.
-
-
-### v59 complete Combo visuals
-
-**Runtime-confirmed on 2026-09-21 for the Combo presentation fix.**
-
-Disposable proof: `MKMSZR_sektor-full-combo_common-proof_v59.z64`.
-
-- SHA-256 `b8b1ddfa964de4da86dc9598f99139f4c50ac066deaaf4ab5cd91fda63baf1cc`
-- CRC1/CRC2 `A6256DD8 / DB8E6E81`
-- file `0x87 = 0x4E3FC`, unchanged from v58
-
-v59 preserves the six-hit combo gameplay/control records byte-for-byte and keeps the primary `0x10` four-segment `RBELBOCOMBO` visual grammar. Static tracing showed the remaining neutral/missing middle visuals came from late Knee segments selected by the existing combo chain. Six late Knee shape references are redirected to already-resident Sektor Spin-Kick/Knee frames, with intervening controls/separators unchanged. No new frame assets or file-0x87 growth are introduced.
-
-Runtime result: the user reported v59 works perfectly. This closes the known missing middle-Combo visual defect. v58 remains the runtime-confirmed full-Run baseline; no unrelated v59 routes are newly claimed as re-tested.
-
-
-### v60 first-Scorpion Cyrax-style palette
-
-**Runtime-confirmed on 2026-09-21 for the first Scorpion/type-`0x12` presentation.**
-
-Disposable proof: `MKMSZR_scorpion-cyrax-palette_common-proof_v60.z64`.
-
-- SHA-256 `caebb133e7ea759e5f115d169fe84f00d4120caa6545373b28983fd8efde048b`
-- CRC1/CRC2 `A6256DD8 / DB8E6E81`, unchanged from v59
-- file `0x87 = 0x4E3FC`, unchanged from v59
-- patch window: relocated file-`0x87 +0x458D0`, ROM `0xF858D0`, 64 bytes
-
-The first `SCORPION` actor is the Sub-Zero-family type `0x12` alternate-palette route. v59 already makes the shared 5-bpp fighter pixels Sektor, but this alternate TLUT still contained stock ninja colors. v60 replaces only its lower 32 palette entries with a Cyrax-style Sektor palette. Armor entries `1..15` are yellow/gold; the target's Sektor gray/black metal entries `16..31` are preserved exactly.
-
-Static diffing against runtime-confirmed v59 finds 62 byte differences, all inside the single 64-byte alternate-palette window. No animation/resource bytes or file allocation change. Runtime result: the user reported that the first Scorpion works wonderfully and renders as intended. No unrelated v60 routes are newly claimed as re-tested, and the separate Undead Scorpion/type-`0x11` resource remains outside this proof.
-
-
-### v61/v62 Sektor MKT combo strings
-
-**v61 — Rejected / failed.** `MKMSZR_sektor-mkt-combos_common-proof_v61.z64`, SHA-256 `aecd40a9a8ba5c8a96195cf9f18ebe5b0c53b67d40d88fc33fb1c55b5d930111`, CRC1/CRC2 `A8234446 / EB410032`. The proof imported Sektor's MKT combo graph and added the standalone `HK,HK` continuation. `HP,HP,D+LP` correctly launched the victim upward, but the long combo catastrophically corrupted world/background rendering. The failure was bound to the donor knockback reaction selector copied numerically as `0x02`.
-
-**v62 — Runtime-confirmed on 2026-09-21 for the tested Sektor combo-string behavior.** `MKMSZR_sektor-mkt-combos-safe_common-proof_v62.z64`, SHA-256 `689862a64ab2cfe04041fae357a19774e335cea39eff6c9d6f5ae143f601e1fd`, CRC1/CRC2 `B4234446 / 80A601BE`.
-
-v62 differs from v61 in only three gameplay bytes: reaction selector `0x02 -> 0x04` at ROM `0x9AD98`, `0xB1CE8`, and `0xB1D08`; header CRC changes accordingly. The button graph, attacker animations, pointers, and the successful uppercut entry `0x0504` are unchanged. The user reported v62 “working perfectly,” so the previously failing long branch is runtime-confirmed fixed on the tested route.
-
-The exposed strings are `HK,HK`, `HP,HP,D+LP`, `HP,HP,HK,B+HK`, and `HP,HP,HK,HK,B+HK`. File `0x87` remains `0x4E3FC`; no fighter graphics or palette bytes changed. The standalone `HK,HK` proof record remains at ROM `0x9AD90` / VA `0x8009A190`, which conflicts with production bootstrap ownership and therefore must be reallocated before production integration.
