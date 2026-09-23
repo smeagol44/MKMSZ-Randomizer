@@ -571,3 +571,24 @@ At runtime the wrapper resolves each narrow piece's current backing pointer thro
 Interpretation:
 - corruption + `V35 PIX MUT` -> actual backing CI8 bytes are changing after load;
 - corruption with no marker -> the narrow backing bytes are intact, pushing the remaining defect into texture upload/cache/TMEM/render interpretation rather than slot record, backing pointer, or source-buffer integrity.
+
+
+### Toasty visual diagnostic v35 — narrow-buffer pixel-integrity check
+
+**Runtime-confirmed negative control on 2026-09-23.**
+
+Manual testing in Temple, Earth, and Fire reproduced the same residual corruption pattern and did not show the `V35 PIX MUT` marker. Therefore the six narrow side buffers' padded CI8 contents remained equal to their build-time payloads under both the per-frame wrapping sum32 and xor32 checks on the tested routes. Together with v33-v34, this rejects saved-slot metadata loss, backing-pointer replacement, and post-load source-buffer mutation as the direct cause.
+
+The surviving defect is now downstream of the backing bytes: texture upload/cache/TMEM/render interpretation of the 7-pixel-wide side pieces is the leading bounded hypothesis.
+
+### Toasty visual diagnostic v36 — 32-pixel logical side nodes
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v36 returns to the v32/v27 visual baseline and changes only the six narrow side pieces' logical allocator/render width. Their payloads already use a 32-byte allocator row pitch after v23; v36 now requests and renders those rows as width 32 instead of width 7. The first 7 columns retain the genuine Toasty pixels and the remaining 25 columns are existing palette-index-0 padding. The proven custom TLUT maps index 0 to transparent, so these added logical columns are intended to be visually inert.
+
+The center pieces remain width 64, all image bytes and file payloads are unchanged, placement is unchanged, allocation order remains the v27 arrangement, and the corrected saved-slot state addresses remain in use.
+
+Interpretation:
+- if Temple/Earth/Fire become clean, the residual defect is specifically tied to the renderer/TMEM path for 7-pixel logical textures rather than storage integrity;
+- if corruption remains, the next work should inspect the renderer's tile/load-state derivation rather than return to allocation permutation or buffer-lifecycle hypotheses.
