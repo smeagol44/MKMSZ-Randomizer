@@ -535,3 +535,24 @@ For each piece the wrapper checks:
 - record `+0x08/+0x0A` still matches the piece's expected requested width/height.
 
 If any invariant fails, the wrapper draws the proven native-text marker `V33 SLOT MUT` at the lower-left while continuing to render the Toasty image. A marker on the corrupt stages would directly support slot reset/reuse as the cause. If corruption remains without the marker, the next diagnostic should move down to backing-pointer/pixel-storage integrity rather than more allocation-order permutations.
+
+
+### Toasty visual diagnostic v33 — slot-record lifecycle check
+
+**Runtime-confirmed negative control on 2026-09-23.**
+
+v33 preserves the v32/v27 visual/data/allocation path and adds only a per-HUD-frame validation pass over all nine saved dynamic texture slots. It checks that each saved ID remains within `0x200..0x2FF`, the allocator record remains active at `+0x0E == 1`, and the recorded width/height still match the piece request. Any mismatch would draw `V33 SLOT MUT`.
+
+Manual testing reproduced the same Toasty corruption pattern as before without a reported `V33 SLOT MUT` marker. Therefore saved slot-ID range, active-state loss, and width/height mutation are not the cause on the tested routes.
+
+### Toasty visual diagnostic v34 — backing-pointer identity check
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v34 returns to the v32/v27 visual baseline and changes only diagnostic instrumentation. After all nine dynamic allocations/raw loads, a compact helper snapshots each saved slot's current backing pointer from `0x800ED940[id]`. Every HUD frame, the wrapper compares the current pointer for each saved slot against that captured value.
+
+Any mismatch draws `V34 PTR MUT` through the proven native-text path while leaving the Toasty image rendering active. Image bytes, palette, nine-piece geometry, allocation order, saved slot IDs, render-node setup, and draw order are unchanged.
+
+Interpretation:
+- corruption + `V34 PTR MUT` -> backing-pointer replacement/reuse is implicated;
+- corruption with no marker -> pointer identity is stable and the next bounded diagnostic should inspect the backing pixel bytes themselves.
