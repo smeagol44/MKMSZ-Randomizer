@@ -21,6 +21,7 @@
 - [Stage selector](Stage-Flow-and-Selector)
 - [Flow bypasses](Flow-Bypasses)
 - [Pickups/randomization](Pickups-and-Item-Randomization)
+- [Global materialization/solvability](Global-Item-Materialization-and-Solvability)
 - [Persistence/inventory](Persistence-Inventory-and-Lifecycle)
 - [Native UI](Native-UI-and-Presentation)
 - [Sounds/music](Sounds-and-Music)

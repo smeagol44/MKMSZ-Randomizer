@@ -44,6 +44,8 @@ Stage-overlay function identities include the loaded stage and source artifact a
 
 ## Global-randomizer exact visual materialization
 
+> **Migration note:** [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) is now the canonical owner for the cross-stage planner, extension-selector/materialization proof history, deterministic global retries, and solver. This resource page intentionally retains its current detailed duplication until **Audit Task 6**, which will refocus it on file/overlay/resource grammar.
+
 For 1.0, cross-stage randomization requires the placed pickup to use the randomized item's real graphics/resource identity.
 
 The runtime-confirmed foreign Prison-key import establishes the required architecture: relocate/expand the destination stage resource file when necessary, append or deduplicate the source item's resource bundle, assign a destination-local selector, update file-table bounds/location, and patch the destination pickup to reference that selector together with the correct presentation/award semantics.

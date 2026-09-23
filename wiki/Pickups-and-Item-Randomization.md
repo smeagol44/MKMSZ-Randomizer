@@ -1,24 +1,47 @@
-# Pickups and item randomization
+# Pickups and stage-local randomization
 
-## Native record model
+> **Scope:** This page is the canonical owner for the **current production ordinary-pickup behavior and stage-local seeded randomization**. It deliberately does not own the 1.0 cross-stage materializer, global logical shuffle, deterministic global retry contract, whole-run solver, required-Power-Upgrades policy, or Temple Map 85th-check question; those belong to [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
 
-All eight main stages use ordinary `0x30`-byte records. The production catalog contains exactly 84. The movable identity is the seven-word slice `+0x10..+0x2B`: type, callback parameter, callback, two extents, stage-local resource slot, and presentation descriptor. Position/metadata `+0x00..+0x0F` and collected flag `+0x2C` remain attached to the location.
+## Current conclusion
 
-Same-stage Fire Potion-to-Herbs testing established why the entire identity must move: callback changes the award, while type/resource/presentation fields control visible and collision behavior. Copying the complete tuple produced correct Herbs behavior and art at the Potion location.
+MKMSZR currently randomizes the 84 ordinary pickup records **within each stage**. The production mode is deterministic, preserves each destination location and collected flag, moves the complete ordinary-item identity slice, and rejects stage-local layouts that violate the current modeled access requirements.
 
-## Current interim production shuffle
+This is a real production system, but it is intentionally an **interim 1.0 mode**. The final 1.0 design requires one cross-stage logical pool plus a destination resource materializer and whole-run solvability verifier. Those are separate systems because a resource selector that is valid in one stage is not automatically meaningful in another.
 
-For each stage, the generator uses a stable SHA-256-based Fisher–Yates shuffle with domain:
+## Ordinary pickup behavior and identity semantics
+
+All eight main stages use ordinary `0x30`-byte records. The catalog contains exactly 84 ordinary records.
+
+The canonical byte grammar is owned by [Data structures and encodings](Data-Structures-and-Encodings). In summary, the randomizable identity is the contiguous seven-word slice `+0x10..+0x2B`:
+
+- type / behavior;
+- callback parameter;
+- native award callback;
+- two collision extents;
+- stage-local resource selector;
+- presentation descriptor.
+
+Position and location metadata `+0x00..+0x0F` stay attached to the destination, and the collected flag at `+0x2C` stays attached to that physical check and is persisted separately.
+
+Same-stage Fire Potion-to-Herbs testing established why the complete identity has to move. Changing only the callback changes the award but does not fully carry presentation/collision identity. Copying the complete seven-word tuple produced correct Herbs behavior and art at the Potion location.
+
+The concrete records, selectors, and resource instances remain canonical in the eight [stage catalogs](Stage-Catalogs); this page does not duplicate their raw tables.
+
+## Current stage-local production shuffle
+
+For each stage, the generator uses a stable SHA-256-based Fisher-Yates shuffle with domain:
 
 ```text
 MKMSZR:PICKUPS:STAGE-LOCAL:V1\0
 ```
 
-The input includes seed bytes, native stage ID, deterministic attempt number, and counter. RNG is isolated from boot phrases, palettes, and future features. A seedless configuration leaves pickup layout unchanged.
+The deterministic input includes the user seed bytes, native stage ID, attempt number, and counter. This namespace is isolated from boot phrases, palettes, progression-reward selection, and future features. A seedless configuration leaves the pickup layout unchanged.
 
-Candidate layouts are rejected, up to 1,000 deterministic attempts, if the known access model cannot obtain stage progression tokens before their required locations. CI exercises 250 seeds and asserts catalog integrity, tuple preservation, determinism, namespace isolation, and constraints.
+Candidate layouts are rejected, up to **1,000 deterministic attempts**, if the current stage-local access model cannot obtain required progression tokens before their dependent locations. This 1,000-attempt ceiling belongs only to the interim stage-local implementation; it is not the 1.0 global retry policy.
 
-## Access model
+CI exercises 250 seeds and checks catalog integrity, tuple preservation, determinism, namespace isolation, and the modeled access constraints.
+
+## Current stage-local access model
 
 | Stage | Modeled dependencies |
 |---|---|
@@ -29,31 +52,31 @@ Candidate layouts are rejected, up to 1,000 deterministic attempts, if the known
 | Prison | staged Level 1/2/3 dependencies as listed in the Prison catalog |
 | Fire, Bridge, Fortress | Current ordinary locations treated as free by the ported access model |
 
-These are implementation/CI-confirmed rules ported from legacy logic. A complete native runtime playthrough across arbitrary seeds remains pending.
+These rules are **Implementation/CI-confirmed** as the current stage-local model. They were ported from legacy logic and reconciled with the current catalogs, but they are not yet a complete whole-run progression graph. A representative arbitrary-seed full native playthrough remains pending.
 
-This stage-local mode is an implementation stepping stone, not the final 1.0 randomizer model. 1.0 requires a single cross-stage logical pool and a whole-run validator.
+## Progression-reward overlay in the current product
 
-## Progression-reward overlay
-
-After the ordinary layout is accepted, production derives Herbs candidates from that exact assignment and selects exactly nine using a separate SHA-256 Fisher-Yates domain:
+After the ordinary stage-local layout is accepted, production derives Herbs candidates from that accepted assignment and selects exactly nine using a separate SHA-256 Fisher-Yates domain:
 
 ```text
 MKMSZR:PROGRESSION:HERBS:V1\0
 ```
 
-Only the callback word of each selected generated Herbs identity is changed. Type, collision, stage-local resource selector and presentation stay Herbs, so the ordinary pickup shuffle is unchanged and no cross-stage resource import is required.
+Only the callback word of each selected generated Herbs identity is changed. Type, collision, stage-local resource selector, and presentation remain Herbs, so this current overlay does not require cross-stage resource import.
 
 The progression callback advances to the next native XP threshold, evaluates the native tier at pickup acquisition, and does not insert an inventory item. Ordinary pickup persistence still records the physical location as collected. Progression count/XP are stored separately from the 84 ordinary-pickup bits.
 
-Diagnostic A runtime-confirmed the generated Temple pattern for seed `BCBDBF`: first and third Herbs were progression rewards, second Herbs remained normal, XP reached 85 then 258, combat XP stayed disabled, and all three shared ordinary Herbs graphics.
+Diagnostic A Runtime-confirmed the generated Temple pattern for seed `BCBDBF`: the first and third Herbs were progression rewards, the second Herbs remained normal, XP reached 85 then 258, combat XP stayed disabled, and all three shared ordinary Herbs graphics.
 
-The desired bright-blue Herbs body with bronze/gold-looking handle remains a presentation-only refinement.
+The complete progression mechanism and lifecycle evidence belong to [XP and progression](XP-and-Progression). The future seed-specific **required** Power-Upgrades target and its solver role belong to [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
 
-## Runtime milestone
+## Runtime evidence for the current shuffle
 
-Seed `TEST153` predicted a Shield at Fire's first ordinary location. Runtime testing showed the Shield model and award behaving normally. The boot phrase for that build was `' OR 1==1 --`, independently selected from the phrase namespace. This confirms one generated location, not the full 84-location run.
+Seed `TEST153` predicted a Shield at Fire's first ordinary location. Runtime testing showed the Shield model and award behaving normally. The boot phrase for that build was `' OR 1==1 --`, independently selected from its own namespace.
 
-## Callbacks and fixed IDs
+This confirms one generated stage-local location on that build; it does **not** establish exhaustive runtime coverage for all 84 records or arbitrary layouts.
+
+## Callback reference for current item identities
 
 | Callback | Decoded item | Native ID where fixed |
 |---:|---|---:|
@@ -69,182 +92,32 @@ Seed `TEST153` predicted a Shield at Fire's first ordinary location. Runtime tes
 | `0x80038770` | Key/crystal | stage and parameter dependent |
 | `0x800490CC` | Shinnok Amulet | `0x23`; separate special path |
 
-## Cross-stage import proof
+This table is a pickup-domain convenience summary, not a replacement for the canonical function registry or item/key structure tables.
 
-A pickup's `+0x24` is stage-local, so copying a Prison identity into Fire initially produced no usable item. The successful proof relocated and expanded Fire's resource file, appended a Prison-key bundle under Fire slot 5, and used a dedicated callback to award item `0x1A`. It rendered and awarded correctly. This proves that cross-stage items are feasible only as a coordinated resource, callback, file-table, storage, and arena operation.
+## Current exclusions
 
-Production does not yet have a resource-import planner. Global item pooling remains disabled. See [ROM and resource map](ROM-Overlay-and-Resource-Map) and the per-stage catalogs.
+The current stage-local ordinary-pickup system deliberately excludes:
 
-## Explicit exclusions
+- the Temple Map and other scripted/special actors;
+- boss or cutscene rewards;
+- cross-stage resource imports/materialization;
+- Shinnok's Amulet special pickup path;
+- legacy Lua substitutions such as representing native Mana as Herbs;
+- treating empty logical resource selectors as physical storage.
 
-- Temple Map and other scripted/special actors.
-- Boss or cutscene rewards.
-- Cross-stage resource imports.
-- Legacy Lua substitutions such as replacing native mana with Herbs.
-- Treating empty logical slots as storage.
+## Why global materialization is a separate system
 
+Within one stage, the complete ordinary identity tuple can be shuffled because its resource selector remains meaningful against the same destination stage resource file. Across stages, that assumption breaks: `+0x24` is stage-local, resource bundles may be embedded or externally backed, and key/crystal award semantics may need a destination-safe path.
 
-## Legacy Lua global-randomizer reference
+Therefore the current stage-local shuffle owns **which same-stage identity goes to which ordinary location**. The 1.0 global system must separately own **which logical item goes to which stage and how that item is physically materialized there**, including resource import, extension selectors, deduplication, destination-safe awards, deterministic global retries, and whole-run solvability.
 
-The legacy `MKMSZR - 1.1.lua` already contained a true global shuffle design:
+See [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) for that canonical design/proof history. Underlying loader/resource grammar remains in [ROM, overlay, and resource map](ROM-Overlay-and-Resource-Map), and concrete stage resource records remain in the [stage catalogs](Stage-Catalogs).
 
-1. build one flat list of locations across all eight stages;
-2. collect one flat item multiset;
-3. replace nine Herbs entries with progression Power Upgrades;
-4. Fisher-Yates shuffle the full item list;
-5. assign it back across stages;
-6. repeatedly collect every currently accessible location until no new location opens;
-7. accept the seed only if the resulting simulated inventory satisfies the final win condition.
+## Related pages
 
-That is the correct high-level shape for 1.0, but it must **not** be ported literally. The Lua location-access rules differ from the current researched catalogs, some stock Mana entries were intentionally represented as Herbs, and the Lua's final beatability check was intentionally narrow. Current Wiki catalogs/requirements own the native 1.0 logic.
-
-The current SHA-256 deterministic RNG is preferable to Lua `math.random`; the global implementation should preserve deterministic namespace isolation while changing from stage-local to global assignment.
-
-## 1.0 cross-stage materialization requirement
-
-A logical item cannot be represented globally by blindly copying its native 28-byte tuple. The tuple may contain a stage-local resource selector and, for keys/crystals, an overlay-local callback.
-
-The global generator therefore needs a destination-stage materializer:
-
-- logical item identity and award semantics;
-- destination-safe callback;
-- destination-local resource slot;
-- presentation descriptor/collision data;
-- imported resource bundle when the destination does not already contain it.
-
-The runtime-confirmed Fire foreign Prison-key proof establishes that this architecture is feasible. A production planner must generalize it with guarded storage, relocation/expansion, file-table updates, deduplication, and allocation bounds.
-
-
-## 1.0 deterministic retry requirement
-
-The legacy Lua had a retry/reseeding bug: when an attempted global layout was rejected as unwinnable, later attempts were not guaranteed to regenerate identically from the same displayed seed.
-
-The native 1.0 generator must make retry state explicit and deterministic. A recommended contract is:
-
-```text
-candidate = H(namespace || user_seed || attempt_index || counter)
-```
-
-The solver tests attempt 0, then 1, then 2, and so on until one is accepted. The accepted attempt number is therefore a pure function of the user seed and game rules. Regenerating the same seed under the same randomizer version/rules must reproduce the identical final layout even when multiple rejected candidates precede it.
-
-The attempt index must not be advanced by unrelated RNG namespaces such as boot phrases, palette selection, HUD flavor text, or required-Power-Upgrades generation.
-
-## Required Power Upgrades
-
-1.0 retains the legacy concept of a seed-specific required number of progression rewards. This value must be generated deterministically from its own RNG namespace and displayed by the randomizer HUD.
-2. The value must be incorporated into whole-run solvability validation: the accepted global layout must make at least that many progression rewards reachable before the completion condition.
-3. The exact allowed range/policy should be finalized with the global solver, but it must not depend on how many candidate layouts were rejected.
-
-## Temple Map as a possible 85th check
-
-The Map is not one of the 84 ordinary records and currently couples several native behaviors. Before including it in the global pool, resolve two separate concerns:
-
-- **reward versus trigger:** determine whether the Map inventory award can be decoupled from the Temple elevator/exit-opening event, so shuffling the logical Map item does not make Temple incompletable;
-- **cross-stage persistence:** stock behavior removes the Map on Temple -> Wind. If the Map becomes a true randomized inventory item, that removal must be suppressed or replaced by explicit randomizer lifecycle handling.
-
-Until those are proven, the global solver should model the Map separately rather than pretending it is an ordinary 0x30-byte pickup.
-
-
-## Exact cross-stage visual materialization requirement
-
-**Required for 1.0.**
-
-A randomized pickup must visually represent the item it actually awards. A Fire Potion location that contains a Prison key must look like the Prison key, not like a Potion.
-
-The logical-item catalog remains useful for global shuffle/solver semantics, but physical materialization must carry the randomized item's actual visual identity into the destination stage:
-
-- source item type/behavior where required for correct pickup presentation;
-- source extents/collision dimensions;
-- source presentation descriptor;
-- the source item's resource/model bundle, remapped into a destination-local selector;
-- destination-safe award callback/parameter semantics.
-
-Because `+0x24` is stage-local, the source selector cannot simply be copied. The destination stage must already contain an equivalent resource or receive an imported copy of the source bundle under a safe destination-local selector.
-
-The runtime-confirmed Fire foreign Prison-key proof is the architectural precedent: Fire's resource file was relocated/expanded, the Prison-key bundle was appended and assigned to a Fire selector, and the pickup then rendered as the Prison key and awarded the Prison key.
-
-For 1.0, that mechanism must be generalized across the complete randomized item pool with explicit allocation, deduplication, file-table updates, bounds checks, destination selector planning, and runtime validation.
-
-A temporary experiment that keeps the destination graphics while awarding a different logical item is **Rejected for 1.0** because it violates the randomizer's visual-identity requirement. It should not be used as the production materialization path.
-
-
-## Selector lookup breakthrough
-
-Static analysis of the ordinary pickup manager shows that `+0x24` is not range-checked against a stage's stock outer-table length.
-
-The manager computes:
-
-```text
-entry_ptr = stage_resource_base + (selector << 2)
-descriptor_ptr = stage_resource_base + *entry_ptr
-```
-
-and passes that resolved descriptor into the resource-backed actor path.
-
-Therefore a stage does not necessarily require physical insertion of new words at the beginning of its stock outer table. A relocated/expanded stage file can append an **extension selector table** elsewhere in the file; a pickup can reference one of those entries by using the corresponding word index in `+0x24`.
-
-This is materially different from the earlier nested-table idea: the vanilla loader does not recurse through tables, but it also does not enforce that selector indices stay within the original stock table.
-
-### Disposable Proof D — runtime-confirmed
-
-Proof D changes no item art or callback semantics. It relocates Prison's stock resource file, appends one selector word at file offset `0x48F0`, points that word to the existing Herbs descriptor `0x255C`, and changes all six Prison Herbs records from selector `8` to selector `0x123C` (`0x48F0 / 4`).
-
-Manual runtime result: Prison loaded normally; the first two early Herbs rendered exactly like vanilla Herbs, behaved normally, and appeared normally in inventory. Therefore the stock pickup resource lookup accepts an out-of-stock-range selector and resolves an appended selector entry without any loader hook.
-
-This removes the original outer-table-width limit as a blocker for pickup materialization.
-
-### Disposable Proof F — runtime-confirmed foreign embedded-resource coexistence
-
-Proof F kept all stock Prison selectors untouched and appended an extension entry at file offset `0x48F0`, addressed by pickup selector `0x123C`. That entry points to a fully copied and file-relative-pointer-rebased Water Potion `embedded-data-bundle` appended after the stock Prison resource file.
-
-Only one early Prison Herbs record was changed to the imported Potion identity. The remaining five Herbs records stayed byte-for-byte stock and continued using Prison selector `8`.
-
-Manual runtime result:
-
-- the imported Potion rendered cleanly in Prison;
-- collecting it awarded Potion;
-- an untouched Herbs pickup still rendered and awarded normally in the same stage;
-- the inventory simultaneously showed both `POTION` and `HERBS` correctly.
-
-Therefore vanilla stage resources and appended foreign embedded-data resources can coexist through extension selectors without consuming/replacing the original selector slot.
-
-**Evidence limit:** this confirms the `embedded-data-bundle` case. Fire Potion's earlier external-resource-ID transplant produced corrupted graphics, so external-resource-ID dependency handling remains unresolved rather than being generalized from this success.
-
-
-### Disposable Proof G — rejected external-ID-only transplant
-
-Proof G kept the extension-selector architecture from Proof F but imported Water's Health-urn descriptor/records while retaining external resource IDs `0x28F..0x292`. Only one early Prison Herbs location was changed; five Herbs stayed vanilla.
-
-**Runtime result: Rejected / failed visually.** The Health urn actor appeared, but its graphics were corrupted. This isolates the failure to the external-resource dependency layer: the extension selector and pickup path were already proven, while the copied external IDs were not portable by themselves.
-
-### External Health urn converted to embedded data
-
-Static tracing found that Health urn is the ordinary-item case that cannot simply choose another embedded donor: its catalogued Water, Fire and Bridge variants all use external IDs `0x28F..0x292`.
-
-Those four raw image payloads were extracted from Water's stage package, then encoded into MKMSZ's native type-4 embedded image format. The conversion was validated in two ways:
-
-1. Water's existing embedded Potion frames decode byte-for-byte to Fire's external Potion payloads `0x27F..0x286`, establishing equivalence between the two storage forms for a known paired item.
-2. A conservative literal-only type-4 encoder round-trips all four Health payloads exactly through a software model of native decoder `0x80003428`.
-
-### Disposable Proof H — runtime-confirmed
-
-Proof H relocates/expands Prison's resource file while leaving all stock selectors unchanged. Extension selector `0x123C` points to an appended Health-urn descriptor containing four embedded-data records. The original Water external IDs are removed; record `+0x08` instead points to four self-contained type-4 blocks generated from the exact `0x28F..0x292` image payloads.
-
-Only one early Prison Herbs location becomes the Health urn. The other five Herbs remain byte-for-byte stock on selector `8`.
-
-Manual runtime result: the first changed Prison pickup rendered as a clean Urn of Vitality and awarded the urn correctly; the next untouched Herbs pickup rendered and awarded normally. Both appeared correctly in inventory. This confirms that the external Health-urn resource family can be converted into self-contained embedded type-4 blocks and can coexist with stock stage resources through an extension selector.
-
-**Runtime-confirmed scope:** one converted Health urn in Prison plus one untouched Herbs control. This establishes the previously missing ordinary-item resource format needed by the cross-stage visual materializer; production generalization still requires guarded planner implementation, deduplication/allocation policy, and broader runtime coverage.
-
-
-### Composed five-visual stress proof — Prison runtime-confirmed, Fortress pending
-
-A later disposable stress ROM exercised the generalized materialization architecture with five distinct imported visuals in both Prison and Fortress at once. In each target stage, the first five stock Herbs records were replaced with canonical **Potion, Urn of Vitality, Formula, Eye, and Shield** identities; the sixth Herbs record remained byte-for-byte vanilla.
-
-The resource planner created five contiguous extension-selector entries per stage and appended self-contained descriptor/record/image bundles. Normal embedded donors and external-resource-ID donors converted to native type-4 embedded blocks were composed in the same expanded stage file.
-
-**Prison runtime result:** all five imported items were manually collected. Their models rendered correctly, each awarded the expected item, and inventory entries were correct. The untouched Herbs control also rendered and awarded correctly. This is **Runtime-confirmed** for simultaneous five-visual composition in Prison.
-
-**Fortress status:** the same ROM contains the equivalent five-import stress construction for Fortress, but it has not yet been manually runtime-tested. Do not generalize the Prison observation into Fortress runtime confirmation.
-
-The pure planner implementation is merged but remains disconnected from the normal browser/CLI patch pipeline pending completion of this composed runtime gate and the separate destination-safe key/crystal award-callback work.
+- [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) — 1.0 cross-stage logical pool, materializer, proofs, deterministic retry, solver, required powers, and Map question.
+- [Data structures and encodings](Data-Structures-and-Encodings) — canonical ordinary-pickup record grammar.
+- [Stage catalogs](Stage-Catalogs) — all 84 concrete ordinary records and stage-local resources.
+- [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle) — collected-state persistence and inventory behavior.
+- [XP and progression](XP-and-Progression) — current progression callback, thresholds, persistence, and runtime evidence.
+- [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap) — normative release requirements and acceptance gates.
