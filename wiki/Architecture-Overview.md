@@ -25,8 +25,8 @@ Two arena-start immediates move the original start from `0x801AF420` to `0x801AF
 
 | Range | Purpose |
 |---|---|
-| `0x801AF420..0x801AF71F` | 0x300-byte runtime V2 code region |
-| `0x801AF720..0x801AF81F` | 0x100-byte runtime V2 persistent state |
+| `0x801AF420..0x801AF7CF` | 0x3B0-byte runtime V2 code region |
+| `0x801AF7D0..0x801AF81F` | 0x50-byte runtime V2 persistent state |
 
 File ID `0x1B` in the global file table describes a payload stored at ROM `0x00F10000`. The synchronous raw-file loader `0x80065D64` loads it to uncached `0xA01AF420`. A bootstrap stub at `0x8009A184` is called from `0x800663E0`. See [Core runtime and address database](Core-Runtime-and-Address-Database).
 
@@ -45,6 +45,8 @@ The runtime V2 state header owns one bit per ordinary pickup, grouped by native 
 The stock ten-slot inventory remains the live gameplay window. Four ten-word backing boxes at `0x800A6048..0x800A60E7` are authoritative. Switching copies to/from the live window and masks keys from other stages as inert Glass (`0x08`) without destroying their backing values.
 
 ## Presentation layer
+
+Static outfit modes transform only Sub-Zero clothing palette indices `0x21..0x3F` in the guarded source TLUT. The `rainbow` product mode instead uses the Runtime-confirmed frame-setup boundary: file `0x87` is relocated intact to high ROM with 64 appended BGR555 palettes, and a bounded helper at runtime offset `+0x2E0` cycles the actor through those palettes using the native allocation/release path. The production output for seed `RAINBOW64` is byte-identical to the manually validated proof v01.
 
 The box indicator hooks an existing HUD submission, executes the displaced call, rewrites the digit in `BOX 1 OF 4`, and sends native text through `0x80073E74`. Boot branding rewrites only guarded legal-screen string storage and pointers; the following two fixed logo presentations are skipped with a separate branch.
 

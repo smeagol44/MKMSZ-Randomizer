@@ -21,15 +21,15 @@
 
 The production identity is the contiguous 28-byte slice `+0x10..+0x2B`. Copying only callback/type is insufficient for correct art and behavior. There are exactly 84 ordinary records: Temple 4, Wind 6, Water 9, Earth 20, Prison 10, Fire 16, Bridge 10, Fortress 9.
 
-## Persistence state V2 (`0x100` bytes)
+## Persistence state V2 (`0x50` bytes)
 
-Production V2 lives at `0x801AF720..0x801AF81F`.
+Production V2 lives at `0x801AF7D0..0x801AF81F`.
 
 | Offset | Meaning |
 |---:|---|
 | `+0x00` | Magic `MKSV` = `0x4D4B5356` |
 | `+0x04` | Version `2` |
-| `+0x08` | Total size `0x100` |
+| `+0x08` | Total size `0x50` |
 | `+0x0C` | Header size `0x20` |
 | `+0x10` | Flags |
 | `+0x14..+0x1F` | Reserved |
@@ -43,7 +43,8 @@ Production V2 lives at `0x801AF720..0x801AF81F`.
 | `+0x3C` | Fortress |
 | `+0x40` | Progression rewards acquired, 0..9 |
 | `+0x44` | Persistent progression XP |
-| `+0x48..+0xFF` | Reserved |
+| `+0x48` | Rainbow phase word; used only by the `rainbow` outfit mode |
+| `+0x4C` | Reserved |
 
 Fire's 19 manager ordinals translate to catalog bits as:
 

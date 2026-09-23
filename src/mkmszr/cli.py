@@ -22,7 +22,7 @@ def _parse_rgb(value: str) -> tuple[int, int, int]:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    modes = ["vanilla", "red", "green", "seeded", "hue", "rgb", *PRESET_HUES]
+    modes = ["vanilla", "red", "green", "rainbow", "seeded", "hue", "rgb", *PRESET_HUES]
     parser = argparse.ArgumentParser(description="MKMSZ Randomizer native ROM patcher")
     parser.add_argument("source", type=Path, help="clean MKMSZ USA Rev. 0 .z64 ROM")
     parser.add_argument("output", type=Path, help="new disposable output .z64")

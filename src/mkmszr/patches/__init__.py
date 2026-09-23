@@ -17,6 +17,7 @@ from .pickup_persistence import (
     pickup_persistence_patches,
 )
 from .pickup_randomization import PickupRandomizationPatch
+from .rainbow_palette import RainbowPalettePatch
 from .runtime_v1 import (
     RuntimeV1FirePersistencePatch,
     runtime_v1_fire_patches,
@@ -37,6 +38,7 @@ __all__ = [
     "NativePayloadSpec",
     "PickupPersistencePatch",
     "PickupRandomizationPatch",
+    "RainbowPalettePatch",
     "RuntimeV1FirePersistencePatch",
     "SafeStageSelectSkipAutoSavePatch",
     "SafeStageSelectorPatch",

@@ -27,12 +27,13 @@ The test workflow uses Python 3.11 for pushes to `main`, `refactor/**`, and `fea
 | `test_flow_bypass.py` | Exact logo branch and selector-only save bypass |
 | `test_presentation.py` | Box wrapper/text and boot branding interaction |
 | `test_title_branding.py` | Edition-name constraints, embedded art/font rendering, LZW round-trip, and bounded data-only title relocation |
-| `test_palette.py` | BGR555 conversion, bounds, deterministic modes |
+| `test_palette.py` | BGR555 conversion, bounds, deterministic static modes |
+| `test_rainbow_palette.py` | Runtime V2 rainbow layout, proof-exact helper/hook bytes, XP-tail composition, and high-ROM bounds |
 | `test_xp_progression.py` | Native thresholds/state separation, deterministic nine-reward selection, RNG isolation, Runtime V2 extension bounds, safe stage restore, and guarded XP patch output |
 | `test_pipeline.py` | Patch order and composed output behavior |
 | `test_seed.py` | Seed generation and domain determinism |
 | `test_runtime_v1.py` | Historical/compatibility Runtime V1 layout, reference payload, and Fire persistence pipeline contract |
-| `test_runtime_v2.py` | Current Runtime V2 0x300-code/0x100-state repartition and versioned state-header contract |
+| `test_runtime_v2.py` | Current Runtime V2 0x3B0-code/0x50-state repartition and versioned state-header contract |
 
 ## What CI proves
 

@@ -9,7 +9,7 @@
 | Stage-overlay base | `0x802ECE30` | [Resource and overlay system](ROM-Overlay-and-Resource-Map); allocation qualification in [Memory map](Memory-and-Allocation-Map) |
 | Current process/context pointer | `0x802ECE20` | [Memory map](Memory-and-Allocation-Map); lifecycle use in [Core runtime](Core-Runtime-and-Address-Database) |
 | Reserved runtime block | `[0x801AF420,0x801AF820)` | [Memory map](Memory-and-Allocation-Map) |
-| Runtime V2 code/state split | code `[0x801AF420,0x801AF720)`; state `[0x801AF720,0x801AF820)` | [Memory map](Memory-and-Allocation-Map); composition in [Core runtime](Core-Runtime-and-Address-Database) |
+| Runtime V2 code/state split | code `[0x801AF420,0x801AF7D0)`; state `[0x801AF7D0,0x801AF820)` | [Memory map](Memory-and-Allocation-Map); composition in [Core runtime](Core-Runtime-and-Address-Database) |
 | Current native stage | `0x8009A910` | [Stage flow and selector](Stage-Flow-and-Selector) |
 | Selector index | `0x800C11E0` | [Stage flow and selector](Stage-Flow-and-Selector) |
 | Normalized action input | `0x800BF2EE` | [Player actions and special moves](Player-Actions-and-Special-Moves) |

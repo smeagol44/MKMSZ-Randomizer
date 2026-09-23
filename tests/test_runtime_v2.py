@@ -11,9 +11,9 @@ from mkmszr.patches.runtime_v2 import (
 
 def test_runtime_v2_repartitions_only_existing_reserved_kib() -> None:
     assert CODE_CACHED_BASE == 0x801AF420
-    assert CODE_SIZE == 0x300
-    assert STATE_CACHED_BASE == 0x801AF720
-    assert STATE_SIZE == 0x100
+    assert CODE_SIZE == 0x3B0
+    assert STATE_CACHED_BASE == 0x801AF7D0
+    assert STATE_SIZE == 0x50
     assert STATE_CACHED_BASE + STATE_SIZE == 0x801AF820
 
 
