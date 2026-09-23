@@ -208,6 +208,10 @@ For the Sektor-first takeover, all imported Sektor images are 5-bpp and address 
 
 This resident-TLUT strategy is appropriate for a whole-character takeover. The temporary allocate/bind/release path above remains the safer model when donor and stock fighter palettes must coexist per actor/frame.
 
+The later alternate-palette proof establishes an additional stable compatibility boundary: replacing only the normal player TLUT is insufficient when another reachable actor path reuses the transplanted 5-bpp pixels through a different source palette. The first visible `SCORPION` / fighter type `0x12` uses a Sub-Zero-family alternate palette, while the separate genuine Undead Scorpion/type-`0x11` resource is a different route. Because the transplanted Sektor pixels use only indices `0..31`, the relevant alternate TLUT also needs a compatible lower-32 mapping.
+
+That first type-`0x12` route is **Runtime-confirmed** by the v60 proof. The durable adapter lesson is to inventory every reachable palette-binding path for a whole-character takeover and translate each required TLUT deliberately; one working normal-player palette does not prove arbitrary alternate/enemy palettes. Exact v60 ROM identities, proof offsets, byte-diff counts, and the bounded manual result remain canonical in [Sektor takeover proof history](Sektor-Takeover-Proof-History).
+
 ### Mechanical-arm palette
 
 The flattened Sektor throw cannot interpret codec-15 arm indices through the body palette. The donor `MECARM_P` metal ramp is translated into resident Sektor TLUT indices as:
