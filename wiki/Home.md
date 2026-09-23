@@ -1,53 +1,40 @@
 # MKMSZR technical knowledge base
 
-This Wiki is the current, self-contained technical reference for the native-ROM **Mortal Kombat Mythologies: Sub-Zero Randomizer**. GitHub code describes the implemented product; the versioned `wiki/` tree and published Wiki contain current project knowledge; the `MKMSZR Research` Library archive preserves evidence and history. Project Instructions separately contain assistant operating rules. The Wiki includes technical facts, product requirements, methodology, contribution information, and pending work.
+MKMSZR is a native-ROM randomizer project for **Mortal Kombat Mythologies: Sub-Zero** on Nintendo 64. The supported game target is the **USA Rev. 0** release; exact ROM identity and low-level validation details live on the owning technical pages rather than here.
+
+This Wiki is the current technical and product knowledge base for the project. Use it to find current project state, 1.0 requirements, runtime evidence, implementation/reference material, stage catalogs, donor research, and preserved failure/history records.
 
 ## Start here
 
-- [Contributor start here](Contributor-Start-Here): build/test commands and documentation map.
-- [Project status](Project-Status): what is production, proof-only, pending, or rejected.
-- [Architecture overview](Architecture-Overview): ROM validation, patch pipeline, runtime reservation, and feature boundaries.
-- [Complete research synthesis](Complete-Research-Synthesis): one-page domain map.
-- [Runtime validation status](Runtime-Validation-Status): the exact scope of runtime, static, and CI evidence.
+- [Project status](Project-Status) — current production, proof-only, pending, and priority state.
+- [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap) — canonical 1.0 scope, acceptance criteria, blockers, and dependency order.
+- [Runtime validation status](Runtime-Validation-Status) — current evidence matrix and runtime-validation scope.
+- [Contributor start here](Contributor-Start-Here) — repository workflow, build/test entry points, and contribution routing.
+- [Architecture overview](Architecture-Overview) — high-level system boundaries and patch/runtime architecture.
+- [Research methodology and evidence](Research-Workflow) — evidence labels, bounded-experiment method, and research provenance.
 
-## Current product
+## Find the right owner
 
-The Python patcher accepts only the clean USA Rev. 0 big-endian ROM, writes a separate output, installs a native eight-stage selector and 1 KiB runtime block, persists and stage-locally randomizes all 84 ordinary pickups, adds nine pickup-driven progression rewards, provides four ten-slot inventory boxes, draws a native box indicator, brands and shortens the boot flow, and optionally recolors Sub-Zero. The browser and CLI use the same patching core.
+### Core technical reference
 
-The product is **beta**. Production means a guarded implementation is in the repository and covered by CI; it does not imply that every generated seed has completed a full hardware/emulator playthrough. XP progression uses the runtime-confirmed Diagnostic B behavior, with full nine-tier coverage pending. Global cross-stage item placement, production enemy randomization, and a finished foreign special move are not product features yet.
+Use [Core runtime and native payload](Core-Runtime-and-Address-Database) for bootstrap/runtime mechanisms, [Memory and allocation map](Memory-and-Allocation-Map) for literal ROM/RDRAM ownership, [Function registry](Function-Registry) for function semantics, [Address and patch-site registry](Address-and-Patch-Site-Registry) for guarded edit sites, [Data structures and encodings](Data-Structures-and-Encodings) for stable structure/codec grammar, and [Resource and overlay system](ROM-Overlay-and-Resource-Map) for file/overlay/resource-loading rules. [Address quick reference](Address-Quick-Reference) is a convenience subset, and [Testing and CI](Testing-and-CI) owns automated validation/publication mechanics.
 
-## Technical domains
+### Randomizer and product systems
 
-| Domain | Canonical page |
-|---|---|
-| Runtime allocation and bootstrapping | [Core runtime and address database](Core-Runtime-and-Address-Database) |
-| ROM/RDRAM/overlay/resource layout | [Runtime and memory map](Runtime-and-Memory-Map), [ROM and resource map](ROM-Overlay-and-Resource-Map) |
-| Functions and patch sites | [Function registry](Function-Registry), [address and patch-site registry](Address-and-Patch-Site-Registry) |
-| Native structures and encodings | [Data structures and encodings](Data-Structures-and-Encodings) |
-| Pickups and seeded placement | [Pickups and item randomization](Pickups-and-Item-Randomization) |
-| Persistence and four-box inventory | [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle) |
-| Stage resources and all 84 records | [Stage catalogs](Stage-Catalogs) |
-| Stage selection and frontend flow | [Stage flow and selector](Stage-Flow-and-Selector) |
-| Enemies and resource import | [Enemy randomization](Enemy-Randomization) |
-| Pickup-driven XP and progression history | [XP and progression](XP-and-Progression) |
-| Native gameplay HUD and UI | [Native HUD and UI](Native-HUD-and-UI) |
-| Legal/title presentation and branding | [Presentation and branding](Presentation-and-Branding) |
-| Toasty visual diagnostics | [Toasty visual research](Toasty-Visual-Research) |
-| Audio system | [Audio system](Sounds-and-Music) |
-| Toasty audio donor/proof research | [Toasty audio research](Toasty-Audio-Research) |
-| MKT→MKMSZ move/character compatibility | [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer) |\n| Sub-Zero ↔ Sektor animation catalog | [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) |
-| MKMSZ player-action host architecture | [Player actions and special moves](Player-Actions-and-Special-Moves) |
-| Historical Reverse Elbow recreation branch | [(Old) Foreign moves and Reptile](Foreign-Moves-and-Reptile) |
-| N64/PS1 comparison | [N64–PS1 comparison](N64-PS1-Comparison), [PS1 research](PS1-Research) |
-| Product frontend and release behavior | [Web patcher and product](Web-Patcher-and-Product), [testing and CI](Testing-and-CI) |
+Current system owners are [Stage flow and selector](Stage-Flow-and-Selector), [Pickups and stage-local randomization](Pickups-and-Item-Randomization), [Global item materialization and solvability](Global-Item-Materialization-and-Solvability), [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle), [XP and progression](XP-and-Progression), [Native HUD and UI](Native-HUD-and-UI), [Presentation and branding](Presentation-and-Branding), [Audio system](Sounds-and-Music), [Palette and recoloring](Palette-and-Recoloring), and [Web patcher and product](Web-Patcher-and-Product).
 
-## Evidence labels
+### Stage reference
 
-- **Runtime-confirmed:** observed in game/emulator on a defined route, including user observations or supplied runtime captures; limited to the recorded scope.
-- **Static-confirmed:** established from ROM/Ghidra/source/static analysis, including disassembly/decompilation or byte-identical memory mapping.
-- **Implementation/CI-confirmed:** established by implementation or automated checks, without necessarily being observed at runtime; the surrounding evidence identifies which checks apply.
-- **Hypothesis / strong inference:** supported interpretation that is not yet confirmed.
-- **Rejected / failed:** tested or analyzed and shown unsuitable within the stated scope.
-- **Pending:** defined work or validation that has not happened.
+[Stage catalogs](Stage-Catalogs) is the shared index/legend for the eight main-stage catalogs and links to Temple, Wind, Water, Earth, Prison, Fire, Bridge, and Fortress.
 
-These labels describe evidence, not desirability. A runtime proof patch can be confirmed without being production-safe; a production implementation can be CI-confirmed while still awaiting exhaustive playthrough coverage.
+### Gameplay, enemies, and donor research
+
+Start with [Enemy randomization](Enemy-Randomization) or [Player actions and special moves](Player-Actions-and-Special-Moves) for MKMSZ gameplay research. For donor work, use the [MKT compatibility overview](MKT-to-MKMSZ-Compatibility-Layer), then its focused owners: [MKT adapter primitives](MKT-Adapter-Primitives), [MKT fighter asset translation](MKT-Fighter-Asset-Translation), [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping), and [Sektor takeover proof history](Sektor-Takeover-Proof-History). Toasty work is split between [Toasty audio research](Toasty-Audio-Research) and [Toasty visual research](Toasty-Visual-Research). Platform-specific donor/reference material lives in [PS1 research](PS1-Research) and [N64–PS1 comparison](N64-PS1-Comparison).
+
+### History, failures, and provenance
+
+Use [Experiments, failures and superseded findings](Experiments-Failures-and-Superseded-Findings) for the cross-domain rejected/superseded index, [Milestone timeline](Milestone-Timeline) for major chronology, and [Library artifact index](Library-Artifact-Index) for preserved research/archive provenance.
+
+## Canonical ownership
+
+Prefer the current canonical owner pages linked from this Home page and the sidebar. Older pages may remain at stable URLs as supersession stubs for historical or external links; when a stub points to a current owner, the current owner is authoritative. Do not treat a retired or superseded page as current technical truth merely because its URL still resolves.
