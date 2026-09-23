@@ -8,9 +8,11 @@
 
 The Sektor takeover line is **Runtime-confirmed as a bounded proof workstream, not a production feature**.
 
-The latest preserved gameplay proof is v62: the tested Sektor MKT combo strings work after translating donor reaction selectors to MKMSZ-native semantics. v58 is the current Runtime-confirmed twelve-pose Run baseline; v59 Runtime-confirms the completed middle Combo visuals; v60 Runtime-confirms the first type-`0x12` alternate Cyrax-style palette. None of those results waive the normal production integration gate.
+The stable common-animation/combo baseline remains v62: the tested Sektor MKT combo strings work after translating donor reaction selectors to MKMSZ-native semantics. v58 remains the Runtime-confirmed twelve-pose Run baseline; v59 Runtime-confirms the completed middle Combo visuals; v60 Runtime-confirms the first type-`0x12` alternate Cyrax-style palette.
 
-The strongest current production conflict is v62's standalone 16-byte combo continuation at ROM `[0x9AD90,0x9ADA0)`, which lies inside the production bootstrap composite `[0x9AD84,0x9AF20)`. The proof validates combo semantics, **not** that allocation. The early Sektor helper line also demonstrated the opposite lesson: the zero-filled-looking `[0xA1308,0xA1544)` area was live stock action/dispatch data, and using it caused input-specific hangs.
+The proof line now continues through **v70** for Sektor's straight missile. v63 is rejected because an assumed-dead file-`0x87` bank was actually live during hit/blood presentation. v64 established a compact one-chest/one-missile asset composition and reached the special path, but exposed that the reused Ice presentation spawned duplicate blue/frozen Sektor actors and retained Ice-like flight. v65-v67 are rejected immediate-hang lifecycle experiments. v68 is a stable negative-control build with stock Ice lifecycle restored but no chest substitution. **v69 Runtime-confirms the narrow player-pose hook:** current controller/process `+0x6E4` can be redirected after the stock helper and advanced once to display the genuine chest-open frame without hanging. **v70 is partially Runtime-confirmed:** the genuine rocket frame appears and travels, but stock Ice helper clones, blue tint, distant spawn, and ineffective/incorrect flight translation remain. v70 therefore validates presentation/host-path pieces, not a completed or faithful missile port.
+
+The strongest current production conflict remains the proof-code line inside the production bootstrap composite `[0x9AD84,0x9AF20)`. v62's standalone combo continuation uses `[0x9AD90,0x9ADA0)`; v65-v70 helper code begins at `0x9ADA0`, with v70 using the same proof-owned interval up to the bootstrap boundary. These artifacts validate semantics only; none of those offsets are reusable production allocations. The early Sektor helper line demonstrates the same rule from the opposite direction: zero-filled-looking `[0xA1308,0xA1544)` was live stock action/dispatch data, and overwriting it caused input-specific hangs.
 
 ## Reconciled status rules
 
@@ -23,6 +25,12 @@ A proof entry may preserve its historical **pre-test** status, but the section's
 - **v56:** final status is **partially Runtime-confirmed; PS1 Run rejected**. The even poses rendered as speckled/checkerboard bodies, while Sweep Fall/Getup, Throw, Fortress+Inventory, and Prison+Inventory passed on the tested route.
 - **v57:** final status is **Runtime-confirmed Run failure** caused by ignoring aligned WIMP source-row pitch; its earlier "in-progress/runtime pending" note is historical context only.
 - **v58/v59/v60/v62:** each has an explicit later Runtime-confirmed result within its bounded route. v61 remains **Rejected / failed**.
+- **v63:** **Rejected / failed.** The special itself was still XP-gated, and normal hit testing exposed a hard hang plus blood/effect corruption after the proof reused an incorrectly classified file-`0x87` bank.
+- **v64:** **Partially Runtime-confirmed / presentation rejected.** The special path executes with the compact chest/missile assets, but the player does not enter the chest pose; duplicate frozen/blue helper actors appear, the projectile flashes a Sektor fallback, and flight remains Ice-like.
+- **v65-v67:** **Rejected / failed.** All three hang immediately after the correct chest visual appears or the special begins; restoring only the first Ice helper process in v67 changes the extra visual but not the hang.
+- **v68:** **Runtime-confirmed stable negative control.** Full stock Ice lifecycle no longer hangs, but the attempted temporary animation-table substitution does not display the chest frame.
+- **v69:** **Runtime-confirmed narrow chest-pose hook.** Post-helper substitution through current process `+0x6E4` plus one stock frame advance displays the genuine chest-open frame for one frame and continues safely.
+- **v70:** **Partially Runtime-confirmed / implementation strategy superseded.** Chest presentation and a genuine rocket frame execute and travel, but the Ice helper clones/palette remain and the user reports spawn far from Sektor, slow motion, and no visible donor-style acceleration.
 
 ## Final-status index
 
@@ -63,6 +71,14 @@ A proof entry may preserve its historical **pre-test** status, but the section's
 | v60 | **Runtime-confirmed** | First type-`0x12` alternate palette renders as intended yellow/gold Cyrax-style robot. |
 | v61 | **Rejected / failed** | Direct donor reaction selector reuse corrupts world/background rendering in the long combo. |
 | v62 | **Runtime-confirmed proof; allocation conflict remains** | Three reaction-selector translations fix the tested combo strings; standalone record must be reallocated before integration. |
+| v63 | **Rejected / failed** | Four-frame missile/chest proof reused a falsely classified file-`0x87` bank; normal hit/blood presentation hard-hangs before the XP-gated missile can be meaningfully tested. |
+| v64 | **Partial Runtime-confirmed / presentation rejected** | Compact one-chest/one-missile composition executes, but the reused Ice presentation produces duplicate/fallback Sektor actors, distant spawn, and constant Ice-like flight. |
+| v65 | **Rejected / failed** | Correct chest art appears on the player, then the game immediately hangs after replacing stock lifecycle behavior and suppressing both Ice helper-process spawns. |
+| v66 | **Rejected / failed** | Mirroring the stock animation runner inside the replacement wrapper does not change the immediate hang. |
+| v67 | **Rejected / failed** | Restoring the first Ice helper-process spawn changes the visible extra object but the move still hangs immediately. |
+| v68 | **Runtime-confirmed stable negative control** | Stock Ice lifecycle/processes/projectile run without hanging; temporary table substitution does not reach the real player-animation cursor, so no chest pose appears. |
+| v69 | **Runtime-confirmed narrow hook** | Post-helper process-`+0x6E4` cursor substitution plus one native frame advance displays the chest-open pose for one frame and returns safely. |
+| v70 | **Partial Runtime-confirmed / strategy superseded** | Genuine chest and rocket visuals execute and the rocket travels, but Ice clones/tint remain and spawn/velocity/acceleration do not match the intended donor behavior. |
 
 ## Detailed chronology — v01-v27
 
@@ -1803,6 +1819,188 @@ The low-byte input requirements remain semantically appropriate: `0x0400` for th
 **Runtime-confirmed on 2026-09-21.** After the three selector translations, the user reported v62 “working perfectly.” This closes the v61 long-combo corruption on the tested route while preserving the uppercut launch behavior.
 
 Evidence limit: v62 is still a disposable proof. Its extra 16-byte combo record uses `0x9AD90`, inside the randomizer bootstrap's production-owned `0x9AD84..` region. Production integration must relocate that standalone record to conflict-free owned storage; the runtime result validates the combo semantics, not that proof allocation.
+
+
+## v63-v70 — Sektor straight-missile proof line
+
+This line begins after the Runtime-confirmed v62 combo proof and targets Sektor's MKT straight missile. The durable asset-format conclusions belong to [MKT fighter asset translation](MKT-Fighter-Asset-Translation); the donor move semantics and accepted compatibility direction belong to [MKT adapter primitives](MKT-Adapter-Primitives). The entries here own only the proof chronology, artifact identities, changed variables, runtime observations, and supersession.
+
+### Pre-v63 donor/storage audit
+
+**Static-confirmed before the first build:**
+
+- the authentic Sektor command is **Forward, Forward + Low Punch**, mirrored by facing;
+- the launch presentation uses the robot chest-open family;
+- straight missile flight selects the horizontal rocket sub-animation;
+- the two horizontal retail rocket shapes are MKT robot-relative `+0x2668` and `+0x267C`, using donor codec 16;
+- the first chest shapes audited were `+0x29A0` and `+0x29B4`, using donor codec 22;
+- the dedicated donor `ROCKET_P` palette exists independently of Ice colors.
+
+The codec-16 blocker was resolved losslessly before the proof. The two horizontal rocket frames decode to `39x9` / 360 stored pixels and `42x10` / 440 stored pixels respectively, using four-bit indices `0..15`.
+
+An exact four-frame Type-5 dry pack (two chest + two missile frames) against the v59/v62 takeover corpus projected file `0x87 = 0x4F5A8`: `0x11AC` larger than v59 and `0x1064` above the Runtime-confirmed v49 Fortress-working footprint `0x4E544`. This did **not** prove that `0x4F5A8` would fail; it established that blindly appending all four frames would leave the known working envelope.
+
+The later compact proof therefore reduced the initial visible requirement to one fully-open chest pose plus one horizontal rocket pose and reused the existing Sektor Type-5 dictionary/model structure rather than treating every donor pose as mandatory for the first runtime gate.
+
+### v63 — four-frame in-place-bank experiment
+
+Disposable proof: `MKMSZR_sektor-missile-flight_common-proof_v63.z64`.
+
+Builder: `MKMSZR_build_sektor_missile_flight_v63.py`.
+
+Identity:
+- SHA-256 `f45135d640195d20d2a0b47eb0fdde66e091be004c576f799cea9b9143515686`;
+- CRC1/CRC2 `B4274446 / 49F03C85`;
+- file `0x87 = 0x4E3FC`, unchanged from v59/v62.
+
+v63 reconstructed the v60 palette and v62-safe combo graph on top of v59, decoded/imported two chest frames plus the two horizontal rocket frames, and packed them into file-`0x87` range `+0x41984..+0x43190`, which had been classified by the proof audit as a closed/unreachable stock special-animation bank. The used content ended at `+0x42D44`. The proof then redirected the stock Ice launch secondary script to the chest sequence, redirected the basic Ice projectile loop to the two rocket frames, and changed the Low-Punch special command to `F,F+LP`.
+
+**Rejected / failed at runtime.** The missile itself could not initially be exercised because the normal XP unlock was still active. While farming XP, the user found that being hit hard-hung the game and the normal blood presentation was replaced by a visible artifact/glitch. The missile was still locked at that point, so this failure is independent of missile contact behavior.
+
+The durable conclusion is negative: `+0x41984..+0x43190` was **not** safe replacement storage merely because the first reference audit made it look closed. v63 is the direct file-local equivalent of the project's broader “zero/unreferenced-looking bytes are not automatically free” rule.
+
+### v64 — compact one-chest/one-missile expansion
+
+Disposable proof: `MKMSZR_sektor-missile-expanded_common-proof_v64.z64`.
+
+Builder: `MKMSZR_build_sektor_missile_expanded_v64.py`.
+
+Identity:
+- SHA-256 `e0a4a58169f2f3a0d93e1ec717a8f631a8c449e24f2fcf7fc60d834c026d19cc`;
+- CRC1/CRC2 `6D28457F / A48A0CA9`;
+- file `0x87 = 0x4E788`;
+- `0x244` bytes above the Runtime-confirmed v49 footprint `0x4E544`;
+- `0x38C` bytes above v59/v62 `0x4E3FC`.
+
+v64 abandoned the v63 “dead bank” reuse and rebuilt from the clean ROM using the compact takeover packer. It added exactly two proof frames to the 158-frame corpus:
+- fully-open chest source `RBCHEST2` / donor `+0x29B4`;
+- horizontal rocket source `ROCKETD1` / donor `+0x2668`.
+
+Both were quantized only against already-resident Sektor Type-5 patterns with exact transparency masks and folded into existing model group 56, avoiding a new model record. Measured proof-frame quality was approximately:
+- chest: RGB RMSE `2.004059`, `53.727%` exact opaque indices;
+- rocket: RGB RMSE `2.275750`, `50.218%` exact opaque indices.
+
+The proof also added a **test-only max-tier gate** by feeding XP `7354` to the existing special condition so `F,F+LP` could be exercised immediately. This is proof convenience only and is not progression design.
+
+**Partial Runtime-confirmed / presentation rejected.** The game reached and executed the special path. The player did **not** use the chest-open pose. Instead, two frozen blue/fallback Sektor-like helper actors appeared below the player. The projectile itself appeared first as another frozen Sektor-like frame, then changed into the missile. The missile spawned much too far from Sektor and travelled at an essentially constant Ice-Blast-like speed rather than the intended accelerating rocket behavior.
+
+v64 therefore established that the compact asset composition could reach the move path on the tested route, but it disproved the assumption that the reused Ice secondary slot was the player's chest-animation path. It did not establish `0x4E788` as a general Fortress/Prison-safe allocation ceiling.
+
+### v65 — direct player chest wrapper + suppressed Ice helper processes
+
+Disposable proof: `MKMSZR_sektor-missile-corrected_common-proof_v65.z64`.
+
+Builder: `MKMSZR_build_sektor_missile_corrected_v65.py`.
+
+Identity:
+- SHA-256 `7c0bb60a76f7dd6db513d5b62799f1c06f0eecce4312e106112143f39583e943`;
+- CRC1/CRC2 `26D042AF / 7B8C4C36`;
+- file `0x87 = 0x4E788`.
+
+v65 kept the compact two-frame asset pack, installed the chest art on the real player through a proof-only wrapper at the straight-Ice animation call, suppressed both stock Ice helper-process spawns at ROM `0x4BA68` and `0x4BA84`, initialized the missile presentation earlier, requested the normal Sektor palette, shifted the inherited Ice spawn by a hardcoded 96 pixels toward Sektor, and added a proof-only per-tick acceleration callback (`v += v >> 4`, cap `0xE0000`) over an initial `0x40000` speed.
+
+**Rejected / failed.** Runtime showed the correct chest-open Sektor frame, but the game immediately hard-hung. This proves the chest asset itself can be rendered on the player; it does **not** validate the v65 lifecycle wrapper, helper-process suppression, hardcoded placement, or flight graft.
+
+### v66 — lifecycle-wrapper correction attempt
+
+Disposable proof: `MKMSZR_sektor-missile-lifecycle_common-proof_v66.z64`.
+
+Builder: `MKMSZR_build_sektor_missile_lifecycle_v66.py`.
+
+Identity:
+- SHA-256 `4c3ad9f0330f6422920374495324324d5baf0ad009071e45eb78916981248c32`;
+- CRC1/CRC2 `626C2EB2 / 4F3966EE`;
+- file `0x87 = 0x4E788`.
+
+Relative to v65, v66 changed only the player-animation lifecycle wrapper (plus resulting header CRC). Chest art, missile setup, hardcoded spawn adjustment, acceleration code, test-only max-XP gate, and v62 combo behavior were intentionally unchanged. The wrapper attempted to mirror stock `0x80030E98`: select the primary animation through `0x8002FE54`, redirect the current animation cursor to the dedicated chest script, then let stock `0x80031070` run it.
+
+**Rejected / failed.** The user reported the exact same immediate hang as v65. The “manual sleep versus stock runner” hypothesis is therefore rejected as the sole explanation.
+
+### v67 — restore first Ice helper process only
+
+Disposable proof: `MKMSZR_sektor-missile-process1_common-proof_v67.z64`.
+
+Builder: `MKMSZR_build_sektor_missile_process1_v67.py`.
+
+Identity:
+- SHA-256 `216faa071a8685f19423c29a251901eb372c1a79749c3219d974cffa2c6e45ae`;
+- CRC1/CRC2 `626C6D34 / AF24ACE8`;
+- file `0x87 = 0x4E788`.
+
+v67 is a one-variable diagnostic over v66. The first stock Ice helper-process creation at ROM `0x4BA68` is restored exactly (callback `0x80060A3C`); the second process at `0x4BA84` remains suppressed. All other v66 chest/missile code remains unchanged.
+
+**Rejected / failed.** Entering the special still hard-hung immediately. A different/extra spawned visual became visible before the hang, proving that restoring the first process changed presentation state, but it did not repair the core action lifecycle. The first helper process was therefore not the sole missing requirement.
+
+### v68 — stock-lifecycle chest-only negative control
+
+Disposable proof: `MKMSZR_sektor-chest-stock-lifecycle_common-proof_v68.z64`.
+
+Builder: `MKMSZR_build_sektor_chest_stock_lifecycle_v68.py`.
+
+Identity:
+- SHA-256 `cce10a4a8762f429730e74d62f4da3029a22d16b11d72cd2d7e9b7b88563bfc0`;
+- CRC1/CRC2 `D9D0A7C9 / 5D4FC053`;
+- file `0x87 = 0x4E728`.
+
+v68 deliberately removed the missile experiment from the diagnostic:
+- only the single chest frame remains as a new asset;
+- both stock Ice helper-process spawns are restored;
+- stock Ice projectile setup/flight is untouched;
+- the stock player-animation helper `0x80030E98` is left intact;
+- a wrapper temporarily redirects the presumed resource-table entry for the straight-Ice player-animation call, calls the stock helper, then immediately restores the entry.
+
+**Runtime-confirmed stable negative control.** The game no longer hangs. The chest frame never appears. The familiar blue/frozen Sektor helper/projectile presentation remains.
+
+This establishes two things: the broad stock Ice lifecycle itself is stable in the takeover composition, and the v68 temporary table substitution did not reach the actual resolved player-animation source consumed by the move.
+
+### v69 — post-helper resolved-cursor chest proof
+
+Disposable proof: `MKMSZR_sektor-chest-postcursor_common-proof_v69.z64`.
+
+Builder: `MKMSZR_build_sektor_chest_postcursor_v69.py`.
+
+Identity:
+- SHA-256 `386bd9e7263da5101ec9727ff0de072ffc666493510f4efe0b827c5cf29e373d`;
+- CRC1/CRC2 `39F6CA1C / AB5D2C9F`;
+- file `0x87 = 0x4E71C`.
+
+v69 keeps the entire stock Ice action, helper-process, projectile, collision, and cleanup machinery intact. At the single straight-Ice player-animation call it:
+1. lets stock `0x80030E98` finish normally;
+2. reads the current process at `0x802ECE20`;
+3. saves process/controller animation cursor `+0x6E4`;
+4. temporarily points `+0x6E4` at the dedicated chest script inside file `0x87`;
+5. calls one stock `0x800304C0` animation advance to install the chest frame;
+6. restores the original cursor immediately.
+
+**Runtime-confirmed.** The genuine chest-open frame appears on Sektor and the game continues normally. It lasts only one frame, which is expected for this diagnostic; hold/recovery timing was intentionally not implemented.
+
+This is the narrowest durable player-animation result from the missile line: **current process/controller `+0x6E4` is the live resolved animation cursor, and a one-frame post-helper substitution through the normal advance path is safe on the tested route.**
+
+### v70 — first genuine missile-flight presentation proof
+
+Disposable proof: `MKMSZR_sektor-missile-flight_common-proof_v70.z64`.
+
+Builder: `MKMSZR_build_sektor_missile_flight_v70.py`.
+
+Identity:
+- SHA-256 `5fe374e8702e99c6e5361b2637dcdd5bd4e743f58abbbbbdba2ad63aa283d8ae`;
+- CRC1/CRC2 `99A3FF57 / 916A810F`;
+- file `0x87 = 0x4E790`;
+- `0x24C` bytes above the v49 working footprint.
+
+v70 preserves the Runtime-confirmed v69 chest-marker mechanism and the complete stock Ice parent/helper lifecycle. It adds the single horizontal rocket frame back to the compact resource, points the basic projectile animation loop at that rocket, attempts to bind the projectile to the normal/native Sektor palette, installs the first missile frame earlier in the projectile path, applies the same proof-only 96-pixel spawn correction used by the earlier line, sets initial speed `0x40000` and animation rate 3, and attaches the proof-only `v += v >> 4` / `0xE0000` acceleration callback. Stock Ice collision/freeze semantics remain intentionally unchanged.
+
+**Partially Runtime-confirmed.** The observed frame sequence is:
+- Sektor displays the chest-open pose;
+- two blue Ice helper/fallback Sektor actors appear below;
+- a third blue Sektor-like projectile frame flashes for one frame;
+- that projectile becomes the genuine missile;
+- the first two helper actors disappear and the missile continues travelling.
+
+Both the helper actors and missile retain a blue/ice tint. The user also reports that the missile spawns far too far from Sektor, moves slowly, and does not visibly accelerate as the intended Sektor rocket should.
+
+The positive result is narrow: the imported horizontal rocket asset reaches the live projectile and travels without the v65-v67 immediate hang. The negative result is more important architecturally: mutating the existing Ice projectile path with hardcoded target offsets/velocity callbacks is **not** a faithful donor-move adapter. v70 is therefore superseded as the implementation strategy by the source-level compatibility approach in [MKT adapter primitives](MKT-Adapter-Primitives), where donor projectile creation, owner-relative placement, process ownership, flight callback, collision/strike meaning, palette/effect semantics, and cleanup are translated explicitly.
+
 
 
 ## Canonical ownership and remaining limits
