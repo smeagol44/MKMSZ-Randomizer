@@ -54,16 +54,28 @@ The first words of a stage resource file form a stage-local outer selector table
 
 A zero outer-table word is only a **logical selector-capacity observation**. It does not reserve, expose, or prove free physical bytes in the file.
 
-For ordinary pickups, record `+0x24` supplies the selector. The decoded lookup is:
+For ordinary pickups, record `+0x24` supplies the selector. The exact decoded lookup at pickup manager `0x80038ACC`, for each uncollected ordinary record, is:
 
 ```text
-selector       = pickup_record[+0x24]
-base           = *(0x802F82B8)
-entry_ptr      = base + (selector << 2)
-descriptor_ptr = base + *entry_ptr
+0x80038BE4  lw   v0, +0x24(s0)      ; selector from pickup record
+0x80038BE8  lui  a2, 0x802F
+0x80038BEC  lw   a2, 0x82B8(a2)     ; current stage resource-file base
+0x80038BF8  sll  v0, v0, 2
+0x80038BFC  addu s1, a2, v0         ; entry_ptr = base + selector*4
+0x80038C00  jal  0x800281A0
+0x80038C04  move a0, s1
 ```
 
-At `0x80038BE4..0x80038C04`, the pickup manager computes the selected word and calls `0x800281A0`. That helper loads the selected file-relative descriptor offset, adds the current stage resource base, and calls `0x80028128` with the resulting direct descriptor pointer.
+`0x800281A0` then performs:
+
+```text
+lw   a0, 0(s3)       ; relative descriptor offset from selected entry
+...
+jal  0x80028128
+addu a0, a0, s2      ; direct descriptor pointer = base + relative offset
+```
+
+Later in the same pickup-manager iteration, the selected entry is read again and resolved as `base + *entry_ptr` before actor setup continues.
 
 On this **ordinary-pickup** path, no stock selector-count/table-width check occurs before the selector is used as a 32-bit word index. Therefore a relocated/expanded resource file can technically place selector words beyond the original stock table and address them with:
 
@@ -86,7 +98,7 @@ For embedded images, the native path calls `0x8000322C`. Compression type 4 disp
 
 ## Title resource packaging — global file `0x5E`
 
-Global file ID `0x5E` is the normal title-screen image package. The clean USA Rev. 0 package decodes to `0x61494` bytes.
+Global file ID `0x5E` is the normal title-screen image package. Its clean-ROM file-table entry uses flag `1`, and the package decodes to `0x61494` bytes.
 
 The package uses the game's **MSB-first LZW-style stream**. A matching encoder/decoder pair is **Static-confirmed** by byte-exact stock decode/re-encode: decoding the stock package and re-encoding it yields the original compressed size `0x2F3E0` and round-trips to the same `0x61494` decoded bytes.
 

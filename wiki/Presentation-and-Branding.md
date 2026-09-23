@@ -101,7 +101,7 @@ The Candidate-B image, final visual spacing, and configurable edition-name path 
 The accepted production implementation is data-only:
 
 - no title executable wrapper;
-- no title-menu code hook; stock ROM `0x79C24..0x79C2B` remains unchanged;
+- no title-menu code hook; stock title `START` setup at ROM `0x00079C24..0x00079C2B` / VA `0x80079024..0x8007902B` remains unchanged;
 - uppercase `<NAME> EDITION` is rasterized into the Candidate-B 320x240 CI8 title at patch time;
 - 15 Candidate-B-unused palette indices are reserved for grayscale antialias levels, with guarded stock words before replacement;
 - compressed file `0x5E` is relocated from ROM `0xF90000` within a guarded `0x31000`-byte high-ROM allocation;

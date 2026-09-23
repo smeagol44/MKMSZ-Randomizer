@@ -251,7 +251,7 @@ For that exact stock corpus:
 | Shape/descriptor/wrapper overhead | 10,912 bytes | 10,912 bytes |
 | Total | 262,616 bytes (`0x401D8`) | 261,798 bytes (`0x3FEA6`) |
 
-The generated result is **818 bytes (0.311%) smaller** on identical decoded art. Stream coding differs by only 466 bits across all 341 frames. This establishes that the project encoder is approximately at stock codec efficiency; the major remaining storage opportunities are dictionary/model grouping, cross-animation pattern sharing, dead-stock reclamation, and whole-resource packing rather than a missing radically better Type-5 bitstream algorithm.
+The stock total is approximately **5.4007× smaller** than the decoded pixels, while the generated total is approximately **5.4176× smaller**. The generated result is **818 bytes (0.311%) smaller** on identical decoded art. Stream coding differs by only 466 bits across all 341 frames. Most of the measured 818-byte improvement comes from omitting **128 stock dictionary patterns unused by the scanned corpus**. This establishes that the project encoder is approximately at stock codec efficiency; the major remaining storage opportunities are dictionary/model grouping, cross-animation pattern sharing, dead-stock reclamation, and whole-resource packing rather than a missing radically better Type-5 bitstream algorithm.
 
 Reproducible benchmark tool: `tools/benchmark_type5_encoder.py`.
 
@@ -309,7 +309,7 @@ This table is intentionally limited to asset/codec/storage conclusions. Full per
 | v51/v52 | Runtime-confirmed second Fortress footprint failure at `0x5100C`; content expansion is not required to reproduce it |
 | v53 | Sektor-first resource strategy: resident 32-color Sektor palette, full stock Type-5 reclamation, and common-animation takeover; later proof work treats this architecture as the runtime-confirmed baseline |
 | v54 | One physical dictionary with multiple entropy models; zero-bit normal-class use coincides with the Sweep-Fall hard-hang and is not accepted as safe |
-| v55 | Adds the `normal_bits >= 1` guard; first PS1 Run import is rejected because its POVBQ output cursor collapsed each row pair into four columns |
+| v55 | Adds the `normal_bits >= 1` compatibility guard; the optimizer searches normal-class widths from **1 through 16 bits** across all 52 emitted model records. The first PS1 Run import is rejected because its POVBQ output cursor collapsed each row pair into four columns |
 | v56 | Cursor-corrected PS1 decode still produces invalid speckled bodies; PS1 POVBQ Run pixels are rejected as the current N64 donor source |
 | v57 | Preserved WIMP/MK3 source selected; first extraction is rejected because it ignored `align4(xsize)` source stride |
 | v58 | Runtime-confirmed stride-corrected full Run; preserves the WIMP-derived even poses and native Type-5 packing inside the bounded working footprint |

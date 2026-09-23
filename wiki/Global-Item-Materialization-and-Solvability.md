@@ -97,7 +97,7 @@ This result superseded the earlier assumption that a stage with no empty stock o
 
 Prison's stock resource file was relocated/expanded by four bytes. An appended selector word at file offset `0x48F0` pointed to the existing Herbs descriptor `0x255C`, and all six Prison Herbs ordinary records were changed from selector `8` to selector `0x123C` (`0x48F0 / 4`).
 
-Manual testing confirmed that the tested early Herbs rendered, awarded, and appeared in inventory like vanilla Herbs. This proved that the ordinary pickup path accepts an extension selector outside the stock table without a loader hook.
+All six Prison Herbs ordinary records used extension selector `0x123C`. Manual testing then collected **two early Herbs** successfully; those two rendered, awarded, and appeared in inventory like vanilla Herbs. This proved that the ordinary pickup path accepts an extension selector outside the stock table without a loader hook. This runtime scope is limited to those two tested pickups.
 
 ### Disposable Proof F — foreign embedded resource, Runtime-confirmed
 
