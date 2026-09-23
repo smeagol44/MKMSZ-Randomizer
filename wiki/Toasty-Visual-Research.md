@@ -484,3 +484,38 @@ v24 preserves the v23 image bytes, hardware TLUT, allocator-aligned side-row sto
 Manual testing reproduced the **exact same corruption in the exact same stages** as v23: Fire and Earth retain their small edge artifacts, while the previously clean stages remain clean. Therefore those inherited secondary rectangle coordinates are not the cause of the stage-dependent variance.
 
 The next bounded discriminator should keep the entire v23/v24 image/geometry/state layout fixed and change only dynamic texture allocation order. If the corruption moves or changes, it follows dynamic slot identity/lifecycle; if it remains on the same edge pixels, the suspect moves back toward narrow-piece renderer/data behavior rather than allocation identity.
+
+
+### Toasty visual diagnostics v25-v31 — allocation-order sensitivity
+
+**Runtime-confirmed on 2026-09-23; important but superseded by a later static bug finding.**
+
+After v24 ruled out inherited secondary rectangle coordinates, v25-v31 changed only the order in which the nine dynamic CI8 pieces were allocated while preserving the image payloads, 7+64+7 geometry, row-pitch correction, palette, state-word layout, render submission, and test harness.
+
+The visible corruption pattern changed repeatedly with allocation order:
+- v25 changed the Temple/Earth/Fire artifact pattern.
+- v26 also made Fortress visibly corrupted, demonstrating that a previously clean stage could become affected from allocation-order changes alone.
+- v27 restored Fortress and gave one of the strongest broad results; Earth was reduced to barely visible corruption.
+- v28-v29 changed the right-column sub-order but did not eliminate the remaining Fire/Temple/Earth defects.
+- v30 changed the left-column sub-order; Temple lost its flying artifacts but showed a small lower-left missing patch, Earth retained about 1–2 pixels, Fire improved to a Temple-like lower-left defect plus a few stray pixels, and Fortress stayed clean.
+- v31 tested the remaining left-column permutation. Temple still had a lower-left missing patch, Earth retained two pixels at a changed location, Fire retained the lower-left defect plus 2–3 floating pixels, and Fortress remained clean.
+
+At face value this looked like strong evidence that dynamic slot identity/lifecycle mattered. However, reviewing the builders after v31 found a more direct implementation error in the saved-slot state accesses:
+
+```text
+intended state VAs: 0x800A9D40..0x800A9D60
+builder pattern:      lui 0x800A
+                      lw/sw ...,0x9Dxx(base)
+```
+
+MIPS load/store immediates are signed. Because `0x9Dxx >= 0x8000`, those instructions actually address `0x80099Dxx`, one 64-KiB page lower than the intended proof-state words. Both init writes and per-frame reads shared the same alias, so the builds could appear functional while unrelated stage-specific writes to `0x80099Dxx` changed which dynamic texture IDs the compositor later consumed. This bug explains why allocation-order permutations changed the visible corruption and why the affected stages varied.
+
+### Toasty visual diagnostic v32 — saved-slot state-address alias correction
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v32 returns to the v27 image/palette/allocation-order/render baseline and changes only the high-half used for the nine saved-slot state accesses. The instruction count, state-word ROM/VA ownership, image payloads, TLUT, file-table records, draw order, geometry, and dynamic allocation order remain unchanged.
+
+The corrected address formation uses the carry-adjusted LUI high half for signed `0x9Dxx` load/store immediates, so the effective addresses are the intended `0x800A9D40..0x800A9D60` rather than the accidental `0x80099D40..0x80099D60`.
+
+ROM comparison against a rebuilt v27 confirms every non-CRC difference is confined to the LUI immediates in the init and compositor code that access these saved slot IDs.
