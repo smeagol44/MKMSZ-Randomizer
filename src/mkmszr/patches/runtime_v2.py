@@ -1,8 +1,9 @@
 """Production runtime layout V2.
 
 V2 preserves the runtime-confirmed 1 KiB MKMSZR reservation. The first
-0x300 bytes are reloadable native payload space and the final 0x100 bytes are
-persistent state. This evolves the existing allocation; it does not claim a new cave.
+0x3B0 bytes are reloadable native payload space and the final 0x50 bytes are
+persistent state. The expanded code tail hosts the runtime-confirmed optional
+rainbow helper while retaining the same 1 KiB reservation.
 """
 
 from __future__ import annotations
