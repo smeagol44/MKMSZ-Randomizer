@@ -11,13 +11,13 @@ from .manager_persistence import (
 )
 from .native_payload import NativePayloadPatch, NativePayloadSpec
 from .palette import SubZeroPalettePatch
-from .rainbow_palette import RainbowPalettePatch
 from .pickup_persistence import (
     PICKUP_PERSISTENCE_PAYLOAD,
     PickupPersistencePatch,
     pickup_persistence_patches,
 )
 from .pickup_randomization import PickupRandomizationPatch
+from .rainbow_palette import RainbowPalettePatch
 from .runtime_v1 import (
     RuntimeV1FirePersistencePatch,
     runtime_v1_fire_patches,
@@ -38,11 +38,11 @@ __all__ = [
     "NativePayloadSpec",
     "PickupPersistencePatch",
     "PickupRandomizationPatch",
+    "RainbowPalettePatch",
     "RuntimeV1FirePersistencePatch",
     "SafeStageSelectSkipAutoSavePatch",
     "SafeStageSelectorPatch",
     "SubZeroPalettePatch",
-    "RainbowPalettePatch",
     "TitleBrandingPatch",
     "XPProgressionPatch",
     "manager_persistence_fire_patches",
