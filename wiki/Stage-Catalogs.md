@@ -35,7 +35,7 @@ Each normalized stage catalog uses the same information layers:
 7. **Stage-specific notes, constraints, and pending questions** — facts that must not be generalized to another stage.
 8. **Related owners** — links to global architecture/policy pages rather than copied global rules.
 
-The remaining stage pages may still use the older section order until their scheduled normalization tasks. Their concrete tables remain authoritative stage-local data.
+All eight stage pages now use this shared normalized schema. Their concrete tables remain authoritative stage-local data.
 
 ## Ordinary-pickup terminology
 
@@ -76,7 +76,7 @@ Recognized bundle/list rows use file-relative `Record` offsets. For `embedded-da
 
 ## Evidence and status notation
 
-The project-wide evidence vocabulary is owned by [Home](Home) and [Research workflow](Research-Workflow). In stage catalogs:
+The project-wide evidence labels are listed concisely on [Home](Home); [Research workflow](Research-Workflow) owns the methodology for applying them. In stage catalogs:
 
 | Label | Stage-catalog meaning |
 |---|---|

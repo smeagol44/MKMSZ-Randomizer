@@ -13,6 +13,19 @@ This Wiki is the current technical and product knowledge base for the project. U
 - [Architecture overview](Architecture-Overview) — high-level system boundaries and patch/runtime architecture.
 - [Research methodology and evidence](Research-Workflow) — evidence labels, bounded-experiment method, and research provenance.
 
+## Evidence labels
+
+The Wiki uses six evidence labels consistently:
+
+- **Runtime-confirmed** — observed in game/emulator on a defined build, route, state, and lifecycle boundary.
+- **Static-confirmed** — established from ROM, Ghidra, source, or other static analysis without runtime execution.
+- **Implementation/CI-confirmed** — established by repository code, generated output checks, or automated tests; not by itself runtime confirmation.
+- **Hypothesis / strong inference** — supported by available evidence but not yet confirmed at the required static or runtime boundary.
+- **Rejected / failed** — tested or analyzed and shown unsuitable within the stated scope.
+- **Pending** — not yet resolved or validated.
+
+See [Research methodology and evidence](Research-Workflow) for how these labels are applied, bounded-experiment methodology, provenance, and validation limits.
+
 ## Find the right owner
 
 ### Core technical reference

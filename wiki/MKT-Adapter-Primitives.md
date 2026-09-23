@@ -350,6 +350,7 @@ These are post-1.0 research items unless the current roadmap changes.
 - [MKT compatibility overview](MKT-to-MKMSZ-Compatibility-Layer) — accepted strategy, compatibility contract, and routing.
 - [Player actions and special moves](Player-Actions-and-Special-Moves) — canonical MKMSZ host action/scheduler/control ABI and Reverse Elbow host proof history.
 - [MKT fighter asset translation](MKT-Fighter-Asset-Translation) — donor fighter descriptors, codecs, palettes, Type-5 generation, and resource packing.
-- [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) — slot mapping, current Sektor coverage, and vNN chronology pending Task 14.
+- [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) — slot mapping and current Sektor coverage.
+- [Sektor takeover proof history](Sektor-Takeover-Proof-History) — versioned vNN chronology, proof identities, runtime results, supersession, and proof-specific allocations.
 - [Function registry](Function-Registry) — canonical target function meanings.
 - [Memory and allocation map](Memory-and-Allocation-Map) — production/proof ownership boundaries; successful proof caves are not reusable allocations.

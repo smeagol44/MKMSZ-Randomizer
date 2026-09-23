@@ -69,7 +69,9 @@ Normal save logic is preserved. Only selector-triggered immediate stage-entry sa
 This shows that, on the tested routes, the move-tier state established at acquisition survives without re-running the tier evaluator during stage initialization.
 
 
-## 1.0 HP / lives / continues requirement
+## HP / lives / continues lifecycle implications
+
+The canonical 1.0 requirement and acceptance criteria are owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). This section records only the lifecycle evidence and implementation implications needed to satisfy that requirement.
 
 The legacy Lua is only a clue here, not a solution. It writes startup configuration values once:
 
@@ -79,14 +81,16 @@ The legacy Lua is only a clue here, not a solution. It writes startup configurat
 
 It also names `0x0F1057` as a life-related address, but does not use it for stage-transition preservation. There is no Lua logic that carries current HP, current lives, or current continues between stages.
 
-Therefore 1.0 needs a focused native lifecycle trace for the actual current-run values and the writers that reset them on stage entry/direct selector routes. Preserve/reset policy must be established from runtime/static evidence rather than inferred from the Lua startup configuration.
+The remaining technical work is a focused native lifecycle trace for the actual current-run values and the writers that reset them on stage entry/direct selector routes. The preserve/reset mechanism must be established from runtime/static evidence rather than inferred from the Lua startup configuration.
 
 
-## Temple Map lifecycle requirement
+## Temple Map lifecycle implications
+
+The canonical Temple Map 1.0 policy and acceptance criteria are owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). This section records the lifecycle mechanics and pending traces that any accepted policy must account for.
 
 If the Temple Map becomes a shuffled 1.0 inventory item, stock lifecycle behavior is not acceptable: the game removes it when transitioning from Temple to Wind.
 
-Required investigation:
+Pending technical investigation:
 
 - identify the stock writer/removal path;
 - determine whether keeping the Map item across transitions has side effects;

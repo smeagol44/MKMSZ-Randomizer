@@ -15,7 +15,8 @@ The repository distributes patch code without ROM bytes. The patcher rejects an 
 
 | Information | Location |
 |---|---|
-| Current features, requirements, and priorities | [Project status](Project-Status) |
+| Current maturity, production/proof/pending state, and priorities | [Project status](Project-Status) |
+| 1.0 product requirements, acceptance criteria, and release gates | [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap) |
 | Product layers and composition | [Architecture overview](Architecture-Overview) |
 | Subsystem mechanisms and findings | Owning domain pages linked from [Home](Home) |
 | Exact functions, patch sites, and structures | [Function registry](Function-Registry), [patch-site registry](Address-and-Patch-Site-Registry), [data structures](Data-Structures-and-Encodings) |
@@ -24,7 +25,7 @@ The repository distributes patch code without ROM bytes. The patcher rejects an 
 
 ## Requirements, proofs, and implementation scope
 
-The Wiki includes current product requirements and priority order in [Project status](Project-Status). These describe the intended product; assistant behavior and task-selection rules live in Project Instructions.
+Current maturity and priority order are summarized in [Project status](Project-Status). Canonical 1.0 product requirements, acceptance criteria, and release gates are owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). Assistant behavior and task-selection rules live in Project Instructions.
 
 Three distinct scopes appear throughout the documentation:
 
@@ -67,7 +68,8 @@ Order is a contract because later patches intentionally reuse or relocate earlie
 9. native box indicator;
 10. boot branding and deterministic phrase;
 11. company/logo bypass;
-12. optional palette transform.
+12. title branding (`TitleBrandingPatch`);
+13. optional palette transform.
 
 The stage-selector mapper, persistence payload tail, legal-text area, and small executable caves have deliberate shared ownership. Reordering modules can invalidate expected-byte guards or overwrite another owner's code; the pipeline tests cover the composed order.
 

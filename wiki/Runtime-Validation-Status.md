@@ -10,7 +10,7 @@ Current project maturity and priorities are owned by [Project status](Project-St
 
 | Domain | Runtime-confirmed scope | Static / implementation-confirmed scope | Not yet established / limit |
 |---|---|---|---|
-| Stage flow and selector | A-button title route reaches all eight compact safe destinations. Post-legal logos are skipped, and selector entry suppresses only the immediate unwanted auto-save while later/manual saves remain intact. | Selector table/range/mapper and guarded flow-bypass patch sites. See [Stage flow and selector](Stage-Flow-and-Selector) and [Flow bypasses](Flow-Bypasses). | The intermittent Start shortcut is not production behavior. |
+| Stage flow and selector | A-button title route reaches all eight compact safe destinations. Post-legal logos are skipped, and selector entry suppresses only the immediate unwanted auto-save while later/manual saves remain intact. | Selector table/range/mapper and flow behavior are owned by [Stage flow and selector](Stage-Flow-and-Selector); exact guarded edit sites and expected/replacement bytes are owned by the [Address and patch-site registry](Address-and-Patch-Site-Registry). | The intermittent Start shortcut is not production behavior. |
 | Core runtime / bootstrap | The reserved 1 KiB block is loaded and executed through the native payload path on the tested routes. | Both arena-reservation sites, file-table entry, bootstrap hook/stub bounds, and current production reservation contract. See [Core runtime and address database](Core-Runtime-and-Address-Database). | Expansion beyond the current 1 KiB production contract is not established by this evidence. |
 | Ordinary-pickup persistence | At least one ordinary pickup in every main stage has been collected, persisted, reconstructed, and absent on revisit; multiple Fire records were also exercised. | All 84 ordinary records and persistence bit mappings are cataloged. See [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle) and [Stage catalogs](Stage-Catalogs). | All 84 records have not been individually runtime-exhausted. Game Over/new-run reset remains pending. |
 | Stage-local pickup randomization | Seed `TEST153` made the first Fire ordinary location the predicted Shield and it rendered/awarded normally. | All 84 ordinary identities are implemented in the current stage-local mode; deterministic namespaces and access-model tests are Implementation/CI-confirmed. See [Pickups and item randomization](Pickups-and-Item-Randomization). | No representative full seeded playthrough establishes broad arbitrary-layout runtime coverage; this interim stage-local model is not the 1.0 global model. |
@@ -50,12 +50,12 @@ Examples of the boundary:
 
 Runtime success never converts an old proof cave or proof allocation into production-safe space by itself.
 
-## Chronology ownership during the refactor
+## Chronology ownership
 
 This page no longer owns version-by-version proof diaries.
 
 - Sektor vNN proof/build chronology, including v52 allocation failure, v53-v59 takeover work, v60 alternate palette, and v61/v62 combo-string results: [Sektor takeover proof history](Sektor-Takeover-Proof-History). Slot mapping/current gaps remain in [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping); donor/adapter interpretation remains in [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer).
-- The detailed v60 palette mechanics remain temporarily duplicated on [Palette and recoloring](Palette-and-Recoloring) until its scheduled cleanup; Proof History is the canonical chronology owner after Task 14.
+- Sektor v60 alternate-palette proof chronology and proof-specific mechanics are canonical in [Sektor takeover proof history](Sektor-Takeover-Proof-History). [Palette and recoloring](Palette-and-Recoloring) owns current production player-outfit recoloring behavior.
 - Toasty audio donor identification, rejected candidates, and v01-v03 proof history: [Toasty audio research](Toasty-Audio-Research). MKMSZ host mechanics remain in [Audio system](Sounds-and-Music).
 - Toasty visual diagnostics: [Toasty visual research](Toasty-Visual-Research).
 - XP proof and Diagnostic A/B history: [XP and progression](XP-and-Progression).

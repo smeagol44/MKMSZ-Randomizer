@@ -37,4 +37,6 @@ This separation matters: product deployment does not package research artifacts,
 
 ## 1.0 release boundary
 
-The current stage-local pickup mode is not the final 1.0 randomizer. 1.0 requires the global cross-stage item pool, whole-run solvability validation, native randomizer HUD, HP/lives/continues lifecycle handling, and a Very Hard difficulty invariant before full-seed release validation.
+This is a **non-exhaustive product-facing summary**. The canonical complete 1.0 requirements, acceptance criteria, blockers/non-blockers, dependency order, and final release gates are owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap).
+
+The current stage-local pickup mode is not the final 1.0 randomizer. From the product surface, the major unresolved 1.0 work includes the global cross-stage item model and solvability validation, the broader native randomizer HUD, run-lifecycle handling such as HP/lives/continues and reset behavior, and the Very Hard invariant before final full-seed validation. Refer to the Roadmap for the authoritative and complete requirement set.
