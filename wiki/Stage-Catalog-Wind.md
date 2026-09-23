@@ -1,25 +1,12 @@
 # Wind stage catalog
 
-**Evidence status:** Static-confirmed from the clean USA N64 ROM; file-to-RDRAM mappings were also matched against captured runtime memory. Ordinary-pickup behavior and persistence are runtime-confirmed at representative locations, but the complete 84-record set has not been collected exhaustively one record at a time.
+> **Scope:** Stage-local catalog for Wind, compact selector `1` / native stage ID `1`. Shared record grammar, resource notation, evidence labels, and safety rules are owned by [Stage catalogs](Stage-Catalogs).
 
-This page is the self-contained decoded catalog for native stage ID `1`. It includes every ordinary pickup record and every recognized resource slot/record. Values are big-endian. Unknown fields remain named by offset instead of being assigned unsupported semantics.
+## Stage identity and evidence
 
-## Ordinary pickup records
-
-A record is `0x30` bytes. Position and metadata (`+0x00..+0x0F`) and the collected flag (`+0x2C`) belong to the destination. The production randomizer moves the seven-word identity slice `+0x10..+0x2B`. `Token` and `Requires` are production logic metadata, not bytes stored in the native record.
-
-| # | Decoded identity | ROM base | RDRAM base | X | Y | Z | +0C | +10 type | +14 parameter | +18 callback | +1C | +20 | +24 slot | +28 presentation | +2C collected | Token | Requires |
-|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|
-| 1 | Herbs | `0x000D8424` | — | `0x001C2209` | `0xFFFE1100` | `0x00058700` | `0x00000004` | `0x00000001` | `0x00000000` | `0x800389BC` | `0x00000020` | `0x00000020` | `5` | `0x800B1D38` | `0x00000000` | — | — |
-| 2 | Herbs | `0x000D8454` | — | `0x00246B92` | `0xFFFF0600` | `0x00058700` | `0x00000004` | `0x00000001` | `0x00000000` | `0x800389BC` | `0x00000020` | `0x00000020` | `5` | `0x800B1D38` | `0x00000000` | — | — |
-| 3 | Extra-life urn | `0x000D8484` | — | `0x00437B5C` | `0x0000C700` | `0xFFFFFF00` | `0x00000004` | `0x00000002` | `0x00000000` | `0x80038A1C` | `0x00000020` | `0x00000020` | `4` | `0x800B1D38` | `0x00000000` | — | — |
-| 4 | Wind Circle | `0x000D84B4` | — | `0x003AC07C` | `0xFFF96F00` | `0x00000000` | `0x00000004` | `0x00000000` | `0x00000000` | `0x802F2CB4` | `0x00000020` | `0x00000020` | `0` | `0x800B1D18` | `0x00000000` | `wind-circle` | — |
-| 5 | Wind Triangle | `0x000D84E4` | — | `0x006A5C68` | `0xFFFFCE00` | `0x00000000` | `0x00000004` | `0x00000000` | `0x00000001` | `0x802F2CB4` | `0x00000020` | `0x00000020` | `2` | `0x800B1D18` | `0x00000000` | `wind-triangle` | wind-circle |
-| 6 | Wind Three Bars | `0x000D8514` | — | `0x007475CA` | `0xFFF62F00` | `0x00000000` | `0x00000004` | `0x00000000` | `0x00000002` | `0x802F2CB4` | `0x00000020` | `0x00000020` | `1` | `0x800B1D18` | `0x00000000` | `wind-three-bars` | wind-triangle |
-
-## Resource-file catalog
-
-Generated conservatively from the clean USA N64 ROM. Recognized bundles distinguish embedded model/data offsets from records that reference external resource IDs; `unknown/nonstandard` is intentionally not guessed.
+- **Static-confirmed:** all six ordinary pickup records, the 12 stock outer slots, and the recognized resource records below are decoded from the clean USA N64 ROM.
+- **Runtime-confirmed:** the complete `0x21A0`-byte resource file was matched byte-for-byte at RDRAM `0x80264FC8` during live Wind gameplay.
+- **Runtime-confirmed:** the all-eight-stage persistence test collected/restored a representative Wind ordinary pickup. The six Wind records have not been individually exhausted one by one in runtime testing.
 
 ## File mapping
 
@@ -38,7 +25,29 @@ Generated conservatively from the clean USA N64 ROM. Recognized bundles distingu
 | Unknown/nonstandard slots | `none` |
 | Pickup records | `6` |
 
-## Outer slots
+## Ordinary pickup records
+
+| # | Decoded identity | ROM base | RDRAM base | X | Y | Z | +0C | +10 type | +14 parameter | +18 callback | +1C | +20 | +24 slot | +28 presentation | +2C collected | Token | Requires |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|
+| 1 | Herbs | `0x000D8424` | — | `0x001C2209` | `0xFFFE1100` | `0x00058700` | `0x00000004` | `0x00000001` | `0x00000000` | `0x800389BC` | `0x00000020` | `0x00000020` | `5` | `0x800B1D38` | `0x00000000` | — | — |
+| 2 | Herbs | `0x000D8454` | — | `0x00246B92` | `0xFFFF0600` | `0x00058700` | `0x00000004` | `0x00000001` | `0x00000000` | `0x800389BC` | `0x00000020` | `0x00000020` | `5` | `0x800B1D38` | `0x00000000` | — | — |
+| 3 | Extra-life urn | `0x000D8484` | — | `0x00437B5C` | `0x0000C700` | `0xFFFFFF00` | `0x00000004` | `0x00000002` | `0x00000000` | `0x80038A1C` | `0x00000020` | `0x00000020` | `4` | `0x800B1D38` | `0x00000000` | — | — |
+| 4 | Wind Circle | `0x000D84B4` | — | `0x003AC07C` | `0xFFF96F00` | `0x00000000` | `0x00000004` | `0x00000000` | `0x00000000` | `0x802F2CB4` | `0x00000020` | `0x00000020` | `0` | `0x800B1D18` | `0x00000000` | `wind-circle` | — |
+| 5 | Wind Triangle | `0x000D84E4` | — | `0x006A5C68` | `0xFFFFCE00` | `0x00000000` | `0x00000004` | `0x00000000` | `0x00000001` | `0x802F2CB4` | `0x00000020` | `0x00000020` | `2` | `0x800B1D18` | `0x00000000` | `wind-triangle` | wind-circle |
+| 6 | Wind Three Bars | `0x000D8514` | — | `0x007475CA` | `0xFFF62F00` | `0x00000000` | `0x00000004` | `0x00000000` | `0x00000002` | `0x802F2CB4` | `0x00000020` | `0x00000020` | `1` | `0x800B1D18` | `0x00000000` | `wind-three-bars` | wind-triangle |
+
+## Pickup-to-resource usage
+
+| ROM base | Callback | Parameter | Slot | Presentation |
+|---:|---:|---:|---:|---:|
+| `0x000D8424` | `0x800389BC` | `0x00000000` | 5 | `0x800B1D38` |
+| `0x000D8454` | `0x800389BC` | `0x00000000` | 5 | `0x800B1D38` |
+| `0x000D8484` | `0x80038A1C` | `0x00000000` | 4 | `0x800B1D38` |
+| `0x000D84B4` | `0x802F2CB4` | `0x00000000` | 0 | `0x800B1D18` |
+| `0x000D84E4` | `0x802F2CB4` | `0x00000001` | 2 | `0x800B1D18` |
+| `0x000D8514` | `0x802F2CB4` | `0x00000002` | 1 | `0x800B1D18` |
+
+## Outer resource slots
 
 | Slot | Name | Outer offset | Format | Frames | Pickup users |
 |---:|---|---:|---|---:|---:|
@@ -55,26 +64,7 @@ Generated conservatively from the clean USA N64 ROM. Recognized bundles distingu
 | 10 | Animated resource bundle | `0x56C` | zero-terminated-external-list | 6 | 0 |
 | 11 | Animated resource bundle | `0x600` | external-resource-id-bundle | 10 | 0 |
 
-## Pickup usage
-
-| ROM base | Callback | Parameter | Slot | Presentation |
-|---:|---:|---:|---:|---:|
-| `0x000D8424` | `0x800389BC` | `0x00000000` | 5 | `0x800B1D38` |
-| `0x000D8454` | `0x800389BC` | `0x00000000` | 5 | `0x800B1D38` |
-| `0x000D8484` | `0x80038A1C` | `0x00000000` | 4 | `0x800B1D38` |
-| `0x000D84B4` | `0x802F2CB4` | `0x00000000` | 0 | `0x800B1D18` |
-| `0x000D84E4` | `0x802F2CB4` | `0x00000001` | 2 | `0x800B1D18` |
-| `0x000D8514` | `0x802F2CB4` | `0x00000002` | 1 | `0x800B1D18` |
-
-## Stage-specific notes
-
-- The complete 0x21A0-byte ROM resource file matches RDRAM at 0x80264FC8 byte-for-byte in live Wind gameplay.
-- All six standard 0x30-byte pickup records are mapped: two Herbs, one Extra-life urn, and the three Wind icons.
-- Occupied slot 3 has no user among the six standard pickup records; absence from this pickup table is not evidence that the resource is unused.
-
 ## Recognized bundle records
-
-Offsets below are relative to the stage resource-file base.
 
 | Slot | Frame | Record | Storage | Resource/data value | Inferred end | Dimensions words |
 |---:|---:|---:|---|---:|---:|---|
@@ -149,15 +139,20 @@ Offsets below are relative to the stage resource-file base.
 | 11 | 8 | `0x6D0` | external-resource-id | `0x265` | `` | `0x000E0017` / `0x0006000B` |
 | 11 | 9 | `0x6E4` | external-resource-id | `0x266` | `` | `0x000F0017` / `0x0007000B` |
 
-## Safety interpretation
+## Wind-specific notes, constraints, and pending questions
 
-Zero outer entries are free logical selectors only. They do not imply unused physical bytes inside the original file. New payload data must be appended to an expanded/relocated file or placed in storage proven safe by a complete reference analysis. Inferred model/data ends use the next discovered model-data start and are boundaries for analysis, not yet proof that trailing bytes are independently movable.
+- The six ordinary records are two Herbs, one Extra-life urn, and the three Wind icons.
+- The progression metadata remains stage-local: Wind Triangle requires `wind-circle`; Wind Three Bars requires `wind-triangle`.
+- Occupied slot `3` has no user among the six ordinary pickup records. Its non-pickup gameplay owner remains unresolved; the slot stays protected rather than being treated as available.
+- No outer slot is currently classified `unknown/nonstandard`; empty stock slots are `6, 7, 8, 9`. Per the shared schema, those zeros are logical selector capacity only and do not establish free physical storage.
 
-## Interpretation boundaries
+## Related owners
 
-- A zero outer-table entry is a free logical selector, not proof of unused physical bytes.
-- An occupied slot with no ordinary-pickup user can still be referenced by another actor or script and is protected until traced.
-- Inferred data ends support cataloging; they do not prove that trailing ranges are independently movable.
-- Foreign resources require bounded storage, loader/arena validation, guarded references, and runtime testing.
-
-Catalog lineage: generated from the preserved clean-ROM catalog artifacts and checked against the production pickup definitions in `src/mkmszr/data/pickups.py`. The tables above are reproduced here so this Wiki does not depend on an external archive for current technical facts.
+- [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, and eight-stage index.
+- [Data structures and encodings](Data-Structures-and-Encodings) — ordinary `0x30`-byte record grammar.
+- [Resource and overlay system](ROM-Overlay-and-Resource-Map) — global file-table, loader, overlay, and selector/resource grammar.
+- [Memory and allocation map](Memory-and-Allocation-Map) — literal ROM/RDRAM ownership and lifecycle.
+- [Address and patch-site registry](Address-and-Patch-Site-Registry) — exact guarded patch sites.
+- [Pickups and stage-local randomization](Pickups-and-Item-Randomization) — current production ordinary-pickup behavior and modeled Wind dependencies.
+- [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) — cross-stage materializer/solver rules rather than Wind-local records.
+- [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle) — collected-state persistence and stage-transition lifecycle.
