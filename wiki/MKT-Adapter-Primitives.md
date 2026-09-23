@@ -35,6 +35,72 @@ Only layer 2 belongs here. Layer 3 is canonical in [Player actions and special m
 
 Numeric equality is not semantic compatibility. A donor function address, process-field offset, strike index, reaction selector, animation callback token, or heap pointer must not be transplanted merely because the target has a similar-looking number or record.
 
+## Retail provenance / exact reference addresses
+
+These coordinates are preserved as **retail MKT USA Rev. 2 donor provenance** for the semantic conclusions on this page. They are not MKMSZ addresses and must not be transplanted numerically into the target engine.
+
+### Reverse Elbow closure
+
+```text
+do_reptile_dash          0x8004F2C0
+-> do_body_propell       0x80045050, selector 0x17
+-> prop_do_reptile_dash  0x800467D0
+-> reptile_dash_hit      0x80046910
+```
+
+| Donor item | Retail address |
+|---|---:|
+| propell table | `0x800A80D0` |
+| slot `0x17` | `0x800A812C -> 0x800467D0` |
+| `init_special` | `0x80050420` |
+| `get_char_ani` | `0x8000F910` |
+| `do_next_a9_frame` | `0x8000D408` |
+| `mframew` | `0x8000DB98` |
+| `towards_x_vel` | `0x8006EC00` |
+| `process_sleep` | `0x8005A88C` |
+| `sans_repell_3` | `0x8006C7FC` |
+| `strike_check_a0` | `0x8003E620` |
+| `stop_me` | `0x8003DB54` |
+| `face_opponent` | `0x8006D1CC` |
+| `reaction_exit` | `0x8004C13C` |
+| `context_jump` | `0x80080A84` |
+
+### Pass-through / no-repel provenance
+
+- signed halfword `f_norepell`: `0x802475E4`;
+- central fighter-repel process: `0x80070A08`.
+
+The semantic remains the three-tick repulsion-suppression countdown described below; these coordinates preserve where that conclusion came from.
+
+### Strike / reaction provenance
+
+- Reptile `nj_strikes` table: `0x800B0208`;
+- strike `0x15` record: `0x800B041C`;
+- strike `0x16` record: `0x800B042C`;
+- reaction `0x74` handler `r_reptile_dash`: `0x800546A0`;
+- reaction `0x24` handler `r_jax_dash`: `0x80055838`.
+
+The exact record bytes and semantic translation rules remain in [Strike and reaction translation](#strike-and-reaction-translation).
+
+### Cross-engine ABI field map
+
+The field offsets below are the exact retail/target references that motivated the compatibility boundary. Numeric offsets are **engine-local**, not portable ABI.
+
+| Engine / structure | Offset | Meaning |
+|---|---:|---|
+| MKT PROCESS | `+0x418` | `pa8` |
+| MKT PROCESS | `+0x41C` | animation cursor |
+| MKT PROCESS | `+0x3F6` | action |
+| MKT OBJECT | `+0x0C` | X velocity |
+| MKT OBJECT | `+0x14` | X position |
+| MKT OBJECT | `+0x58` | heap |
+| MKT OBJECT | `+0x5C` | dictionary |
+| MKMSZ controller | `+0x6E0` | actor |
+| MKMSZ controller | `+0x6E4` | animation cursor |
+| MKMSZ actor | `+0x98` | resource base |
+| MKMSZ actor | `+0x74` | shape |
+| MKMSZ actor | `+0x7C` | render record |
+
 ## Scheduler, yield, and control transfer
 
 ### Donor semantics

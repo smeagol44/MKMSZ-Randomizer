@@ -55,6 +55,8 @@ The target resource can preserve the semantic frame/anchor result, but donor off
 
 A concrete male-ninja example is the Reverse Elbow return sequence:
 
+Retail provenance for that sequence is exact: male-ninja table 2 begins at donor heap offset `+0x168`; slot `0x0B` points to heap offset `+0x664`; and the retail script occupies ROM `0x629F04..0x629F1F`. Its visual order is `SCCOMBO10 -> SCCOMBO11 -> SCCOMBO12 -> 0 -> SCCOMBO11 -> SCCOMBO10 -> 0`.
+
 | Frame | Record ROM | Visible geometry | Donor anchor | Donor texture offset |
 |---|---:|---:|---:|---:|
 | `SCCOMBO10` | `0x62BB40..0x62BB53` | `42x95` | `(+15,-19)` | `0x282C4` |
@@ -62,6 +64,8 @@ A concrete male-ninja example is the Reverse Elbow return sequence:
 | `SCCOMBO12` | `0x62BB68..0x62BB7B` | `82x106` | `(+25,-8)` | `0x28BE4` |
 
 MKT N64 was built with `ENDIAN=1`; its packed `XYTYPE` is physically `ypos, xpos`. For size words this means donor **Y:X**. MKMSZ frame setup uses the first size halfword as X/width and the second as Y/height, so conversion must swap the donor size halfwords to target **X:Y**.
+
+For `SCCOMBO10`, packed size word `0x005F002A` is therefore **height 95, width 42**, not 95x42 target ordering.
 
 The correction is independently supported by the decoded SCCOMBO stream sizes:
 
@@ -113,6 +117,12 @@ Retail MKT `SCCOMBO10/11/12` use donor codecs `22/22/24`. They decode determinis
 | `SCCOMBO11` | `0x651FC4..0x652482` | `22` | `0x14B8` |
 | `SCCOMBO12` | `0x652484..0x652A0A` | `24` | `0x22C8` |
 
+Decoded-buffer SHA-256 identities from the exact donor decoder are:
+
+- `SCCOMBO10`: `62cecad0f400fc6b88cf3236c83000ed1fa7f6ec42c5eaadb55dfaca8e44b3ff`;
+- `SCCOMBO11`: `9ce4770a2062d8f990e602c69e367143a1a088c7bba26780b344ca36fc7d1ea1`;
+- `SCCOMBO12`: `d8c7104ac6bbe31e494ef5b06d37c32f5b565b1dc88dbc92ff4ea7939957074c`.
+
 The decoded buffers are row-major with `align4(visible_width)` source stride. For `SCCOMBO10`, for example, each 42-pixel visible row occupies 44 bytes. Removing the two padding bytes per row produces the deterministic staircase/shear failure; preserving the 44-byte pitch renders the coherent donor fighter.
 
 The accepted boundary is therefore:
@@ -126,6 +136,18 @@ MKT codec 22/24 bytes
 ```
 
 Direct donor-stream copying is not supported.
+
+A prior raw-wrapper attempt wrote decoded byte lengths such as `0x00000FEA` or `0x00001054` into the MKMSZ wrapper header. That is **Rejected / failed**: the target decoder reads the compression type from header byte `+3`, masked with `0x3F`, so those words leave type 0 instead of describing raw length.
+
+### First genuine MKT fighter import proof
+
+The first successful runtime rendering of a genuine retail MKT fighter frame inside MKMSZ was the SCCOMBO10 A1.7/v08 proof:
+
+- file: `MKMSZR_mkt-scc10-import_global_proof_v08.z64`;
+- SHA-256: `1ea40452cdf6e8866b48544fc57f27b065dace75fa0416d52fb4987db61f936d`;
+- CRC1/CRC2: `70135E41 / BB4C161F`.
+
+**Runtime-confirmed:** the proof rendered the coherent 42x95 SCCOMBO10 donor frame with the aligned 44-byte source row pitch and isolated donor palette, then restored stock Sub-Zero correctly. This is asset/codec compatibility evidence, not Sektor takeover chronology or production integration.
 
 ### MKT codec 15 and composite assets
 
@@ -157,6 +179,8 @@ Relevant donor files are:
 
 The PS1 robot primary Run entry at slot `0x46` points to `ROBOT.BIN +0x140C` and preserves twelve distinct Run poses. Its twelve 12-byte frame descriptors are consecutive at `ROBOT.DAT +0xA6C..+0xAFB`. That sequence remains useful evidence that the six even Run poses existed even though the N64 retail robot set cut them.
 
+The PS1 Throw entry is also present at primary slot `0x23 -> ROBOT.BIN +0x112C` and retains the holder/slave mechanical-arm structure. It is supplemental structural evidence only; the PS1 binary/layout is not assumed compatible with MKMSZ N64.
+
 The attempted PS1 pixel donor path used the platform-specific POVBQ representation: 12-byte descriptors, padded width, palette ID, shared table, a 6-bit model selector, seven normal symbols, and two transparent-run symbols. Two corrections are important to preserve:
 
 1. The first importer omitted the four-pixel horizontal advance after each decoded `2x4` vector, collapsing rows into a four-column strip. The earlier v55 “18 supplemental patterns / lossless” conclusion was therefore invalid because both validation and encoding consumed the same malformed target buffers.
@@ -179,6 +203,8 @@ The replacement source for the missing even Run pixels is preserved Midway `ROBO
 
 MKT N64 fighter palettes are RGBA5551. MKMSZ source palettes are BGR555 words that the native upload path converts for hardware use.
 
+The Reptile primary palette used by the SCCOMBO import is at retail MKT ROM `0xBE864..0xBE8A7`: a u32 count of 32 followed by 32 big-endian RGBA5551 colors.
+
 The established conversion is:
 
 ```text
@@ -189,6 +215,8 @@ MKT RGBA5551
 ```
 
 For isolated imported-frame work, the native target path is:
+
+Static tracing observed native allocated palette handles in the `0x140..0x23F` family; that observed handle family is provenance for the isolated-binding proof, not a promise that every value in the range is generally allocatable.
 
 ```text
 0x8001C528 palette find/allocate

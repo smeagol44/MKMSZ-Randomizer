@@ -37,7 +37,7 @@ The primary N64 donor/target pair is:
 
 | Role | Image | Identity |
 |---|---|---|
-| Donor | MKT USA Rev. 2 N64 | SHA-256 `30efdbe266dda8b8b12652a8d0a71b3b4bfec88bdf11ed12c219f5c4e1eaf7bb` |
+| Donor | MKT USA Rev. 2 N64 | `0xC00000` bytes; SHA-256 `30efdbe266dda8b8b12652a8d0a71b3b4bfec88bdf11ed12c219f5c4e1eaf7bb` |
 | Target | MKMSZ USA Rev. 0 N64 | SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6` |
 
 The public MKT source tree is a symbolic guide. Exact donor addresses/tables are retail-binary findings unless a page explicitly labels them otherwise.

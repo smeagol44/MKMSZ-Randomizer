@@ -28,9 +28,10 @@ A proof entry may preserve its historical **pre-test** status, but the section's
 
 | Proof | Final evidence status | Smallest meaningful result / limit |
 |---|---|---|
-| v01-v07 | **Rejected / failed** | Early helper line used the false zero cave; exact per-version artifact identities are not preserved in the current Task-14 source pages. |
-| v08 | **Runtime-confirmed correction** | Restoring the stock action/dispatch bytes removed the input-specific hangs; allocation ownership remains in Memory Map. |
-| v09 | **Unresolved historical gap** | No standalone v09 identity/result is preserved in the current canonical sources inspected for Task 14; no reconstruction is invented. |
+| v01 | **Partial Runtime-confirmed / failed lifecycle proof** | Genuine Sektor idle rendered, but transition corruption and input-specific hangs remained; the active-palette-handle omission was Static-confirmed as a defect, not proven as the sole cause. |
+| v02-v07 | **Rejected / failed isolation line** | Successive palette, cursor, rate-hook, and wrapper controls narrowed the failure without fixing it; exact identities and negative-control details are restored below. |
+| v08 | **Runtime-confirmed correction** | Restoring the exact stock action/dispatch records removed the input-specific hangs; this causally rejected the false zero-cave allocation. |
+| v09 | **Runtime-confirmed except one transition artifact** | Re-homed palette helper/state in owned proof memory restored correct colors and stability; one frame-transition artifact remained until v10. |
 | v10-v11 | **Runtime-confirmed** | Idle/Sektor baseline, including the destructive replacement line used by many later isolated proofs. |
 | v12 | **Rejected / failed** | Expanded locomotion proof failed before gameplay on Mission Objective. |
 | v13 | **Rejected / failed** | Type-4 fighter storage reached gameplay but rendered severe ghosting/smear. |
@@ -63,30 +64,931 @@ A proof entry may preserve its historical **pre-test** status, but the section's
 | v61 | **Rejected / failed** | Direct donor reaction selector reuse corrupts world/background rendering in the long combo. |
 | v62 | **Runtime-confirmed proof; allocation conflict remains** | Three reaction-selector translations fix the tested combo strings; standalone record must be reallocated before integration. |
 
-## v10-v27 — condensed early direct-core chronology
+## Detailed chronology — v01-v27
 
-Exact ROM filenames/hashes/CRCs for these early entries are not preserved in the current mapping page, so this history does not invent them. Later proof sections preserve exact identities when they exist.
+These entries restore the exact pre-Task-11 proof detail from commit `986cc631e6f2dc9a242540567c73da3b00f648d5`. Each entry begins with the **current reconciled final status**; any older hypothesis or intermediate wording below is subordinate to that status. All entries remain disposable proof evidence, not production allocation or integration.
 
-| Proof | Changed variable | Final evidence | Positive / negative observation | Supersession / limit |
-|---|---|---|---|---|
-| v10 | First genuine Sektor stance/idle replacement | **Runtime-confirmed** | Correct donor colors, stable normal actions/movement, clean transitions | First proven direct-core member |
-| v11 | Destructive idle replacement baseline | **Runtime-confirmed** | Stable baseline reused by later isolated proofs | Later takeover lines supersede its narrow scope |
-| v12 | Add Walk F/B, Turn, Duck using expanded raw storage | **Rejected / failed** | Failed before gameplay on Mission Objective | Motivated compact/alternate storage work |
-| v13 | Store fighter frames through type 4 | **Rejected / failed** | Reaches gameplay but severe ghosting/smear | Type 4 rejected for fighter sprites |
-| v14 | Isolated Turn | **Runtime-confirmed** | Turn works | Raw/type-0 recovery after v13 |
-| v15 | Walk Forward/Backward | **Runtime-confirmed** | Shared seven-frame walk set works | — |
-| v16 | Compose Idle + Walk F/B + Turn | **Runtime-confirmed** | Stable combined locomotion | — |
-| v17 | Crouch | **Runtime-confirmed** | Crouch works | Later used as compact base |
-| v18 | Crouch Turn/Block/Hit | **Runtime-confirmed** | Direct crouch-family states work | — |
-| v19 | Crouch Punch | **Runtime-confirmed** | Removes observed stock Sub-Zero return frame | — |
-| v20 | Crouch Low Kick on accumulated raw branch | **Rejected / failed** | Whole scene corrupts before move use | Resource-footprint failure; v21 isolates same mapping |
-| v21 | Crouch Low Kick on smaller v17 base | **Runtime-confirmed** | Low Kick works | Supersedes v20 as mapping evidence |
-| v22 | Crouch High Kick + prior Low Kick | **Runtime-confirmed** | Both work | — |
-| v23 | Uppercut | **Runtime-confirmed** | Uppercut works | — |
-| v24 | Standing Block | **Runtime-confirmed** | Block works | — |
-| v25 | High Punch | **Runtime-confirmed** | Imports seven Sektor-owned frames; leaves Low-Punch crossover stock | Post-legal logo bypass becomes proof convenience baseline from here |
-| v26 | Low Punch | **Runtime-confirmed** | Punch-chain/crossover behavior works | Completes the paired punch mapping |
-| v27 | Standing Low Kick | **Runtime-confirmed** | Appended exact 13-word retail sequence works | Establishes bounded script-relocation pattern reused by v28 |
+## v01 — genuine Sektor rendering confirmed, transition cleanup failed
+
+**Final status: Partial Runtime-confirmed / failed transition-lifecycle proof.** Genuine five-frame Sektor idle rendering worked, but the one-frame transition corruption and crouch/forward hard hangs remained; the missing active-handle restoration was a Static-confirmed defect and only a strong inference as the complete cause.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v01.z64`
+
+Runtime result reported by the user:
+
+- standing neutral visibly renders Sektor "in all its glory";
+- the genuine five-frame Sektor stance is therefore **Runtime-confirmed** in MKMSZ;
+- leaving idle can show a single corrupted/weird transition frame;
+- attempting to crouch from Sektor idle caused a whole-emulator/game hard hang immediately after Down was pressed.
+
+The donor decoding, dimensions, row stride, palette choice, and idle-script resource are therefore not the current failure. The failure is at the idle-exit ownership/lifecycle boundary.
+
+Static re-audit found a concrete v01 defect:
+
+1. v01 saved/restored actor palette selector `+0x9E`;
+2. it did **not** save/restore the resolved active palette handle at actor `+0x80`;
+3. on a non-idle selection it restored `+0x9E` and released the temporary Sektor palette immediately;
+4. until native frame setup rebound a stock palette, actor `+0x80` could still refer to the released donor palette slot.
+
+That is a real use-after-release window and is consistent with both the one-frame corruption and crouch hang. The structural defect is **Static-confirmed**; it remains a **strong inference** that this is the complete runtime cause until the corrected proof is tested.
+
+## v02 — active-handle restoration fix
+
+**Final status: Rejected / failed as a complete fix; donor rendering remains Runtime-confirmed.**
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v02.z64`
+
+Identity:
+
+- SHA-256 `d5df6193d6b942664ff02367037e55f58683a439d11f4926646c71ddd46a182c`;
+- CRC1/CRC2 `35B9266E / F0DB463F`.
+
+v02 is built from the clean supported target ROM. The imported Sektor resource block is byte-for-byte identical to v01. The isolated change is palette-transition bookkeeping:
+
+- save stock selector `actor+0x9E`;
+- save stock active palette handle `actor+0x80`;
+- on idle exit restore **both** fields;
+- only then release the temporary donor palette;
+- retain donor idle speed 8 only while the Sektor idle binding is active.
+
+**Rejected / failed as a complete fix; donor rendering remains runtime-confirmed.**
+
+Further user runtime testing showed the same single-frame corruption and hard hangs. The trigger is selective rather than simply "any animation change": block, punches, kicks, turning, walking backward, and ordinary jumping can work, while crouching, walking forward, and adding forward drift during an already-running jump can hard-hang immediately. The supplied 12.7-second capture is especially constraining because the final failure occurs after a stock jump is already visibly underway; adding forward movement freezes the game without a visible animation change first.
+
+The capture also shows the transient corrupt frame when returning from stock actions to Sektor idle (approximately 4.5 s and 7.0 s in that recording). This narrows that artifact separately to the idle-entry presentation boundary.
+
+## v03 — restore the stock resource table; redirect only the idle cursor
+
+**Final status: Rejected / failed as a hang fix; donor rendering remains Runtime-confirmed.**
+
+Static re-audit found a stronger structural problem in v01/v02. The relocated Sub-Zero resource was copied intact except that its actual table-0/index-0 word was permanently changed from stock `+0x2EC` to appended Sektor script `+0x459E0`. This means the proof globally replaced the resource's stance entry, rather than limiting the foreign animation to the `select_animation(0,0)` call. Static target code contains resource-table reads outside `0x8002FE54`, so a permanent table mutation can affect stock state/locomotion code even when no visibly new animation has been selected.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v03.z64`
+
+Identity:
+
+- SHA-256 `222fb08985f30f78b2628e74ea24b21c2ac26701f4bc81450be574a21be908ca`;
+- CRC1/CRC2 `40543A98 / EE1442F8`.
+
+v03 is built from the clean supported ROM and keeps the donor frames/palette/timing identical to v02. Its isolated change is:
+
+- the relocated first `0x459E0` bytes of Sub-Zero's resource are byte-for-byte identical to the clean stock file, including table-0/index-0 = `+0x2EC`;
+- the appended Sektor data remains outside that stock range;
+- only an exact Sub-Zero idle request `(table 0,index 0)`, while the isolated donor palette is owned by the same actor, writes controller `+0x6E4 = resource_base + 0x459E0`;
+- all non-idle calls continue through the stock `select_animation` tail and all other resource-table consumers see stock data.
+
+**Rejected / failed as a hang fix; donor rendering remains runtime-confirmed.**
+
+The user repeated the same forward, airborne-forward, crouch, safe-action, and transition tests. v03 behaved **exactly like v02**, including hard hangs at the same failing inputs and the same transient corrupt frame. Therefore permanently replacing the table-0/index-0 word was not the cause of the hang.
+
+This negative result materially narrows the failure: the common foreign state that remains during Sektor idle is the **live animation cursor itself**, which v03 still redirected from the native Sub-Zero stance region into the appended Sektor script. Static target code snapshots, compares, and advances controller `+0x6E4` directly in several helpers outside simple `select_animation` calls, so cursor locality/lifecycle is now the leading hypothesis.
+
+## v04 — native cursor location with foreign frame pointers + diagnostic HUD
+
+**Final status: Rejected / failed before gameplay; the native-cursor hypothesis was not tested cleanly because the added diagnostic HUD confounded the build.**
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v04.z64`
+
+Identity:
+
+- SHA-256 `295480a5596dd9c6a09be3dbc7899c3d6c2b6a1e0c2193c0624834a7ef3ee385`;
+- CRC1/CRC2 `36AD42FB / 615A2E42`.
+
+v04 keeps the relocated Sub-Zero resource table unchanged and no longer redirects `controller+0x6E4` to appended script `+0x459E0`. Instead, it preserves the native table-0/index-0 target and native cursor location at resource `+0x2EC`, replacing only the first seven words of that native idle script with:
+
+```text
+Sektor RBSTANCE1 shape
+Sektor RBSTANCE3 shape
+Sektor RBSTANCE5 shape
+Sektor RBSTANCE7 shape
+Sektor RBSTANCE9 shape
+command 1
+self +0x2EC
+```
+
+All other bytes in the original `0x459E0`-byte Sub-Zero resource are unchanged. The appended donor shapes, raw CI buffers, converted Sektor palette, and donor idle rate 8 remain the same as the earlier proofs.
+
+v04 also adds proof-only native HUD instrumentation through the already runtime-confirmed gameplay text path. The bottom readout is:
+
+`P# C# L# X#`
+
+where the digits encode donor-palette ownership, whether the live animation cursor is inside the native idle-script range, the low nibble of controller locomotion state, and the low nibble of normalized action input. This instrumentation is diagnostic only and is not a product UI design.
+
+**Rejected / failed before gameplay; cursor hypothesis not tested.**
+
+The user reported that v04 reached the Mission Objective display, stage music began, and then the game/emulator hung before gameplay appeared. Because v04 introduced both the native-cursor experiment and a new diagnostic HUD wrapper at the same time, this result is confounded and does **not** establish whether the native-cursor strategy is valid.
+
+Static re-audit found that the v04 diagnostic wrapper read controller/actor state from the gameplay HUD path without first proving that a live player context existed. The Mission Objective flow can execute that HUD path before normal gameplay control is established, so the diagnostic code is a **strong candidate** for the pre-game hang. This is not runtime-confirmed as the sole cause until an otherwise-identical no-HUD build is tested.
+
+Historical context from the earlier Reverse Elbow/Reptile proof is important here: a separate diagnostic path was already runtime-confirmed during gameplay, displaying forms such as `IN XXXXXXXX L0 P0 A00` through the native HUD/text path and surviving repeated special activations. Future instrumentation should reuse that proven pattern rather than the unguarded v04 wrapper.
+
+## v05 — v04 cursor experiment with diagnostic HUD removed
+
+**Final status: Rejected / failed as a hang fix; stage-start isolation succeeded and identified the v04 diagnostic HUD as the pre-game confound.**
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v05.z64`
+
+Identity:
+
+- SHA-256 `8be8bf1e1aa066483043c528623c8f7ff08c40042d786a5d62ef97a2ac1dd5e9`;
+- CRC1/CRC2 `BFDA3A1F / 1142C1A6`.
+
+v05 is byte-for-byte v04 except for removal of the proof-only diagnostic HUD hook/wrapper/string and the resulting header CRC change. It therefore preserves the intended v04 animation experiment unchanged:
+
+- native Sub-Zero table-0/index-0 still points to resource `+0x2EC`;
+- the live animation cursor remains in that native idle-script region;
+- only the first five idle-frame pointers plus the native loop command/self-offset are replaced to render the genuine Sektor stance;
+- donor palette ownership and idle rate remain as in the earlier proofs.
+
+**Rejected / failed as a hang fix; stage-start isolation succeeded.**
+
+The user confirmed that v05 enters gameplay normally, proving the v04 pre-game Mission Objective hang came from the added diagnostic HUD rather than the native-cursor experiment. Once gameplay begins, however, v05 behaves like v02/v03: Sektor idle renders, but forward movement, crouch, and airborne forward drift still hard-hang at the same points. The native-cursor-at-`+0x2EC` hypothesis is therefore **Rejected / failed** as the cause of the gameplay hang.
+
+This result leaves a smaller set of implementation pieces common to all failing Sektor builds: resource relocation/foreign shape use, temporary palette ownership/select-animation wrapper, proof state storage, and the donor-rate hook.
+
+## v06 — remove only the donor animation-rate hook
+
+**Final status: Rejected / failed as a hang fix.** Removing only the donor animation-rate hook did not remove the input-specific hangs.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v06.z64`
+
+Identity:
+
+- SHA-256 `06b1eb0d3a964d2b42f4ba8006a646c700fde08ab97700a3082001c8471e06da`;
+- CRC1/CRC2 `4753AA06 / DACEC518`.
+
+v06 is byte-for-byte v05 except for restoring the clean stock bytes at ROM `0x32324..0x3232B` / VA `0x80031724..0x8003172B`, removing the proof's animation-rate interception entirely. Sektor therefore runs at MKMSZ's stock cadence rather than donor rate 8. No imported frame, resource, palette, select-animation, or state-storage bytes changed.
+
+**Rejected / failed as a hang fix.**
+
+The user reported that v06 still hard-hangs on the same forward movement, crouch, and airborne-forward inputs. Therefore the donor animation-rate hook is **not** the cause of the gameplay hang.
+
+At this point the persistent one-frame corruption on animation transitions can no longer be treated as confidently cosmetic. The strongest common remaining suspect is the temporary donor-palette/select-animation wrapper and its render-state transition, which is also the code path most directly associated with the visible corrupt transition frame.
+
+## v07 — remove dynamic donor palette handling entirely
+
+**Final status: Rejected / failed as a hang fix; palette presentation was separated from the hang cause.**
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v07.z64`
+
+Identity:
+
+- SHA-256 `aa989a2dc74fa577245c3d9895d2471035ad7cb9544b62487e4a8f8d85c2a8f8`;
+- CRC1/CRC2 `3884563E / AF3FDC3B`.
+
+v07 is byte-for-byte v06 except for restoring the clean stock first two instructions of target `select_animation` at ROM `0x30A54..0x30A5B` / VA `0x8002FE54..0x8002FE5B`. This completely bypasses the Sektor proof's dynamic palette wrapper and temporary owner/selector state while preserving the native-cursor idle script and imported Sektor frame resources.
+
+Expected presentation: the genuine Sektor stance geometry/animation should still render, but with Sub-Zero's stock palette, so colors may be wrong. That visual degradation is intentional.
+
+**Rejected / failed as a hang fix; palette presentation cause separated from hang cause.**
+
+The user confirmed that v07 still hard-hangs on the same forward movement, crouch, and airborne-forward inputs. The visible result changed substantially: all five Sektor stance frames now render with wrong/corrupted colors under Sub-Zero's stock palette. This establishes that the dynamic donor-palette path is required for correct Sektor presentation, but it is **not** the cause of the hard hang.
+
+This also separates the symptoms: the transition/frame color corruption is palette/render-state related, while the input-specific hard hang persists without any Sektor palette wrapper execution.
+
+### Corrected false-cave finding
+
+Static re-audit found a more fundamental proof error common to v01-v07. The helper was placed at ROM `0xA1308..0xA1543` / VA `0x800A0708..0x800A0943` because the clean bytes were zero. That region is **not unowned free space**.
+
+A live pointer table begins at ROM `0xA15C4` / VA `0x800A09C4` and points to twelve 0x78-byte records:
+
+```text
+0  0x800A049C  callback +0x10 = 0x8003C870
+1  0x800A0514  callback +0x10 = 0x8003C9B4
+2  0x800A058C  callback +0x10 = 0x8003C984
+3  0x800A0604  callback +0x10 = 0x8003C848
+4  0x800A067C  callback +0x10 = 0x8003C94C
+5  0x800A0424  callback +0x10 = 0x8003C7E8
+6  0x800A06F4  callback +0x10 = 0x8003C7F0
+7  0x800A076C  stock record is all zero
+8  0x800A07E4  stock record is all zero
+9  0x800A085C  stock record is all zero
+10 0x800A08D4  stock record is all zero
+11 0x800A094C  stock record is all zero
+```
+
+The Sektor helper overwrote most of zero records 7-10 and part of the surrounding record area with executable instructions. Zero bytes here are therefore **semantic data, not a code cave**. An input/action scan that expects those records to remain zero can observe nonzero garbage fields or bogus callback values. This is a strong static explanation for why only selected inputs hard-hang.
+
+This supersedes every earlier statement treating `0x800A0708..` as free proof storage.
+
+## v08 — restore the false cave to exact stock data
+
+**Final status: Runtime-confirmed correction.** Restoring the false cave to exact stock action/dispatch data removed the input-specific hard hangs on the tested route; donor colors were intentionally not restored in this control.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v08.z64`
+
+Identity:
+
+- SHA-256 `d842c51bf1253ccd0fece0f255e804a4077907aa55fc759fb54b61dde6b1d9be`;
+- CRC1/CRC2 `C2435AAC / EBC131C0`.
+
+v08 is byte-for-byte v07 except for restoring ROM `0xA1308..0xA1543` to the clean ROM's exact stock zero-filled record data and recalculating the header CRC. Because v07 already restored the stock `select_animation` entry and removed the rate hook, no Sektor helper code is needed for this test.
+
+Active Sektor changes remaining in v08 are therefore only:
+
+- relocated/expanded file ID `0x87`;
+- native idle script frame pointers changed to the five appended genuine Sektor shapes;
+- appended donor frame/texture data.
+
+The palette remains intentionally stock Sub-Zero, so Sektor is expected to look color-corrupted exactly as in v07.
+
+**Runtime-confirmed.**
+
+The user confirmed that v08 no longer hard-hangs: forward movement, crouch, and airborne forward drift all work. The Sektor stance still renders with intentionally wrong colors because the donor palette wrapper remains disabled.
+
+Because v08 differs from v07 only by restoring the falsely claimed cave to its exact stock zero-filled dispatch records (plus header CRC), this establishes the root cause of the input-specific hard hangs as the overwritten live action/dispatch data. The failure is therefore **Runtime-confirmed**, not merely inferred.
+
+The durable safety rule is: ROM `0xA1308..` / VA `0x800A0708..` is not generic free space. In particular, the zero-filled 0x78-byte records referenced by the live table at VA `0x800A09C4` are semantic dispatch data and must remain stock unless deliberately decoded and modified.
+
+## v09 — re-home palette helper into owned reserved runtime memory
+
+**Final status: Runtime-confirmed safe proof architecture except for one transition-frame artifact.** The helper/state were re-homed into explicitly owned proof memory.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v09.z64`
+
+Identity:
+
+- SHA-256 `8d702002ef5b5ac8b8a9289e7b4f059ad92fd28c64a425bb240d86a6b6bf0829`;
+- CRC1/CRC2 `2A920945 / 02213D28`.
+
+v09 is built from the runtime-confirmed v08 behavior and reintroduces only the corrected dynamic Sektor palette path in explicitly owned proof memory:
+
+- the existing 1 KiB arena reservation `0x801AF420..0x801AF81F` is enabled through the current proven two-site reservation;
+- file ID `0x1B` loads a bounded 0x300-byte proof payload from ROM `0xF10000` to RDRAM `0x801AF420`;
+- the existing runtime-confirmed stage-load bootstrap loads that payload before gameplay;
+- the palette helper is at `0x801AF440`;
+- its temporary state is at `0x801AF700`, inside the same explicitly reserved proof payload;
+- target `select_animation` redirects only its first two instructions to that owned helper, which then resumes at stock `0x8002FE5C`;
+- the false cave `0x800A0708..` remains byte-for-byte stock;
+- the donor animation-rate hook remains disabled, so this proof uses MKMSZ's stock idle cadence.
+
+The helper retains the corrected v02 palette bookkeeping: save stock selector and active palette handle, allocate/bind the genuine Sektor palette for exact idle selection, restore both stock fields before release on exit.
+
+**Runtime-confirmed except for one transition-frame artifact.**
+
+The user confirmed that v09 restores Sektor's correct donor colors while preserving the v08 hang fix: forward movement, crouch, airborne forward drift, attacks, blocking, turning, and jumping all work. The falsely claimed global cave remains stock and the re-homed helper in the reserved runtime block is therefore **Runtime-confirmed** as a safe proof architecture.
+
+One defect remains: a single visibly corrupted frame still appears at animation transitions. Static trace of target `select_animation` explains the timing: `0x8002FE54` only changes controller animation cursor `+0x6E4`; it does not install the first new shape immediately. v09 changes palette ownership during `select_animation`, so one render interval can briefly combine the previous shape with the new palette (and vice versa on exit).
+
+## v10 — bind palette atomically inside native frame setup
+
+**Final status: Runtime-confirmed.** Frame-setup-time palette binding removed the transition artifact on the tested route.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_subzero-swap_proof_v10.z64`
+
+Identity:
+
+- SHA-256 `a4890654d3266346ea5d44775f44c3f2be515e5928adbd141e949ebf0e3d87fa`;
+- CRC1/CRC2 `DAAD01D9 / BED5AF87`.
+
+v10 preserves the runtime-confirmed v09 resource relocation, genuine five-frame Sektor idle, owned 1 KiB runtime allocation, and stock locomotion behavior, but restores target `select_animation` completely to stock.
+
+Instead, v10 hooks native frame setup `0x8001BDA0` through the owned helper at `0x801AF440`. The helper identifies a Sektor frame only when the incoming shape pointer lies inside the appended Sektor-shape/resource range of relocated file ID `0x87`.
+
+On Sektor frame installation:
+
+1. allocate/reuse the genuine donor palette;
+2. set actor `+0x9E` to the donor selector;
+3. call the original frame-setup body;
+4. native frame setup resolves that selector and writes the matching active handle to actor `+0x80` in the same synchronous call.
+
+On the first stock frame after Sektor:
+
+1. restore the saved stock selector;
+2. call the original frame-setup body so native code installs the stock shape and active palette together;
+3. release the donor palette only after stock frame setup has completed.
+
+This removes the v09 interval in which palette ownership changed before the new shape was installed. The false cave remains exact stock data; the donor-rate hook remains disabled so cadence is still the MKMSZ stock rate for this proof.
+
+**Runtime-confirmed.**
+
+The user reported v10 as fully correct: genuine Sektor idle renders with the proper donor palette, normal movement/actions remain stable, and the last one-frame transition corruption is gone. This runtime-confirms frame-setup-time palette switching as the correct boundary for the tested Sektor idle replacement.
+
+The current strongest bounded claim is therefore:
+
+> **Runtime-confirmed:** a genuine five-frame MKT Rev. 2 Sektor idle animation can cleanly replace MKMSZ Sub-Zero's ordinary idle state, with correct donor colors, both stock action transitions and locomotion remaining stable, and no visible transition corruption in the user's tested route.
+
+## v11 — destructive idle replacement proof
+
+**Final status: Runtime-confirmed.** Destructive idle replacement behaved like the proven v10 baseline.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle_destructive-swap_proof_v11.z64`
+
+Identity:
+
+- SHA-256 `37faf7fe07cd6dfe84cd65f39cdd67482a601135ad9342f6dd927a49cf98b128`;
+- CRC1/CRC2 `DAAD01D9 / BED5AF87`.
+
+v11 starts from runtime-confirmed v10 but deliberately discards the replaced Sub-Zero idle assets instead of keeping a recoverable in-ROM backup. The active relocated resource's unreachable old idle-script tail and stock idle-frame bundles that are no longer referenced are zeroed; the inactive original ROM copy's complete stock idle script/frame region is also zeroed. One stock frame that is still referenced elsewhere is retained.
+
+The donor conversion still uses relocated/extra physical storage because the decoded row-aligned type-0 Sektor frames are substantially larger than the original compressed Sub-Zero idle bundle. This is a storage-format constraint, not an attempt to preserve runtime switching.
+
+**Runtime-confirmed.** The user tested v11 and reported behavior identical to the perfect v10 result. This confirms that preserving a recoverable in-ROM copy of the replaced idle animation is unnecessary for the current build-time graphics-swap goal.
+
+## v12 — destructive idle + locomotion replacement
+
+**Final status: Rejected / failed at stage load.** The large raw file-`0x87` expansion is the leading allocation/resource-pressure explanation, not a proven animation-semantic fault.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-locomotion_destructive-swap_proof_v12.z64`
+
+Identity:
+
+- SHA-256 `bf02b4ba3fca25a9e6a2362ec6e84e18a2550d9a2f54182fe5b3fe94ad693094`;
+- CRC1/CRC2 `DAA12659 / 3F399A9B`.
+
+v12 extends the runtime-confirmed destructive v11 architecture to the next direct primary-table block:
+
+- slot `0x00`: Sektor stance/idle, unchanged from v11;
+- slot `0x01`: Sektor walk forward;
+- slot `0x02`: Sektor walk backward;
+- slot `0x03`: Sektor turn;
+- slot `0x04`: Sektor duck/crouch.
+
+Exact retail donor scripts used:
+
+```text
+walk forward: RBWALK1,2,3,5,7,8,9, ANI_JUMP, self
+walk backward: RBWALK9,8,7,5,3,2,1, ANI_JUMP, self
+turn: RBTURN1, RB2VICTORY2, ANI_FLIP, RBTURN1, 0
+duck: RBDUCK1, RBDUCK2, RBDUCK3, 0
+```
+
+The N64 retail CUT_FRAME branch is therefore preserved. Twelve unique Sektor frames are decoded from donor codecs 22/24 with the exact robot dictionary, converted to MKMSZ type-0 row-aligned indexed buffers, and appended to the relocated Sub-Zero file.
+
+The expanded target resource is now:
+
+- ROM `0xF40000..0xFA20DF`;
+- size `0x620E0`;
+- donor frame materialization begins at resource `+0x4D7D0`;
+- the converted Sektor palette moved to resource color pointer `+0x6209C`;
+- the runtime-confirmed frame-setup helper's donor upper bound and palette pointer were updated to that new value.
+
+The old false cave remains stock. No donor-rate hook is enabled.
+
+Destructive policy is retained:
+
+- the inactive original-ROM copies of the replaced walk/turn/duck scripts and frame bundles are erased;
+- in the active relocated file, the old walk and turn bundles plus duck frames 1/2 are erased after their scripts are replaced;
+- stock duck frame 3 remains because unswapped crouch-derived actions still reference it. It is shared live data, not a backup.
+
+The 0x148C0-byte ROM extension beyond v11's resource end was verified to occupy the existing all-`0xFF` disposable tail and does not overlap another global-file-table entry. File ID `0x1B` remains the proof runtime payload and file ID `0x87` alone owns the expanded fighter resource.
+
+**Rejected / failed at stage load.**
+
+The user reported that v12 hangs on the Mission Objective screen before stage music begins. Gameplay is never reached, so this result does not test the imported walk/turn/duck animation behavior itself.
+
+The primary structural difference from runtime-confirmed v11 is resource growth: materializing the twelve new locomotion frames as MKMSZ type-0/raw buffers expanded file ID `0x87` from `0x4D820` to `0x620E0`, an additional `0x148C0` bytes (~82 KiB). Because the failure occurs before gameplay and before music, resource-load/allocation pressure is the leading hypothesis rather than a frame-transition fault. This is **Hypothesis / strong inference**, not yet proven.
+
+## v13 — compact native type-4 locomotion materialization
+
+**Final status: Rejected / failed for fighter-frame storage.** Type-4 storage reached gameplay but produced severe ghosting/smear.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-locomotion_compact-swap_proof_v13.z64`
+
+Identity:
+
+- SHA-256 `30170bed6011c1ba98c57e69b8a3b2532f56a57a4bf9f12652a041cbf5e19cad`;
+- CRC1/CRC2 `DAA36F59 / 4CB3375F`.
+
+v13 preserves the same direct animation mapping as v12:
+
+- slot `0x00` Sektor idle;
+- slot `0x01` Sektor walk forward;
+- slot `0x02` Sektor walk backward;
+- slot `0x03` Sektor turn;
+- slot `0x04` Sektor duck/crouch.
+
+The difference is storage only. The twelve added locomotion frames are decoded from the exact MKT Rev. 2 robot streams and then re-encoded into MKMSZ's native type-4 embedded-image format rather than stored as type-0/raw buffers. Software decode verification proves every v13 type-4 block reproduces the exact donor-decoded row-aligned pixel buffer used by v12.
+
+Resulting file ID `0x87`:
+
+- ROM `0xF40000..0xF9473F`;
+- size `0x54740`;
+- only `0x6F20` bytes larger than runtime-confirmed v11, versus v12's `0x148C0`-byte growth;
+- false cave remains exact stock;
+- donor palette/frame-setup helper remains in the proven owned runtime block;
+- no donor-rate hook.
+
+**Rejected for fighter presentation; resource-load goal succeeded.**
+
+The user confirmed that v13 reaches gameplay, so compacting the resource removes v12's pre-stage-load failure. However, every newly type-4-stored locomotion animation shows severe visual corruption: repeated/dragged Sektor silhouettes and rectangular smear patterns. The original raw/type-0 Sektor idle remains the established clean presentation path.
+
+The screenshots also rule out the previously known 4-byte row-padding error as a complete explanation: the retail Sektor walk frames are 68 pixels wide, already naturally 4-byte aligned, yet still show the same ghosting. Therefore native type-4 materialization is **Rejected / failed for this fighter-frame path** in the tested form, even though type-4 remains runtime-confirmed for ordinary pickup visuals.
+
+## v14 — raw/type-0 single-animation size isolation: Turn
+
+**Final status: Runtime-confirmed.** Isolated Turn works on the tested route.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-turn_destructive-swap_proof_v14.z64`
+
+Identity:
+
+- SHA-256 `0136742245361c23c962dfb47d61609dc3b4726736b2c768a24f08113a0a6234`;
+- CRC1/CRC2 `DAACEFD9 / 6DF36782`.
+
+v14 returns to runtime-confirmed v11 as its base and adds only primary slot `0x03`, Sektor's exact retail turn:
+
+```text
+RBTURN1
+RB2VICTORY2
+ANI_FLIP
+RBTURN1
+0
+```
+
+Both donor frames use the already runtime-confirmed fighter conversion:
+
+- MKT Y:X -> MKMSZ X:Y;
+- 4-byte-aligned CI rows;
+- raw/type-0 wrapper `00000000`;
+- the v10 frame-setup-time donor palette switch;
+- false cave untouched.
+
+The two frames add `0x2D94` bytes of raw donor material. File ID `0x87` is now ROM `0xF40000..0xF905B3`, size `0x505B4`, only about 11.4 KiB larger than runtime-confirmed v11. The donor palette is moved to resource `+0x50568` so the proven helper's donor-range test still covers all foreign shapes.
+
+The active and inactive old Sub-Zero turn scripts are no longer callable; their shape/sub-descriptor stubs are cleared. Old compressed image bytes may remain orphaned but are not retained as an intentional runtime backup.
+
+**Runtime-confirmed.**
+
+The user reported v14 as perfect. The stage loads normally; the genuine two-frame Sektor turn renders cleanly with the established donor palette; transitions remain stable; no ghosting, smear, palette artifact, or hang was observed in the tested route.
+
+This reconfirms the raw/type-0 fighter materialization path beyond idle and confirms primary slot `0x03` Turn as a direct graphical replacement.
+
+## v15 — raw/type-0 shared walk-frame proof
+
+**Final status: Runtime-confirmed.** Walk Forward/Backward work on the tested route.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-walk_destructive-swap_proof_v15.z64`
+
+Identity:
+
+- SHA-256 `cd6d83c0d2ec1ae3e33f5ae1cd73bec383c7e3cb411caa930eb4337c5e9453ab`;
+- CRC1/CRC2 `DAA31E49 / 780D580B`.
+
+v15 returns to runtime-confirmed destructive v11 as its base and adds only primary slots `0x01` and `0x02`:
+
+- Sektor walk forward: `RBWALK1,2,3,5,7,8,9, ANI_JUMP, self`;
+- Sektor walk backward: the exact same seven frames in reverse order.
+
+Because forward/backward share the same seven retail frames, they require only one physical donor frame set. The materialized raw/type-0 frame block is copied exactly from the previously decoded v12 donor data, preserving:
+
+- MKT Y:X -> MKMSZ X:Y descriptor conversion;
+- 4-byte-aligned rows;
+- raw/type-0 wrapper;
+- v10 frame-setup-time palette switching;
+- false cave untouched;
+- no donor-rate hook.
+
+The donor walk block occupies resource `+0x4D7D0..+0x5AD7F`. The Sektor palette follows at color pointer `+0x5AD80`. File ID `0x87` is now ROM `0xF40000..0xF9ADCB`, size `0x5ADCC`, about 54 KiB larger than v11.
+
+This proof intentionally leaves Turn stock so that the seven-frame walk set is isolated from the already-confirmed v14 Turn composition.
+
+**Runtime-confirmed.**
+
+The user reported v15 as perfect: stage load is normal; both forward and backward walking remain genuine Sektor throughout; the walk graphics look correct; and no transition, palette, smear, or hang regression was observed in the tested route.
+
+This runtime-confirms primary slots `0x01` Walk Forward and `0x02` Walk Backward as direct graphical replacements using one shared seven-frame raw/type-0 donor set.
+
+## v16 — compose confirmed Idle + Walk + Turn
+
+**Final status: Runtime-confirmed.** Idle + Walk Forward + Walk Backward + Turn work as a composed set.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-idle-walk-turn_destructive-swap_proof_v16.z64`
+
+Identity:
+
+- SHA-256 `c9f68e965c6e6cdcc716ea11944829d61d09fda28d3adc5c896200ea9782771a`;
+- CRC1/CRC2 `DAA30759 / 664C0B43`.
+
+v16 is a composition proof only. It begins from runtime-confirmed v15 and adds the already runtime-confirmed v14 Sektor Turn block without introducing a new decoder, palette strategy, or animation semantic:
+
+- `0x00` Idle — runtime-confirmed v10/v11;
+- `0x01` Walk Forward — runtime-confirmed v15;
+- `0x02` Walk Backward — runtime-confirmed v15;
+- `0x03` Turn — runtime-confirmed v14;
+- `0x04` Crouch remains stock.
+
+The shared seven-frame walk block remains resource `+0x4D7D0..+0x5AD7F`. The exact v12 raw/type-0 Turn materialization, whose isolated behavior was proven in v14, is placed at `+0x5AD80..+0x5DB13`. The donor palette moves immediately after it to `+0x5DB14`, and the frame-setup helper's donor upper bound / palette pointer are updated accordingly.
+
+File ID `0x87` is ROM `0xF40000..0xF9DB5F`, size `0x5DB60`, which is `0x10340` bytes (~64.8 KiB) larger than runtime-confirmed v11. This remains substantially below rejected v12's `0x620E0` size.
+
+The false cave remains exact stock; no donor-rate hook is enabled. The already runtime-confirmed destructive Turn cleanup is also retained.
+
+**Runtime-confirmed.**
+
+The user reported v16 as perfect. Idle, Walk Forward, Walk Backward, and Turn all coexist in the same session with correct Sektor graphics, correct donor palette, clean transitions, and no hang or smear regression. This is the first runtime-confirmed multi-animation Sektor composition beyond idle.
+
+## v17 — isolate raw/type-0 Crouch
+
+**Final status: Runtime-confirmed.** Crouch works on the compact raw/type-0 branch.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-crouch_destructive-swap_proof_v17.z64`
+
+Identity:
+
+- SHA-256 `d28cc5705357503fcb1629e538ad48a569ff5ce55f8e4f878a67408cef3fd8e7`;
+- CRC1/CRC2 `DAA31FD9 / 17C86690`.
+
+v17 intentionally returns to the runtime-confirmed destructive v11 idle base rather than appending Crouch onto v16. Adding all three raw Crouch frames to v16 would recreate the rejected v12 file-ID-`0x87` size `0x620E0`, so repeating that known-bad composition is avoided.
+
+Primary slot `0x04` now uses the exact retail Sektor crouch sequence:
+
+```text
+RBDUCK1
+RBDUCK2
+RBDUCK3
+0
+```
+
+The three raw/type-0 frames are compactly relocated immediately after the v11 donor-idle region:
+
+- RBDUCK1 shape `+0x4D7D0`;
+- RBDUCK2 shape `+0x4F498`;
+- RBDUCK3 shape `+0x50D08`;
+- donor palette `+0x51D58`.
+
+File ID `0x87` becomes ROM `0xF40000..0xF91DA3`, size `0x51DA4`, keeping this proof far below the rejected v12 size while preserving the already-proven raw fighter format and frame-setup-time palette switching.
+
+**Runtime-confirmed.**
+
+The user reported v17 as perfect. The stage loads normally; the genuine three-frame Sektor crouch renders cleanly with the donor palette; crouch transitions are stable; and no ghosting, palette artifact, or hang was observed in the tested route. Primary slot `0x04` Crouch is therefore a runtime-confirmed direct graphical replacement.
+
+## v18 — crouch-family direct-core batch
+
+**Final status: Runtime-confirmed.** The direct crouch-family states work on the tested route.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-crouch-family_destructive-swap_proof_v18.z64`
+
+Identity:
+
+- SHA-256 `aec6c96c315496b3665f433243e03b6fd305f61b8774bde337978a168b060f82`;
+- CRC1/CRC2 `DAA301D9 / 97D70477`.
+
+v18 starts from runtime-confirmed v17 and expands the crouching family through primary slots `0x05..0x07`:
+
+- `0x05` Crouch Turn: `RBDUCKTURN1, RBDUCKTURN2, ANI_FLIP, RBDUCKTURN1, RBDUCK3, 0`;
+- `0x06` Crouch Block: `RBDUCKBLOCK1, RBDUCKBLOCK2, RBDUCKBLOCK3, 0`;
+- `0x07` Crouch Hit: retail CUT_FRAME sequence `RBDUCKBLOCK1, RBDUCKHIT2, RBDUCKHIT3, 0`.
+
+The batch reuses v17's already-confirmed `RBDUCK3` frame and shares `RBDUCKBLOCK1` between block and hit, so only seven new physical donor frames are required. All seven use the proven raw/type-0 fighter conversion and exact supplied MKT Rev. 2 robot streams.
+
+New donor shapes begin at resource `+0x51D58`; the donor palette moves to `+0x59854`. File ID `0x87` is now size `0x598A0`, still below the already runtime-confirmed v15/v16 resource sizes.
+
+The false cave remains stock; palette switching remains on the runtime-confirmed native frame-setup boundary; no donor-rate hook is enabled.
+
+**Runtime-confirmed.**
+
+The user confirmed that v18 works perfectly: Crouch, Crouch Turn, Crouch Block, and Crouch Hit all render as Sektor and transition correctly without hangs, palette faults, smear, or other visible corruption in the tested route.
+
+One expected mixed-state artifact remained outside v18's scope: using stock MKMSZ Crouch Punch and allowing it to return to crouch can show a stock Sub-Zero crouch frame, because the unswapped slot-0x08 script contains explicit stock return frames rather than merely reselecting slot 0x04.
+
+## v19 — Crouch Punch direct replacement
+
+**Final status: Runtime-confirmed.** Crouch Punch works and removes the observed stock return frame.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-crouch-punch_destructive-swap_proof_v19.z64`
+
+Identity:
+
+- SHA-256 `73e16ae4d6c2941834caa68c7227d75a99865f4483430f07e9123d971741e199`;
+- CRC1/CRC2 `DAA36769 / 1A41D433`.
+
+v19 starts from runtime-confirmed v18 and replaces primary slot `0x08` with the exact MKT Rev. 2 robot CUT_FRAME crouch-punch script:
+
+```text
+RBDUCKBLOCK1
+RBDUCKPUNCH2
+RBDUCKPUNCH3
+0
+RBDUCKPUNCH2
+RBDUCKBLOCK1
+RBDUCK3
+0
+```
+
+This directly addresses the observed stock-frame return. `RBDUCKBLOCK1` and `RBDUCK3` are already resident from v18/v17, so only two new physical donor frames are added:
+
+- `RBDUCKPUNCH2` at resource `+0x59854`;
+- `RBDUCKPUNCH3` at resource `+0x5AA78`.
+
+Both use the proven raw/type-0 fighter conversion. The donor palette moves to `+0x5C110`, and file ID `0x87` becomes size `0x5C15C`, still slightly below the already runtime-confirmed v16 size `0x5DB60`.
+
+The ROM extension target was verified to be untouched `0xFF` tail space before writing. The false cave remains stock; palette switching remains on the runtime-confirmed frame-setup boundary; no donor-rate hook is enabled.
+
+**Runtime-confirmed.**
+
+The user reported v19 as clean. Crouch Punch remains Sektor throughout, returns through imported `RBDUCK3` rather than the former stock Sub-Zero crouch frame, and transitions remain stable. Primary slot `0x08` is therefore runtime-confirmed as a direct graphical replacement.
+
+## v20 — Crouch Low Kick
+
+**Final status: Rejected / failed.** Whole-scene corruption occurs before the new Crouch Low Kick is used; the file-`0x87` footprint remains the strongest allocation-boundary inference.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-crouch-low-kick_destructive-swap_proof_v20.z64`
+
+Identity:
+
+- SHA-256 `a41a73cc2d37b371aeeae9bdc4c761100b94c44106697101f8689ab7ca77b687`;
+- CRC1/CRC2 `DAA30659 / FE85A85E`.
+
+v20 starts from runtime-confirmed v19 and replaces primary slot `0x0A` with the exact retail CUT_FRAME Sektor crouch-low-kick sequence:
+
+```text
+RBDUCKHIKICK1
+RBDUCKLOKICK2
+RBDUCKLOKICK3
+0
+RBDUCKLOKICK2
+RBDUCKHIKICK1
+RBDUCK3
+0
+```
+
+The final `RBDUCK3` reuses the already runtime-confirmed crouch frame from v17. Only three new physical donor frames are added:
+
+- `RBDUCKHIKICK1` at resource `+0x5C110`;
+- `RBDUCKLOKICK2` at `+0x5CE48`;
+- `RBDUCKLOKICK3` at `+0x5DF60`.
+
+All three are decoded from the supplied MKT Rev. 2 robot resource, verified against the retail descriptors, and materialized using the runtime-confirmed raw/type-0 fighter format. The donor palette moves to `+0x5F878`.
+
+File ID `0x87` becomes size `0x5F8C4`, still below the rejected v12 size `0x620E0`. The false cave remains untouched; palette switching remains on the v10 frame-setup boundary; no donor-rate hook is enabled.
+
+**Rejected / failed due to whole-scene runtime corruption before the new animation is used.**
+
+The user reported that the stage itself appears, but approximately one second later—just as the player is about to appear—the entire scene becomes severely corrupted. The screenshot shows broad renderer/framebuffer-style corruption across the stage and HUD, not merely a malformed fighter frame. The new Crouch Low Kick was not activated before the failure.
+
+This materially tightens the raw fighter-resource size boundary:
+
+- v19 file ID `0x87` size `0x5C15C`: normal gameplay is runtime-confirmed clean;
+- v20 size `0x5F8C4`: catastrophic scene corruption occurs during player instantiation;
+- delta: only `0x3768` bytes (~13.8 KiB).
+
+The strongest current explanation is **Hypothesis / strong inference:** file ID `0x87` has crossed a practical load/allocation boundary and is colliding with later runtime memory or render-state allocation. The failure is not attributed to the Crouch Low Kick animation semantics because the animation is never selected.
+
+## v21 — isolated Crouch Low Kick below the raw-size boundary
+
+**Final status: Runtime-confirmed.** Crouch Low Kick works when isolated on the smaller v17 base.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-crouch-low-kick_isolated-proof_v21.z64`
+
+Identity:
+
+- SHA-256 `f6169f6d2a82b0165ff5a96ef609a60ef0f95546288c8978ddd8aa35983a161b`;
+- CRC1/CRC2 `DAA30FC9 / 88373F03`.
+
+v21 returns to runtime-confirmed v17 (Idle + Crouch) and adds only the exact same retail Crouch Low Kick mapping used by v20:
+
+```text
+RBDUCKHIKICK1
+RBDUCKLOKICK2
+RBDUCKLOKICK3
+0
+RBDUCKLOKICK2
+RBDUCKHIKICK1
+RBDUCK3
+0
+```
+
+The three donor frames use the same verified raw/type-0 conversion, but are placed immediately after v17's compact donor block:
+
+- `RBDUCKHIKICK1` at `+0x51D58`;
+- `RBDUCKLOKICK2` at `+0x52A90`;
+- `RBDUCKLOKICK3` at `+0x53BA8`;
+- donor palette at `+0x554C0`.
+
+File ID `0x87` is only `0x5550C`, safely below runtime-confirmed v18/v19/v16 sizes. This isolates animation correctness from the accumulation/size failure seen in v20.
+
+**Runtime-confirmed.**
+
+The user confirmed normal stage load and a clean genuine Sektor crouch low kick, including the full return to the imported Sektor crouch state. This establishes primary slot `0x0A` Crouch Low Kick as a correct direct graphical replacement. It also confirms that v20's catastrophic corruption was caused by accumulated composition/resource pressure rather than by the low-kick mapping itself.
+
+Primary test: normal stage load, Sektor Crouch Low Kick, clean return to Sektor crouch, and no broad scene corruption. If v21 succeeds, slot `0x0A` is a valid direct mapping and the remaining blocker is storage/composition, not animation semantics.
+
+A separate instrumentation note remains: the earlier Reverse Elbow/Reptile branch already runtime-confirmed a gameplay-safe diagnostic HUD through the native gameplay HUD/text path. Future Sektor instrumentation should reuse that proven pattern rather than the rejected v04 unguarded wrapper.
+
+## v22 — isolated Crouch High Kick composed with confirmed Low Kick
+
+**Final status: Runtime-confirmed.** Crouch High Kick and the carried-forward Low Kick both work on the tested route.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-crouch-kicks_isolated-proof_v22.z64`
+
+Identity:
+
+- SHA-256 `a73a4a9b5cf5a822fd9f504962cbbd8716fd154954e7a6e5cdf35b53abd4c176`;
+- CRC1/CRC2 `DAA30659 / 739BE7D0`.
+
+v22 builds from runtime-confirmed v21. It retains the confirmed Crouch Low Kick and adds primary slot `0x09` Crouch High Kick.
+
+The exact retail Sektor high-kick sequence is:
+
+```text
+RBDUCKHIKICK1
+RBDUCKHIKICK2
+RBDUCKHIKICK3
+RBDUCKHIKICK4
+0
+RBDUCKHIKICK3
+RBDUCKHIKICK2
+RBDUCKHIKICK1
+RBDUCK3
+0
+```
+
+`RBDUCKHIKICK1` and `RBDUCK3` were already resident in v21, so only three new physical frames are added.
+
+Because the exact retail sequence is 10 words long while MKMSZ's original slot-`0x09` script area has only 9 words before the next stock script, v22 does **not** overwrite the neighboring High Punch script. Instead it stores the exact 10-word Sektor high-kick script at appended resource `+0x554C0` and redirects primary table slot `0x09` there.
+
+New donor shapes:
+
+- `RBDUCKHIKICK2` at `+0x554E8`;
+- `RBDUCKHIKICK3` at `+0x56090`;
+- `RBDUCKHIKICK4` at `+0x571E8`;
+- donor palette at `+0x59098`.
+
+File ID `0x87` becomes size `0x590E4`, below the already runtime-confirmed v19 size `0x5C15C` and well below failed v20 `0x5F8C4`.
+
+**Runtime-confirmed.**
+
+The user confirmed that v22 works cleanly: Crouch High Kick plays correctly through its forward/reverse sequence, returns to the imported Sektor crouch, and the previously confirmed Crouch Low Kick remains correct in the same build.
+
+This runtime-confirms primary slot `0x09` Crouch High Kick as a direct graphical replacement and confirms coexistence of both crouching kick slots on the compact branch.
+
+## v23 — isolated Uppercut
+
+**Final status: Runtime-confirmed.** Uppercut works on the tested route.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-uppercut_isolated-proof_v23.z64`
+
+Identity:
+
+- SHA-256 `bcece5ddf4f7994c04776309c0f35158a1a3fcb1404a7e405194dd24150c10c7`;
+- CRC1/CRC2 `DAA31FC9 / 2BFDE43C`.
+
+v23 returns to the runtime-confirmed v17 crouch base and isolates primary slot `0x0B` Uppercut so the test remains below the known raw resource failure boundary.
+
+The exact MKT Rev. 2 Sektor uppercut sequence is:
+
+```text
+RBUPPERCUT1
+RBUPPERCUT3
+RBUPPERCUT4
+RBUPPERCUT5
+ANI_NOSLEEP
+RBUPPERCUT7
+0
+RBUPPERCUT5
+0
+```
+
+Static comparison with MKMSZ's stock Sub-Zero uppercut shows the same nine-word animation grammar and the same command value `5` for `ANI_NOSLEEP` in the same position. Therefore v23 replaces the stock script in place at resource `+0x49C`; no script relocation or neighboring overwrite is required.
+
+Five exact retail donor frames are materialized through the proven raw/type-0 fighter path:
+
+- `RBUPPERCUT1` at `+0x51D58`, 46x78, anchor (+20,-42);
+- `RBUPPERCUT3` at `+0x52C10`, 57x94, anchor (+20,-28);
+- `RBUPPERCUT4` at `+0x54230`, 82x98, anchor (+30,-25);
+- `RBUPPERCUT5` at `+0x56270`, 78x108, anchor (+32,-16);
+- `RBUPPERCUT7` at `+0x58448`, 46x130, anchor (+21,+6);
+- donor palette moves to `+0x59CC0`.
+
+File ID `0x87` becomes size `0x59D0C`, below the runtime-confirmed v19 size `0x5C15C` and well below failed v20 `0x5F8C4`.
+
+**Runtime-confirmed.**
+
+The user reported the uppercut working exactly as expected, including the tall apex frame and clean transition afterward.
+
+Primary validation: stage load, Sektor Uppercut animation, correct tall apex frame, and clean transition afterward. The proof intentionally does not compose the crouching kicks so Uppercut itself remains isolated from the known accumulation boundary.
+
+## v24 — isolated Standing Block
+
+**Final status: Runtime-confirmed.** Standing Block works on the tested route.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-standing-block_isolated-proof_v24.z64`
+
+Identity:
+
+- SHA-256 `61dcf4fc9d6ace56cf06c565233c944bb3530405466fc89f1ca239b49409fad9`;
+- CRC1/CRC2 `DAACE659 / 489383DE`.
+
+v24 starts from runtime-confirmed destructive v11 and replaces only primary slot `0x0C` Standing Block with the exact MKT Rev. 2 Sektor CUT_FRAME sequence:
+
+```text
+RBHIBLOCK1
+RBHIBLOCK3
+RBHIBLOCK3
+0
+```
+
+Only two physical donor frames are required. They use the proven raw/type-0 fighter conversion and exact robot dictionary/descriptor rules. The donor palette is moved after the new block frames; the frame-setup-time palette helper remains otherwise unchanged.
+
+File ID `0x87` is only `0x503E0` bytes in this proof, well below every observed raw-resource failure boundary.
+
+**Runtime-confirmed.**
+
+The user reported v24 as perfect. Standing Block renders as genuine Sektor, transitions cleanly, and showed no stock Sub-Zero block frame, palette artifact, or stability regression in the tested route.
+
+## v25 — isolated High Punch core + post-legal logo skip
+
+**Final status: Runtime-confirmed.** High Punch works on its bounded route; the post-legal logo bypass remains only a proof convenience baseline.
+
+Disposable proof:
+
+`MKMSZR_mkt-sektor-high-punch_isolated-proof_v25.z64`
+
+Identity:
+
+- SHA-256 `b26f5eb73d72354c66a336d992d9cca2bbc3daf36545147124c898176e7a7167`;
+- CRC1/CRC2 `CAACE5C9 / 637009C7`.
+
+v25 starts from runtime-confirmed v24 and adds the seven genuine Sektor High Punch frames `RBHIPUNCH1..7`. MKMSZ's stock High Punch script has the same 28-word control/segment grammar as MKT's retail robot script, so the existing target command words and jump targets are preserved while every High-Punch-owned frame pointer is redirected to imported Sektor shapes.
+
+Two late crossover frame references belong semantically to Low Punch (`RBLOPUNCH5` and `RBLOPUNCH2`). Those remain stock Sub-Zero in v25 by design rather than being approximated; they will be addressed when Low Punch is mapped. A simple High Punch and all High-Punch-owned frames are therefore the primary validation scope.
+
+Seven raw/type-0 frames are appended. File ID `0x87` becomes `0x5DA0C`, essentially the same size class as runtime-confirmed v16 (`0x5DB60`) and below the v19/v20 failure bracket.
+
+Starting with v25, these disposable animation proofs also include the already runtime-confirmed **post-legal logo bypass** at ROM `0x7A3F4`: only the first guarded word changes to `0x10000003`, skipping the two fixed company/logo presentations while preserving the legal screen, fade normalization, and title handoff.
+
+**Runtime-confirmed.**
+
+The user reported High Punch working perfectly in the tested route. The post-legal logo bypass also remains part of the convenience baseline from this proof onward.
+
+Primary test: ordinary High Punch, repeated High Punch, transitions back to idle/block, and watch for any stock frame only on the known Low-Punch crossover branches.
+
+## v26 — isolated Low Punch
+
+**Final status: Runtime-confirmed.** Ordinary and chained Low Punch behavior works on the tested route.
+
+Disposable proof: `MKMSZR_mkt-sektor-low-punch_isolated-proof_v26.z64`.
+
+Identity:
+
+- SHA-256 `46de0dbfb1217d9d19b8af5221771597e23bfed78248b64090a2eb131c28510d`;
+- CRC1/CRC2 `CAAC9DC9 / 4FC0CC34`.
+
+v26 returns to the small runtime-confirmed v11 idle baseline and isolates primary slot `0x0F` Low Punch. The exact CUT_FRAME branch needs five Low-Punch-owned frames (`RBLOPUNCH2..6`, excluding the cut `RBLOPUNCH1`) plus the three High-Punch crossover frames `RBHIPUNCH1`, `RBHIPUNCH5`, and `RBHIPUNCH7`. MKMSZ's inherited 27-word punch-chain control structure is preserved; only the corresponding visual frame pointers are replaced. File ID `0x87` is `0x5BF88`. The runtime-confirmed post-legal logo bypass is included.
+
+**Runtime-confirmed.** The user reported the ordinary and chained Low Punch behavior working perfectly in the tested route.
+
+## v27 — isolated Standing Low Kick
+
+**Final status: Runtime-confirmed.** Standing Low Kick works with the exact relocated 13-word donor sequence.
+
+Disposable proof: `MKMSZR_mkt-sektor-standing-low-kick_isolated-proof_v27.z64`.
+
+Identity:
+
+- SHA-256 `548dc3b1e07528c5863e20cfcbd52f7cdf632b85c409a80d37d15916a798bb7f`;
+- CRC1/CRC2 `CAACE1B9 / 6BA95942`.
+
+v27 returns to the runtime-confirmed v11 idle base and imports the exact MKT Rev. 2 Sektor Standing Low Kick. The donor sequence is `RBLOKICK1,2,3,4,5,6,0,5,4,3,2,1,0`. MKMSZ's stock slot-0x12 script region is only 10 words before the neighboring High Kick script, so the exact 13-word donor sequence is appended at resource `+0x4D7D4` and primary table slot `0x12` is redirected there rather than overwriting slot `0x11` data. Six donor frames use the proven raw/type-0 conversion, the Sektor palette moves to `+0x588F8`, and file 0x87 is `0x58944` bytes. The runtime-confirmed post-legal logo bypass is included as a convenience baseline. **Runtime-confirmed.** The user reported Standing Low Kick working perfectly in the tested route.
 
 ## Detailed chronology — v28 onward
 
