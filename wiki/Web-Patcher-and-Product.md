@@ -21,6 +21,7 @@ The browser build compiles the Python package to a wheel and serves it with the 
 | Seed | Drives stage-local pickup layouts, boot phrase, and seeded palette through isolated namespaces |
 | Outfit `vanilla` | Leaves source TLUT untouched |
 | Presets / red / green | Applies fixed hue behavior |
+| `rainbow` | Runtime-confirmed 64-phase clothing hue cycle; preserves non-clothing palette entries |
 | `seeded` | Deterministic seed-derived clothing color |
 | `hue` | Requires explicit degrees |
 | `rgb` | Requires `RRGGBB` or `#RRGGBB` |
