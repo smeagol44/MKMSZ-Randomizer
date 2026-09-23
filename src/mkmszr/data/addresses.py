@@ -13,9 +13,11 @@ RUNTIME_V1_STATE_START = 0x801AF620
 RUNTIME_V1_STATE_END_EXCLUSIVE = 0x801AF820
 
 # Production runtime V2 repartitions only the existing reserved 1 KiB block.
+# The 2026-09-23 rainbow full-composition proof runtime-confirmed this expanded
+# code tail while keeping all persistent V2 state inside the same reservation.
 RUNTIME_V2_CODE_START = 0x801AF420
-RUNTIME_V2_CODE_END_EXCLUSIVE = 0x801AF720
-RUNTIME_V2_STATE_START = 0x801AF720
+RUNTIME_V2_CODE_END_EXCLUSIVE = 0x801AF7D0
+RUNTIME_V2_STATE_START = 0x801AF7D0
 RUNTIME_V2_STATE_END_EXCLUSIVE = 0x801AF820
 
 ARENA_START_PATCHES = {
