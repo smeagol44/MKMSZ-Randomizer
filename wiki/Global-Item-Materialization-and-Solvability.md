@@ -131,7 +131,7 @@ The actor appeared, but its graphics were corrupted. Because the extension-selec
 
 Health urn is an important ordinary-item case because its cataloged Water, Fire, and Bridge variants all use external IDs `0x28F..0x292`; there is no known embedded donor for that family.
 
-The four raw Health-urn image payloads were extracted from Water's package and encoded into MKMSZ native type-4 embedded image blocks. The conversion was checked in two ways:
+The four raw Health-urn image payloads behind external IDs `0x28F..0x292` were statically extracted from Water's compressed package file ID `0x73`. Their raw byte lengths are `340, 272, 272, 272`. Fire and Bridge contain matching Health-urn image payloads for the same IDs. The Water payloads were then encoded into MKMSZ native type-4 embedded image blocks. The conversion was checked in two ways:
 
 1. Water's existing embedded Potion frames decode byte-for-byte to Fire's external Potion payloads `0x27F..0x286`, establishing equivalence between the two storage forms for a known paired item.
 2. A conservative literal-only type-4 encoder round-trips all four Health-urn payloads exactly through a software model of native decoder `0x80003428`.
@@ -188,7 +188,7 @@ The same proof ROM contains the equivalent five-import Fortress construction, bu
 
 Before the extension-selector work, a direct raw Prison-to-Fire identity copy produced no usable item because the source selector was not meaningful in Fire. The successful follow-up demonstrated the broader architecture by relocating Fire's resource file, populating stock logical slot 5 with a Prison Level 1 key bundle, and using a dedicated award callback for item `0x1A`.
 
-The proof file expanded from `0x2530` to `0x2BE8` and was relocated to ROM `0x00F00000..0x00F02BE7`. The foreign model rendered and awarded correctly while Fire's original Herbs resource remained intact.
+The proof file expanded from `0x2530` to `0x2BE8` and was relocated to ROM `0x00F00000..0x00F02BE7`. Appended file-relative resource records occupied `0x2558..0x25F7`. The foreign model rendered and awarded correctly while Fire's original Herbs resource remained intact.
 
 This is **Runtime-confirmed feasibility evidence only**. Those exact ROM/callback placements are proof-era locations and do not constitute reusable production allocations; current allocation ownership belongs to [Memory and allocation map](Memory-and-Allocation-Map).
 
