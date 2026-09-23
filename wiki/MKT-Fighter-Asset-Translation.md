@@ -20,7 +20,7 @@ donor frame descriptor + donor compressed/raw pixels + donor palette
 The stable compatibility conclusions are:
 
 - MKT fighter frame structure is conceptually compatible with MKMSZ, but pointer bases and dimension ordering are not byte-compatible and must be rebuilt.
-- MKT N64 codecs `22` and `24`, and the codec-`15` mechanical-arm path, are donor formats only. Their bytes are decoded offline; MKMSZ does not consume those streams directly.
+- MKT N64 codecs `16`, `22`, and `24`, plus the codec-`15` mechanical-arm path, are donor formats only. Their bytes are decoded offline; MKMSZ does not consume those streams directly. Codec `16` is now losslessly decoded for the Sektor straight-missile horizontal rocket frames.
 - Four-byte row pitch is part of both the proven imported N64 fighter path and preserved Midway WIMP raw-image storage. Visible width and stored row pitch must be kept distinct.
 - Donor palettes must be translated into MKMSZ source-palette semantics before rendering. Palette binding is a resource-lifetime problem as well as a color-conversion problem.
 - Generated native Type-5 is the accepted target storage format for imported fighter art. Its format contract remains canonical in [Data structures and encodings](Data-Structures-and-Encodings).
