@@ -48,6 +48,17 @@ The adjacent Frosty/Crispy rows are preserved because they are useful controls f
 
 ## Production-integration boundary
 
+### Trigger-source correction: comment family, not uppercut-only
+
+**Static-confirmed in preserved donor source; exact retail Rev. 2 mapping Pending.**
+
+The final cosmetic trigger is broader than a single uppercut. Preserved `src/gamecode/mkreact.c` creates `FX_COMMENT` from `r_uppercut` and from multiple combo reaction paths: `r_combo5`, `r_combo6`, `combo2`, `r_combo3`, and `combo43` (the shared `r_combo4` path). `FX_COMMENT` then performs the delayed commentary/Toasty selection in `mkfx.c`.
+
+The preserved source probability expression is `randper((curback==BKGD_MK2PITSTAR_MOD)?0xA0:0x40)`. The source implementation of `randper` defines its argument as a probability out of 1000, so that source revision is 16% on the special background and 6.4% otherwise.
+
+Earlier supplied-retail tracing recorded a `randper(40)` branch and interpreted it as 4%. That retail/source discrepancy is now explicit Pending work. Final MKMSZR behavior must be chosen from the supplied retail Rev. 2 evidence after reconciliation, not from the earlier 4% shorthand and not from source alone.
+
+
 v03 proves feasibility, not final product composition. The final feature still needs a dedicated production-safe audio definition/route and final cosmetic trigger; it must not silently reuse the disposable pickup replacement or proof-only allocation. Production composition must remain compatible with the native randomizer, HUD/UI, character-swap work, and the separately tracked Toasty visual path.
 
 The current visual status and its allocations remain canonical in [Toasty visual research](Toasty-Visual-Research); this page does not redefine them.
