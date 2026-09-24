@@ -320,7 +320,7 @@ Semantic translation:
 | `sleep 0x20` | hold/recovery interval | **Covered primitive** |
 | `robo_close_chest` | reverse/close presentation then leave the action | **Partial:** animation/cleanup primitives exist; generic reverse/recovery composition Pending |
 
-The donor values `(7,45)` are **donor-space data**. They must not be replaced with ad-hoc target pixel shifts. v70's hardcoded target-space spawn correction is therefore rejected as an adapter strategy even though it was useful as a diagnostic.
+The source-lineage donor values `(7,45)` are **donor-space data**. Retail MKT USA Rev. 2 N64 applies its platform scaling before the shipped straight-rocket path: the corresponding retail placement is `(+5,+38)`. The same source-vs-retail distinction applies to flight constants: source-lineage `0x40000/0x70000` initial speed and `0xE0000` cap become retail N64 `0x33333/0x59999` and `0xB3333`. Preserve the donor semantics and the provenance of each numeric space; do not substitute ad-hoc target pixel shifts. v70's hardcoded target-space spawn correction is therefore rejected as an adapter strategy even though it was useful as a diagnostic.
 
 ### Donor `rocket1_proc`
 
@@ -356,17 +356,24 @@ Target resource-actor creation:
 - primary Zap animation slot `0x24` contains control token `0x0B`;
 - token `0x0B` dispatches to `0x80030974`;
 - that path calls `0x80034510`, which consumes the following resource entry and reaches the established resource-backed actor constructor `0x800281A0 -> 0x80028128`;
-- the created secondary actor is captured in controller staging fields including `+0x714/+0x648`, while the owner actor remains at `+0x6E0`;
-- `0x80024650` inserts the created actor into the active actor list.
+- the constructor temporarily installs the new actor in current controller/process `+0x6E0`;
+- `0x80030974` captures that new actor at `+0x714`, restores the owner actor to `+0x6E0`, then copies `+0x714 -> +0x648`; at completion of the token handler, `+0x648 == +0x714 == secondary actor`;
+- `0x80024650` inserts that secondary actor into the active actor list.
+
+The two staging fields have different lifetimes despite aliasing the same actor at the projectile handoff. `+0x648` is the stable secondary-actor working/staging pointer used by the stock Zap setup path. `+0x714` is an active/transfer pointer that can be temporarily repurposed. The straight-Ice action saves `+0x714`, overwrites it while creating helper context, then restores it before projectile placement; `+0x648` remains the secondary actor throughout. The generic helper at `0x800302D4` independently reinforces this relationship by copying `+0x648 -> +0x714`.
 
 Target relative placement:
-- `0x80031208(actor, x_adjust, y_adjust)` applies facing-aware actor-relative displacement by negating the X adjustment when the actor is horizontally flipped.
+- `0x80031208(actor, x_adjust, y_adjust)` applies facing-aware actor-relative displacement by negating the X adjustment when the actor is horizontally flipped;
+- in the stock straight-Ice setup, call site `0x8004AFF8 -> 0x8004B000` passes parent `+0x648` as the actor;
+- the same path subsequently uses parent `+0x714` as the temporary current actor for projectile animation, confirming that placement and animation target the same staged secondary actor.
 
 Target projectile-process creation:
 - `0x8004CBC4(callback)` allocates a child controller/process through `0x8002830C` with class/tag `0x700`;
 - it copies relevant parent/opponent context;
 - it binds child actor `+0x6E0` to the parent's staged secondary actor at `+0x714`;
-- it tags the actor with `0x700` and clears the staging fields.
+- it tags that actor with `0x700` and clears parent `+0x648`; it does not clear parent `+0x714`.
+
+**Static-confirmed correction after v71:** the `+0x648` actor passed to `0x80031208` and the `+0x714` actor promoted by `0x8004CBC4` are the same projectile/secondary actor on the stock straight-Ice path. The earlier hypothesis that the v71 placement edit accidentally moved a different Ice helper actor is rejected.
 
 The reusable target vocabulary is therefore:
 
