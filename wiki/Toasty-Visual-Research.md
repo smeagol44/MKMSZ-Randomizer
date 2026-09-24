@@ -592,3 +592,24 @@ The center pieces remain width 64, all image bytes and file payloads are unchang
 Interpretation:
 - if Temple/Earth/Fire become clean, the residual defect is specifically tied to the renderer/TMEM path for 7-pixel logical textures rather than storage integrity;
 - if corruption remains, the next work should inspect the renderer's tile/load-state derivation rather than return to allocation permutation or buffer-lifecycle hypotheses.
+
+
+### Toasty visual diagnostic v36 — 32-pixel logical side nodes
+
+**Runtime-confirmed negative result on 2026-09-24.**
+
+Temple, Earth, and Fire still showed visible corruption, and the corruption pattern changed relative to the 7-pixel baseline. In Fire the artifact field extended farther to the right than before. Fortress remained the clean control.
+
+This establishes that the residual defect is **width-sensitive**, but widening the six side nodes all the way to the allocator's 32-byte row pitch is not the correct fix. Because the payload bytes, palette, allocation order, and backing storage remained unchanged, the changed artifact reach is strong evidence that the renderer/TMEM path is consuming the side-node logical width directly.
+
+### Toasty visual diagnostic v37 — 8-pixel logical side nodes
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v37 keeps the exact v36/v32 image bytes, TLUT, 32-byte-padded side payloads, allocation order, corrected saved-state accesses, positions, and nine-piece composition. The only runtime-critical change is the six side pieces' logical allocator/render width: `32 -> 8`.
+
+This is the smallest byte-aligned CI8 width above the seven visible side pixels. Each side row therefore contains the seven real Toasty pixels plus exactly one transparent palette-index-0 column while still retaining the same 32-byte backing pitch.
+
+Interpretation:
+- if the stage-specific artifacts disappear, the renderer/TMEM path likely requires at least 8-pixel logical CI8 width even though backing allocation remains 32-byte aligned;
+- if artifacts remain, the next renderer-side investigation should trace the tile/load-line derivation rather than widen the logical rectangle further.
