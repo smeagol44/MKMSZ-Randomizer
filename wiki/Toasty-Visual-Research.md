@@ -718,7 +718,7 @@ The remaining Toasty work is no longer image-correctness research. It is product
 
 ### Toasty visual production-layout proof v39
 
-**Implementation/static-confirmed; runtime pending manual validation.**
+**Rejected / failed at runtime on 2026-09-24.**
 
 v39 is the first bounded move from the disposable v38 cave layout toward the current production runtime architecture. It deliberately preserves the v38 visual behavior while changing only storage/transport ownership.
 
@@ -746,3 +746,13 @@ The fast logos-skip/safe-stage-selector route is retained only as a disposable m
 Disposable ROM SHA-256: `3d8409e1e56ea307c6072500588498025586a5824dc0189b44c405849547c50e`.
 
 Runtime acceptance test: verify the same stage-stable v38 image in Temple, Earth, Fire, and Fortress at minimum, preferably all eight safe stages. A pass establishes the expansion-pool storage/transport layout; it does not yet establish audio, slide/lifetime, or the final uppercut/contact + 4% trigger.
+#### v39 failure diagnosis
+
+The first runtime test showed broad rendering corruption: the stock HUD, Sub-Zero, and the Toasty image were all visibly damaged. This is not a Toasty-edge regression; it is a failure of the v39 execution/layout proof itself.
+
+Static re-audit found a concrete architectural mistake. v39 raw-loaded the new native code into the expansion-pool physical range but patched the HUD/init hooks to execute the freshly loaded code through its **cached KSEG0 aliases** (`0x801AF.../0x801B...`). The established MKMSZR native-payload contract intentionally executes freshly raw-loaded native code through the **uncached KSEG1 alias** (`0xA01AF...`) and uses uncached state aliases. v39 violated that contract. Direct J/JAL cannot switch from the `0x8...` segment to `0xA...`, so any future expansion-pool execution proof needs a small static KSEG0 trampoline that performs an indirect `JR/JALR` to the KSEG1 entry.
+
+The v39 allocation size is also rejected as a production target. It copied the v38 proof implementation almost verbatim: the nine-piece compositor alone is 2,860 bytes because it unrolls the full 0x58-byte node clone and patch sequence nine times; init/helper code adds about 780 bytes; the TLUT adds 512 bytes; state/alignment brings the proof slice to 4,208 bytes. No CI8 image pixels were stored in the expansion pool, but promoting the unoptimized proof compositor wholesale was still inappropriate. Production work should replace it with a compact table-driven compositor/init before claiming a feature allocation.
+
+v38 remains the accepted Runtime-confirmed image-correctness baseline. v39 must not be used as production-allocation evidence.
+
