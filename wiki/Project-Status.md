@@ -1,6 +1,6 @@
 # Project status
 
-Last consolidated: 2026-09-23.
+Last consolidated: 2026-09-24.
 
 > **Scope:** This page is the current-state dashboard for MKMSZR. It owns production/proof/pending maturity, current blockers, and priority order. It does **not** own full 1.0 requirements or long proof chronology.
 >
@@ -14,7 +14,7 @@ Last consolidated: 2026-09-23.
 |---|---|---|
 | Clean-ROM validation, guarded patching, separate output, N64 checksum update | **Production** | Implementation/CI-confirmed for the supported USA Rev. 0 ROM; output is separate from the clean input |
 | Compact eight-stage selector | **Production** | Runtime-confirmed A-button route across all eight safe stages; unsafe stock entries are excluded |
-| 1 KiB runtime reservation and native payload | **Production** | Runtime-confirmed load/execute path with guarded bounds and CI coverage |
+| 16 KiB runtime reservation and native payload | **Production** | Runtime-confirmed 16 KiB arena floor on the bounded all-stage profiler proof and no regressions reported on the tested full-production `TEST 16KB` + `rainbow` composition. The established Runtime V2 layout remains in the first 1 KiB; the remaining 15 KiB is an unassigned build-time expansion pool with CI-enforced bounds. |
 | Ordinary-pickup persistence | **Production beta** | Representative Runtime-confirmed collection/restoration in all eight main stages; all 84 ordinary records are statically cataloged, not individually runtime-exhausted |
 | Stage-local seeded pickup randomization | **Production beta** | All 84 ordinary records implemented; deterministic generation/access checks are Implementation/CI-confirmed; this is an interim stage-local mode, not the 1.0 global model |
 | Pickup-driven XP progression | **Production beta** | Diagnostic B behavior is Runtime-confirmed through XP 85/258, Temple -> Wind, and title -> Fire. Stage entry restores XP but does not call the tier evaluator; full nine-tier runtime coverage remains Pending. See [XP and progression](XP-and-Progression) |
