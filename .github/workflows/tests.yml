@@ -17,3 +17,11 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - run: ruff check .
       - run: pytest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mkmszr-control-proof-source
+          path: |
+            src
+            pyproject.toml
+            README.md
+          if-no-files-found: error
