@@ -1,0 +1,20 @@
+name: temp-source-export
+
+on:
+  push:
+    branches:
+      - feat/production-16k-runtime-reservation
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mkmszr-source-export
+          path: |
+            src
+            pyproject.toml
+            README.md
+          if-no-files-found: error
