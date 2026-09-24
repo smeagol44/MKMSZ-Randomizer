@@ -28,6 +28,12 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8001EAE4` | Render-node submit | Runtime-confirmed | Gameplay HUD queue; v08 confirms additional textured-node submission, and v09 runtime-confirms texture slot binding through node halfword `+0x4A` |
 | `0x80017F80` | Actor motion/update integrator | Static-confirmed | Normal actor path (`+0xDC==0`) reads local velocity `+0x14/+0x18`, shifts `>>8`, rotates through actor orientation, and adds `3x` transformed components to fixed8 world position `+0x2C/+0x30/+0x34`; called once per gameplay movement/render loop at `0x80014258` |
 | `0x8002018C` | Render-node allocator | Runtime-confirmed | Allocates `0x58`-byte node |
+| `0x80028F3C` | Main player locomotion/state process | Static-confirmed | Normal horizontal state reads semantic input through controller `+0x638`, records active Left/Right at `+0x68C`, derives opposite-facing marker `+0x704`, and selects forward/backward locomotion |
+| `0x80030178` | Forward locomotion setup | Static-confirmed | Loads fighter-specific forward movement parameters, sets movement state, and returns selector `1` for primary animation slot `0x01` |
+| `0x80030208` | Backward locomotion setup | Static-confirmed | Loads fighter-specific backward movement parameters, sets movement state, and returns selector `2` for primary animation slot `0x02` |
+| `0x8003188C` | Actor facing flip | Static-confirmed | Toggles actor `+0x8C bit 0x10` and runs native frame/setup helper `0x8001BDA0`; preferred facing primitive over a raw bit write |
+| `0x80031D00` | Find nearest opponent controller | Static-confirmed | Scans the two opponent controller classes used by the player-facing helpers and returns the nearest X-distance candidate |
+| `0x80031EF0` | Face opponent | Static-confirmed | Resolves desired side through `0x80031DDC` and calls `0x8003188C` only when actor facing differs |
 | `0x8002B1EC` | Player horizontal-velocity helper | Static-confirmed | Writes actor `+0x14` and `+0x58`; corrected movement primitive |
 | `0x8002E104` | Central XP award | Static-confirmed | Current XP at `0x8011200C` |
 | `0x8002EC78`, `0x8002ECF4` | Player construction path | Static-confirmed | Not enemy loader |
