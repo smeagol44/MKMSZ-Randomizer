@@ -111,6 +111,14 @@ For the first modern-facing proof, the safe static rule is: defer completely to 
 
 This trace establishes the host seam only. No modern-facing patch is production-integrated or runtime-confirmed yet.
 
+### Direction-facing proof v01 failure
+
+**Rejected / failed at runtime.** The first expansion-loaded control proof hung immediately when the player pressed the direction opposite current facing. Forward movement did not trigger the failure.
+
+The proof used `0x802FCE20` as the current-controller global inside the new flip path. That is the previously rejected unsigned interpretation of the stock address construction. The actual effective address is `0x802ECE20`: `lui 0x802F` combined with signed low immediate `0xCE20` subtracts `0x31E0` from the high-half base. The bad pointer was only dereferenced on the opposite-direction flip route, matching the observed immediate hang.
+
+Proof v02 changes only this pointer construction in the expansion module and adds a regression assertion for `0x802ECE20`. Runtime validation of v02 remains Pending.
+
 ## Host action primitives
 
 | Address | Correct MKMSZ meaning |
