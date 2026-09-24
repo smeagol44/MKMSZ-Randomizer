@@ -10,7 +10,7 @@ The Sektor takeover line is **Runtime-confirmed as a bounded proof workstream, n
 
 The stable common-animation/combo baseline remains v62: the tested Sektor MKT combo strings work after translating donor reaction selectors to MKMSZ-native semantics. v58 remains the Runtime-confirmed twelve-pose Run baseline; v59 Runtime-confirms the completed middle Combo visuals; v60 Runtime-confirms the first type-`0x12` alternate Cyrax-style palette.
 
-The proof line now continues through **v73** for Sektor's straight missile. v63 is rejected because an assumed-dead file-`0x87` bank was actually live during hit/blood presentation. v64 established a compact one-chest/one-missile asset composition and reached the special path, but exposed that the reused Ice presentation spawned duplicate blue/frozen Sektor actors and retained Ice-like flight. v65-v67 are rejected immediate-hang lifecycle experiments. v68 is a stable negative-control build with stock Ice lifecycle restored but no chest substitution. **v69 Runtime-confirms the narrow player-pose hook:** current controller/process `+0x6E4` can be redirected after the stock helper and advanced once to display the genuine chest-open frame without hanging. **v70 is partially Runtime-confirmed:** the genuine rocket frame appears and travels, but stock Ice helper clones, blue tint, distant spawn, and ineffective/incorrect flight translation remain. v70 therefore validates presentation/host-path pieces, not a completed or faithful missile port. v71 is **Rejected / failed** after a 1-3-frame hard hang; its post-test trace confirms that stock `+0x648` placement and `+0x714` child handoff refer to the same secondary actor, while its per-tick reuse of `0x8004CC14` is a static semantic mismatch. **v72 Runtime-confirms the isolated placement translation:** direct native local `(+5,+38)` spawns the rocket near Sektor and mirrors correctly across facing. **v73 Runtime-confirms stable per-tick acceleration through projectile actor `+0x14` without hanging**, while exact cross-engine velocity calibration remains Pending.
+The proof line now continues through **v74** for Sektor's straight missile. v63 is rejected because an assumed-dead file-`0x87` bank was actually live during hit/blood presentation. v64 established a compact one-chest/one-missile asset composition and reached the special path, but exposed that the reused Ice presentation spawned duplicate blue/frozen Sektor actors and retained Ice-like flight. v65-v67 are rejected immediate-hang lifecycle experiments. v68 is a stable negative-control build with stock Ice lifecycle restored but no chest substitution. **v69 Runtime-confirms the narrow player-pose hook:** current controller/process `+0x6E4` can be redirected after the stock helper and advanced once to display the genuine chest-open frame without hanging. **v70 is partially Runtime-confirmed:** the genuine rocket frame appears and travels, but stock Ice helper clones, blue tint, distant spawn, and ineffective/incorrect flight translation remain. v70 therefore validates presentation/host-path pieces, not a completed or faithful missile port. v71 is **Rejected / failed** after a 1-3-frame hard hang; its post-test trace confirms that stock `+0x648` placement and `+0x714` child handoff refer to the same secondary actor, while its per-tick reuse of `0x8004CC14` is a static semantic mismatch. **v72 Runtime-confirms the isolated placement translation:** direct native local `(+5,+38)` spawns the rocket near Sektor and mirrors correctly across facing. **v73 Runtime-confirms stable per-tick acceleration through projectile actor `+0x14` without hanging**. **v74 Runtime-confirms the cadence-resampled movement path is stable, but comparative donor/target video shows its visible velocity magnitude remains under-scaled by about 2× on the tested route.**
 
 The strongest current production conflict remains the proof-code line inside the production bootstrap composite `[0x9AD84,0x9AF20)`. v62's standalone combo continuation uses `[0x9AD90,0x9ADA0)`; v65-v70 helper code begins at `0x9ADA0`, with v70 using the same proof-owned interval up to the bootstrap boundary. These artifacts validate semantics only; none of those offsets are reusable production allocations. The early Sektor helper line demonstrates the same rule from the opposite direction: zero-filled-looking `[0xA1308,0xA1544)` was live stock action/dispatch data, and overwriting it caused input-specific hangs.
 
@@ -34,6 +34,7 @@ A proof entry may preserve its historical **pre-test** status, but the section's
 - **v71:** **Rejected / failed.** Hard hang 1-3 frames after `F,F+LP`. Post-test static trace rejects the wrong-actor placement hypothesis and identifies per-tick reuse of `0x8004CC14` as a semantic mismatch; sole hang cause remains Pending.
 - **v72:** **Runtime-confirmed placement proof.** Direct `(+5,+38)` native placement launches close to Sektor and mirrors correctly in both facings; visible Y may still be slightly high, while constant-speed flight and blue Ice tint remain unchanged controls.
 - **v73:** **Runtime-confirmed acceleration behavior / calibration Pending.** Missile visibly accelerates and remains stable; exact donor-equivalent start speed/rate/cap in MKMSZ physical units are not yet established.
+- **v74:** **Runtime-confirmed stable cadence resampler / magnitude under-scaled.** Comparative donor/target video shows similar ~0.3 s ramp timing but about half the donor's late normalized on-screen speed on the tested route; a separate donor-local -> target-world scale remains Pending.
 
 ## Final-status index
 
@@ -2085,6 +2086,42 @@ Under the v72 local-unit mapping, a constant donor velocity therefore maps to ap
 However, v73 also applies the donor `+1/16` recurrence only once per 30 Hz target callback, whereas donor MKT applies it once per 60 Hz tick. Thus v73 combines an over-large raw host velocity field with a too-slow temporal acceleration recurrence. This reconciles the runtime report that acceleration is obvious but the overall motion still does not confidently feel donor-correct.
 
 The faithful next proof should not merely replace the three constants. It should preserve donor-space velocity state and pair two donor 60 Hz motion intervals into one MKMSZ 30 Hz interval. For normal launch `d0=0x33333`, `d1=0x36666`, the first host interval is approximately `(d0+d1)/3 = 0x23333`; later callbacks advance two donor recurrence steps, use the pair displacement divided by three as host `+0x14`, and retain the later donor state. This **Static-derived resampler remains runtime Pending**.
+
+### v74 — cadence-resampled movement proof + donor-video comparison
+
+Disposable proof: `MKMSZR_sektor-missile-resampler_common-proof_v74.z64`.
+
+Builder: `MKMSZR_build_sektor_missile_resampler_v74.py`.
+
+Identity:
+- SHA-256 `1b51e8f0ae2226137a8cfb88ad182f50d0d739c46c7ad7a4cacb88f7ec2328e3`;
+- CRC1/CRC2 `29CA7A70 / 1E35BD21`.
+
+v74 keeps the Runtime-confirmed v72 placement `(+5,+38)`, the stock Ice helper-process scaffold, collision/lifecycle path, imported rocket art, blue Ice presentation, and `F,F+LP` binding. It changes only movement magnitude/timing relative to v73:
+- initial host field `0x23333`;
+- per-target-tick folded recurrence `h += (h >> 3) + (h >> 8)`, equivalent to two unclamped donor `17/16` substeps;
+- host cap `0x77777`;
+- no per-tick call to `0x8004CC14`.
+
+**Runtime-confirmed stable, fidelity still incomplete.** The user reported v74 feels slower than MKT and supplied side-by-side 60-fps recordings. Frame-by-frame analysis measured seven clean MKT flights and five clean v74 flights. The repositioning jumps/somersaults were excluded.
+
+Quantitative comparison:
+- median 30%-to-85% normalized screen transit: MKT about `0.296 s`; v74 about `0.532 s`; v74 takes about `1.80x` as long;
+- median late 70%-to-85% normalized screen speed: MKT about `2.13` screen-widths/s; v74 about `1.08` screen-widths/s;
+- in the supplied recording dimensions, late motion is about `2032 px/s` for MKT versus `994 px/s` for v74, a ratio of about `2.04x`;
+- MKT visibly advances the projectile on each captured 60-fps frame; v74 usually holds each position for two captured frames, corroborating the 60-Hz donor versus ~30-Hz target cadence;
+- both trajectories reach their late-speed plateau in roughly `0.3-0.35 s`, so the folded temporal resampling is substantially closer even though the absolute target velocity is too small.
+
+Durable correction: the earlier `2/3` target-field derivation was conditional on an unproven **one donor local position unit = one MKMSZ world unit** assumption. v74 comparative runtime evidence rejects that assumption as a complete fidelity conversion. The target integrator and cadence derivation remain valid, but the adapter still needs a donor-local-to-target-world spatial scale. On this tested camera/route the missing projected-motion factor is very close to `2x`; this is a bounded calibration candidate, **not yet a universal cross-engine constant**.
+
+The supplied donor video also shows the genuine two-frame rocket presentation and recurring smoke trail, while v74 retains the blue Ice tint/SFX, two inherited helper actors, and no donor smoke. Those presentation differences affect perceived energy but do not explain the measured ~2x coordinate-speed gap.
+
+Raw evidence archived in Library:
+- `06 - Screenshots and Evidence/MKMSZR_SEKTOR_MISSILE_V74_RUNTIME_2026-09-24.webm`;
+- `06 - Screenshots and Evidence/MKT_SEKTOR_STRAIGHT_MISSILE_DONOR_2026-09-24.webm`;
+- quantitative report `07 - RAM Diffs and Experiment Data/MKMSZR_Sektor_Missile_v74_Video_Comparison_2026-09-24.md`.
+
+The next bounded movement proof should retain v74's cadence folding but test the missing spatial magnitude separately; do not combine it with placement, smoke, palette, audio, or helper-process cleanup.
 
 
 
