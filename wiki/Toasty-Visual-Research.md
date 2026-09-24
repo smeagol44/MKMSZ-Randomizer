@@ -841,57 +841,68 @@ Disposable ROM SHA-256: `346b03646b0634619284f9191171d70827c4092b00f1e9e8bc506cf
 Runtime result: the user reported v42 as **perfect**. The image lands flush at the lower-right edge, the 3/16/8 presentation timing feels correct, the Toasty voice fires once, and stock HUD/player rendering remains intact on the tested route. v42 is therefore the current accepted presentation baseline.
 
 
-### Final trigger research handoff — donor trigger is not uppercut-only
+### Gameplay-trigger reconciliation and proof v43
 
-**Static-confirmed donor source finding; MKMSZ mapping Pending.**
+**Donor retail/static reconciliation complete; v43 Implementation/static-confirmed, runtime Pending.**
 
-The final trigger must **not** be implemented as an uppercut-only detector. A direct read of the preserved MKT/MK3 source shows that the shared `FX_COMMENT` process—the process that can choose Dan Forden Toasty—gets created from several victim-reaction paths in `src/gamecode/mkreact.c`:
+The final trigger is **not uppercut-only**. The supplied MKT USA Rev. 2 retail reaction table at `0x800A8AE0` resolves the exact comment-worthy family to:
 
-- `r_uppercut`;
-- `r_combo5`;
-- `r_combo6`;
-- `combo2` (reached from `r_combo2` / `r_combo2_stab`);
-- `r_combo3`;
-- `combo43` (shared by `r_combo4` and related boss-hit flow).
+- selector `0x08` -> `r_uppercut` at `0x80056270`;
+- selector `0x0E` -> `r_combo2_stab` at `0x800594E8`, which reaches shared `combo2`;
+- selector `0x12` -> `r_combo2` at `0x80059578`, which reaches shared `combo2`;
+- selector `0x13` -> `r_combo3` at `0x80059690`;
+- selector `0x14` -> `r_combo4` at `0x800597B4`, which reaches shared `combo43`;
+- selector `0x15` -> `r_combo5` at `0x800560A0`;
+- selector `0x17` -> `r_combo6` at `0x80055FE8`.
 
-Therefore the donor semantic is better described as a **comment-worthy launch/knockdown reaction family** that includes uppercuts and multiple combo-ending reactions, rather than “an uppercut connected.” The source names `r_combo5` / `r_combo6` support the user's recollection that larger combos participate, but those names alone should not be converted into an exact MKMSZ hit-count rule without tracing the retail reaction dispatch and the target game's combo semantics.
+Those retail routines reach `create_fx(FX_COMMENT)` with effect index `0x0E` at the corresponding direct/shared callsites. This matches the preserved MKT source family and supersedes the former uppercut-only shorthand.
 
-The donor comment process itself is in `src/gamecode/mkfx.c`:
-- rejects Shao Kahn / Motaro matchups;
-- kills any prior `PID_COMMENT` process so only one comment is pending;
-- waits `0x13` ticks;
-- rolls a probability;
-- on success calls `forden_peek(0x1B)` (Toasty); otherwise plays one of the normal commentary sounds.
+#### Exact supplied-retail probability
 
-The preserved source currently uses:
+The supplied Rev. 2 effect table resolves `FX_COMMENT = 0x0E` to `0x8002D810`. That routine waits `0x13` ticks, then calls retail `randper` at `0x8006E50C` with:
 
-```c
-randper((curback==BKGD_MK2PITSTAR_MOD) ? 0xA0 : 0x40)
-```
+- `0x40` normally -> 64/1000 = **6.4%**;
+- `0xA0` when background ID is `0x1B` (`BKGD_MK2PITSTAR_MOD`) -> 160/1000 = **16%**.
 
-and `randper` is explicitly documented/implemented as a per-thousand probability helper. That source therefore corresponds to 160/1000 on the special MK2 Pit Star background and 64/1000 otherwise.
+The helper is per-thousand: it reduces its random value modulo `0x3E8` and succeeds when the result is below the argument.
 
-This **conflicts with the earlier retail-Rev.-2 static note** that described a `randper(40)` branch as 40/1000 = 4%. Do not silently choose one. The next trigger task must reconcile the exact supplied retail MKT Rev. 2 branch against preserved source before selecting the final MKMSZR probability. The source/retail difference may be version/platform-specific.
+The earlier retail `randper(40)` / immediate-`0x28` site at `0x80039BF4` is a **different Toasty-capable path**, not the reaction-driven `FX_COMMENT` process. Treating that site as the final reaction probability is superseded. For MKMSZ, which has no semantic equivalent of MKT's MK2 Pit Star background, the bounded proof uses the normal retail probability `0x40` universally; adding a special MKMSZ stage bonus would be a separate product/design choice.
 
-#### Next task
+#### MKMSZ reaction mapping and hook
 
-Before another ROM:
-1. trace the supplied retail MKT Rev. 2 reaction-dispatch entries that reach the Toasty/comment branch and determine which retail reaction classes correspond to uppercut and combo endings;
-2. resolve the exact retail probability argument and whether the special-background branch exists in the supplied ROM;
-3. map that **semantic reaction family** to MKMSZ's target collision/reaction system, rather than hooking generic `0x8002BA04` or animation slot `0x0B` blindly;
-4. only then replace v42's temporary Block+Use trigger with the bounded gameplay trigger.
+MKMSZ's global reaction table at `0x800A1190` preserves the same qualifying semantic selector family:
 
-v42 remains the accepted visual/audio/presentation baseline while this trigger mapping is resolved. Dedicated production audio routing is still a separate Pending integration item because v42 continues to use the disposable v03 pickup-audio host.
+`0x08, 0x0E, 0x12, 0x13, 0x14, 0x15, 0x17`.
 
-#### MKMSZ target-side trigger trace status
+For fighter type `0x04`, stock strike selector `0x08` resolves to a record whose unblocked reaction byte is `0x08`, independently confirming the native Uppercut -> uppercut-reaction chain. The v62 combo proof separately runtime-confirms translated combo-finisher behavior in the same inherited combo-reaction family.
 
-**Static-confirmed host facts; exact qualifying reaction mapping Pending.**
+The narrow host seam is **VA `0x8002DF28` / ROM `0x0002EB28`**, after collision success and after the blocked branch has already separated. Immediately before that call, stock code reads the strike record's unblocked reaction byte at `+0x08`, indexes the reaction table, and places the resolved victim-reaction callback in `a0`. The stock call transfers the victim through `0x8002E078`.
 
-The target-side investigation completed before this handoff establishes only the following safe facts:
+This seam is narrower than `0x8002BA04`: misses and ordinary blocked contacts never reach it. The proof wrapper compares the already-resolved reaction callback against the seven qualifying callback addresses, arms Toasty's pending-comment countdown only on a match, then invokes the original `0x8002E078` transfer unchanged.
 
-- MKMSZ's primary player animation table uses slot `0x0B` for Uppercut. This is useful semantic identity, but animation state alone is not a valid final Toasty trigger because the donor source also comments on multiple combo-ending reaction paths.
-- Native fighter strikes dispatch through `0x8004CF3C`, which resolves the fighter-local strike resource and reaches shared collision/damage/reaction core `0x8002BA04`.
-- `0x8002BA04` is a broad shared combat seam and must **not** be hooked generically for Toasty; doing so would observe many unrelated attacks/reactions.
-- The exact stock MKMSZ uppercut action routine -> strike selector -> successful-contact/reaction result chain has **not yet been isolated**. Likewise, the target reaction records corresponding to donor `r_uppercut` / combo-ending comment classes remain Pending.
+MKMSZ also has an inherited per-thousand `randper` helper at **`0x80016008`**. v43 uses `randper(0x40)` rather than introducing a custom RNG path.
 
-Therefore the next chat should begin with donor-retail reaction reconciliation, then map those reaction semantics to MKMSZ. It should not resume the abandoned uppercut-only plan or guess from animation slot `0x0B` alone.
+#### v43 disposable gameplay-trigger proof
+
+`MKMSZR_toasty-gameplay-trigger_common-proof_v43.z64`
+
+Identity:
+
+- SHA-256 `53523d1daad76f47303e95e200e5b5fbe2dc0c62a8c2ed7fb281d645ddd30128`;
+- CRC1/CRC2 `6CD9998E / 657F064A`.
+
+v43 is built from the exact supported clean ROM and preserves v42's image, TLUT, dynamic-slot setup, lower-right geometry, **3/16/8** presentation timing, 26-pixel slide steps, and one-shot voice call at hold entry. Static comparison confirms the active v42 presentation path from compositor offset `+0xC8` onward is byte-identical; only the former temporary-trigger/idle block and the new reaction hook/wrapper are changed.
+
+The existing four-word feature state is reused: `+0x0C`, formerly v42's Block+Use latch, becomes a pending-comment countdown. A qualifying unblocked reaction arms it to `0x13`; expiration rolls native `randper(0x40)`; success enters the unchanged v42 presentation state machine.
+
+The new reaction wrapper occupies 176 bytes at `0x801AFEF0..0x801AFF9F`. Total Toasty expansion-pool use is therefore `0x780` (1,920 bytes) from `0x801AF820..0x801AFF9F`, leaving `0x3480` bytes. The wrapper is entered through a small KSEG0 trampoline in the already-owned proof bootstrap cave; no new zero-filled region is promoted to free storage.
+
+v43 rebuilt byte-for-byte identically in an independent second build. **No emulator automation was run.** Runtime status remains Pending until manual validation.
+
+Proof limitations remain explicit:
+
+- the v03 disposable pickup-audio host is still present, so ordinary pickup audio is still Toasty in this proof;
+- the MKT special-background 16% case is not mapped because MKMSZ has no equivalent background semantic;
+- if another qualifying reaction arrives while Toasty is already visibly active, the proof retains the pending countdown until the presentation returns idle; exact donor concurrent-process behavior is not claimed.
+
+v42 remains the accepted Runtime-confirmed presentation baseline. v43 changes only trigger semantics around that baseline.
