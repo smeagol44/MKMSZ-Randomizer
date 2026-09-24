@@ -94,6 +94,23 @@ This distinction explains the v71 failure mode: repeatedly calling `0x8004CC14` 
 
 For the current Sektor straight-missile case, the donor's already-N64-scaled retail displacement `(+5,+38)` therefore maps directly to target helper arguments `(+5,+38)`. Facing remains the helper's responsibility. This is **Static-confirmed coordinate mapping**; visible alignment still requires the bounded runtime placement proof because imported asset anchors are a separate concern.
 
+### Projectile velocity integration
+
+**Static-confirmed.** `0x80017F80` is the actor update/integration loop used by the gameplay main loop. For a normal projectile with actor `+0xDC == 0`, it reads local velocity fields `+0x14/+0x18`, arithmetic-shifts them by 8, rotates the resulting local vector through actor orientation, and adds three times the transformed integer components into fixed8 world position `+0x2C/+0x30/+0x34`.
+
+Therefore, at neutral orientation:
+
+```text
+delta_world_x_per_actor_update =
+    3 * (actor_xvel >> 8) / 256
+```
+
+in world-coordinate units. The low eight velocity bits do not contribute to that update.
+
+The gameplay loop invokes the actor integrator at `0x80014258` and gates the next iteration on the retrace/tick counter at `0x802FCD44`; the resulting ordinary rendering/movement cadence is approximately 30 Hz. This is distinct from MKT's 16.16 `oxpos += oxvel` motion at nominal 60 Hz. The donor-to-target projectile adapter must therefore translate both **numeric velocity units** and **update cadence**, not merely copy MKT `oxvel.pos` values into target actor `+0x14`.
+
+The exact Sektor resampling policy is owned by [MKT adapter primitives](MKT-Adapter-Primitives). v73 Runtime-confirms that direct per-tick writes to `+0x14` are stable, but its raw donor constants are not the final calibrated translation.
+
 The current process/controller pointer is at effective address `0x802ECE20`, not `0x802FCE20`.
 
 Function-level semantics are indexed in [Function registry](Function-Registry); this page owns how the helpers compose into the host action lifecycle.
