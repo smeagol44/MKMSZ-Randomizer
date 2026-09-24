@@ -2,7 +2,7 @@ from mkmszr.data.addresses import (
     PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED,
     PICKUP_MANAGER_CAPTURE_HOOK_ROM,
 )
-from mkmszr.mips import address_words, jal, jump, words_blob
+from mkmszr.mips import address_words, jal, words_blob
 from mkmszr.patches.base import PatchContext
 from mkmszr.patches.control_facing_proof import (
     BOOTSTRAP_RUNTIME_ENTRY_WORDS_OFFSET,
@@ -20,15 +20,14 @@ from mkmszr.patches.control_facing_proof import (
     EXPANSION_FILE_ID,
     EXPANSION_LOADER_VA,
     EXPANSION_MODULE_ROM,
+    PLAYER_TURN_BRANCHES,
+    PLAYER_TURN_BRANCH_REPLACEMENT,
     RELEASE_EXPECTED,
     RELEASE_HOOK_ROM,
     RELEASE_TRAMPOLINE_VA,
     STATIC_REGION_BLOB,
     STATIC_REGION_ROM,
     STATIC_REGION_SIZE,
-    TURN_EXPECTED,
-    TURN_HOOK_ROM,
-    TURN_TRAMPOLINE_VA,
     ControlFacingExpansionProofPatch,
 )
 from mkmszr.patches.native_payload import kseg1_alias
@@ -61,7 +60,8 @@ def _production_shape() -> RomImage:
     data[RELEASE_HOOK_ROM : RELEASE_HOOK_ROM + len(RELEASE_EXPECTED)] = (
         RELEASE_EXPECTED
     )
-    data[TURN_HOOK_ROM : TURN_HOOK_ROM + len(TURN_EXPECTED)] = TURN_EXPECTED
+    for turn_rom, expected in PLAYER_TURN_BRANCHES.items():
+        data[turn_rom : turn_rom + 4] = expected.to_bytes(4, "big")
 
     data[EXPANSION_MODULE_ROM : EXPANSION_MODULE_ROM + len(CONTROL_MODULE)] = (
         b"\xFF" * len(CONTROL_MODULE)
@@ -74,6 +74,14 @@ def test_current_controller_global_uses_signed_immediate_address() -> None:
     # 0x802FCE20 was the rejected interpretation that caused proof v01 to hang
     # immediately on the first opposite-direction flip path.
     assert CURRENT_CONTROLLER_PTR_VA == 0x802ECE20
+
+
+def test_v06_suppresses_both_player_loop_turn_branches() -> None:
+    assert PLAYER_TURN_BRANCHES == {
+        0x0002A658: 0x14400007,
+        0x0002A85C: 0x14400007,
+    }
+    assert PLAYER_TURN_BRANCH_REPLACEMENT == 0x10000007
 
 
 def test_control_module_uses_first_bounded_expansion_slice() -> None:
@@ -91,7 +99,6 @@ def test_static_loader_and_trampolines_fit_repurposed_capture_region() -> None:
     assert 0x80000000 <= CAPTURE_TRAMPOLINE_VA < 0xA0000000
     assert 0x80000000 <= DECISION_TRAMPOLINE_VA < 0xA0000000
     assert 0x80000000 <= RELEASE_TRAMPOLINE_VA < 0xA0000000
-    assert 0x80000000 <= TURN_TRAMPOLINE_VA < 0xA0000000
 
 
 def test_control_facing_proof_installs_expansion_transport_and_hooks() -> None:
@@ -119,7 +126,8 @@ def test_control_facing_proof_installs_expansion_transport_and_hooks() -> None:
     )
     assert rom.read_u32(DECISION_HOOK_ROM) == jal(DECISION_TRAMPOLINE_VA)
     assert rom.read_u32(RELEASE_HOOK_ROM) == jal(RELEASE_TRAMPOLINE_VA)
-    assert rom.read_u32(TURN_HOOK_ROM) == jump(TURN_TRAMPOLINE_VA)
+    for turn_rom in PLAYER_TURN_BRANCHES:
+        assert rom.read_u32(turn_rom) == PLAYER_TURN_BRANCH_REPLACEMENT
 
     assert any("held Turn" in note for note in notes)
     assert kseg1_alias(CONTROL_MODULE_CACHED_BASE) == CONTROL_MODULE_UNCACHED_BASE
