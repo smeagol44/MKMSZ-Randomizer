@@ -156,3 +156,19 @@ The decoder consumes the stream MSB-first. The first 6 bits select the model. Ea
 - Decode dimensions, visible fighter dimensions, and source-row storage pitch are separate concepts and must not be conflated.
 
 Sektor-specific encoder benchmarks, donor conversion history, palette binding, proof-version storage results, and whole-resource packing policy are owned by [MKT fighter asset translation](MKT-Fighter-Asset-Translation).
+
+## Dynamic gameplay texture-slot record
+
+**Static-confirmed for the fields below.** Dynamic texture IDs `0x200..0x2FF` index 16-byte records at `0x802E83F0 + id*0x10`; backing pointers are stored separately at `0x800ED940[id]`.
+
+| Offset | Meaning | Evidence |
+|---:|---|---|
+| `+0x00` | format/flags word used by `0x8001F7A8` to choose texture-load path | Static-confirmed |
+| `+0x04` | backing-capacity width used by `0x8001C2B4` reuse-fit checks | Static-confirmed |
+| `+0x06` | backing-capacity height used by reuse-fit checks | Static-confirmed |
+| `+0x08` | current DRAM source-image width; consumed by `0x8001F7A8` when emitting RDP `SetTextureImage` | Static-confirmed |
+| `+0x0A` | image/allocation height field; exact downstream ownership beyond allocator bookkeeping is not yet fully cataloged | Static-confirmed field write; semantics bounded |
+| `+0x0C` | reuse/lifecycle field; exact semantic name Pending | Static-confirmed as part of allocator reuse eligibility |
+| `+0x0E` | active flag; `1` means active | Static-confirmed |
+
+For a new dynamic allocation, `0x8001C2B4` rounds requested width up to 32 before allocating backing storage and initially writes that aligned width to both `+0x04` and `+0x08`. Its reuse path can return an inactive record whose `+0x04/+0x06` capacity is sufficient **without updating `+0x08`**. Stock image-building callers therefore rewrite `record+0x08` after allocation with the source image's actual DRAM row width. Toasty v23-v37 omitted that caller-owned initialization; see [Toasty visual research](Toasty-Visual-Research).
