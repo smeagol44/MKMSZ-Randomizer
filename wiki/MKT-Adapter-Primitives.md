@@ -461,7 +461,7 @@ The durable lesson is not “tune the Ice projectile until it looks like Sektor.
 | projectile resource actor creation | `setup_proj_obj` / donor projectile object | resource-backed secondary actor path via token `0x0B`, `0x80030974 -> 0x80034510 -> 0x800281A0/0x80028128` | **Target primitive identified; wrapper Pending** | This page + Function Registry |
 | owner-relative placement | `adjust_xy_a5` | facing-aware actor displacement `0x80031208` | **Runtime-confirmed at Sektor v72 scope** | This page + Function Registry |
 | projectile child process | `create_proj_proc` | `0x8004CBC4 -> 0x8002830C` child controller/process binding | **Target primitive identified; wrapper Pending** | This page + Function Registry |
-| projectile flight callback | `projectile_flight_call(callback)` | MKMSZ projectile loop/collision family around `0x8004CC50` | **Partial adapter; callback ABI Pending** | This page + Player Actions |
+| projectile flight callback | `projectile_flight_call(callback)` | MKMSZ projectile loop `0x8004CC50`: child `+0x70C` is latched into `+0x680` and invoked once per flight iteration before strike resolution | **Static callback ABI identified; runtime donor-acceleration proof Pending** | This page + Player Actions |
 | projectile per-tick state | donor `p_store*` fields | adapter-owned child-process scratch/state | **Missing generic ABI** | This page |
 | projectile effect | `rocket_smoke`, `rocket_explode_fx` | target-native effect/SFX semantics | **Missing generic effect translation** | This page |
 | animation callback/control token | donor script callback semantics | Equivalent MKMSZ-native control token/callback | **Missing generic translator** | This page |
@@ -478,7 +478,7 @@ The durable lesson is not “tune the Ice projectile until it looks like Sektor.
 
 1. **Donor action-phase runner** — express donor phase ordering, sleeps, branch-on-contact, timeout, facing changes, and guaranteed native cleanup without rewriting scheduler glue per move.
 2. **Projectile actor/process wrapper** — expose the now-identified target actor creation, relative placement, child-process binding, owner/opponent context, and cleanup as a reusable adapter API instead of replaying Ice choreography.
-3. **Projectile callback/state ABI** — translate donor `projectile_flight_call`-style per-tick callbacks and donor `p_store*` scratch into target child-process state without move-specific hardcoding.
+3. **Projectile callback/state ABI** — callback dispatch itself is now identified: `0x8004CC50` latches child `+0x70C -> +0x680` at entry and calls `+0x680` once per flight iteration after sleep/animation/offscreen checks and before strike resolution. Generic adapter-owned scratch/state beyond that dispatch contract remains Pending.
 4. **Velocity/facing conversion policy** — normalize donor movement/projectile velocity requests into MKMSZ-native units after explicit calibration.
 5. **Projectile effect/palette translation** — bind projectile-local palette semantics and map donor smoke/explosion/SFX effects without inheriting Ice presentation.
 6. **No-repel gate** — implement the donor three-tick countdown at a narrow MKMSZ separation hook, without forced crossover or teleport behavior.
