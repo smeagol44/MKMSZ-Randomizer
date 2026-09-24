@@ -14,6 +14,7 @@ from mkmszr.patches.control_facing_proof import (
     CONTROL_MODULE_UNCACHED_BASE,
     CURRENT_CONTROLLER_PTR_VA,
     DECISION_EXPECTED,
+    PLAYER_CONTROLLER_PTR_VA,
     DECISION_HOOK_ROM,
     DECISION_TRAMPOLINE_VA,
     EXPANSION_FILE_ENTRY_ROM,
@@ -74,6 +75,10 @@ def test_current_controller_global_uses_signed_immediate_address() -> None:
     # 0x802FCE20 was the rejected interpretation that caused proof v01 to hang
     # immediately on the first opposite-direction flip path.
     assert CURRENT_CONTROLLER_PTR_VA == 0x802ECE20
+
+
+def test_player_controller_anchor_matches_stock_constructor_global() -> None:
+    assert PLAYER_CONTROLLER_PTR_VA == 0x802C1AC0
 
 
 def test_control_module_uses_first_bounded_expansion_slice() -> None:
