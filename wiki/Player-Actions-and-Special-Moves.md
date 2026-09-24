@@ -109,14 +109,17 @@ Earth type `0x19` is a separate unresolved exception. Its stock characteristics-
 
 For the first modern-facing proof, the safe static rule is: defer completely to stock when the nearest opponent carries `+0x6BC & 0x0200`; test Earth separately. If Earth runtime behavior still auto-faces as expected, capture that route and trace its distinct mechanism before production integration instead of hard-coding a stage ID.
 
-### Direction-facing proof v01/v02
+### Direction-facing proof v01-v05
 
-The first expansion-loaded control proof uses a proof-only file-`0x1A` module in the 15 KiB expansion pool and enters freshly loaded code only through uncached KSEG1 trampolines.
+The expansion-loaded control proof uses a proof-only file-`0x1A` module in the 15 KiB expansion pool and enters freshly loaded code only through uncached KSEG1 trampolines.
 
-- **v01 — Rejected / failed.** Pressing the first opposite horizontal direction immediately hard-hung. The proof used current-controller global `0x802FCE20`, repeating the already-rejected unsigned-low-immediate interpretation. The actual address is `0x802ECE20`: `lui 0x802F` paired with signed low immediate `0xCE20` subtracts `0x31E0`.
-- **v02 — Runtime-confirmed on the tested route.** Changing only that global to `0x802ECE20` made the control behavior work as intended: opposite horizontal input flips Sub-Zero and proceeds through stock forward locomotion; holding Turn preserves vanilla backward walking / facing lock. The user reported the corrected behavior worked perfectly and matched the requested control model.
+- **v01 — Rejected / failed.** The first opposite-direction press hard-hung because the flip path used the already-rejected unsigned-low-immediate interpretation `0x802FCE20`; the real current-process global is `0x802ECE20`.
+- **v02 — Partially Runtime-confirmed.** Correcting that global made opposite horizontal input flip Sub-Zero and continue through stock forward locomotion. Holding Turn also preserves vanilla backward walking / facing lock after the stock turn occurs. Follow-up testing found the button still performs one standalone turn first.
+- **v03 — Rejected / failed.** Gating the presumed Turn routine `0x8003D86C` by player-actor identity did not remove the visible turn.
+- **v04 — Rejected / failed.** Making `0x8003D86C` return unconditionally still did not change the visible turn. This disproves that routine as the source of the observed standalone player turn.
+- **v05 — Pending runtime.** Static tracing from semantic Turn bit `0x0001` found the actual player-loop toggle at `0x80029A44..0x80029A70`. On the first held frame, stock reads the bit, uses an `s8` press/release latch, then directly XORs actor `+0x8C` with `0x0010`. v05 changes only the branch at `0x80029A58` from `bne v0,zero,+7` (`0x14400007`) to unconditional `beq zero,zero,+7` (`0x10000007`), preserving the latch while always skipping the direct facing write.
 
-v02 establishes the control seam and expansion-module execution on that bounded route. It does **not** promote the feature into the browser/CLI production pipeline, establish every action/lifecycle state, or establish a special rule for the Earth boss.
+The v02 locomotion result remains valid within its tested scope. v05 is the first proof that targets the statically identified visible Turn toggle itself; runtime confirmation is still required. Inventory Combine remains a separate consumer of semantic bit `0x0001`.
 
 ## Host action primitives
 
