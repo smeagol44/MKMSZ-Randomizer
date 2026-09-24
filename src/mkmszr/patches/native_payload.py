@@ -117,7 +117,7 @@ class NativePayloadSpec:
             < self.rdram_start + len(self.payload)
             <= RESERVED_RDRAM_END_EXCLUSIVE
         ):
-            raise ValueError("native payload must fit entirely inside the reserved 1 KiB block")
+            raise ValueError("native payload must fit entirely inside the reserved MKMSZR block")
         if self.clear_word_rdram is not None:
             if self.clear_word_rdram & 3:
                 raise ValueError("clear word address must be 4-byte aligned")
@@ -126,7 +126,7 @@ class NativePayloadSpec:
                 <= self.clear_word_rdram
                 <= RESERVED_RDRAM_END_EXCLUSIVE - 4
             ):
-                raise ValueError("clear word must be inside the reserved 1 KiB block")
+                raise ValueError("clear word must be inside the reserved MKMSZR block")
             payload_end = self.rdram_start + len(self.payload)
             clear_end = self.clear_word_rdram + 4
             if self.clear_word_rdram < payload_end and clear_end > self.rdram_start:

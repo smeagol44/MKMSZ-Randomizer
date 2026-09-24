@@ -79,7 +79,7 @@ def test_runtime_v1_payload_matches_confirmed_reference() -> None:
     )
     assert len(LOADER_STUB) == 84
     assert LOADER_STUB.hex() == (
-        "27bdffe83c02801b2442f820afbf00103c04800fac82ecd0"
+        "27bdffe83c02801b24423420afbf00103c04800fac82ecd0"
         "0c0198e4000000002404001b3c05801b24a5f4200c019759"
         "000000003c19a01b2739f4200320f809000000008fbf0010"
         "27bd001803e0000800000000"

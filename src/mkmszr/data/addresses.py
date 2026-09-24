@@ -5,24 +5,30 @@ in research notes until promoted by static/runtime evidence.
 """
 
 RESERVED_RDRAM_START = 0x801AF420
-RESERVED_RDRAM_END_EXCLUSIVE = 0x801AF820
+RESERVED_RDRAM_END_EXCLUSIVE = 0x801B3420
+EXPANSION_POOL_START = 0x801AF820
+EXPANSION_POOL_END_EXCLUSIVE = RESERVED_RDRAM_END_EXCLUSIVE
 
 RUNTIME_V1_CODE_START = 0x801AF420
 RUNTIME_V1_CODE_END_EXCLUSIVE = 0x801AF620
 RUNTIME_V1_STATE_START = 0x801AF620
 RUNTIME_V1_STATE_END_EXCLUSIVE = 0x801AF820
 
-# Production runtime V2 repartitions only the existing reserved 1 KiB block.
-# The 2026-09-23 rainbow full-composition proof runtime-confirmed this expanded
-# code tail while keeping all persistent V2 state inside the same reservation.
+# Production runtime V2 keeps its established first 1 KiB layout unchanged.
+# The 2026-09-24 arena proofs establish a 16 KiB total reserved prefix ending
+# at 0x801B3420. Bytes after 0x801AF820 form a build-time expansion pool; they
+# are not silently assigned to Runtime V2 or any feature.
 RUNTIME_V2_CODE_START = 0x801AF420
 RUNTIME_V2_CODE_END_EXCLUSIVE = 0x801AF7D0
 RUNTIME_V2_STATE_START = 0x801AF7D0
 RUNTIME_V2_STATE_END_EXCLUSIVE = 0x801AF820
 
 ARENA_START_PATCHES = {
-    0x00066F64: (0x2442F420, 0x2442F820),
-    0x00066FE8: (0x2442F420, 0x2442F820),
+    # Guard the complete LUI + ADDIU address construction at both stock sites.
+    0x00066F60: (0x3C02801B, 0x3C02801B),
+    0x00066F64: (0x2442F420, 0x24423420),
+    0x00066FE4: (0x3C02801B, 0x3C02801B),
+    0x00066FE8: (0x2442F420, 0x24423420),
 }
 
 ARENA_POINTER_GLOBAL_VA = 0x800EECD0
