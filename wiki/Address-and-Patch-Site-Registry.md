@@ -19,9 +19,9 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x000396CC` | `0x80038ACC` | Persistence | `3C03800A 8C63A910` | Restore collected flags, resume `0x80038AD4` |
 | `0x0003A018` | `0x80039418` | Persistence | `ACA2002C` | Capture stage/ordinal after collected store while preserving displaced store |
 | `0x0005D9CC` | HUD function | Box indicator | JAL `0x8001EAE4` | JAL native box-indicator wrapper |
-| `0x00066F64` | arena construction | Arena reservation | `0x2442F420` | `0x2442F820` |
+| `0x00066F60..0x00066F67` | arena construction | Arena reservation | `3C02801B 2442F420` | `3C02801B 24423420` = floor `0x801B3420` |
 | `0x00066FE0` | `0x800663E0` | Bootstrap | guarded native sequence | Call native bootstrap stub |
-| `0x00066FE8` | arena construction | Arena reservation | `0x2442F420` | `0x2442F820` |
+| `0x00066FE4..0x00066FEB` | second stock arena construction / bootstrap precondition | Arena reservation + bootstrap | `3C02801B 2442F420` | ArenaReservation guards the full pair and changes the low immediate to `0x3420`; the later bootstrap hook supersedes `0x66FE4` with its delay-slot NOP while the generated stub establishes the same `0x801B3420` floor |
 | `0x0007A3F4` | `0x800797F4` | Logo bypass | `0C01F113 00000000 0C01F143 00000000 0C018576 24040080` | first word `0x10000003` (`beq zero,zero,+3`); preserves fade/title |
 | `0x0007B900..0x0007B94B` | `0x8007AD00` | Four-box mask | guarded stock sanitizer body | Replace with stage-local key mask-copy routine |
 | `0x0007B94C..0x0007B97F` | `0x8007AD4C` | Four-box load | guarded stock default-loader body | Rebuild live inventory from authoritative backing box |
