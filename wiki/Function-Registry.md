@@ -61,7 +61,15 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80080A88` | Raw sound-ID playback entry | Static-confirmed | Selects a 16-byte runtime sound definition by raw ID and dispatches through `0x8007EC4C` |
 | `0x8007EC4C` | Low-level sound-definition/voice allocator | Static-confirmed | Consumes resolved runtime sound definition and allocates/starts native audio voices |
 | `0x80065D64` | Raw global-file loader | Runtime-confirmed | Used by native bootstrap |
-| `0x80066390` | Arena-pointer synchronization helper | Implementation-confirmed | Production bootstrap uses it after arena relocation to synchronize the main arena-pointer state |
+| `0x80066360` | Cold arena initializer | Static-confirmed | Initializes both arena base/floor `0x800EECD0` and live bump cursor `0x80111ECC` to the stock hardcoded arena start, with initial boundary bookkeeping |
+| `0x80066390` | Arena cursor reset | Static-confirmed | Copies persistent/reset arena base `0x800EECD0` into live bump cursor `0x80111ECC`; production bootstrap uses this after relocating the arena floor |
+| `0x800663A8` | Arena base advance/set helper | Static-confirmed | Advances/sets the persistent arena base and then resets the live cursor to it; use as lifecycle/base-management, not as a general allocator |
+| `0x800663E0` | Arena hard-reset helper | Static-confirmed | Restores the arena base to the hardcoded initial floor, then resets the live cursor; fresh stage setup reaches this family |
+| `0x80066410` | Arena next-payload peek | Static-confirmed | Returns `cursor + 8` without allocating; used as a checkpoint compatible with `0x80066478` rewind semantics |
+| `0x80066420` | Arena remaining-capacity query | Static-confirmed | Computes `(0x80290990 - cursor) >> 3`, i.e. remaining 8-byte units below the statically confirmed bump boundary |
+| `0x8006643C` | Main arena bump allocator | Static-confirmed | Aligns request to 8 bytes, returns `old_cursor + 8`, advances live cursor, and writes 8-byte allocation bookkeeping at the new cursor. No bounds check is performed internally. |
+| `0x80066478` | Arena rewind helper | Static-confirmed | Sets live cursor to `pointer - 8`; rewinds the arena to the state before the referenced allocation/checkpoint |
+| `0x8006648C` | Top-allocation rewind/reallocate helper | Static-confirmed | Rewinds with `0x80066478` and immediately allocates again through `0x8006643C`; no copy is performed |
 | `0x80071500` | Ordinary-enemy command interpreter | Static-confirmed | Stream pointer from `0x800C11E4` |
 | `0x800719F0` | Enemy spawn-parameter helper | Static-confirmed | Receives spawn index and type |
 | `0x80071B20` | Shared enemy/fighter constructor | Static/runtime-confirmed | Uses resource slot table `0x800B14C0` |
