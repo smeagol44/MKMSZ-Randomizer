@@ -435,12 +435,13 @@ process = start_projectile_process(actor, translated_program)
 
 This is the intended basis for Sektor missile, Acid Spit, spear/net-style projectiles, and similar donor moves. It is **not** a claim that all such moves are already compatible; strike semantics, effects, palette binding, interruption, cleanup, and donor callback behavior remain translation-specific.
 
-### v69-v72 runtime boundary
+### v69-v73 runtime boundary
 
 - **v69 Runtime-confirmed:** current controller/process `+0x6E4` can be temporarily redirected after the stock helper and advanced once through `0x800304C0` to display the genuine chest-open frame on the player without hanging.
 - **v70 Partially Runtime-confirmed:** the genuine horizontal rocket frame reaches the live projectile and travels, but stock Ice helper clones/tint remain, spawn placement is wrong, and the observed flight does not reproduce donor acceleration.
 - **v71 Rejected / failed:** a combined placement/movement revision hard-hangs 1-3 frames after input; later tracing isolates a semantic misuse of `0x8004CC14`.
 - **v72 Runtime-confirmed placement proof:** direct local `(+5,+38)` placement spawns near Sektor and mirrors correctly in both facings while leaving the inherited constant-speed flight and Ice tint unchanged.
+- **v73 Runtime-confirmed acceleration behavior / calibration Pending:** a child callback that mutates only projectile actor `+0x14` produces visible stable acceleration with no hang. The proof uses donor-retail `0x33333` start, `v += v >> 4`, and `0xB3333` cap, but exact cross-engine velocity-unit equivalence remains unproven.
 
 The durable lesson is not “tune the Ice projectile until it looks like Sektor.” The accepted direction is to compose the target primitives above under donor `do_robo_zap/rocket1_proc` semantics.
 
