@@ -63,8 +63,9 @@ EXPANSION_MODULE_ROM = 0x00F72000
 PLAYER_SEMANTIC_INPUT_VA = 0x800BF2EE
 TURN_MASK = 0x0001
 
-# Current controller/process global.
+# Current controller/process global plus persistent player controller anchor.
 CURRENT_CONTROLLER_PTR_VA = 0x802ECE20
+PLAYER_CONTROLLER_PTR_VA = 0x802C1AC0
 
 # Host helpers established by the control trace.
 FACE_POLICY_SCANNER_VA = 0x8004A6E8
@@ -242,14 +243,24 @@ def build_release_helper() -> bytes:
 
 
 def build_turn_gate_helper() -> bytes:
-    """Suppress standalone Turn only for the real player semantic controller."""
+    """Suppress standalone Turn only when the current action owns the player actor."""
 
     e = Emitter()
+
+    # The Turn routine runs under an action process, so current_process+0x638
+    # is not a reliable player-identity test. Compare actor identity instead:
+    # current action actor == persistent player controller's actor.
     e.emit(*address_words("t0", CURRENT_CONTROLLER_PTR_VA), lw("t0", 0, "t0"))
     e.beq("t0", "zero", "stock")
     e.emit(NOP)
+    e.emit(lw("t1", 0x6E0, "t0"))
+    e.beq("t1", "zero", "stock")
+    e.emit(NOP)
 
-    e.emit(lw("t1", 0x638, "t0"), *address_words("t2", PLAYER_SEMANTIC_INPUT_VA))
+    e.emit(*address_words("t2", PLAYER_CONTROLLER_PTR_VA), lw("t2", 0, "t2"))
+    e.beq("t2", "zero", "stock")
+    e.emit(NOP)
+    e.emit(lw("t2", 0x6E0, "t2"))
     e.bne("t1", "t2", "stock")
     e.emit(NOP)
 
