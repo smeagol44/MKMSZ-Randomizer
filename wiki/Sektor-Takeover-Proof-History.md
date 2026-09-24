@@ -10,7 +10,7 @@ The Sektor takeover line is **Runtime-confirmed as a bounded proof workstream, n
 
 The stable common-animation/combo baseline remains v62: the tested Sektor MKT combo strings work after translating donor reaction selectors to MKMSZ-native semantics. v58 remains the Runtime-confirmed twelve-pose Run baseline; v59 Runtime-confirms the completed middle Combo visuals; v60 Runtime-confirms the first type-`0x12` alternate Cyrax-style palette.
 
-The proof line now continues through **v70** for Sektor's straight missile. v63 is rejected because an assumed-dead file-`0x87` bank was actually live during hit/blood presentation. v64 established a compact one-chest/one-missile asset composition and reached the special path, but exposed that the reused Ice presentation spawned duplicate blue/frozen Sektor actors and retained Ice-like flight. v65-v67 are rejected immediate-hang lifecycle experiments. v68 is a stable negative-control build with stock Ice lifecycle restored but no chest substitution. **v69 Runtime-confirms the narrow player-pose hook:** current controller/process `+0x6E4` can be redirected after the stock helper and advanced once to display the genuine chest-open frame without hanging. **v70 is partially Runtime-confirmed:** the genuine rocket frame appears and travels, but stock Ice helper clones, blue tint, distant spawn, and ineffective/incorrect flight translation remain. v70 therefore validates presentation/host-path pieces, not a completed or faithful missile port.
+The proof line now continues through **v71** for Sektor's straight missile. v63 is rejected because an assumed-dead file-`0x87` bank was actually live during hit/blood presentation. v64 established a compact one-chest/one-missile asset composition and reached the special path, but exposed that the reused Ice presentation spawned duplicate blue/frozen Sektor actors and retained Ice-like flight. v65-v67 are rejected immediate-hang lifecycle experiments. v68 is a stable negative-control build with stock Ice lifecycle restored but no chest substitution. **v69 Runtime-confirms the narrow player-pose hook:** current controller/process `+0x6E4` can be redirected after the stock helper and advanced once to display the genuine chest-open frame without hanging. **v70 is partially Runtime-confirmed:** the genuine rocket frame appears and travels, but stock Ice helper clones, blue tint, distant spawn, and ineffective/incorrect flight translation remain. v70 therefore validates presentation/host-path pieces, not a completed or faithful missile port. v71 is **Rejected / failed** after a 1-3-frame hard hang; its post-test trace confirms that stock `+0x648` placement and `+0x714` child handoff refer to the same secondary actor, while its per-tick reuse of `0x8004CC14` is a static semantic mismatch.
 
 The strongest current production conflict remains the proof-code line inside the production bootstrap composite `[0x9AD84,0x9AF20)`. v62's standalone combo continuation uses `[0x9AD90,0x9ADA0)`; v65-v70 helper code begins at `0x9ADA0`, with v70 using the same proof-owned interval up to the bootstrap boundary. These artifacts validate semantics only; none of those offsets are reusable production allocations. The early Sektor helper line demonstrates the same rule from the opposite direction: zero-filled-looking `[0xA1308,0xA1544)` was live stock action/dispatch data, and overwriting it caused input-specific hangs.
 
@@ -31,6 +31,7 @@ A proof entry may preserve its historical **pre-test** status, but the section's
 - **v68:** **Runtime-confirmed stable negative control.** Full stock Ice lifecycle no longer hangs, but the attempted temporary animation-table substitution does not display the chest frame.
 - **v69:** **Runtime-confirmed narrow chest-pose hook.** Post-helper substitution through current process `+0x6E4` plus one stock frame advance displays the genuine chest-open frame for one frame and continues safely.
 - **v70:** **Partially Runtime-confirmed / implementation strategy superseded.** Chest presentation and a genuine rocket frame execute and travel, but the Ice helper clones/palette remain and the user reports spawn far from Sektor, slow motion, and no visible donor-style acceleration.
+- **v71:** **Rejected / failed.** Hard hang 1-3 frames after `F,F+LP`. Post-test static trace rejects the wrong-actor placement hypothesis and identifies per-tick reuse of `0x8004CC14` as a semantic mismatch; sole hang cause remains Pending.
 
 ## Final-status index
 
@@ -2000,6 +2001,27 @@ v70 preserves the Runtime-confirmed v69 chest-marker mechanism and the complete 
 Both the helper actors and missile retain a blue/ice tint. The user also reports that the missile spawns far too far from Sektor, moves slowly, and does not visibly accelerate as the intended Sektor rocket should.
 
 The positive result is narrow: the imported horizontal rocket asset reaches the live projectile and travels without the v65-v67 immediate hang. The negative result is more important architecturally: mutating the existing Ice projectile path with hardcoded target offsets/velocity callbacks is **not** a faithful donor-move adapter. v70 is therefore superseded as the implementation strategy by the source-level compatibility approach in [MKT adapter primitives](MKT-Adapter-Primitives), where donor projectile creation, owner-relative placement, process ownership, flight callback, collision/strike meaning, palette/effect semantics, and cleanup are translated explicitly.
+
+### v71 — native-placement / setup-helper acceleration experiment
+
+Disposable proof: `MKMSZR_sektor-missile-flight_common-proof_v71.z64`.
+
+Builder: `MKMSZR_build_sektor_missile_flight_v71_delta.py`.
+
+Identity:
+- baseline v70 SHA-256 `5fe374e8702e99c6e5361b2637dcdd5bd4e743f58abbbbbdba2ad63aa283d8ae`;
+- output SHA-256 `8fbae98e3a66cf74c6e631069993451930de2f0febe58626be3eb78dfe809c6b`;
+- CRC1/CRC2 `BCFB8436 / C965E1C4`.
+
+v71 changed two variables relative to v70. It replaced the post-creation 96-pixel X correction with direct arguments at the stock `0x80031208` placement seam, using retail-MKT-derived `(+5,+38)`, and changed the projectile movement path to use retail initial/cap constants with the target setup helper `0x8004CC14`.
+
+**Rejected / failed at runtime.** Approximately 1-3 frames after entering `F,F+LP`, emulation hard-hung. Before the freeze, the inherited blue/frozen Ice helper actors were visible around Sektor. This is a bounded runtime failure; it does not establish which of the two v71 changes caused the hang.
+
+Post-test static tracing resolves one ambiguity. The actor at controller `+0x648` passed to the stock `0x80031208` call is the same secondary actor also held at `+0x714` and later promoted by `0x8004CBC4` into child `+0x6E0`. Therefore the hypothesis that v71 positioned an unrelated Ice helper actor is **Rejected / failed**.
+
+A separate static defect remains in v71's movement graft: `0x8004CC14` is a projectile setup helper that writes facing-aware X velocity and calls `0x80031724` to initialize animation timing. v71 reused it from the per-tick acceleration callback and supplied a rate derived from the velocity calculation, so it mutated animation-rate state every flight tick rather than merely updating velocity. This is **Static-confirmed as a semantic mismatch**, but it is not yet proven to be the sole cause of the runtime hard hang.
+
+The stable runtime baseline for further work remains v70. The next proof must isolate one variable at a time after completing static calibration of target placement and per-tick velocity semantics.
 
 
 
