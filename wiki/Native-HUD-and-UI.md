@@ -109,7 +109,7 @@ The observed frontend input masks are:
 
 ### Proposed Randomizer Settings architecture
 
-The accepted production-facing design is to **replace the stock `GAME SETTINGS` destination with `RANDOMIZER SETTINGS`** while keeping the existing top-level OPTIONS row and selector geometry unchanged. This is intentional: vanilla GAME SETTINGS only controls Difficulty, Lives, and Continues, while MKMSZR plans to own those run values/invariants itself. Once those values are hardcoded/managed by the randomizer, exposing the stock editor would be redundant and could allow the player to contradict MKMSZR run state. Reusing the existing row therefore avoids unnecessary top-level menu growth and gives MKMSZR one native-looking settings home for future options.
+The accepted production-facing design is to keep the existing top-level **`GAME SETTINGS`** entry and selector geometry unchanged, but replace the contents of that submenu with MKMSZR-owned settings. This is intentional: vanilla GAME SETTINGS only controls Difficulty, Lives, and Continues, while MKMSZR plans to own those run values/invariants itself. Once those values are hardcoded/managed by the randomizer, exposing the stock editor would be redundant and could allow the player to contradict MKMSZR run state. Keeping the familiar GAME SETTINGS label avoids unnecessary top-level menu changes while giving MKMSZR one native-looking settings home for future options.
 
 The submenu should be table-driven rather than one-off code:
 
@@ -121,7 +121,7 @@ setting row:
     optional on-change callback
 ```
 
-A common menu loop can then own row navigation, left/right mutation, rendering, highlight style, sound, and exit. The first row is the direction-facing feature, provisionally presented as `MODERN CONTROLS: ON/OFF`. The v10 control helper must gate **all** behavior changes on the same setting bit: opposite-direction auto-facing, active-backward release, and pre-dispatch suppression of player Turn states 23/24. `OFF` therefore falls completely back to stock control behavior; semantic Turn/Combine bit `0x0001` remains untouched in both modes.
+A common menu loop can then own row navigation, left/right mutation, rendering, highlight style, sound, and exit. The first row is the direction-facing feature and should be presented as **`TURN: TOGGLE / LOCK`**. `TOGGLE` means the stock control model: Turn performs the normal standing/crouched turn action and the v10 facing-lock policy is bypassed. `LOCK` means the v10 model: Left/Right follows world direction with immediate facing correction, while held Turn locks facing and uses vanilla backward movement. Releasing Turn while holding direction immediately returns to auto-facing/forward locomotion. The same setting must gate all v10 behavior changes together: opposite-direction auto-facing, active-backward release, and pre-dispatch suppression of player Turn states 23/24. Semantic Turn/Combine bit `0x0001` remains untouched in both modes.
 
 The settings state should be a versioned MKMSZR bitfield, not individual ad-hoc globals. The first bit can represent the direction-facing preference and later bits/enums can be added without redesigning the menu. The preferred owner is the existing final Runtime V2 word `0x801AF81C..0x801AF81F`, promoted explicitly from **reserved** to a named `settings_flags` word when implementation begins. Runtime V2 initialization validates `MKSV`/version/size and returns without clearing a valid state block; only invalid/uninitialized state is zeroed. That makes this word suitable for title -> gameplay -> stage-transition/session persistence without inventing another lifecycle domain. The setting convention should preserve a deliberate default (for example, zero meaning the accepted modern-control default and one bit requesting classic controls) rather than depending accidentally on zero-initialization.
 
@@ -134,13 +134,13 @@ Do **not** extend the top-level OPTIONS row count. Redirect the existing GAME SE
 The bounded proof should:
 
 1. reuse the native GAME SETTINGS visual/input loop shape and stock frontend text renderer;
-2. show one row, `MODERN CONTROLS`, plus `ON/OFF` and `EXIT`;
+2. keep the submenu title/context as `GAME SETTINGS` and show one configurable row, `TURN`, with values `TOGGLE` / `LOCK`, plus `EXIT`;
 3. store the toggle in one explicitly named proof state word/byte whose title-stage lifecycle is independently marked/checked;
 4. gate the v10 control-facing helpers on that state;
 5. manually test `ON -> gameplay`, `OFF -> gameplay`, return to title, and re-enter the page;
 6. leave Inventory Combine on semantic Turn/Combine `0x0001` and verify it once in each mode.
 
-After that succeeds, production should keep the existing OPTIONS topology and permanently replace only handler index 4 plus its displayed `GAME SETTINGS` label with `RANDOMIZER SETTINGS`. There is then no need to relocate or enlarge the top-level dispatch table, no need to change the selector maximum, and no need to move `EXIT`.
+After that succeeds, production should keep the existing OPTIONS topology and the displayed `GAME SETTINGS` label, while permanently replacing only handler index 4's submenu implementation. There is then no need to relocate or enlarge the top-level dispatch table, no need to change the selector maximum, and no need to move `EXIT`.
 
 This menu work remains **Static-confirmed design / Pending runtime** until a disposable proof is manually validated. The stock GAME SETTINGS implementation remains valuable as the native behavioral template for the replacement submenu even though its Difficulty/Lives/Continues editing behavior will no longer be exposed.
 
