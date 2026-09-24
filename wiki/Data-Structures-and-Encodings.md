@@ -91,7 +91,7 @@ Empty stock slots use `0xFFFFFFFF`. Foreign-stage keys appear in the live window
 |---|---|
 | controller `+0x638` | Pointer to semantic input; player construction stores `0x800BF2EE` here |
 | controller `+0x68C` | Active horizontal semantic direction: `0x8000` Left or `0x2000` Right |
-| controller `+0x680` | During normal walk setup, shadows the temporary `1`/\`2` locomotion selector before `+0x6E4` becomes the animation cursor |
+| controller `+0x680` | During normal walk setup, shadows the temporary `1`/`2` locomotion selector before `+0x6E4` becomes the animation cursor |
 | controller `+0x6BC` bit `0x0200` | Shared fighter face-policy flag used by several host routines to conditionally face a nearest opponent; **not a universal boss bit** |
 | controller `+0x6E0` | Current actor pointer |
 | controller `+0x6E4` | Animation cursor; temporarily receives the forward/back selector immediately before animation selection |
