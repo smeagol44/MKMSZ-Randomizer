@@ -29,6 +29,64 @@ The Low Kick table is RAM `0x800B0F68` / ROM `0xB1B68`. It has two active `0x2C`
 
 Direction tokens are `8=Left` and `9=Right`. The Reverse Elbow proof used the semantic command **Back -> Forward + Low Kick**: facing right `8,9,0`, facing left `9,8,0`, with window `0x10`. The donor reason for that command and the donor move choreography belong to [MKT adapter primitives](MKT-Adapter-Primitives).
 
+## Horizontal locomotion and facing
+
+**Static-confirmed.** The main player process at `0x80028F3C` owns normal directional locomotion. Controller `+0x638` points directly to the remapping-aware semantic input word `0x800BF2EE`. In its normal horizontal state, Right (`0x2000`) and Left (`0x8000`) are copied to controller `+0x68C` as the active direction.
+
+The same input classification derives controller `+0x704` from actor facing bit `+0x8C & 0x10`:
+
+- Right stores the facing bit directly;
+- Left stores the facing bit XOR `0x10`.
+
+The result is direction-independent: `+0x704 == 0` means the requested horizontal direction matches current facing, while nonzero means it opposes current facing.
+
+At `0x800293B0`, stock branches on this marker:
+
+```text
++0x704 == 0
+    -> 0x8002EAFC run check
+    -> 0x80030178 forward locomotion setup
+    -> selector 1 / primary slot 0x01 walk_forward
+
++0x704 != 0
+    -> 0x80030208 backward locomotion setup
+    -> selector 2 / primary slot 0x02 walk_backward
+```
+
+Both setup helpers preserve fighter-specific speed tables and stock movement state. `0x80030178` writes the forward parameters and returns `1`; `0x80030208` writes the backward parameters and returns `2`. The selected value is shadowed in controller `+0x680` before `0x8002FE54` installs the corresponding animation.
+
+The stock facing-flip primitive is `0x8003188C(actor)`. It toggles only actor `+0x8C bit 0x10` and then calls the normal frame/setup path `0x8001BDA0` with actor `+0x74`. Future control work should use this primitive rather than writing the facing bit directly.
+
+### Turn / facing-lock design seam
+
+Semantic Turn is bit `0x0001`. Inventory code separately consumes that same semantic bit, so a modern-control implementation must **not** globally clear or remap Turn; inventory Combine behavior must remain context-local and stock.
+
+The accepted control-assist direction is gameplay-local:
+
+```text
+requested direction matches facing
+    -> vanilla forward path
+
+requested direction opposes facing
+    + Turn held
+        -> vanilla backward path
+    + Turn not held
+        -> stock facing flip
+        -> stock forward/run path
+```
+
+This preserves the native backward-walk implementation as an intentional **Facing Lock / Backpedal** modifier instead of recreating it. The ordinary stock turn-action state is distinct from inventory handling and must be suppressed or bypassed for this mode so holding Turn can function as a modifier rather than immediately consuming the press as a standalone turn.
+
+While a walk is already active, stock polls `controller+0x68C & semantic_input`. Releasing/changing the active direction exits through the normal stop/cleanup path and the next locomotion entry recomputes direction/facing. A first proof may therefore tolerate a one-tick re-entry on reversal, but release of Turn during an already-active backward walk needs an explicit check if the desired modifier semantics are to switch immediately back to auto-facing without requiring a direction repress.
+
+### Stock forced-facing exception
+
+Shared host routines use opponent-controller `+0x6BC bit 0x0200` as a gate for automatic `0x80031EF0` face-opponent behavior. The stock fighter-characteristics table sets this bit for several special/boss fighter types, including the documented Wind `0x08`, Water `0x0B`, Fire `0x0C`, and Fortress `0x1B/0x1D` encounters. This is a **face-policy flag**, not a proven universal "boss bit"; other special types also carry it.
+
+Earth type `0x19` is a separate exception: its stock characteristics-table word does not carry `0x0200`, but Earth overlay logic calls `0x80031EF0` directly during the boss behavior. A modern-facing proof should therefore defer to stock facing whenever the nearest opponent carries the shared `0x0200` policy and also preserve the explicit Earth-boss route rather than fighting it.
+
+This trace establishes the host seam only. No modern-facing patch is production-integrated or runtime-confirmed yet.
+
 ## Host action primitives
 
 | Address | Correct MKMSZ meaning |
