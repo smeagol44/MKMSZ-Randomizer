@@ -109,14 +109,17 @@ Earth type `0x19` is a separate unresolved exception. Its stock characteristics-
 
 For the first modern-facing proof, the safe static rule is: defer completely to stock when the nearest opponent carries `+0x6BC & 0x0200`; test Earth separately. If Earth runtime behavior still auto-faces as expected, capture that route and trace its distinct mechanism before production integration instead of hard-coding a stage ID.
 
-### Direction-facing proof v01/v02
+### Direction-facing proof history through v10
 
-The first expansion-loaded control proof uses a proof-only file-`0x1A` module in the 15 KiB expansion pool and enters freshly loaded code only through uncached KSEG1 trampolines.
+The control-facing proof family is proof-only. Its established transport uses a file-`0x1A` expansion module in the 15 KiB reserved pool and uncached KSEG1 entry. Later proofs refined the Turn boundary without changing the product requirement that Inventory Combine retain semantic bit `0x0001`.
 
 - **v01 — Rejected / failed.** Pressing the first opposite horizontal direction immediately hard-hung. The proof used current-controller global `0x802FCE20`, repeating the already-rejected unsigned-low-immediate interpretation. The actual address is `0x802ECE20`: `lui 0x802F` paired with signed low immediate `0xCE20` subtracts `0x31E0`.
-- **v02 — Runtime-confirmed on the tested route.** Changing only that global to `0x802ECE20` made the control behavior work as intended: opposite horizontal input flips Sub-Zero and proceeds through stock forward locomotion; holding Turn preserves vanilla backward walking / facing lock. The user reported the corrected behavior worked perfectly and matched the requested control model.
+- **v02 — Runtime-confirmed foundation.** Changing only that global to `0x802ECE20` made opposite horizontal input flip Sub-Zero and proceed through stock forward locomotion while held Turn preserved vanilla backward walking / facing lock. This established the locomotion/facing seam but did not yet solve all Turn-interruption behavior.
+- **v08 — Runtime-confirmed intermediate, superseded.** The active file-`0x87` Turn slot `0x03` was repointed from the Turn script at `+0x418` to its terminator at `+0x428`. This proved the selected Turn animation/token path could be neutralized, but selecting that empty animation still restarted the current locomotion animation.
+- **v09 — Runtime-confirmed intermediate, superseded.** Player-local Turn helpers were skipped at `0x80029CC0 -> 0x80031C10` for standing Turn slot `0x03` and `0x80029CEC -> 0x80031C7C` for crouched Turn slot `0x05`. Locomotion was still interrupted because the generic action dispatcher had already accepted/installed the Turn action before those later helpers.
+- **v10 — Runtime-confirmed on the tested route.** The correction moves the suppression to the action-selection boundary: for the real player, standing/crouched Turn actions **23/24** are discarded before the generic dispatcher installs them. The semantic Turn/Combine bit itself remains intact. Left/Right without Turn therefore means world-direction movement with immediate facing correction and normal forward locomotion; held Turn is a facing lock using vanilla backward movement; releasing Turn while holding direction immediately returns to auto-facing/forward behavior; Turn alone produces no visible turn; rapid Turn taps while walking no longer restart locomotion. The user reported: “Perfect. It's just perfect. Everything working as expected!” The validated ROM was `MKMSZR_control-facing_all-stages_proof_v10.z64`, SHA-256 `6a3d1842916fe222f3708183b7b20e5eff21b0aaac444fc49dffbdea60784748`.
 
-v02 establishes the control seam and expansion-module execution on that bounded route. It does **not** promote the feature into the browser/CLI production pipeline, establish every action/lifecycle state, or establish a special rule for the Earth boss.
+v10 is the current bounded control-facing baseline. It does **not** promote the feature into the browser/CLI production pipeline or establish exhaustive boss/special/action-state coverage. The next integration problem is configuration: expose this behavior as a reusable Randomizer Settings option without globally clearing/remapping Turn or disturbing Inventory Combine.
 
 ## Host action primitives
 
