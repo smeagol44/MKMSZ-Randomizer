@@ -756,3 +756,37 @@ The v39 allocation size is also rejected as a production target. It copied the v
 
 v38 remains the accepted Runtime-confirmed image-correctness baseline. v39 must not be used as production-allocation evidence.
 
+
+### Toasty visual production-layout proof v40
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v40 supersedes rejected v39 and returns to the Runtime-confirmed v38 visual semantics while fixing both v39 architectural mistakes.
+
+Execution:
+- the feature file is still raw-loaded into the reserved expansion-pool base;
+- freshly loaded native code is entered only through uncached KSEG1 aliases;
+- the existing direct gameplay hooks target two 16-byte static KSEG0 trampolines at the old v38 proof cave;
+- each trampoline performs an absolute indirect jump into the KSEG1 compositor/init entry;
+- all calls from expansion code into stock engine functions use `JALR` to explicit KSEG0 addresses, and init resumes stock through an explicit KSEG0 `JR`.
+
+Layout is table-driven rather than nine-times-unrolled:
+
+| Expansion slice | Size |
+|---|---:|
+| compositor code | 336 bytes |
+| init code | 292 bytes |
+| draw table | 72 bytes |
+| allocation/init table | 72 bytes |
+| nine saved dynamic-slot IDs | 36 bytes |
+| hardware-ready CI8 TLUT | 512 bytes |
+
+Alignment brings total expansion-pool use to **1,360 bytes (`0x550`)**, leaving **`0x36B0` bytes (14,000 bytes)** of the 15 KiB pool. Executable Toasty code itself is **628 bytes**. The CI8 image slices remain ROM-backed and are not stored in the expansion pool.
+
+v40 preserves all nine exact v38 padded CI8 source slices, their file IDs `0x13..0x1B`, allocation order, 7+64+7 visible geometry, custom palette, and the Runtime-confirmed slot-record `+0x08 = 32/64` source-row-width normalization. A separate proof-only feature file uses clean file ID `0x12`.
+
+Static guards cover the clean-ROM hook bytes, arena-floor patch pairs, file-table entries, high-ROM source ranges, the 32-byte static trampoline cave, bootstrap stub capacity, and an explicit ROM-diff allowlist.
+
+Disposable ROM SHA-256: `556fe0f909c50121dcf7aa8e4069955ad7cbaa4cfbd54d46cb1266940c35b7a2`.
+
+Runtime acceptance test: Temple, Earth, Fire, and Fortress minimum; all eight safe stages preferred. Expected behavior is presentation-equivalent to v38: stock HUD and player rendering remain intact and Toasty remains visually perfect. A pass promotes the compact uncached expansion layout as the accepted basis for audio + lifecycle composition.
