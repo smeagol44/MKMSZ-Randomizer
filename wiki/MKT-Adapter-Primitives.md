@@ -415,7 +415,7 @@ MKT `multi_adjust_xy` mirrors X internally and adds Y directly. The correspondin
 
 or, at the adapter level, `place_relative(projectile, 5, 38)`. Do **not** pass source-space `(7,45)`, do not apply the MKT 80%/85% scale a second time, and do not add a target-specific pixel correction. On a neutral target orientation this becomes exactly `(+5 << 8, +38 << 8, 0)`; on rotated MKMSZ stage geometry the native helper rotates the same local displacement into world XYZ, which is the target-native equivalent of donor fighter-relative placement.
 
-This resolves the **unit conversion** statically. It does not yet Runtime-confirm the final visible rocket alignment, because imported-image anchor/origin differences remain a separate presentation variable. The next bounded proof should therefore change placement only from the stable v70 baseline.
+This resolves the **unit conversion** statically. v72 subsequently Runtime-confirms the mapping on the tested route: direct `0x80031208(projectile, 5, 38)` spawns the genuine rocket close to Sektor and mirrors correctly across facing without hanging. The visible rocket may still sit somewhat high, which remains an imported-image anchor/origin presentation question rather than evidence for rescaling the generic placement primitive.
 
 Target projectile-process creation:
 - `0x8004CBC4(callback)` allocates a child controller/process through `0x8002830C` with class/tag `0x700`;
@@ -435,10 +435,12 @@ process = start_projectile_process(actor, translated_program)
 
 This is the intended basis for Sektor missile, Acid Spit, spear/net-style projectiles, and similar donor moves. It is **not** a claim that all such moves are already compatible; strike semantics, effects, palette binding, interruption, cleanup, and donor callback behavior remain translation-specific.
 
-### v69/v70 runtime boundary
+### v69-v72 runtime boundary
 
 - **v69 Runtime-confirmed:** current controller/process `+0x6E4` can be temporarily redirected after the stock helper and advanced once through `0x800304C0` to display the genuine chest-open frame on the player without hanging.
 - **v70 Partially Runtime-confirmed:** the genuine horizontal rocket frame reaches the live projectile and travels, but stock Ice helper clones/tint remain, spawn placement is wrong, and the observed flight does not reproduce donor acceleration.
+- **v71 Rejected / failed:** a combined placement/movement revision hard-hangs 1-3 frames after input; later tracing isolates a semantic misuse of `0x8004CC14`.
+- **v72 Runtime-confirmed placement proof:** direct local `(+5,+38)` placement spawns near Sektor and mirrors correctly in both facings while leaving the inherited constant-speed flight and Ice tint unchanged.
 
 The durable lesson is not “tune the Ice projectile until it looks like Sektor.” The accepted direction is to compose the target primitives above under donor `do_robo_zap/rocket1_proc` semantics.
 
@@ -457,7 +459,7 @@ The durable lesson is not “tune the Ice projectile until it looks like Sektor.
 | advance animation | `do_next_a9_frame` / playback | Native animation advance | **Covered primitive** | Player Actions |
 | donor frame/texture resource | donor heap-relative descriptors/codecs | Rebuilt MKMSZ descriptors + native storage | **Covered asset path for proven formats** | [MKT fighter asset translation](MKT-Fighter-Asset-Translation) |
 | projectile resource actor creation | `setup_proj_obj` / donor projectile object | resource-backed secondary actor path via token `0x0B`, `0x80030974 -> 0x80034510 -> 0x800281A0/0x80028128` | **Target primitive identified; wrapper Pending** | This page + Function Registry |
-| owner-relative placement | `adjust_xy_a5` | facing-aware actor displacement `0x80031208` | **Static mapping resolved; runtime placement proof Pending** | This page + Function Registry |
+| owner-relative placement | `adjust_xy_a5` | facing-aware actor displacement `0x80031208` | **Runtime-confirmed at Sektor v72 scope** | This page + Function Registry |
 | projectile child process | `create_proj_proc` | `0x8004CBC4 -> 0x8002830C` child controller/process binding | **Target primitive identified; wrapper Pending** | This page + Function Registry |
 | projectile flight callback | `projectile_flight_call(callback)` | MKMSZ projectile loop/collision family around `0x8004CC50` | **Partial adapter; callback ABI Pending** | This page + Player Actions |
 | projectile per-tick state | donor `p_store*` fields | adapter-owned child-process scratch/state | **Missing generic ABI** | This page |
