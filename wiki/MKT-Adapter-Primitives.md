@@ -407,15 +407,34 @@ SCX(7)  = 5
 SCY(45) = 38
 ```
 
-MKT `multi_adjust_xy` mirrors X internally and adds Y directly. The corresponding MKMSZ local placement request is therefore:
+MKT `multi_adjust_xy` mirrors X internally and adds Y directly. A follow-up source+retail trace explicitly rejects an X/Y-swap hypothesis:
+
+- `adjust_xy_a5(_obj,_x,_y)` is a macro for `multi_adjust_xy(_obj,_x,_y)`;
+- `multi_adjust_xy(OBJECT *obj, short xadj, short yadj)` adds/subtracts **argument 2** to `obj->oxpos.u.intpos` according to `M_FLIPH`, and adds **argument 3** directly to `obj->oypos.u.intpos`;
+- in MKT USA Rev. 2 retail, `make_rocket` loads `a1=5`, `a2=38` before calling retail `multi_adjust_xy` at `0x8000DD3C`;
+- retail `0x8000DD3C` sign-extends `a1/a2`, applies `a1` to the object's X-position halfword and `a2` to its Y-position halfword.
+
+Therefore the donor pair really is semantic **X=+5, Y=+38**; it is not `(+38,+5)`.
+
+The corresponding MKMSZ **offset operation** is:
 
 ```text
 0x80031208(projectile, +5, +38)
 ```
 
-or, at the adapter level, `place_relative(projectile, 5, 38)`. Do **not** pass source-space `(7,45)`, do not apply the MKT 80%/85% scale a second time, and do not add a target-specific pixel correction. On a neutral target orientation this becomes exactly `(+5 << 8, +38 << 8, 0)`; on rotated MKMSZ stage geometry the native helper rotates the same local displacement into world XYZ, which is the target-native equivalent of donor fighter-relative placement.
+or, at the adapter level, `place_relative(projectile, 5, 38)`. Do **not** pass source-space `(7,45)`, do not swap the axes, and do not apply the MKT 80%/85% scale a second time. On a neutral target orientation the helper contributes exactly `(+5 << 8, +38 << 8, 0)`; on rotated MKMSZ stage geometry it rotates the same local displacement into world XYZ.
 
-This resolves the **unit conversion** statically. v72 subsequently Runtime-confirms the mapping on the tested route: direct `0x80031208(projectile, 5, 38)` spawns the genuine rocket close to Sektor and mirrors correctly across facing without hanging. The visible rocket may still sit somewhat high, which remains an imported-image anchor/origin presentation question rather than evidence for rescaling the generic placement primitive.
+**Important base-origin qualification:** this proves the argument order and offset units, not that the complete donor and target projectile-creation paths establish the same pre-offset origin. MKT `setup_proj_obj -> get_proj_obj_m` calls `match_ani_points(owner, projectile)` **before** `adjust_xy_a5(+5,+38)`. Thus donor spawn semantics are:
+
+```text
+projectile = create_projectile()
+match_projectile_animation_origin_to_owner()
+adjust_projectile_origin(+5,+38)
+```
+
+The current MKMSZ proof piggybacks on the stock Ice secondary-actor creation/alignment before applying `0x80031208(+5,+38)`. Equivalence of that **pre-adjust base alignment** to MKT `match_ani_points` has not yet been proven. This is now the primary static explanation to investigate for the remaining visible chest-origin mismatch; changing the proven `(+5,+38)` argument order is not supported.
+
+The imported `ROCKETD1` descriptor itself preserves donor geometry `39x9` and donor anchor `(+26,+3)` in the proof builder, so a simple lost/swapped rocket descriptor anchor is also not currently supported. v72 remains Runtime-confirmed for stable mirrored placement, but it does not by itself prove full donor-equivalent visible spawn alignment.
 
 Target projectile-process creation:
 - `0x8004CBC4(callback)` allocates a child controller/process through `0x8002830C` with class/tag `0x700`;
