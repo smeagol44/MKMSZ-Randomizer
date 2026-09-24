@@ -174,7 +174,9 @@ This distinction explains the v71 failure mode: repeatedly calling `0x8004CC14` 
 
 `0x80031208` consumes signed local whole-coordinate offsets. On the normal freshly-created projectile path (`actor +0xDC == 0`), it mirrors local X for actor flip, rotates vector `(x,y,0)` through the actor-local orientation, and adds the resulting integer components to actor world position `+0x2C/+0x30/+0x34` after `<< 8`. Target actor positions are therefore 8-fractional-bit fixed-point while this helper's placement arguments are whole local units. Its matrix normalization is unity; there is no additional target scale factor.
 
-For the current Sektor straight-missile case, the donor's already-N64-scaled retail displacement `(+5,+38)` therefore maps directly to target helper arguments `(+5,+38)`. Facing remains the helper's responsibility. This is **Static-confirmed coordinate mapping**; visible alignment still requires the bounded runtime placement proof because imported asset anchors are a separate concern.
+For the current Sektor straight-missile case, the donor's already-N64-scaled retail displacement is definitively semantic `X=+5, Y=+38`: MKT source `multi_adjust_xy` applies its second argument to `oxpos` and third to `oypos`, and retail `make_rocket` passes `a1=5,a2=38` to the same operation. The X/Y-swap hypothesis is therefore **Rejected / failed**.
+
+Those values map directly to the target helper's **offset arguments** `(+5,+38)`, with facing remaining the helper's responsibility. However, complete visible spawn equivalence also depends on the projectile's position **before** that adjustment. MKT performs `setup_proj_obj -> get_proj_obj_m -> match_ani_points(owner, projectile)` before applying the offset, while the current target proof inherits stock Ice secondary-actor creation/alignment. Equivalence of those pre-adjust base origins is **Pending** and is the next relevant placement seam; v72 proves stable mirrored offset application, not full donor-equivalent origin setup.
 
 ### Projectile velocity integration
 
