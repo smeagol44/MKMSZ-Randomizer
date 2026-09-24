@@ -1,4 +1,4 @@
-"""Reserve the runtime-tested 0x400-byte MKMSZR arena prefix."""
+"""Reserve the runtime-tested 16 KiB MKMSZR arena prefix."""
 
 from ..data.addresses import (
     ARENA_START_PATCHES,
