@@ -42,6 +42,7 @@ The canonical field layout for a native `0x58` render node is documented in [Dat
 | Node halfword `+0x4A` selects the texture slot used by the gameplay HUD renderer | **Runtime-confirmed**, v09-v10 | v10 confirms clone-local rebinding without damaging the stock source node |
 | The corrected fixed-slot record base is `0x802E83F0`; backing-pointer base is `0x800ED940` | **Runtime-confirmed control**, v14, with static audit | Earlier v12-v13 alias experiments used incorrect address formation and are rejected |
 | A dynamic CI8 allocation can feed genuine imported image pixels to an added gameplay-HUD node | **Runtime-confirmed**, v15 | v15 intentionally inherited the wrong stock palette |
+| Dynamic slot record `+0x08` is the DRAM source-image width consumed by `0x8001F7A8` `SetTextureImage` | **Static-confirmed**, post-v37 trace | `0x8001C2B4` can reuse a capacity-compatible record without refreshing this field; stock callers rewrite it after allocation |
 | Node halfword `+0x4C` is the palette selector used by the gameplay renderer | **Static/implementation-confirmed**, v16 | v16 genuine-palette runtime validation is still Pending in the current chronology |
 
 These are generic renderer conclusions only. Full proof identities, failures, and supersession are canonical in [Toasty visual research](Toasty-Visual-Research).
