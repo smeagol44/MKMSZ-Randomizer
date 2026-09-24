@@ -72,6 +72,7 @@ The stock START setup at ROM `0x00079C24..0x00079C2B` is intentionally left unto
 
 | ROM/VA | Proof | Status |
 |---|---|---|
+| ROM `0x0002EB28` / VA `0x8002DF28` | Toasty v43 successful-reaction hook | Implementation/static-confirmed; runtime Pending. Guard: `0C00B81E 03C02821` (`jal 0x8002E078`; `move a1,fp`). v43 replaces only the JAL with a proof trampoline and preserves the delay instruction; wrapper filters resolved callbacks `08/0E/12/13/14/15/17` then calls the original transfer unchanged. |
 | ROM `0xB44AA` / RAM `0x800B38AA` | First ordinary Fire enemy type `0x0A -> 0x09` | Runtime-confirmed, not production |
 | Fire resource entry ROM `0xA52E0` | Relocated/expanded Fire pickup resources | Runtime-confirmed architecture proof |
 | VA `0x8008EAEC` / ROM `0x8F6EC` | Dedicated Prison-key award callback | Runtime-confirmed proof; conflicts with production allocation `rom.production.inventory_action_cave` |
