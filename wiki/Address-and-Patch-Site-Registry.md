@@ -77,6 +77,11 @@ The stock START setup at ROM `0x00079C24..0x00079C2B` is intentionally left unto
 | VA `0x8008EAEC` / ROM `0x8F6EC` | Dedicated Prison-key award callback | Runtime-confirmed proof; conflicts with production allocation `rom.production.inventory_action_cave` |
 | Fire overlay tail ROM `0xE2148..0xE216B` | Foreign fighter file load/allocation sequence | Runtime-confirmed monk import proof |
 | Seven Fire type-`0x0A` halfwords | Replace ordinary Fire Hulk types with Temple monk type `0x01` | Runtime-confirmed bounded proof |
+| ROM `0x00029FB0` / VA `0x800293B0` | Direction-facing v02 mismatch decision hook | Runtime-confirmed proof; replaces `8C640704 24020305` with JAL to static KSEG0 trampoline + NOP, then expansion KSEG1 helper preserves/changes the stock forward-vs-back decision |
+| ROM `0x0002A0DC` / VA `0x800294DC` | Direction-facing v02 active-backward release hook | Runtime-confirmed proof; replaces `8C820638 94430000` with JAL trampoline + NOP so releasing Turn can leave backward mode without a direction repress |
+| ROM `0x0003E46C` / VA `0x8003D86C` | Direction-facing v02 standalone Turn gate | Runtime-confirmed proof; replaces `27BDFFE0 24040001` with a jump to a static trampoline that suppresses standalone Turn only for the player semantic controller |
+| ROM `0x000A5148` / global file entry `0x1A` | Direction-facing v02 expansion transport | Runtime-confirmed proof; clean zero entry points to proof module ROM `0x00F72000..0x00F72268`, raw-loaded to `0x801AF820` and executed via KSEG1 |
+| ROM `0x0009ADB8` plus `0x0009ADE8..0x0009AEBF` | Direction-facing v02 proof loader/trampolines | Runtime-confirmed proof composition; bootstrap temporarily loads file `0x1A`, and the former static pickup-capture-helper footprint becomes bounded loader/trampoline storage while the capture helper itself moves into the expansion module |
 
 Proof rows identify exact edits useful for reproduction; they do not grant allocation ownership. Where a proof overlaps current production, the Memory Map owns that conflict statement.
 
