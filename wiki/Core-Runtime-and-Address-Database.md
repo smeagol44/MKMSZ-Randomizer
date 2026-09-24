@@ -14,7 +14,24 @@ Production reserves one 1 KiB block immediately below the game's shifted main-ar
 
 The **exact continuous reservation and every current sub-owner** are canonical in [Memory and allocation map](Memory-and-Allocation-Map). The two guarded ROM instructions that move the arena start, including expected and replacement words, are canonical in the [patch-site registry](Address-and-Patch-Site-Registry).
 
-After relocation, the bootstrap synchronizes the arena-pointer global at `0x800EECD0` through helper `0x80066390`. [Function registry](Function-Registry) owns the helper's function semantics. The `0x801AF820` anchor does not imply that later RDRAM is generically free.
+After relocation, the bootstrap establishes the shifted arena floor in persistent/reset base global `0x800EECD0` and uses `0x80066390` to copy that floor into the live bump cursor at `0x80111ECC`. The two globals therefore have distinct roles: `0x800EECD0` is the reset/base floor, while `0x80111ECC` is the transient allocation cursor. [Function registry](Function-Registry) owns the helper/allocator semantics. The `0x801AF820` anchor does not imply that later RDRAM is generically free.
+
+## Arena allocator model
+
+Static tracing of the clean USA Rev. 0 image establishes the stock arena as an 8-byte-aligned stack/bump allocator family:
+
+- persistent/reset base: `0x800EECD0`;
+- live bump cursor: `0x80111ECC`;
+- bump boundary: `0x80290990`;
+- main allocator: `0x8006643C`;
+- rewind: `0x80066478`;
+- remaining-capacity query: `0x80066420`.
+
+The main allocator returns `old_cursor + 8`, aligns requested payload size to 8 bytes, advances the live cursor, and writes 8 bytes of bookkeeping at the new cursor. It contains no internal bounds check. The capacity helper computes `(0x80290990 - cursor) >> 3`; immediately adjacent fixed runtime state begins at `0x80290998`, so a cursor at `0x80290990` consumes the final bookkeeping word and any further allocation would enter fixed state.
+
+Rewind is stack-like: `0x80066478(pointer)` sets the cursor to `pointer - 8`. `0x80066410` returns `cursor + 8` without allocating, allowing callers to save a reversible checkpoint. This explains stage-lifetime reconstruction paths that save a checkpoint, allocate resources, and later rewind/rebuild them.
+
+These findings are **Static-confirmed**. They establish what should be measured during reservation experiments, but they do not establish a safe larger production reservation by themselves. Runtime headroom remains workload-dependent; expanded reservations still require bounded manual validation.
 
 ## Runtime V2 composition
 
