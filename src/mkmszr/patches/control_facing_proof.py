@@ -30,7 +30,6 @@ from ..mips import (
     jal,
     jalr,
     jr,
-    jump,
     lhu,
     lui,
     lw,
@@ -59,8 +58,7 @@ EXPANSION_FILE_ID = 0x1A
 EXPANSION_FILE_ENTRY_ROM = FILE_TABLE_ROM + EXPANSION_FILE_ID * FILE_TABLE_ENTRY_SIZE
 EXPANSION_MODULE_ROM = 0x00F72000
 
-# Shared remapping-aware player semantic input.
-PLAYER_SEMANTIC_INPUT_VA = 0x800BF2EE
+# Shared semantic Turn/Combine bit.
 TURN_MASK = 0x0001
 
 # Current controller/process global.
@@ -81,10 +79,10 @@ RELEASE_HOOK_VA = 0x800294DC
 RELEASE_RESUME_VA = 0x800294E4
 RELEASE_EXPECTED = bytes.fromhex("8C820638 94430000")
 
-TURN_HOOK_ROM = 0x0003E46C
-TURN_HOOK_VA = 0x8003D86C
-TURN_STOCK_RESUME_VA = 0x8003D874
-TURN_EXPECTED = bytes.fromhex("27BDFFE0 24040001")
+PLAYER_TURN_BRANCH_ROM = 0x0002A658
+PLAYER_TURN_BRANCH_VA = 0x80029A58
+PLAYER_TURN_BRANCH_EXPECTED = 0x14400007
+PLAYER_TURN_BRANCH_REPLACEMENT = 0x10000007
 
 # Bootstrap modification: replace only the existing two-word KSEG1 Runtime V2
 # address construction. The following stock/proven JALR remains unchanged.
@@ -241,35 +239,11 @@ def build_release_helper() -> bytes:
     return e.finish()
 
 
-def build_turn_gate_helper() -> bytes:
-    """Suppress standalone Turn only for the real player semantic controller."""
-
-    e = Emitter()
-    e.emit(*address_words("t0", CURRENT_CONTROLLER_PTR_VA), lw("t0", 0, "t0"))
-    e.beq("t0", "zero", "stock")
-    e.emit(NOP)
-
-    e.emit(lw("t1", 0x638, "t0"), *address_words("t2", PLAYER_SEMANTIC_INPUT_VA))
-    e.bne("t1", "t2", "stock")
-    e.emit(NOP)
-
-    # Player Turn becomes a held facing-lock modifier; inventory Combine is a
-    # separate consumer and never reaches this gameplay action routine.
-    e.emit(jr("ra"), NOP)
-
-    e.label("stock")
-    # Reproduce the two displaced prologue words and resume stock Turn.
-    e.emit(addiu("sp", "sp", -0x20), addiu("a0", "zero", 1))
-    e.emit(*address_words("t9", TURN_STOCK_RESUME_VA), jr("t9"), NOP)
-    return e.finish()
-
-
 def _pack_module() -> tuple[bytes, dict[str, int]]:
     routines = [
         ("capture", CAPTURE_HELPER),
         ("decision", build_decision_helper()),
         ("release", build_release_helper()),
-        ("turn_gate", build_turn_gate_helper()),
     ]
 
     blob = bytearray()
@@ -293,7 +267,6 @@ CONTROL_MODULE_UNCACHED_BASE = kseg1_alias(CONTROL_MODULE_CACHED_BASE)
 CAPTURE_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["capture"]
 DECISION_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["decision"]
 RELEASE_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["release"]
-TURN_GATE_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["turn_gate"]
 
 
 def _pack_static_region() -> tuple[bytes, dict[str, int]]:
@@ -307,7 +280,6 @@ def _pack_static_region() -> tuple[bytes, dict[str, int]]:
             ("capture_trampoline", _indirect_jump(CAPTURE_ENTRY)),
             ("decision_trampoline", _indirect_jump(DECISION_ENTRY)),
             ("release_trampoline", _indirect_jump(RELEASE_ENTRY)),
-            ("turn_trampoline", _indirect_jump(TURN_GATE_ENTRY)),
         ]
     )
 
@@ -331,7 +303,6 @@ EXPANSION_LOADER_VA = STATIC_REGION_VA + STATIC_OFFSETS["loader"]
 CAPTURE_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["capture_trampoline"]
 DECISION_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["decision_trampoline"]
 RELEASE_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["release_trampoline"]
-TURN_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["turn_trampoline"]
 
 
 class ControlFacingExpansionProofPatch:
@@ -365,7 +336,7 @@ class ControlFacingExpansionProofPatch:
         )
         rom.expect_bytes(DECISION_HOOK_ROM, DECISION_EXPECTED)
         rom.expect_bytes(RELEASE_HOOK_ROM, RELEASE_EXPECTED)
-        rom.expect_bytes(TURN_HOOK_ROM, TURN_EXPECTED)
+        rom.expect_u32(PLAYER_TURN_BRANCH_ROM, PLAYER_TURN_BRANCH_EXPECTED)
 
         # Register and store the expansion module.
         module_end = EXPANSION_MODULE_ROM + len(CONTROL_MODULE)
@@ -401,10 +372,12 @@ class ControlFacingExpansionProofPatch:
         rom.write_u32(RELEASE_HOOK_ROM, jal(RELEASE_TRAMPOLINE_VA))
         rom.write_u32(RELEASE_HOOK_ROM + 4, NOP)
 
-        # Standalone gameplay Turn becomes a modifier-only action for the player.
-        # Use J rather than JAL so the caller's RA survives function entry.
-        rom.write_u32(TURN_HOOK_ROM, jump(TURN_TRAMPOLINE_VA))
-        rom.write_u32(TURN_HOOK_ROM + 4, NOP)
+        # The player loop itself directly toggles actor +0x8C bit 0x10 on the
+        # first frame of semantic Turn. Preserve the stock Turn press/release
+        # latch in S8, but always skip that direct facing-toggle block. The
+        # semantic bit remains live for the backpedal modifier and inventory
+        # Combine keeps its separate stock consumer.
+        rom.write_u32(PLAYER_TURN_BRANCH_ROM, PLAYER_TURN_BRANCH_REPLACEMENT)
 
         return (
             (
@@ -416,6 +389,7 @@ class ControlFacingExpansionProofPatch:
                 "continues through stock forward/run locomotion"
             ),
             "held Turn keeps vanilla backward walk; release Turn exits backward mode",
+            "player-loop Turn facing toggle is skipped while its stock latch remains intact",
             "inventory Combine remains on the untouched semantic 0x0001 consumer",
             "stock +0x6BC/0x0200 forced-facing policy is left authoritative",
             "Earth special boss remains an explicit runtime observation, not hard-coded",
