@@ -176,6 +176,8 @@ Both decode losslessly to palette indices `0..15`. For MKMSZ Type-5 generation t
 
 The donor has a dedicated `ROCKET_P` palette. The bounded takeover proofs mapped its first 16 donor colors deterministically into the resident Sektor TLUT rather than introducing a second runtime palette allocation. That is an asset-translation convenience, not evidence that a projectile automatically inherits the player's active palette; v70 shows projectile palette binding remains a separate target-lifecycle concern.
 
+**v75 first-render boundary (Static-confirmed):** the genuine `ROCKETD1` shape and its `(+26,+3)` descriptor anchor are imported, but the target token inserts the initially Ice-derived actor before the v75 **parent** wrapper binds the rocket frame through `0x800304C0`; the child subsequently installs an Ice cursor for flight. This provides a static path for the brief blue Sektor-like projectile fallback separately from the two companion actors, without establishing its exact render tick. The wrapper writes projectile palette selector `+0x9E=0` before frame setup; conversion into Sektor's resident TLUT alone does not make the projectile use it. For a reusable actor constructor, bind a valid first rocket descriptor and active palette handle before the actor's first display, and track `+0x9E/+0x80` through child teardown. A copied owner selector in combined v79 has no independent runtime validation because that build hard-hung.
+
 ### Chest-open launch art
 
 The MKT robot-family secondary animation slot 0 is the chest-open family. The first audited launch shapes are:
