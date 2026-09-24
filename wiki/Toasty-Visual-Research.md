@@ -682,7 +682,7 @@ No allocation-order, node-geometry, palette, payload, audio, trigger, or stage-f
 
 ### Toasty visual diagnostic v38 — source-image width normalization
 
-**Implementation/static-confirmed; runtime pending manual validation.**
+**Runtime-confirmed on 2026-09-24 across all eight safe stages.**
 
 v38 returns to the v32/v27 visual baseline. It preserves the nine-piece image bytes, hardware TLUT, visible 7+64+7 geometry, 32-byte-padded side payloads, allocation order, corrected saved-slot state addresses, logos-skip/safe-selector harness, and gameplay render composition.
 
@@ -695,3 +695,23 @@ The helper is called by replacing two palette-setup instructions in the fixed-si
 Disposable ROM SHA-256: `ac5c1bd2675347ad549de9d2da4fe583cf84edd0d668936ee59ecc1c0543ba4b`.
 
 Runtime acceptance test: Temple, Earth, Fire, and Fortress. If the previously stage-dependent missing/extra edge pixels disappear while Fortress remains clean, the stale `record+0x08` source-width mechanism is Runtime-confirmed as the cause. Any remaining corruption should be treated as evidence against that causal conclusion rather than prompting further allocation-order permutations.
+
+
+### v38 runtime result — stage-stable full image
+
+**Runtime-confirmed on 2026-09-24.**
+
+The user manually tested the v38 source-width-normalization ROM across all eight safe stages and reported the Toasty image as visually perfect in every stage. The earlier stage-dependent extra pixels and missing edge data were absent, including the Temple/Earth/Fire failure patterns that had persisted through v23-v37; Fortress remained clean.
+
+This confirms the causal mechanism established by the post-v37 static trace: after each dynamic texture allocation, the Toasty path must initialize slot-record `+0x08` to the actual DRAM source row width consumed by `0x8001F7A8` / RDP `SetTextureImage`:
+- 32 bytes/pixels for the six side pieces;
+- 64 bytes/pixels for the three center pieces.
+
+The nine-piece visual renderer, corrected hardware TLUT, allocator-aligned payloads, dynamic slot bindings, and stage-stable presentation are therefore now Runtime-confirmed as a bounded proof line.
+
+The remaining Toasty work is no longer image-correctness research. It is production composition:
+1. allocate the visual code/state/assets from production-owned storage rather than proof caves;
+2. compose the already Runtime-confirmed Toasty audio route with the visual effect;
+3. implement the slide/lifetime state machine;
+4. resolve and validate the final qualifying uppercut/contact trigger plus 4% cosmetic gate;
+5. run a guarded full-production composition proof.
