@@ -109,7 +109,14 @@ Earth type `0x19` is a separate unresolved exception. Its stock characteristics-
 
 For the first modern-facing proof, the safe static rule is: defer completely to stock when the nearest opponent carries `+0x6BC & 0x0200`; test Earth separately. If Earth runtime behavior still auto-faces as expected, capture that route and trace its distinct mechanism before production integration instead of hard-coding a stage ID.
 
-This trace establishes the host seam only. No modern-facing patch is production-integrated or runtime-confirmed yet.
+### Direction-facing proof v01/v02
+
+The first expansion-loaded control proof uses a proof-only file-`0x1A` module in the 15 KiB expansion pool and enters freshly loaded code only through uncached KSEG1 trampolines.
+
+- **v01 — Rejected / failed.** Pressing the first opposite horizontal direction immediately hard-hung. The proof used current-controller global `0x802FCE20`, repeating the already-rejected unsigned-low-immediate interpretation. The actual address is `0x802ECE20`: `lui 0x802F` paired with signed low immediate `0xCE20` subtracts `0x31E0`.
+- **v02 — Runtime-confirmed on the tested route.** Changing only that global to `0x802ECE20` made the control behavior work as intended: opposite horizontal input flips Sub-Zero and proceeds through stock forward locomotion; holding Turn preserves vanilla backward walking / facing lock. The user reported the corrected behavior worked perfectly and matched the requested control model.
+
+v02 establishes the control seam and expansion-module execution on that bounded route. It does **not** promote the feature into the browser/CLI production pipeline, establish every action/lifecycle state, or establish a special rule for the Earth boss.
 
 ## Host action primitives
 
