@@ -464,13 +464,13 @@ The `x3` is literal in the clean ROM: each transformed component is shifted left
 
 The main loop calls `0x80017F80` once at `0x80014258` and later waits at `0x80014280` until counter `0x802FCD44 >= 2`; `0x80015950` increments that counter. This is consistent with the game's observed 30 Hz rendering/movement cadence. Independent frame-step/TAS observations likewise report MKMSZ rendering and ordinary movement at 30 fps while some button/input paths are 60 fps. MKT's N64 game loop is nominally 60 Hz.
 
-Under the adapter convention already Runtime-confirmed for local placement at v72—one donor local placement unit maps to one target local placement unit—the constant-speed field conversion is therefore approximately:
+If one additionally assumes **one donor local position unit equals one MKMSZ world unit**, the integrator/cadence math gives the conditional field conversion:
 
 ```text
 target_velocity = donor_velocity * 2 / 3
 ```
 
-because two donor 60 Hz motion integrations must equal one target 30 Hz integration whose numeric velocity contributes `3x` per target update.
+because two donor 60 Hz motion integrations must equal one target 30 Hz integration whose numeric velocity contributes `3x` per target update. v72 proved that direct `(+5,+38)` placement is stable and plausibly located, but it did **not** prove universal 1:1 donor-local-to-target-world scale.
 
 For the straight rocket's steady-state constants this gives:
 
@@ -500,15 +500,16 @@ retain donor state = d3
 
 At the donor cap this converges to host `0x77777`. For the normal straight-rocket launch, `d0=0x33333`, `d1=0x36666`, so the first pair-averaged host field is `0x23333`, not simply `0x22222`.
 
-This pairwise resampler is a **Static-derived adapter policy, runtime Pending**. It is preferable to tuning by eye because it preserves both donor velocity recurrence and elapsed-time displacement despite the engines' different integration cadence and target quantization.
+This pairwise resampler is a **Static-derived temporal adapter policy**. v74 Runtime-confirms that the folded cadence path is stable and comparative 60-fps video supports its timing: MKT advances every captured frame, v74 usually every two, while both reach late-speed plateau in roughly 0.3-0.35 s. However, v74 also demonstrates that the 1:1 spatial-unit assumption is incomplete: its late normalized visible speed is only about half the donor's on the tested route. The adapter therefore needs a separate donor-local -> target-world spatial scale in addition to the 60->30 Hz temporal resampler.
 
-### v69-v73 runtime boundary
+### v69-v74 runtime boundary
 
 - **v69 Runtime-confirmed:** current controller/process `+0x6E4` can be temporarily redirected after the stock helper and advanced once through `0x800304C0` to display the genuine chest-open frame on the player without hanging.
 - **v70 Partially Runtime-confirmed:** the genuine horizontal rocket frame reaches the live projectile and travels, but stock Ice helper clones/tint remain, spawn placement is wrong, and the observed flight does not reproduce donor acceleration.
 - **v71 Rejected / failed:** a combined placement/movement revision hard-hangs 1-3 frames after input; later tracing isolates a semantic misuse of `0x8004CC14`.
 - **v72 Runtime-confirmed placement proof:** direct local `(+5,+38)` placement spawns near Sektor and mirrors correctly in both facings while leaving the inherited constant-speed flight and Ice tint unchanged.
 - **v73 Runtime-confirmed acceleration behavior / calibration Pending:** a child callback that mutates only projectile actor `+0x14` produces visible stable acceleration with no hang. The proof uses donor-retail `0x33333` start, `v += v >> 4`, and `0xB3333` cap, but exact cross-engine velocity-unit equivalence remains unproven.
+- **v74 Runtime-confirmed cadence-resampler stability / spatial calibration Pending:** folded two-donor-substep timing remains stable. Comparative donor/target video measures MKT late flight at about 2.13 screen-widths/s versus about 1.08 for v74; the target magnitude is under-scaled by roughly 2x on this tested route even though ramp timing is similar.
 
 The durable lesson is not “tune the Ice projectile until it looks like Sektor.” The accepted direction is to compose the target primitives above under donor `do_robo_zap/rocket1_proc` semantics.
 
@@ -529,7 +530,7 @@ The durable lesson is not “tune the Ice projectile until it looks like Sektor.
 | projectile resource actor creation | `setup_proj_obj` / donor projectile object | resource-backed secondary actor path via token `0x0B`, `0x80030974 -> 0x80034510 -> 0x800281A0/0x80028128` | **Target primitive identified; wrapper Pending** | This page + Function Registry |
 | owner-relative placement | `adjust_xy_a5` | facing-aware actor displacement `0x80031208` | **Runtime-confirmed at Sektor v72 scope** | This page + Function Registry |
 | projectile child process | `create_proj_proc` | `0x8004CBC4 -> 0x8002830C` child controller/process binding | **Target primitive identified; wrapper Pending** | This page + Function Registry |
-| projectile flight callback | `projectile_flight_call(callback)` | MKMSZ projectile loop `0x8004CC50`: child `+0x70C` is latched into `+0x680` and invoked once per flight iteration before strike resolution | **Static callback ABI identified; runtime donor-acceleration proof Pending** | This page + Player Actions |
+| projectile flight callback | `projectile_flight_call(callback)` | MKMSZ projectile loop `0x8004CC50`: child `+0x70C` is latched into `+0x680` and invoked once per flight iteration before strike resolution | **Runtime-confirmed callback/cadence seam through v74; spatial magnitude calibration Pending** | This page + Player Actions |
 | projectile per-tick state | donor `p_store*` fields | adapter-owned child-process scratch/state | **Missing generic ABI** | This page |
 | projectile effect | `rocket_smoke`, `rocket_explode_fx` | target-native effect/SFX semantics | **Missing generic effect translation** | This page |
 | animation callback/control token | donor script callback semantics | Equivalent MKMSZ-native control token/callback | **Missing generic translator** | This page |
@@ -547,7 +548,7 @@ The durable lesson is not “tune the Ice projectile until it looks like Sektor.
 1. **Donor action-phase runner** — express donor phase ordering, sleeps, branch-on-contact, timeout, facing changes, and guaranteed native cleanup without rewriting scheduler glue per move.
 2. **Projectile actor/process wrapper** — expose the now-identified target actor creation, relative placement, child-process binding, owner/opponent context, and cleanup as a reusable adapter API instead of replaying Ice choreography.
 3. **Projectile callback/state ABI** — callback dispatch itself is now identified: `0x8004CC50` latches child `+0x70C -> +0x680` at entry and calls `+0x680` once per flight iteration after sleep/animation/offscreen checks and before strike resolution. Generic adapter-owned scratch/state beyond that dispatch contract remains Pending.
-4. **Velocity/facing conversion policy** — the projectile constant-speed unit conversion and 60 Hz -> 30 Hz pairwise resampling policy are now Static-derived; a generic donor-state scratch ABI and bounded runtime proof remain Pending.
+4. **Velocity/facing conversion policy** — target integrator semantics and 60 Hz -> 30 Hz temporal resampling are established; v74 comparative runtime evidence shows a separate donor-local -> target-world spatial scale is still required. The tested route suggests ~2x projected-motion scale, but universality is Pending.
 5. **Projectile effect/palette translation** — bind projectile-local palette semantics and map donor smoke/explosion/SFX effects without inheriting Ice presentation.
 6. **No-repel gate** — implement the donor three-tick countdown at a narrow MKMSZ separation hook, without forced crossover or teleport behavior.
 7. **Strike/reaction translator** — map donor geometry/damage/flags/reaction meaning to MKMSZ-native strike and victim-reaction primitives.
