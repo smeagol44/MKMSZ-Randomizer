@@ -243,37 +243,13 @@ def build_release_helper() -> bytes:
 
 
 def build_turn_gate_helper() -> bytes:
-    """Suppress standalone Turn only when the current action owns the player actor."""
+    """Proof-only unconditional suppression of the stock gameplay Turn action."""
 
-    e = Emitter()
-
-    # The Turn routine runs under an action process, so current_process+0x638
-    # is not a reliable player-identity test. Compare actor identity instead:
-    # current action actor == persistent player controller's actor.
-    e.emit(*address_words("t0", CURRENT_CONTROLLER_PTR_VA), lw("t0", 0, "t0"))
-    e.beq("t0", "zero", "stock")
-    e.emit(NOP)
-    e.emit(lw("t1", 0x6E0, "t0"))
-    e.beq("t1", "zero", "stock")
-    e.emit(NOP)
-
-    e.emit(*address_words("t2", PLAYER_CONTROLLER_PTR_VA), lw("t2", 0, "t2"))
-    e.beq("t2", "zero", "stock")
-    e.emit(NOP)
-    e.emit(lw("t2", 0x6E0, "t2"))
-    e.bne("t1", "t2", "stock")
-    e.emit(NOP)
-
-    # Player Turn becomes a held facing-lock modifier; inventory Combine is a
-    # separate consumer and never reaches this gameplay action routine.
-    e.emit(jr("ra"), NOP)
-
-    e.label("stock")
-    # Reproduce the two displaced prologue words and resume stock Turn.
-    e.emit(addiu("sp", "sp", -0x20), addiu("a0", "zero", 1))
-    e.emit(*address_words("t9", TURN_STOCK_RESUME_VA), jr("t9"), NOP)
-    return e.finish()
-
+    # Keep the semantic Turn/Combine bit untouched. Locomotion still observes it
+    # as the facing-lock/backpedal modifier, and inventory Combine uses its own
+    # separate stock consumer. This v04 diagnostic intentionally answers one
+    # narrow question: is 0x8003D86C the routine causing the visible turn?
+    return words_blob([jr("ra"), NOP])
 
 def _pack_module() -> tuple[bytes, dict[str, int]]:
     routines = [
