@@ -45,7 +45,7 @@ A **proof** may intentionally use a one-off record edit, temporary resource plac
 Examples of the boundary:
 
 - the cross-stage item planner is implemented but remains pipeline-disconnected pending its production integration gate;
-- the MKT/Sektor line has extensive Runtime-confirmed proof evidence, but the v62 standalone combo continuation still overlaps production bootstrap ownership and the v65-v73 missile helpers also use proof-only conflicting bootstrap space;
+- the MKT/Sektor line has extensive Runtime-confirmed proof evidence, but the v62 standalone combo continuation still overlaps production bootstrap ownership and the v65-v74 missile helpers also use proof-only conflicting bootstrap space;
 - Toasty audio and visual paths are Runtime-confirmed in bounded proofs, while their final trigger/allocation/composition are still pending.
 
 Runtime success never converts an old proof cave or proof allocation into production-safe space by itself.
@@ -54,7 +54,7 @@ Runtime success never converts an old proof cave or proof allocation into produc
 
 This page no longer owns version-by-version proof diaries.
 
-- Sektor vNN proof/build chronology, including v52 allocation failure, v53-v59 takeover work, v60 alternate palette, v61/v62 combo strings, and the v63-v73 straight-missile diagnostics: [Sektor takeover proof history](Sektor-Takeover-Proof-History). Slot mapping/current gaps remain in [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping); donor/adapter interpretation remains in [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer).
+- Sektor vNN proof/build chronology, including v52 allocation failure, v53-v59 takeover work, v60 alternate palette, v61/v62 combo strings, and the v63-v74 straight-missile diagnostics: [Sektor takeover proof history](Sektor-Takeover-Proof-History). Slot mapping/current gaps remain in [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping); donor/adapter interpretation remains in [MKT to MKMSZ compatibility layer](MKT-to-MKMSZ-Compatibility-Layer).
 - Sektor v60 alternate-palette proof chronology and proof-specific mechanics are canonical in [Sektor takeover proof history](Sektor-Takeover-Proof-History). [Palette and recoloring](Palette-and-Recoloring) owns current production player-outfit recoloring behavior.
 - Toasty audio donor identification, rejected candidates, and v01-v03 proof history: [Toasty audio research](Toasty-Audio-Research). MKMSZ host mechanics remain in [Audio system](Sounds-and-Music).
 - Toasty visual diagnostics: [Toasty visual research](Toasty-Visual-Research).
