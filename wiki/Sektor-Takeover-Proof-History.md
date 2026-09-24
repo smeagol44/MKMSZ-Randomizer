@@ -10,7 +10,7 @@ The Sektor takeover line is **Runtime-confirmed as a bounded proof workstream, n
 
 The stable common-animation/combo baseline remains v62: the tested Sektor MKT combo strings work after translating donor reaction selectors to MKMSZ-native semantics. v58 remains the Runtime-confirmed twelve-pose Run baseline; v59 Runtime-confirms the completed middle Combo visuals; v60 Runtime-confirms the first type-`0x12` alternate Cyrax-style palette.
 
-The proof line now continues through **v72** for Sektor's straight missile. v63 is rejected because an assumed-dead file-`0x87` bank was actually live during hit/blood presentation. v64 established a compact one-chest/one-missile asset composition and reached the special path, but exposed that the reused Ice presentation spawned duplicate blue/frozen Sektor actors and retained Ice-like flight. v65-v67 are rejected immediate-hang lifecycle experiments. v68 is a stable negative-control build with stock Ice lifecycle restored but no chest substitution. **v69 Runtime-confirms the narrow player-pose hook:** current controller/process `+0x6E4` can be redirected after the stock helper and advanced once to display the genuine chest-open frame without hanging. **v70 is partially Runtime-confirmed:** the genuine rocket frame appears and travels, but stock Ice helper clones, blue tint, distant spawn, and ineffective/incorrect flight translation remain. v70 therefore validates presentation/host-path pieces, not a completed or faithful missile port. v71 is **Rejected / failed** after a 1-3-frame hard hang; its post-test trace confirms that stock `+0x648` placement and `+0x714` child handoff refer to the same secondary actor, while its per-tick reuse of `0x8004CC14` is a static semantic mismatch. **v72 Runtime-confirms the isolated placement translation:** direct native local `(+5,+38)` spawns the rocket near Sektor and mirrors correctly across facing, while v70 movement/tint remain unchanged as controls.
+The proof line now continues through **v73** for Sektor's straight missile. v63 is rejected because an assumed-dead file-`0x87` bank was actually live during hit/blood presentation. v64 established a compact one-chest/one-missile asset composition and reached the special path, but exposed that the reused Ice presentation spawned duplicate blue/frozen Sektor actors and retained Ice-like flight. v65-v67 are rejected immediate-hang lifecycle experiments. v68 is a stable negative-control build with stock Ice lifecycle restored but no chest substitution. **v69 Runtime-confirms the narrow player-pose hook:** current controller/process `+0x6E4` can be redirected after the stock helper and advanced once to display the genuine chest-open frame without hanging. **v70 is partially Runtime-confirmed:** the genuine rocket frame appears and travels, but stock Ice helper clones, blue tint, distant spawn, and ineffective/incorrect flight translation remain. v70 therefore validates presentation/host-path pieces, not a completed or faithful missile port. v71 is **Rejected / failed** after a 1-3-frame hard hang; its post-test trace confirms that stock `+0x648` placement and `+0x714` child handoff refer to the same secondary actor, while its per-tick reuse of `0x8004CC14` is a static semantic mismatch. **v72 Runtime-confirms the isolated placement translation:** direct native local `(+5,+38)` spawns the rocket near Sektor and mirrors correctly across facing. **v73 Runtime-confirms stable per-tick acceleration through projectile actor `+0x14` without hanging**, while exact cross-engine velocity calibration remains Pending.
 
 The strongest current production conflict remains the proof-code line inside the production bootstrap composite `[0x9AD84,0x9AF20)`. v62's standalone combo continuation uses `[0x9AD90,0x9ADA0)`; v65-v70 helper code begins at `0x9ADA0`, with v70 using the same proof-owned interval up to the bootstrap boundary. These artifacts validate semantics only; none of those offsets are reusable production allocations. The early Sektor helper line demonstrates the same rule from the opposite direction: zero-filled-looking `[0xA1308,0xA1544)` was live stock action/dispatch data, and overwriting it caused input-specific hangs.
 
@@ -33,6 +33,7 @@ A proof entry may preserve its historical **pre-test** status, but the section's
 - **v70:** **Partially Runtime-confirmed / implementation strategy superseded.** Chest presentation and a genuine rocket frame execute and travel, but the Ice helper clones/palette remain and the user reports spawn far from Sektor, slow motion, and no visible donor-style acceleration.
 - **v71:** **Rejected / failed.** Hard hang 1-3 frames after `F,F+LP`. Post-test static trace rejects the wrong-actor placement hypothesis and identifies per-tick reuse of `0x8004CC14` as a semantic mismatch; sole hang cause remains Pending.
 - **v72:** **Runtime-confirmed placement proof.** Direct `(+5,+38)` native placement launches close to Sektor and mirrors correctly in both facings; visible Y may still be slightly high, while constant-speed flight and blue Ice tint remain unchanged controls.
+- **v73:** **Runtime-confirmed acceleration behavior / calibration Pending.** Missile visibly accelerates and remains stable; exact donor-equivalent start speed/rate/cap in MKMSZ physical units are not yet established.
 
 ## Final-status index
 
@@ -2045,6 +2046,31 @@ v72 is a strict single-variable delta from the Runtime-stable v70 missile proof.
 The missile still travels at the inherited essentially constant v70 pace and retains the blue Ice tint/helper presentation. Those are expected negative controls because v72 intentionally leaves v70 movement and palette/effect behavior unchanged.
 
 Durable conclusion: the generic donor-retail placement mapping `place_relative(projectile, +5, +38)` is now **Runtime-confirmed on the tested route**. The next isolated gate is movement/acceleration translation; do not perturb the placement result while testing it.
+
+### v73 — movement-only acceleration proof
+
+Disposable proof: `MKMSZR_sektor-missile-movement_common-proof_v73.z64`.
+
+Builder: `MKMSZR_build_sektor_missile_movement_v73.py`.
+
+Identity:
+- SHA-256 `a6cbf8c061df46c5a85668680ba268153a55ea2f293e3bd87db6b148abcfd36b`;
+- CRC1/CRC2 `53EF29D9 / FDB4C45C`.
+
+v73 starts from the Runtime-confirmed v72 placement proof and changes only the projectile child movement program. Placement remains direct native local `(+5,+38)`; stock Ice helper-process composition, chest marker, collision path, imported rocket art, blue Ice presentation, and `F,F+LP` input remain controls.
+
+The movement proof uses the donor-retail normal branch:
+- initial magnitude `0x33333`;
+- each flight callback computes `abs(v + (v >> 4))`;
+- magnitude caps at `0xB3333`;
+- direction sign is preserved;
+- only projectile actor `+0x14` is mutated per tick;
+- `0x8004CC14` is **not** called from the per-tick callback;
+- donor reacting-target initial speed `0x59999` remains Pending because a target `target_is_reacting()` semantic has not yet been established.
+
+**Runtime-confirmed acceleration behavior / calibration Pending.** The user reports that the missile definitely accelerates, never hangs, and retains the successful v72 placement. The exact perceived start speed, acceleration rate, and cap are not yet confirmed as donor-faithful in target physical units; the user notes that the inherited Ice sound/tint, missing rocket smoke trail, and MKMSZ camera tracking make visual speed judgment difficult.
+
+Durable conclusion: direct per-tick mutation of projectile actor `+0x14` is a viable stable host seam for translated acceleration at v73 scope. The next static gate is **velocity-unit calibration**: prove how MKMSZ integrates actor `+0x14` into position per tick and compare that unit contract with MKT before treating donor numeric velocity constants as portable.
 
 
 
