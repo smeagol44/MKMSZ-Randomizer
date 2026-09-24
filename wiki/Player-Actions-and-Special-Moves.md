@@ -52,7 +52,19 @@ Direction tokens are `8=Left` and `9=Right`. The Reverse Elbow proof used the se
 | `0x8004CE6C` | Projectile strike-record resolver |
 | `0x800BF308` | Special-action lock; native action roots set it |
 
-`0x8004B82C` is the ice-projectile flight callback. `0x8004CC14` is projectile setup that writes a projectile actor's `+0x14` and selects animation. Neither is the player propulsion helper. The older recommendation to use `0x8004CC14` for player movement is **Rejected / failed**.
+`0x8004B82C` is the ice-projectile flight callback. `0x8004CC14` is projectile setup that writes a projectile actor's `+0x14` and initializes projectile animation timing through `0x80031724`. Neither is the player propulsion helper. The older recommendation to use `0x8004CC14` for player movement is **Rejected / failed**.
+
+### Projectile secondary-actor staging
+
+The stock Zap/Ice path uses two controller fields that alias the same secondary actor at the projectile handoff but serve different lifecycle roles:
+
+- animation token `0x0B -> 0x80030974 -> 0x80034510` creates a resource-backed actor and temporarily installs it at current controller `+0x6E0`;
+- `0x80030974` stores that actor at `+0x714`, restores the owner to `+0x6E0`, then copies `+0x714 -> +0x648`;
+- stock straight-Ice placement at `0x8004AFF8` passes `+0x648` to `0x80031208`;
+- the same action later uses `+0x714` as the temporary current actor for animation;
+- `0x8004CBC4` gives parent `+0x714` to child controller `+0x6E0`, tags the actor `0x700`, and clears parent `+0x648`.
+
+Therefore `+0x648` is the stable secondary-actor working/staging pointer in this setup, while `+0x714` is the active/transfer pointer and may be temporarily repurposed before being restored. The v71 postmortem statically rejects the hypothesis that the stock `0x80031208` call positions a different helper actor from the one handed to the projectile child.
 
 The current process/controller pointer is at effective address `0x802ECE20`, not `0x802FCE20`.
 
