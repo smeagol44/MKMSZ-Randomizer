@@ -759,7 +759,7 @@ v38 remains the accepted Runtime-confirmed image-correctness baseline. v39 must 
 
 ### Toasty visual production-layout proof v40
 
-**Implementation/static-confirmed; runtime pending manual validation.**
+**Runtime-confirmed on the user-tested gameplay route on 2026-09-24.**
 
 v40 supersedes rejected v39 and returns to the Runtime-confirmed v38 visual semantics while fixing both v39 architectural mistakes.
 
@@ -789,4 +789,28 @@ Static guards cover the clean-ROM hook bytes, arena-floor patch pairs, file-tabl
 
 Disposable ROM SHA-256: `556fe0f909c50121dcf7aa8e4069955ad7cbaa4cfbd54d46cb1266940c35b7a2`.
 
-Runtime acceptance test: Temple, Earth, Fire, and Fortress minimum; all eight safe stages preferred. Expected behavior is presentation-equivalent to v38: stock HUD and player rendering remain intact and Toasty remains visually perfect. A pass promotes the compact uncached expansion layout as the accepted basis for audio + lifecycle composition.
+Runtime result: the user reported v40 working normally, with no recurrence of v39's stock-HUD/player/Toasty corruption. This confirms the compact uncached expansion-code architecture on the tested route. v38 remains the exhaustive eight-safe-stage image-correctness proof.
+
+### Toasty feature-core composition proof v41
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v41 builds directly on the Runtime-confirmed v40 compact uncached layout and starts the actual feature behavior rather than another image diagnostic.
+
+The gameplay-HUD compositor now owns a stage-local four-word presentation state: phase, remaining ticks, signed horizontal shift, and trigger latch. Idle rendering submits no Toasty nodes. Temporary test trigger is remapping-aware **Block+Use**; the trigger frame clears the semantic input halfword so the chord itself does not also perform a gameplay action.
+
+Presentation timing follows the statically confirmed donor behavior:
+- slide in for 6 HUD ticks, using 13 pixels/tick from +78 horizontal offset to the v38 hold position;
+- enter a 32-tick hold at the v38 position and play the Toasty voice exactly once at hold entry;
+- reverse horizontal motion for 16 ticks, then return to idle;
+- trigger latch requires release before a later activation.
+
+The visual path remains v40/v38: nine exact CI8 source slices, same draw geometry, same palette/TLUT, same allocation order, and the Runtime-confirmed slot-record `+0x08 = 32/64` normalization.
+
+Expansion-pool use rises from v40's `0x550` to **`0x6D0` (1,744 bytes)** because the state machine expands compositor code to 684 bytes, init to 320 bytes, and adds 16 bytes of presentation state. CI8 pixels remain ROM-backed. Remaining expansion-pool capacity is **`0x3530` (13,616 bytes)**.
+
+Audio uses the already Runtime-confirmed v03 Toasty transplant and fires the native gameplay SFX wrapper at the slide-in -> hold boundary. **Important proof limitation:** v41 still uses v03's disposable event-524/subpatch replacement, so ordinary pickup sound is also Toasty in this ROM. This is intentional only for the combined feature-core validation; a dedicated production audio definition/route remains required before final integration.
+
+Disposable ROM SHA-256: `927aff6127ce35aef9ee7f1b9fa57ce0a2709cdbb2a6dcf8d7deca831d831623`.
+
+Runtime acceptance: during normal gameplay press Block+Use once. Toasty should slide in from the right, reach the exact v38 position, play the confirmed voice once, remain for the hold window, slide back out, and stay idle until triggered again. Stock HUD/player rendering must remain normal. No uppercut/contact or 4% gate is present yet.
