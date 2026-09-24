@@ -109,7 +109,7 @@ The observed frontend input masks are:
 
 ### Proposed Randomizer Settings architecture
 
-The production-facing design is to add a **separate `RANDOMIZER SETTINGS` row under OPTIONS**, rather than replacing stock GAME SETTINGS. This keeps vanilla frontend responsibilities separate from MKMSZR behavior and provides one reusable owner for future toggles.
+The accepted production-facing design is to **replace the stock `GAME SETTINGS` destination with `RANDOMIZER SETTINGS`** while keeping the existing top-level OPTIONS row and selector geometry unchanged. This is intentional: vanilla GAME SETTINGS only controls Difficulty, Lives, and Continues, while MKMSZR plans to own those run values/invariants itself. Once those values are hardcoded/managed by the randomizer, exposing the stock editor would be redundant and could allow the player to contradict MKMSZR run state. Reusing the existing row therefore avoids unnecessary top-level menu growth and gives MKMSZR one native-looking settings home for future options.
 
 The submenu should be table-driven rather than one-off code:
 
@@ -129,7 +129,7 @@ For the first proof, persistence should be **session/run-lifecycle only**: the v
 
 ### Smallest first proof plan
 
-Do **not** extend the top-level OPTIONS row count in the first ROM. Temporarily redirect only the existing GAME SETTINGS row to an MKMSZR settings proof page. This isolates the new submenu engine from top-level menu growth.
+Do **not** extend the top-level OPTIONS row count. Redirect the existing GAME SETTINGS handler slot to an MKMSZR settings proof page; if the proof succeeds, that same replacement becomes the production architecture. The stock top-level OPTIONS list, cursor bounds, EXIT index, and five-entry dispatch-table shape can remain unchanged.
 
 The bounded proof should:
 
@@ -140,9 +140,9 @@ The bounded proof should:
 5. manually test `ON -> gameplay`, `OFF -> gameplay`, return to title, and re-enter the page;
 6. leave Inventory Combine on semantic Turn/Combine `0x0001` and verify it once in each mode.
 
-Only after that succeeds should production add a sixth real OPTIONS handler: move the jump table to named owned storage, change the top-level selection maximum from index 5 to 6, dispatch indices 0..5 through the relocated six-entry table, keep `EXIT` at index 6, and insert the extra text row without disturbing the existing handlers.
+After that succeeds, production should keep the existing OPTIONS topology and permanently replace only handler index 4 plus its displayed `GAME SETTINGS` label with `RANDOMIZER SETTINGS`. There is then no need to relocate or enlarge the top-level dispatch table, no need to change the selector maximum, and no need to move `EXIT`.
 
-This menu work remains **Static-confirmed design / Pending runtime** until a disposable proof is manually validated.
+This menu work remains **Static-confirmed design / Pending runtime** until a disposable proof is manually validated. The stock GAME SETTINGS implementation remains valuable as the native behavioral template for the replacement submenu even though its Difficulty/Lives/Continues editing behavior will no longer be exposed.
 
 ## Related canonical owners
 
