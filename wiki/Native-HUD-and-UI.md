@@ -79,6 +79,71 @@ The reconciled 1.0 HUD must expose:
 
 The existing Runtime-confirmed `BOX n OF 4` text satisfies only the storage-state part of that requirement. The native text path at `0x80073E74` remains the preferred basis for persistent labels. A text-first implementation is acceptable; geometric icons or textured elements should use the proven gameplay-HUD queue only where they materially improve the final HUD and have their own bounded validation.
 
+## Frontend OPTIONS / Randomizer Settings architecture
+
+### Static title -> OPTIONS trace
+
+**Static-confirmed on the clean USA Rev. 0 ROM.** The title controller at `0x80078C40` dispatches the title `OPTIONS` choice through `0x800762C4`. The OPTIONS loop reads the remapping-independent frontend input word at `0x800BF2EE`, draws through frontend text renderer `0x8001CA88`, and uses the stock frontend background/render path.
+
+The current selectable OPTIONS rows are:
+
+| Index | Label | Handler |
+|---:|---|---:|
+| 0 | `CONTROLLER CONFIGURATION` | `0x8007739C` |
+| 1 | `SOUND CONFIGURATION` | `0x80076D74` |
+| 2 | `CONTROLLER PAK` | `0x8007816C` |
+| 3 | `PASSWORD` | `0x8007550C` |
+| 4 | `GAME SETTINGS` | `0x800766BC` |
+| 5 | `EXIT` | returns from the OPTIONS loop |
+
+The five real submenu handlers are selected through the five-word jump table at VA `0x800AEAB8` / ROM `0x000AF6B8..0x000AF6CB`. The next bytes at ROM `0x000AF6CC` begin the `VERY EASY` string, so the stock jump table cannot simply grow in place.
+
+The observed frontend input masks are:
+
+- `0x4000` / `0x1000`: previous/next row;
+- `0x2000` / `0x8000`: right/left value edit inside GAME SETTINGS;
+- `0x0002`: enter/confirm;
+- `0x0001`: back/exit.
+
+`GAME SETTINGS` at `0x800766BC` is the strongest native template for an MKMSZR settings page. It already implements a reusable three-row selection loop, per-row left/right value editing, highlighted text style, stock menu SFX, confirm/back handling, and redraw through `0x8001CA88`. Its stock rows are `DIFFICULTY`, `LIVES`, and `CONTINUES`, backed by halfwords `0x800A5FA8`, `0x800A5FAA`, and `0x800A5FAC`.
+
+### Proposed Randomizer Settings architecture
+
+The production-facing design is to add a **separate `RANDOMIZER SETTINGS` row under OPTIONS**, rather than replacing stock GAME SETTINGS. This keeps vanilla frontend responsibilities separate from MKMSZR behavior and provides one reusable owner for future toggles.
+
+The submenu should be table-driven rather than one-off code:
+
+```text
+setting row:
+    label pointer
+    state bit / enum descriptor
+    value-string table
+    optional on-change callback
+```
+
+A common menu loop can then own row navigation, left/right mutation, rendering, highlight style, sound, and exit. The first row is the direction-facing feature, provisionally presented as `MODERN CONTROLS: ON/OFF`. The v10 control helper must gate **all** behavior changes on the same setting bit: opposite-direction auto-facing, active-backward release, and pre-dispatch suppression of player Turn states 23/24. `OFF` therefore falls completely back to stock control behavior; semantic Turn/Combine bit `0x0001` remains untouched in both modes.
+
+The settings state should be a versioned MKMSZR bitfield, not individual ad-hoc globals. The first bit can represent modern direction-facing controls and later bits/enums can be added without redesigning the menu. The existing final Runtime V2 word `0x801AF81C..0x801AF81F` is **reserved, not free**; it is a strong candidate for an explicitly assigned settings word only after the frontend/title lifecycle proves that the reserved runtime block is valid at the OPTIONS boundary. No current documentation promotes that word yet.
+
+For the first proof, persistence should be **session/run-lifecycle only**: the value must survive leaving the submenu, title navigation, and stage transitions. Cold-boot/controller-pak persistence is desirable for a player preference but is a separate gate; stock GAME SETTINGS serialization demonstrates that frontend preferences can be saved, but no unused save field is currently proven safe for MKMSZR ownership.
+
+### Smallest first proof plan
+
+Do **not** extend the top-level OPTIONS row count in the first ROM. Temporarily redirect only the existing GAME SETTINGS row to an MKMSZR settings proof page. This isolates the new submenu engine from top-level menu growth.
+
+The bounded proof should:
+
+1. reuse the native GAME SETTINGS visual/input loop shape and stock frontend text renderer;
+2. show one row, `MODERN CONTROLS`, plus `ON/OFF` and `EXIT`;
+3. store the toggle in one explicitly named proof state word/byte whose title-stage lifecycle is independently marked/checked;
+4. gate the v10 control-facing helpers on that state;
+5. manually test `ON -> gameplay`, `OFF -> gameplay`, return to title, and re-enter the page;
+6. leave Inventory Combine on semantic Turn/Combine `0x0001` and verify it once in each mode.
+
+Only after that succeeds should production add a sixth real OPTIONS handler: move the jump table to named owned storage, change the top-level selection maximum from index 5 to 6, dispatch indices 0..5 through the relocated six-entry table, keep `EXIT` at index 6, and insert the extra text row without disturbing the existing handlers.
+
+This menu work remains **Static-confirmed design / Pending runtime** until a disposable proof is manually validated.
+
 ## Related canonical owners
 
 - [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap) — normative HUD requirement and final acceptance gate.
