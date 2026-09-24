@@ -109,14 +109,17 @@ Earth type `0x19` is a separate unresolved exception. Its stock characteristics-
 
 For the first modern-facing proof, the safe static rule is: defer completely to stock when the nearest opponent carries `+0x6BC & 0x0200`; test Earth separately. If Earth runtime behavior still auto-faces as expected, capture that route and trace its distinct mechanism before production integration instead of hard-coding a stage ID.
 
-### Direction-facing proof v01/v02
+### Direction-facing proof v01-v06
 
-The first expansion-loaded control proof uses a proof-only file-`0x1A` module in the 15 KiB expansion pool and enters freshly loaded code only through uncached KSEG1 trampolines.
+The expansion-loaded control proof uses a proof-only file-`0x1A` module in the 15 KiB expansion pool and enters freshly loaded code only through uncached KSEG1 trampolines.
 
-- **v01 — Rejected / failed.** Pressing the first opposite horizontal direction immediately hard-hung. The proof used current-controller global `0x802FCE20`, repeating the already-rejected unsigned-low-immediate interpretation. The actual address is `0x802ECE20`: `lui 0x802F` paired with signed low immediate `0xCE20` subtracts `0x31E0`.
-- **v02 — Runtime-confirmed on the tested route.** Changing only that global to `0x802ECE20` made the control behavior work as intended: opposite horizontal input flips Sub-Zero and proceeds through stock forward locomotion; holding Turn preserves vanilla backward walking / facing lock. The user reported the corrected behavior worked perfectly and matched the requested control model.
+- **v01 — Rejected / failed.** First opposite-direction input hard-hung because the flip path used incorrect current-process address `0x802FCE20`; the real address is `0x802ECE20`.
+- **v02 — Partially Runtime-confirmed.** Correcting that address made opposite-direction input flip Sub-Zero into stock forward locomotion, and held Turn preserved vanilla backward walking/facing lock. Follow-up testing showed Turn still performed one stock facing flip first.
+- **v03/v04 — Rejected / failed.** Gating or even unconditionally returning from `0x8003D86C` did not change the visible player turn, disproving that routine as the active source.
+- **v05 — Rejected / incomplete.** Static tracing found one direct player-loop Turn toggle at ROM `0x2A658` / VA `0x80029A58`, and v05 changed its branch `0x14400007 -> 0x10000007`. Runtime behavior was unchanged.
+- **v06 — Pending runtime.** Follow-up binary audit found a second near-identical direct semantic-Turn latch/toggle block at ROM `0x2A85C` / VA `0x80029C5C`. The two toggle sequences are the only matching player-loop latch pattern in that region. v06 changes **both** branches `0x2A658` and `0x2A85C` from `0x14400007` to `0x10000007`, preserving each delay-slot latch write while skipping each direct actor `+0x8C XOR 0x10` facing store.
 
-v02 establishes the control seam and expansion-module execution on that bounded route. It does **not** promote the feature into the browser/CLI production pipeline, establish every action/lifecycle state, or establish a special rule for the Earth boss.
+The v02 locomotion result remains valid within its tested scope. v06 is the first proof that suppresses both statically identified direct player-loop Turn toggles. Inventory Combine remains a separate consumer of semantic bit `0x0001`.
 
 ## Host action primitives
 
