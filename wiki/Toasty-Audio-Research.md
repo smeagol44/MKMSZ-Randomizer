@@ -813,3 +813,11 @@ The v03 pickup replacement is still a disposable routing proof, not final Toasty
 - [Runtime validation status](Runtime-Validation-Status) — concise evidence summary.
 - [Project status](Project-Status) — current maturity only.
 - [Toasty visual research](Toasty-Visual-Research) — visual proof chronology and final visual composition boundary.
+
+### v41 feature-core composition
+
+**Implementation/static-confirmed; runtime pending.**
+
+v41 composes the Runtime-confirmed v03 voice with the compact Toasty visual state machine. The voice is invoked once when the six-tick slide-in completes and the 32-tick hold begins.
+
+This does **not** yet solve production audio routing. The disposable proof deliberately reuses v03's event-524/subpatch host, so ordinary pickup playback is also redirected to Toasty in v41. The purpose is only to validate audio/visual timing and lifecycle together before the final trigger work. A dedicated production-safe audio definition/route is still Pending.
