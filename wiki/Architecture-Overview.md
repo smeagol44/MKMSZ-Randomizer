@@ -21,14 +21,17 @@ Patch modules own small, guarded edits: title-menu routing, arena-bound changes,
 
 ## Native runtime layer
 
-Two arena-start immediates move the original start from `0x801AF420` to `0x801AF820`, reserving exactly 1 KiB:
+The guarded arena-start constructions move the original floor from `0x801AF420` to `0x801B3420`, reserving exactly 16 KiB:
 
 | Range | Purpose |
 |---|---|
-| `0x801AF420..0x801AF7CF` | 0x3B0-byte runtime V2 code region |
-| `0x801AF7D0..0x801AF81F` | 0x50-byte runtime V2 persistent state |
+| `0x801AF420..0x801AF7CF` | 0x3B0-byte Runtime V2 code region |
+| `0x801AF7D0..0x801AF81F` | 0x50-byte Runtime V2 persistent state |
+| `0x801AF820..0x801B341F` | 15 KiB build-time expansion pool; currently unassigned to features |
 
 File ID `0x1B` in the global file table describes a payload stored at ROM `0x00F10000`. The synchronous raw-file loader `0x80065D64` loads it to uncached `0xA01AF420`. A bootstrap stub at `0x8009A184` is called from `0x800663E0`. See [Core runtime and address database](Core-Runtime-and-Address-Database).
+
+The expansion pool is allocated only at ROM-build time through a bounded monotonic allocator. It does not replace the game's dynamic arena allocator, and unused capacity remains reserved rather than becoming an implicit cave.
 
 ## Pickup layer
 
