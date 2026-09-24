@@ -158,7 +158,15 @@ After TURN is stable, the next UI-only proof should add COMBOS/SPECIALS/JUMP des
 
 After that succeeds, production should keep the existing OPTIONS topology and the displayed `GAME SETTINGS` label, while permanently replacing only handler index 4's submenu implementation. There is then no need to relocate or enlarge the top-level dispatch table, no need to change the selector maximum, and no need to move `EXIT`.
 
-This menu work remains **Static-confirmed design / Pending runtime** until a disposable proof is manually validated. The stock GAME SETTINGS implementation remains valuable as the native behavioral template for the replacement submenu even though its Difficulty/Lives/Continues editing behavior will no longer be exposed.
+### TURN menu proof v02/v03
+
+**v02 — Partially Runtime-confirmed.** The stock GAME SETTINGS presentation was successfully reduced to a visible `TURN` row with `TOGGLE / LOCK`, and both values correctly controlled gameplay: `TOGGLE` restored vanilla Turn behavior and `LOCK` activated the accepted v10 facing-lock behavior. The user reported the linked behavior as working excellently. B/Turn still exited the submenu normally.
+
+v02 exposed one narrow navigation defect: the stock GAME SETTINGS selector uses indices 0/1/2 for its three settings and index 3 for `EXIT`. Reducing the down-bound to index 1 made an invisible former row selectable while making `EXIT` unreachable by cursor. This does **not** invalidate the menu->state->v10 linkage.
+
+**v03 — Runtime Pending.** Keep stock `EXIT` at index 3, but change vertical navigation to jump directly `0 <-> 3`, skipping the hidden former Lives/Continues indices 1/2. TURN/state/v10 behavior is otherwise byte-identical to v02. Fresh/uninitialized state defaults to `TURN: TOGGLE`; `LOCK` remains opt-in.
+
+The stock GAME SETTINGS implementation remains the accepted native behavioral template even though its Difficulty/Lives/Continues editing behavior is no longer exposed.
 
 ## Related canonical owners
 
