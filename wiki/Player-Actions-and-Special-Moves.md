@@ -66,6 +66,28 @@ The stock Zap/Ice path uses two controller fields that alias the same secondary 
 
 Therefore `+0x648` is the stable secondary-actor working/staging pointer in this setup, while `+0x714` is the active/transfer pointer and may be temporarily repurposed before being restored. The v71 postmortem statically rejects the hypothesis that the stock `0x80031208` call positions a different helper actor from the one handed to the projectile child.
 
+### Projectile flight callback and velocity seam
+
+**Static-confirmed.** The generic projectile flight loop at `0x8004CC50` provides a reusable per-tick callback seam:
+
+```text
+loop entry:
+    child +0x680 = child +0x70C
+
+each flight iteration:
+    sleep 1
+    target animation/update work
+    offscreen/lifetime checks
+    if child +0x680 != 0:
+        call child +0x680
+    resolve strike record
+    run projectile strike/contact path
+```
+
+For the stock Ice/Sektor proof actor, horizontal projectile velocity is actor `+0x14`. `0x8004CC14(actor, magnitude, rate)` is the one-time facing-aware setup helper used by the stock path and also initializes animation timing through `0x80031724`. The flight loop itself does not rewrite actor `+0x14` between callback invocations. A translated per-tick acceleration callback can therefore mutate only actor `+0x14` while preserving the stock lifecycle and animation-rate state.
+
+This distinction explains the v71 failure mode: repeatedly calling `0x8004CC14` from the tick callback also reinitialized animation timing every tick. Direct per-tick `+0x14` mutation is the narrower target operation for the current acceleration proof.
+
 ### Projectile local-position units
 
 `0x80031208` consumes signed local whole-coordinate offsets. On the normal freshly-created projectile path (`actor +0xDC == 0`), it mirrors local X for actor flip, rotates vector `(x,y,0)` through the actor-local orientation, and adds the resulting integer components to actor world position `+0x2C/+0x30/+0x34` after `<< 8`. Target actor positions are therefore 8-fractional-bit fixed-point while this helper's placement arguments are whole local units. Its matrix normalization is unity; there is no additional target scale factor.
