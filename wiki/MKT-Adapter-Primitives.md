@@ -435,6 +435,73 @@ process = start_projectile_process(actor, translated_program)
 
 This is the intended basis for Sektor missile, Acid Spit, spear/net-style projectiles, and similar donor moves. It is **not** a claim that all such moves are already compatible; strike semantics, effects, palette binding, interruption, cleanup, and donor callback behavior remain translation-specific.
 
+### Projectile velocity integration and cadence
+
+**Static-confirmed target integration; cadence externally corroborated.** The normal MKMSZ actor-motion path is not numerically equivalent to MKT's object velocity integration.
+
+MKT uses a 16.16 `POS` type and the object-display/update loop performs:
+
+```text
+oxpos.pos += oxvel.pos
+oypos.pos += oyvel.pos
+```
+
+once per nominal 60 Hz game/display loop. Thus donor `oxvel.pos = 0x10000` represents one donor local position unit per donor tick.
+
+For a normal freshly-created MKMSZ projectile (`actor +0xDC == 0`), the actor update loop at `0x80017F80` does the following for local X velocity `actor +0x14`:
+
+```text
+local_x = actor->xvel >> 8
+local_y = actor->yvel >> 8
+world_v = rotate_by_actor_orientation(local_x, local_y, 0)
+
+actor->world_x_fixed8 += 3 * world_v.x
+actor->world_y_fixed8 += 3 * world_v.y
+actor->world_z_fixed8 += 3 * world_v.z
+```
+
+The `x3` is literal in the clean ROM: each transformed component is shifted left by 8 and then combined as `(value >> 7) + (value >> 8)`, i.e. `2*component + component`. Position fields `+0x2C/+0x30/+0x34` are 8-fractional-bit world coordinates. The low eight bits of the velocity field are therefore discarded before integration.
+
+The main loop calls `0x80017F80` once at `0x80014258` and later waits at `0x80014280` until counter `0x802FCD44 >= 2`; `0x80015950` increments that counter. This is consistent with the game's observed 30 Hz rendering/movement cadence. Independent frame-step/TAS observations likewise report MKMSZ rendering and ordinary movement at 30 fps while some button/input paths are 60 fps. MKT's N64 game loop is nominally 60 Hz.
+
+Under the adapter convention already Runtime-confirmed for local placement at v72—one donor local placement unit maps to one target local placement unit—the constant-speed field conversion is therefore approximately:
+
+```text
+target_velocity = donor_velocity * 2 / 3
+```
+
+because two donor 60 Hz motion integrations must equal one target 30 Hz integration whose numeric velocity contributes `3x` per target update.
+
+For the straight rocket's steady-state constants this gives:
+
+| Donor retail value | Constant-speed target equivalent |
+|---:|---:|
+| normal start `0x33333` | `0x22222` |
+| reacting start `0x59999` | approximately `0x3BBBB` |
+| cap `0xB3333` | `0x77777` |
+
+These direct `2/3` values are correct for **constant velocity**, but an accelerating donor program requires temporal resampling as well. Donor `rocket1_flight_call` applies `v += v >> 4` once per 60 Hz donor tick; the v73 target callback applies it only once per approximately 30 Hz target tick. That halves the exponential-update cadence. At the same time, v73 writes the unconverted donor numeric values into MKMSZ, making the instantaneous target field about 1.5x the constant-speed equivalent. This combination explains why v73 can visibly accelerate yet still feel unlike MKT.
+
+A faithful 60 Hz donor-to-30 Hz target translator should preserve donor-space velocity state and fold **two donor motion intervals** into each target motion interval. For donor magnitudes `d0,d1,...`, where `step(d)=min(d+(d>>4), donor_cap)`, the first target interval should represent donor displacement `d0+d1` and therefore use approximately:
+
+```text
+host_v0 = (d0 + d1) / 3
+retain donor state = d1
+```
+
+Each later target callback should advance two donor substeps:
+
+```text
+d2 = step(retained)
+d3 = step(d2)
+host_v = (d2 + d3) / 3
+retain donor state = d3
+```
+
+At the donor cap this converges to host `0x77777`. For the normal straight-rocket launch, `d0=0x33333`, `d1=0x36666`, so the first pair-averaged host field is `0x23333`, not simply `0x22222`.
+
+This pairwise resampler is a **Static-derived adapter policy, runtime Pending**. It is preferable to tuning by eye because it preserves both donor velocity recurrence and elapsed-time displacement despite the engines' different integration cadence and target quantization.
+
 ### v69-v73 runtime boundary
 
 - **v69 Runtime-confirmed:** current controller/process `+0x6E4` can be temporarily redirected after the stock helper and advanced once through `0x800304C0` to display the genuine chest-open frame on the player without hanging.
@@ -480,7 +547,7 @@ The durable lesson is not “tune the Ice projectile until it looks like Sektor.
 1. **Donor action-phase runner** — express donor phase ordering, sleeps, branch-on-contact, timeout, facing changes, and guaranteed native cleanup without rewriting scheduler glue per move.
 2. **Projectile actor/process wrapper** — expose the now-identified target actor creation, relative placement, child-process binding, owner/opponent context, and cleanup as a reusable adapter API instead of replaying Ice choreography.
 3. **Projectile callback/state ABI** — callback dispatch itself is now identified: `0x8004CC50` latches child `+0x70C -> +0x680` at entry and calls `+0x680` once per flight iteration after sleep/animation/offscreen checks and before strike resolution. Generic adapter-owned scratch/state beyond that dispatch contract remains Pending.
-4. **Velocity/facing conversion policy** — normalize donor movement/projectile velocity requests into MKMSZ-native units after explicit calibration.
+4. **Velocity/facing conversion policy** — the projectile constant-speed unit conversion and 60 Hz -> 30 Hz pairwise resampling policy are now Static-derived; a generic donor-state scratch ABI and bounded runtime proof remain Pending.
 5. **Projectile effect/palette translation** — bind projectile-local palette semantics and map donor smoke/explosion/SFX effects without inheriting Ice presentation.
 6. **No-repel gate** — implement the donor three-tick countdown at a narrow MKMSZ separation hook, without forced crossover or teleport behavior.
 7. **Strike/reaction translator** — map donor geometry/damage/flags/reaction meaning to MKMSZ-native strike and victim-reaction primitives.
@@ -511,7 +578,7 @@ The smallest useful next adapter research is to:
 
 - turn the identified MKMSZ projectile actor/process primitives into a minimal generic `create_projectile / place_relative / start_projectile` adapter contract;
 - validate that contract with Sektor's donor `do_robo_zap -> rocket1_proc` ordering before adding explosion/damage polish;
-- calibrate donor placement/velocity units instead of introducing target-specific offsets;
+- runtime-validate the static-derived projectile velocity resampler instead of introducing target-specific speed tuning;
 - map projectile-local palette/effect/strike semantics without inheriting Ice behavior;
 - locate the narrowest MKMSZ fighter-separation hook for the donor no-repel countdown;
 - establish one exact donor victim-reaction translation without bypassing MKMSZ interruption/cleanup;
