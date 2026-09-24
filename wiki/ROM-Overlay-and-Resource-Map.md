@@ -121,6 +121,12 @@ This page owns the **file/package mechanics**. Branding design, visual acceptanc
 
 Main stage overlays reuse a common runtime address region. The established main-stage overlay base is `0x802ECE30`, but that VA alone does not identify a unique function or byte owner.
 
+One concrete source mapping is now **Static-confirmed** for the supported N64 ROM:
+
+| Stage / overlay | Global file ID | ROM source | Runtime base | Evidence / limit |
+|---|---:|---:|---:|---|
+| Earth | `0x9C` | `[0x000D8B90,0x000E1B80)` | `0x802ECE30` | File-table entry is raw flag `0`; the mapping independently resolves the known Earth key callback `0x802F52B0` to its matching ROM body and Earth boss routine `0x802EDF50` into the same overlay. This does not infer mappings for other stages. |
+
 Any overlay finding must include at least:
 
 - platform/revision;

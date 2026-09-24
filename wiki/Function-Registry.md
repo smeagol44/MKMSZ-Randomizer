@@ -32,6 +32,8 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80030178` | Forward locomotion setup | Static-confirmed | Loads fighter-specific forward movement parameters, sets movement state, and returns selector `1` for primary animation slot `0x01` |
 | `0x80030208` | Backward locomotion setup | Static-confirmed | Loads fighter-specific backward movement parameters, sets movement state, and returns selector `2` for primary animation slot `0x02` |
 | `0x8003188C` | Actor facing flip | Static-confirmed | Toggles actor `+0x8C bit 0x10` and runs native frame/setup helper `0x8001BDA0`; preferred facing primitive over a raw bit write |
+| `0x8003D86C` | Native turn-action routine | Static-confirmed | Selects primary animation slot `0x03` (`turn`) and runs the stock turn-action sequence through the current controller; not intrinsically player-only |
+| `0x8004A6E8` | Controller face-policy scanner | Static-confirmed | Scans controller classes `2..5` and returns `0x8000` if any located controller has `+0x6BC & 0x0200`, otherwise `0x4000`; exact higher-level gameplay name/caller remains unresolved |
 | `0x80031D00` | Find nearest opponent controller | Static-confirmed | Scans the two opponent controller classes used by the player-facing helpers and returns the nearest X-distance candidate |
 | `0x80031EF0` | Face opponent | Static-confirmed | Resolves desired side through `0x80031DDC` and calls `0x8003188C` only when actor facing differs |
 | `0x8002B1EC` | Player horizontal-velocity helper | Static-confirmed | Writes actor `+0x14` and `+0x58`; corrected movement primitive |
