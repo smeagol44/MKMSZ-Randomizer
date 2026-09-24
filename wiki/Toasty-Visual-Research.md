@@ -793,7 +793,7 @@ Runtime result: the user reported v40 working normally, with no recurrence of v3
 
 ### Toasty feature-core composition proof v41
 
-**Implementation/static-confirmed; runtime pending manual validation.**
+**Runtime-confirmed on the user-tested gameplay route on 2026-09-24.**
 
 v41 builds directly on the Runtime-confirmed v40 compact uncached layout and starts the actual feature behavior rather than another image diagnostic.
 
@@ -813,4 +813,29 @@ Audio uses the already Runtime-confirmed v03 Toasty transplant and fires the nat
 
 Disposable ROM SHA-256: `927aff6127ce35aef9ee7f1b9fa57ce0a2709cdbb2a6dcf8d7deca831d831623`.
 
-Runtime acceptance: during normal gameplay press Block+Use once. Toasty should slide in from the right, reach the exact v38 position, play the confirmed voice once, remain for the hold window, slide back out, and stay idle until triggered again. Stock HUD/player rendering must remain normal. No uppercut/contact or 4% gate is present yet.
+Runtime result: the temporary Block+Use trigger successfully produced the complete composed effect: Toasty slid in, the confirmed voice played, the image held, and it slid back out while stock HUD/player rendering remained normal. The user judged the behavior almost correct but requested two presentation changes before trigger integration: align the 78x85 image to the actual lower-right screen edge and make the complete presentation half as long, with slide-in/out twice as fast. No uppercut/contact or 4% gate is present yet.
+
+
+### Toasty feature-core presentation adjustment v42
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v42 changes only presentation geometry/timing from the Runtime-confirmed v41 core.
+
+The v41 screenshot plus the established 78x85 geometry places the effective hold rectangle at approximately `(200,100)..(278,185)` in the 320x240 gameplay coordinate space. v42 moves all nine draw-table entries by `+42 X / +55 Y`, giving the intended lower-right hold rectangle:
+
+`(242,155)..(320,240)`.
+
+Timing is exactly halved while preserving the same total slide distances:
+- slide-in: `6 -> 3` HUD ticks;
+- hold: `32 -> 16` HUD ticks;
+- slide-out: `16 -> 8` HUD ticks;
+- slide step: `13 -> 26` pixels/tick.
+
+Total presentation lifetime therefore changes from 54 to 27 HUD ticks. Audio still fires exactly once at hold entry. The temporary Block+Use trigger, v03 proof audio host, compact KSEG1 layout, image/TLUT/slot setup, and expansion footprint remain unchanged.
+
+A rebuilt v41-to-v42 ROM comparison finds only 26 changed bytes, all inside the packed Toasty feature file; no unrelated ROM range changes.
+
+Disposable ROM SHA-256: `346b03646b0634619284f9191171d70827c4092b00f1e9e8bc506cfaf356ce60`.
+
+Runtime acceptance: image should stop flush against the lower and right gameplay edges, complete the in/hold/out sequence at roughly twice v41's speed, play the voice once, and leave stock HUD/player rendering intact.
