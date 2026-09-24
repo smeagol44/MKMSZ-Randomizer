@@ -367,6 +367,56 @@ Target relative placement:
 - in the stock straight-Ice setup, call site `0x8004AFF8 -> 0x8004B000` passes parent `+0x648` as the actor;
 - the same path subsequently uses parent `+0x714` as the temporary current actor for projectile animation, confirming that placement and animation target the same staged secondary actor.
 
+#### Exact `0x80031208` coordinate contract
+
+**Static-confirmed.** For a freshly created token-`0x0B` projectile, `0x800245A4` zero-initializes the complete `0x118`-byte actor and the creation path does not set actor `+0xDC` before placement, so the normal `+0xDC == 0` branch of `0x80031208` is the projectile path.
+
+Its effective contract on that path is:
+
+```text
+input:
+    actor
+    signed local x offset
+    signed local y offset
+
+if actor horizontal-flip bit 0x10:
+    local_x = -local_x
+
+local = { local_x, local_y, 0 }
+world_delta = actor-local rotation * local
+
+actor +0x2C += world_delta.x << 8
+actor +0x30 += world_delta.y << 8
+actor +0x34 += world_delta.z << 8
+```
+
+The input offsets are effectively signed 16-bit whole-coordinate values. The helper rebuilds a pure rotation transform from actor orientation `+0xAC/+0xAE/+0xB0`; it explicitly zeroes the transform translation terms before converting the matrix to floats. The fixed rotation matrix uses `0x1000 == 1.0`, and the conversion path multiplies by `1/4096`, so there is **no hidden positional scale factor** in this helper. Numerous target routines read actor `+0x2C/+0x30` with arithmetic `>> 8` before pixel-scale distance tests; `0x80031208` performs the inverse `<< 8` when adding its transformed integer offsets. The target position fields are therefore 8-fractional-bit fixed-point, while the placement arguments are whole local position units.
+
+The horizontal mirror is already part of the helper. A translator must pass the donor signed X semantic and must **not** pre-negate it for facing.
+
+For Sektor's straight rocket, MKT source lineage defines:
+
+```c
+adjust_xy_a5(projectile, SCX(7), SCY(45));
+```
+
+with N64 donor factors `SCF_X=80` and `SCF_Y=85`. Integer conversion therefore produces the shipped donor-local values:
+
+```text
+SCX(7)  = 5
+SCY(45) = 38
+```
+
+MKT `multi_adjust_xy` mirrors X internally and adds Y directly. The corresponding MKMSZ local placement request is therefore:
+
+```text
+0x80031208(projectile, +5, +38)
+```
+
+or, at the adapter level, `place_relative(projectile, 5, 38)`. Do **not** pass source-space `(7,45)`, do not apply the MKT 80%/85% scale a second time, and do not add a target-specific pixel correction. On a neutral target orientation this becomes exactly `(+5 << 8, +38 << 8, 0)`; on rotated MKMSZ stage geometry the native helper rotates the same local displacement into world XYZ, which is the target-native equivalent of donor fighter-relative placement.
+
+This resolves the **unit conversion** statically. It does not yet Runtime-confirm the final visible rocket alignment, because imported-image anchor/origin differences remain a separate presentation variable. The next bounded proof should therefore change placement only from the stable v70 baseline.
+
 Target projectile-process creation:
 - `0x8004CBC4(callback)` allocates a child controller/process through `0x8002830C` with class/tag `0x700`;
 - it copies relevant parent/opponent context;
@@ -407,7 +457,7 @@ The durable lesson is not “tune the Ice projectile until it looks like Sektor.
 | advance animation | `do_next_a9_frame` / playback | Native animation advance | **Covered primitive** | Player Actions |
 | donor frame/texture resource | donor heap-relative descriptors/codecs | Rebuilt MKMSZ descriptors + native storage | **Covered asset path for proven formats** | [MKT fighter asset translation](MKT-Fighter-Asset-Translation) |
 | projectile resource actor creation | `setup_proj_obj` / donor projectile object | resource-backed secondary actor path via token `0x0B`, `0x80030974 -> 0x80034510 -> 0x800281A0/0x80028128` | **Target primitive identified; wrapper Pending** | This page + Function Registry |
-| owner-relative placement | `adjust_xy_a5` | facing-aware actor displacement `0x80031208` | **Target primitive identified; donor-unit calibration Pending** | This page + Function Registry |
+| owner-relative placement | `adjust_xy_a5` | facing-aware actor displacement `0x80031208` | **Static mapping resolved; runtime placement proof Pending** | This page + Function Registry |
 | projectile child process | `create_proj_proc` | `0x8004CBC4 -> 0x8002830C` child controller/process binding | **Target primitive identified; wrapper Pending** | This page + Function Registry |
 | projectile flight callback | `projectile_flight_call(callback)` | MKMSZ projectile loop/collision family around `0x8004CC50` | **Partial adapter; callback ABI Pending** | This page + Player Actions |
 | projectile per-tick state | donor `p_store*` fields | adapter-owned child-process scratch/state | **Missing generic ABI** | This page |
