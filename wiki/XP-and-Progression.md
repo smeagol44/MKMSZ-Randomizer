@@ -53,12 +53,12 @@ Normal ordinary-pickup randomization remains independent of progression selectio
 
 ## Production allocation and state
 
-Production does not reuse the disposable proof cave. Runtime V2 keeps the existing 1 KiB reservation but repartitions it as:
+Production does not reuse the disposable proof cave. Runtime V2 keeps its established first-1-KiB layout inside the current 16 KiB reservation, partitioned as:
 
 - reloadable payload code: `0x801AF420..0x801AF7CF` (0x3B0 bytes);
 - persistent state: `0x801AF7D0..0x801AF81F` (0x50 bytes).
 
-The 2026-09-23 full-composition rainbow proof Runtime-confirmed this larger code/smaller state repartition while preserving the same 1 KiB reservation. XP still uses state `+0x40/+0x44`; the optional rainbow phase uses `+0x48`.
+The 2026-09-23 full-composition rainbow proof Runtime-confirmed this larger code/smaller state repartition within the original first 1 KiB. The 2026-09-24 production reservation expansion leaves those addresses unchanged and adds a separate 15 KiB pool after `0x801AF820`. XP still uses state `+0x40/+0x44`; the optional rainbow phase uses `+0x48`.
 
 Progression uses state `+0x40` for acquired reward count and `+0x44` for persistent XP, separate from the 84 ordinary-pickup persistence bits at `+0x20..+0x3C`.
 

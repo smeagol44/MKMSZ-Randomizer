@@ -10,11 +10,11 @@ Only the 16 MiB USA Rev. 0 big-endian ROM is supported: SHA-256 `9c18254abf6722b
 
 ## Arena reservation mechanism
 
-Production reserves one 1 KiB block immediately below the game's shifted main-arena start. Architecturally, stock construction begins the arena at KSEG0 `0x801AF420`; production moves the start to `0x801AF820` so the native runtime and persistent state are outside arena ownership. Both arena-start constructions must move together.
+Production reserves one 16 KiB block immediately below the game's shifted main-arena start. Architecturally, stock construction begins the arena at KSEG0 `0x801AF420`; production moves the floor to `0x801B3420`. The established Runtime V2 code/state contract remains byte-for-byte in the first 1 KiB, `0x801AF420..0x801AF820`, while `0x801AF820..0x801B3420` is a 15 KiB build-time expansion pool. Both guarded arena-address constructions must move together.
 
 The **exact continuous reservation and every current sub-owner** are canonical in [Memory and allocation map](Memory-and-Allocation-Map). The two guarded ROM instructions that move the arena start, including expected and replacement words, are canonical in the [patch-site registry](Address-and-Patch-Site-Registry).
 
-After relocation, the bootstrap establishes the shifted arena floor in persistent/reset base global `0x800EECD0` and uses `0x80066390` to copy that floor into the live bump cursor at `0x80111ECC`. The two globals therefore have distinct roles: `0x800EECD0` is the reset/base floor, while `0x80111ECC` is the transient allocation cursor. [Function registry](Function-Registry) owns the helper/allocator semantics. The `0x801AF820` anchor does not imply that later RDRAM is generically free.
+After relocation, the bootstrap establishes the shifted arena floor `0x801B3420` in persistent/reset base global `0x800EECD0` and uses `0x80066390` to copy that floor into the live bump cursor at `0x80111ECC`. The two globals therefore have distinct roles: `0x800EECD0` is the reset/base floor, while `0x80111ECC` is the transient allocation cursor. [Function registry](Function-Registry) owns the helper/allocator semantics. The expansion pool below `0x801B3420` is production-reserved MKMSZR ownership; memory above that anchor remains allocator-owned rather than generically free.
 
 ## Arena allocator model
 
@@ -31,7 +31,7 @@ The main allocator returns `old_cursor + 8`, aligns requested payload size to 8 
 
 Rewind is stack-like: `0x80066478(pointer)` sets the cursor to `pointer - 8`. `0x80066410` returns `cursor + 8` without allocating, allowing callers to save a reversible checkpoint. This explains stage-lifetime reconstruction paths that save a checkpoint, allocate resources, and later rewind/rebuild them.
 
-These findings are **Static-confirmed**. They establish what should be measured during reservation experiments, but they do not establish a safe larger production reservation by themselves. Runtime headroom remains workload-dependent; expanded reservations still require bounded manual validation.
+These allocator findings are **Static-confirmed**. The 16 KiB production floor is separately **Runtime-confirmed** to the bounded profiler and full-production routes documented in [Runtime validation status](Runtime-Validation-Status). Headroom remains workload-dependent; the measured margin is not a guarantee for arbitrary future feature composition.
 
 ## Runtime V2 composition
 
@@ -50,6 +50,10 @@ Core Runtime owns how the reserved block is composed; the Memory Map owns its ab
 | `[+0x3FC,+0x400)` | Reserved persistent-state tail | `rdram.production.state_reserved_tail` |
 
 These offsets are composition contracts, not a second allocation registry. New code/state owners must fit the versioned layout and pass the same composition/bounds checks before production use.
+
+### Expansion pool
+
+The remaining reserved range `0x801AF820..0x801B3420` is managed by the build-time `ExpansionPoolAllocator`. It is a monotonic aligned allocator used while constructing a ROM; it does **not** replace or consume the stock runtime arena allocator. No production feature owns a subrange yet. Requests receive named, aligned slices, duplicate names are rejected, and a build fails before output if the pool would overflow. The Memory Map remains canonical for any sub-owner once a feature actually claims bytes.
 
 ## Payload registration and bootstrap
 
