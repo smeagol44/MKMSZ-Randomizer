@@ -37,6 +37,9 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80031D00` | Find nearest opponent controller | Static-confirmed | Scans the two opponent controller classes used by the player-facing helpers and returns the nearest X-distance candidate |
 | `0x80031EF0` | Face opponent | Static-confirmed | Resolves desired side through `0x80031DDC` and calls `0x8003188C` only when actor facing differs |
 | `0x8002B1EC` | Player horizontal-velocity helper | Static-confirmed | Writes actor `+0x14` and `+0x58`; corrected movement primitive |
+| `0x80016008` | Per-thousand random gate (`randper`) | Static-confirmed | Generates a native random value, reduces it modulo 1000, and returns `0x8000` when the result is below the unsigned argument, otherwise `0x4000`; v43 Toasty uses argument `0x40` for the supplied-retail normal-background 6.4% gate. |
+| `0x8002DF28` | Successful/unblocked victim-reaction transfer seam | Static-confirmed | Reached only after the normal collision core has separated the blocked branch; immediately prior, stock reads strike-record `+0x08` high byte, resolves `0x800A1190[reaction]`, and places the reaction callback in `a0`. Stock calls `0x8002E078` with victim controller in `a1`; v43 interposes here and preserves that transfer. |
+| `0x8002E078` | Victim reaction callback transfer | Static-confirmed | Installs the already-resolved reaction callback on the victim controller through `0x80032CD4` and marks the victim reacting; used by the narrow Toasty v43 seam. |
 | `0x8002E104` | Central XP award | Static-confirmed | Current XP at `0x8011200C` |
 | `0x8002EC78`, `0x8002ECF4` | Player construction path | Static-confirmed | Not enemy loader |
 | `0x8002FCDC` | Lower-level fighter allocator | Static-confirmed | Stores fighter type at actor `+0x78` |
