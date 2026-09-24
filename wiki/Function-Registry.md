@@ -88,6 +88,9 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x800719F0` | Enemy spawn-parameter helper | Static-confirmed | Receives spawn index and type |
 | `0x80071B20` | Shared enemy/fighter constructor | Static/runtime-confirmed | Uses resource slot table `0x800B14C0` |
 | `0x80073CEC` | Alternate renderer-family entry | Static-confirmed | Calls `0x8001E578`; not universal HUD path |
+| `0x8001CA88` | Frontend text renderer | Static-confirmed | Used by title `START`/`OPTIONS`, OPTIONS rows, GAME SETTINGS labels/values, and other frontend menus; distinct from gameplay text `0x80073E74` |
+| `0x800762C4` | Title OPTIONS menu loop | Static-confirmed | Six selectable rows total: five submenu handlers plus EXIT; input from `0x800BF2EE`, five-handler jump table at `0x800AEAB8` |
+| `0x800766BC` | GAME SETTINGS menu | Static-confirmed | Native three-row value-editor template for Difficulty/Lives/Continues; reusable architectural model for Randomizer Settings |
 | `0x80073E74` | Native text draw | Runtime-confirmed | Arbitrary custom RDRAM strings work |
 | `0x80074084` | Text-width helper | Static/runtime-confirmed | Native font at `0x800B1E20` |
 | `0x800741B4` | Inventory item count | Static-confirmed | Native ten-slot inventory |
