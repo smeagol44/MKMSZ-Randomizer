@@ -63,7 +63,7 @@ Unlike the production static recolor, the proof is a runtime palette feature. It
 
 Production composition details:
 
-- the existing 1 KiB MKMSZR reservation remains `0x801AF420..0x801AF81F`, but is repartitioned for this artifact as `0x3B0` bytes of code plus `0x50` bytes of state;
+- the established first 1 KiB MKMSZR Runtime V2 layout remains `0x801AF420..0x801AF81F` inside the current 16 KiB reservation, partitioned as `0x3B0` bytes of code plus `0x50` bytes of state; the later 15 KiB expansion pool begins at `0x801AF820` and is not used by the rainbow feature;
 - rainbow phase state uses production state offset `+0x48`;
 - the rainbow helper occupies cached `0x801AF700` / uncached `0xA01AF700`, size `0xCC`;
 - clean Sub-Zero file `0x87` is relocated byte-for-byte to ROM `0xF20000..0xF679DF`, then extended with the 64-palette bank; final file size is `0x479E0`.
