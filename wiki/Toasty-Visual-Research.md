@@ -678,3 +678,20 @@ The next disposable ROM should return to the v32/v27 visible geometry and alloca
 - write `record+0x08 = 64` for TC/MC/BC.
 
 No allocation-order, node-geometry, palette, payload, audio, trigger, or stage-flow change should accompany that proof. If the stage-specific missing/extra edge pixels disappear, the causal link is Runtime-confirmed.
+
+
+### Toasty visual diagnostic v38 — source-image width normalization
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v38 returns to the v32/v27 visual baseline. It preserves the nine-piece image bytes, hardware TLUT, visible 7+64+7 geometry, 32-byte-padded side payloads, allocation order, corrected saved-slot state addresses, logos-skip/safe-selector harness, and gameplay render composition.
+
+The only runtime-critical change is restoration of the stock dynamic-texture convention identified by the post-v37 static trace. After all nine dynamic slots are allocated/loaded and before any Toasty rendering, v38 writes slot-record `+0x08` to the actual DRAM source row width:
+- side pieces TL/TR/ML/MR/BL/BR: `32`;
+- center pieces TC/MC/BC: `64`.
+
+The helper is called by replacing two palette-setup instructions in the fixed-size init stub; it recreates those displaced instructions before returning, so palette setup semantics remain unchanged. A bytewise comparison against a rebuilt v32 ROM confirms that every non-CRC difference is confined to that two-instruction helper call and the new width-normalization helper in the existing guarded zero-filled proof cave.
+
+Disposable ROM SHA-256: `ac5c1bd2675347ad549de9d2da4fe583cf84edd0d668936ee59ecc1c0543ba4b`.
+
+Runtime acceptance test: Temple, Earth, Fire, and Fortress. If the previously stage-dependent missing/extra edge pixels disappear while Fortress remains clean, the stale `record+0x08` source-width mechanism is Runtime-confirmed as the cause. Any remaining corruption should be treated as evidence against that causal conclusion rather than prompting further allocation-order permutations.
