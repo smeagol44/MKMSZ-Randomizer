@@ -59,13 +59,11 @@ EXPANSION_FILE_ID = 0x1A
 EXPANSION_FILE_ENTRY_ROM = FILE_TABLE_ROM + EXPANSION_FILE_ID * FILE_TABLE_ENTRY_SIZE
 EXPANSION_MODULE_ROM = 0x00F72000
 
-# Shared remapping-aware player semantic input.
-PLAYER_SEMANTIC_INPUT_VA = 0x800BF2EE
+# Shared semantic Turn/Combine bit.
 TURN_MASK = 0x0001
 
-# Current controller/process global plus persistent player controller anchor.
+# Current controller/process global.
 CURRENT_CONTROLLER_PTR_VA = 0x802ECE20
-PLAYER_CONTROLLER_PTR_VA = 0x802C1AC0
 
 # Host helpers established by the control trace.
 FACE_POLICY_SCANNER_VA = 0x8004A6E8
@@ -84,7 +82,6 @@ RELEASE_EXPECTED = bytes.fromhex("8C820638 94430000")
 
 TURN_HOOK_ROM = 0x0003E46C
 TURN_HOOK_VA = 0x8003D86C
-TURN_STOCK_RESUME_VA = 0x8003D874
 TURN_EXPECTED = bytes.fromhex("27BDFFE0 24040001")
 
 # Bootstrap modification: replace only the existing two-word KSEG1 Runtime V2
