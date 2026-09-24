@@ -11,6 +11,7 @@ Keep an entry here when the negative result establishes a safety constraint, rul
 | Attempt / scope | Observed failure or correction | What it established | Detailed owner |
 |---|---|---|---|
 | Treat current-process global as `0x802FCE20` | Address interpretation was wrong | Signed low immediate `0xCE20` paired with `lui 0x802F` yields effective address `0x802ECE20` | [Player actions and special moves](Player-Actions-and-Special-Moves) |
+| Direction-facing control proof v01 | First opposite-direction press immediately hard-hung | The proof accidentally reused rejected `0x802FCE20` as the current-controller global on the flip-only path; v02 changed only that interpretation to `0x802ECE20` and Runtime-confirmed the intended control behavior on the tested route | [Player actions and special moves](Player-Actions-and-Special-Moves) |
 | Use `0x8004CC14` as player propulsion | Movement model was based on projectile setup | `0x8004CC14` owns projectile setup; player velocity uses `0x8002B1EC` | [Player actions and special moves](Player-Actions-and-Special-Moves) |
 | Treat `0x8004B82C` as a player action | Caller/data flow contradicted the interpretation | It is the ice-projectile flight callback | [Player actions and special moves](Player-Actions-and-Special-Moves) |
 | Treat `0x8004AA4C` as a generic initializer | Later selector analysis showed scheduler transfer semantics | Action adapters must preserve target scheduler/context-transfer behavior | [Player actions and special moves](Player-Actions-and-Special-Moves) |
