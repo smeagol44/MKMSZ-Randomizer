@@ -2021,7 +2021,9 @@ Post-test static tracing resolves one ambiguity. The actor at controller `+0x648
 
 A separate static defect remains in v71's movement graft: `0x8004CC14` is a projectile setup helper that writes facing-aware X velocity and calls `0x80031724` to initialize animation timing. v71 reused it from the per-tick acceleration callback and supplied a rate derived from the velocity calculation, so it mutated animation-rate state every flight tick rather than merely updating velocity. This is **Static-confirmed as a semantic mismatch**, but it is not yet proven to be the sole cause of the runtime hard hang.
 
-The stable runtime baseline for further work remains v70. The next proof must isolate one variable at a time after completing static calibration of target placement and per-tick velocity semantics.
+Post-v71 coordinate tracing also closes the placement-unit question. On a fresh token-`0x0B` projectile, `0x80031208` takes signed whole local X/Y offsets, mirrors X for actor facing, rotates the local vector into MKMSZ world XYZ, and adds the result to the actor's 8-fractional-bit position fields with `<<8`; there is no hidden target scale. MKT's source `SCX(7),SCY(45)` becomes retail N64 `(+5,+38)`, so the direct target placement arguments are also `(+5,+38)`. This is **Static-confirmed** and means v71's placement values themselves were semantically well-formed even though the combined v71 build failed.
+
+The stable runtime baseline for further work remains v70. The next proof should be placement-only: retain v70 movement/lifecycle unchanged and replace only the stock Ice local spawn displacement with `(+5,+38)`.
 
 
 
