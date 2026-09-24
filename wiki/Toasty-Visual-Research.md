@@ -715,3 +715,34 @@ The remaining Toasty work is no longer image-correctness research. It is product
 3. implement the slide/lifetime state machine;
 4. resolve and validate the final qualifying uppercut/contact trigger plus 4% cosmetic gate;
 5. run a guarded full-production composition proof.
+
+### Toasty visual production-layout proof v39
+
+**Implementation/static-confirmed; runtime pending manual validation.**
+
+v39 is the first bounded move from the disposable v38 cave layout toward the current production runtime architecture. It deliberately preserves the v38 visual behavior while changing only storage/transport ownership.
+
+The current production 16 KiB arena reservation remains the governing memory contract. v39 uses the build-time `ExpansionPoolAllocator` semantics for the 15 KiB expansion pool and packs only native Toasty code/state/TLUT there:
+
+| Slice | RDRAM interval | Size |
+|---|---:|---:|
+| compositor | `0x801AF820..0x801B034B` | 2,860 bytes |
+| init + transparent-fill helper | `0x801B0350..0x801B065B` | 780 bytes |
+| nine saved dynamic-slot IDs | `0x801B0660..0x801B0683` | 36 bytes |
+| hardware-ready Toasty TLUT | `0x801B0690..0x801B088F` | 512 bytes |
+
+Total expansion-pool use is 4,208 bytes, leaving `0x2B90` (11,152 bytes) of the current 15 KiB pool unconsumed by this proof layout.
+
+The CI8 source slices are **not duplicated into the expansion pool**. Three v38 pieces (TL, TR, ML) are entirely palette-index-0/transparent after allocator padding, so v39 zero-fills those dynamic backing buffers directly. The six nonzero padded CI8 slices remain ROM-backed and raw-load directly into the same dynamic texture allocations through six clean-table proof IDs `0x13..0x18`. One packed feature file uses proof ID `0x1A` and loads the native feature blob to `0x801AF820`.
+
+Proof-only high-ROM source:
+- six nonzero CI8 slices: `0x00F70000..0x00F71E7F`, 7,808 bytes total;
+- packed native feature file: `0x00F72000..0x00F7306F`, 4,208 bytes.
+
+The stage-reset proof stub uses the established 16 KiB arena-floor mechanism, synchronizes the arena base, and loads file `0x1A` into the expansion pool before the existing v38 post-HUD-init hook runs. v38 draw geometry, palette selector/TLUT contents, dynamic allocation order, 7+64+7 visible composition, and the confirmed slot-record `+0x08 = 32/64` source-row-width rule are unchanged.
+
+The fast logos-skip/safe-stage-selector route is retained only as a disposable manual-test harness. Its old selector-cave use is **not** part of the proposed Toasty production allocation. Likewise, v39's standalone stage-reset stub is a composition proof: final product integration must merge the extra feature-file load into the existing production bootstrap rather than treat the bootstrap composite as newly free space.
+
+Disposable ROM SHA-256: `3d8409e1e56ea307c6072500588498025586a5824dc0189b44c405849547c50e`.
+
+Runtime acceptance test: verify the same stage-stable v38 image in Temple, Earth, Fire, and Fortress at minimum, preferably all eight safe stages. A pass establishes the expansion-pool storage/transport layout; it does not yet establish audio, slide/lifetime, or the final uppercut/contact + 4% trigger.
