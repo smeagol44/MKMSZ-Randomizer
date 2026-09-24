@@ -66,6 +66,12 @@ The stock Zap/Ice path uses two controller fields that alias the same secondary 
 
 Therefore `+0x648` is the stable secondary-actor working/staging pointer in this setup, while `+0x714` is the active/transfer pointer and may be temporarily repurposed before being restored. The v71 postmortem statically rejects the hypothesis that the stock `0x80031208` call positions a different helper actor from the one handed to the projectile child.
 
+### Projectile local-position units
+
+`0x80031208` consumes signed local whole-coordinate offsets. On the normal freshly-created projectile path (`actor +0xDC == 0`), it mirrors local X for actor flip, rotates vector `(x,y,0)` through the actor-local orientation, and adds the resulting integer components to actor world position `+0x2C/+0x30/+0x34` after `<< 8`. Target actor positions are therefore 8-fractional-bit fixed-point while this helper's placement arguments are whole local units. Its matrix normalization is unity; there is no additional target scale factor.
+
+For the current Sektor straight-missile case, the donor's already-N64-scaled retail displacement `(+5,+38)` therefore maps directly to target helper arguments `(+5,+38)`. Facing remains the helper's responsibility. This is **Static-confirmed coordinate mapping**; visible alignment still requires the bounded runtime placement proof because imported asset anchors are a separate concern.
+
 The current process/controller pointer is at effective address `0x802ECE20`, not `0x802FCE20`.
 
 Function-level semantics are indexed in [Function registry](Function-Registry); this page owns how the helpers compose into the host action lifecycle.
