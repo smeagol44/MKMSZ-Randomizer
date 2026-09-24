@@ -613,3 +613,68 @@ This is the smallest byte-aligned CI8 width above the seven visible side pixels.
 Interpretation:
 - if the stage-specific artifacts disappear, the renderer/TMEM path likely requires at least 8-pixel logical CI8 width even though backing allocation remains 32-byte aligned;
 - if artifacts remain, the next renderer-side investigation should trace the tile/load-line derivation rather than widen the logical rectangle further.
+
+
+### Post-v37 static renderer trace — dynamic-slot source-width ownership
+
+**Static-confirmed mechanism; causal link is a strong inference pending one bounded runtime fix.**
+
+After v37 remained corrupted, the next step stopped parameter permutation and traced the actual dynamic-texture allocator, stock callers, and gameplay textured-node renderer.
+
+#### Dynamic slot record semantics
+
+`0x8001C2B4` searches dynamic IDs `0x200..0x2FF` using 16-byte records at `0x802E83F0 + id*0x10`.
+
+For a new allocation:
+- requested width is rounded up to 32 pixels/bytes for backing-capacity allocation;
+- record `+0x04` receives the aligned capacity width;
+- record `+0x06` receives capacity height;
+- record `+0x08` is initially set to the same aligned width;
+- record `+0x0A` receives height;
+- record `+0x0E` becomes active;
+- `0x800ED940[id]` receives the backing pointer.
+
+The allocator also has a reuse path. It may return an inactive existing record whose `+0x04/+0x06` capacity is large enough. That path sets `+0x0E = 1` and returns the ID **without rewriting `+0x08`**.
+
+Stock callers demonstrate that `+0x08` is caller-owned texture-image width state, not merely allocator capacity metadata. Multiple direct callers immediately compute `record = 0x802E83F0 + id*0x10` after `0x8001C2B4` and store the current source-image width to `record+0x08`; examples include the allocation sequences beginning at `0x8002049C`, `0x80020538`, and `0x800205AC`. The fixed-slot initializer `0x8001BF70` likewise distinguishes record `+0x04` from `+0x08`.
+
+#### Renderer consumption
+
+`0x8001F7A8` reads texture slot `node+0x4A`, indexes the same record table, loads halfword `record+0x08`, subtracts one, and encodes that value into the RDP `SetTextureImage` command (`FD48....`) as the DRAM texture-image width. The backing pointer comes from `0x800ED940[id]`.
+
+For the CI8 path it then emits the expected `SetTile(load tile 7) -> LoadSync -> LoadTile -> PipeSync -> SetTile(render tile 0) -> SetTileSize` sequence. Node `+0x10/+0x12` and `+0x20/+0x22` provide the loaded source rectangle. The stock HUD node used by the Toasty wrapper initializes `+0x30/+0x32 = 0` and `+0x40/+0x42 = 1`, so the inherited initial S/T and 1:1 texture steps are not random stage state. Its render-mode word `0x0C087008` selects the point-filter path; bilinear edge sampling is therefore not the leading explanation.
+
+Nintendo's RDP documentation defines `SetTextureImage` width as the width of the original DRAM texture image and `LoadTile` as a rectangular subregion of that image. The tile `line` field is the TMEM row width in 64-bit words; LoadTile pads non-64-bit rows in TMEM.
+
+#### Builder omission through v37
+
+The Toasty builders allocate each piece and load raw CI8 bytes into the returned backing pointer, but they never perform the stock caller's post-allocation write to `record+0x08`.
+
+This matters specifically on reused dynamic records:
+- the six side payloads use a real DRAM row pitch of 32 bytes after v23;
+- center payloads use a 64-byte row pitch;
+- a fresh allocation happens to initialize `+0x08` to the matching aligned width;
+- a reused record can retain a previous texture's `+0x08` width even though its capacity is large enough for the new piece.
+
+If `+0x08` is stale, `0x8001F7A8` tells the RDP the wrong DRAM row width. `LoadTile` then advances each source row using the wrong stride. That can simultaneously:
+- omit genuine edge texels by fetching transparent padding or the wrong source row;
+- place nonzero Toasty texels in locations that should be transparent;
+- produce different corruption by stage because the reusable dynamic-slot population differs;
+- move the corruption when allocation order changes because different pieces inherit different reused records.
+
+This mechanism fits the observed screenshots, including the missing lower-left Toasty data in Fire as well as the floating colored pixels. Fortress remaining clean is consistent with fresh or width-compatible records, but that stage-specific explanation remains inference until the corrected record-width proof is run.
+
+#### Reinterpretation of v33 and v36-v37
+
+The earlier v33 diagnostic described record `+0x08` as the allocator's requested width and compared it against the visible piece width. The static trace supersedes that interpretation: `+0x08` is the source-image width consumed by `SetTextureImage`, and stock callers may rewrite it after allocation. Therefore v33 remains useful for its slot-ID/active checks but is **not** clean evidence that texture-image width state was correct.
+
+Likewise, v36/v37 did not isolate one pure RDP width field: they changed the allocator request and the node source/destination width together, which can also change which reusable capacity record is selected. Their runtime results remain valid observations, but the earlier conclusion that they directly proved a 7-pixel TMEM-width defect is superseded.
+
+#### Next bounded proof
+
+The next disposable ROM should return to the v32/v27 visible geometry and allocation order, keep side source/destination width at 7, keep the existing 32-byte-padded side payloads, and add exactly one stock-convention operation after each dynamic allocation:
+
+- write `record+0x08 = 32` for TL/TR/ML/MR/BL/BR;
+- write `record+0x08 = 64` for TC/MC/BC.
+
+No allocation-order, node-geometry, palette, payload, audio, trigger, or stage-flow change should accompany that proof. If the stage-specific missing/extra edge pixels disappear, the causal link is Runtime-confirmed.
