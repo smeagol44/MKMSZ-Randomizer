@@ -83,6 +83,25 @@ Empty stock slots use `0xFFFFFFFF`. Foreign-stage keys appear in the live window
 | `0x23` | Shinnok Amulet; special pickup path |
 | `0x24` | Tablet; rejected as a safe mask because it is consumable |
 
+## Player locomotion controller/actor fields
+
+**Static-confirmed for the normal player locomotion path.** These offsets are fields in reusable engine structures, so meanings below are lifecycle-qualified rather than universal labels for every process.
+
+| Structure / offset | Locomotion meaning |
+|---|---|
+| controller `+0x638` | Pointer to semantic input; player construction stores `0x800BF2EE` here |
+| controller `+0x68C` | Active horizontal semantic direction: `0x8000` Left or `0x2000` Right |
+| controller `+0x680` | During normal walk setup, shadows the temporary `1`/\`2` locomotion selector before `+0x6E4` becomes the animation cursor |
+| controller `+0x6BC` bit `0x0200` | Shared fighter face-policy flag used by several host routines to conditionally face a nearest opponent; **not a universal boss bit** |
+| controller `+0x6E0` | Current actor pointer |
+| controller `+0x6E4` | Animation cursor; temporarily receives the forward/back selector immediately before animation selection |
+| controller `+0x6FC` | Normal locomotion mode written as `1` by forward setup and `2` by backward setup |
+| controller `+0x704` | In normal horizontal entry, direction-vs-facing mismatch: `0` means forward-compatible, `0x10` means requested direction opposes facing |
+| actor `+0x78` | Fighter type |
+| actor `+0x8C` bit `0x10` | Horizontal facing bit; clear corresponds to right-facing and set to left-facing in the normal locomotion classifier |
+
+The ordinary player classifier at `0x80029200..0x800292C8` derives `+0x704` without searching for a target: Right stores the actor facing bit directly, while Left stores it XOR `0x10`. This makes the field a ready-made world-direction/facing mismatch signal for control-assist work.
+
 ## Ordinary-enemy stream
 
 Streams are big-endian 32-bit words, terminated by `0x0000FFFF`, and dispatched for opcodes `0..9` by table `0x800AD7A0`. Common spawn opcodes `0`, `1`, and `9` occupy `0x1C` bytes:
