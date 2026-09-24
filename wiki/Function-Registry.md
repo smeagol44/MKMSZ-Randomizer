@@ -31,8 +31,8 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8002E104` | Central XP award | Static-confirmed | Current XP at `0x8011200C` |
 | `0x8002EC78`, `0x8002ECF4` | Player construction path | Static-confirmed | Not enemy loader |
 | `0x8002FCDC` | Lower-level fighter allocator | Static-confirmed | Stores fighter type at actor `+0x78` |
-| `0x80030974` | Animation control-token `0x0B` handler | Static-confirmed | Drives the Zap/resource secondary-actor creation path; reaches `0x80034510` and stages the created actor in controller secondary-actor fields |
-| `0x80031208` | Facing-aware actor XY adjustment | Static-confirmed | Applies requested X/Y displacement to an actor and negates the X adjustment when horizontally flipped; semantic target for donor owner-relative placement helpers |
+| `0x80030974` | Animation control-token `0x0B` handler | Static-confirmed | Drives Zap/resource secondary-actor creation through `0x80034510`; captures the newly constructed actor at `+0x714`, restores the owner to `+0x6E0`, copies `+0x714 -> +0x648`, then inserts the secondary actor |
+| `0x80031208` | Facing-aware actor XY adjustment | Static-confirmed | Applies requested X/Y displacement to the explicit actor argument and negates X when horizontally flipped; stock straight-Ice call `0x8004AFF8` supplies controller `+0x648`, the same staged actor later transferred from `+0x714` |
 | `0x80032CD4` | Special-action callback installer | Static-confirmed | Installed top-level callback must transfer/nonreturn |
 | `0x80034510` | Animation-stream resource actor creation helper | Static-confirmed | Consumes the resource entry following token `0x0B`, reaches `0x800281A0 -> 0x80028128`, and participates in staging a secondary actor while preserving the owner actor |
 | `0x80038770` | Generic stage key/crystal pickup | Static-confirmed | Stage-dependent parameter mapping |
@@ -50,8 +50,8 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8004AA4C` | Special-action scheduler context-transfer shim | Static-confirmed | Dispatch table at `0x800A1050`; not a generic initializer |
 | `0x8004AB84` | Complete ice-projectile action root | Static-confirmed | Includes special lock behavior |
 | `0x8004B82C` | Ice-projectile flight callback | Static-confirmed | Supersedes old player-action interpretation |
-| `0x8004CBC4` | Projectile child-process bridge | Static-confirmed | Allocates a child controller/process through `0x8002830C` with projectile class/tag `0x700`, copies parent/opponent context, binds the staged secondary actor from parent `+0x714` to child actor `+0x6E0`, then clears staging state |
-| `0x8004CC14` | Projectile setup helper | Static-confirmed | Writes projectile actor `+0x14`; not player propulsion |
+| `0x8004CBC4` | Projectile child-process bridge | Static-confirmed | Allocates a child through `0x8002830C` with class/tag `0x700`, copies parent/opponent context, binds parent `+0x714` to child actor `+0x6E0`, tags that actor `0x700`, and clears parent `+0x648`; parent `+0x714` is not cleared here |
+| `0x8004CC14` | Projectile velocity/animation-rate setup helper | Static-confirmed | Writes facing-aware projectile actor `+0x14`, then calls `0x80031724` with the supplied rate; suitable as a setup primitive, not player propulsion and not yet established as the generic per-tick acceleration primitive |
 | `0x8004CC50` | Generic projectile flight/collision loop | Static-confirmed | Runs projectile collision/lifetime checks with a supplied strike selector; routes strike resolution through `0x8004CE6C/0x8004CF3C` and reaches target-native teardown on terminal paths |
 | `0x8004CE6C` | Projectile strike-record resolver | Static-confirmed | Uses projectile fighter type plus supplied selector to resolve the target fighter strike table before dispatch |
 | `0x8005BFB0` | Gameplay HUD function | Static/runtime-confirmed | Contains 13 submit calls |
