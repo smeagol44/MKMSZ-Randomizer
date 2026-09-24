@@ -9,7 +9,7 @@ from mkmszr.patches.runtime_v2 import (
 )
 
 
-def test_runtime_v2_repartitions_only_existing_reserved_kib() -> None:
+def test_runtime_v2_keeps_existing_first_kib_layout() -> None:
     assert CODE_CACHED_BASE == 0x801AF420
     assert CODE_SIZE == 0x3B0
     assert STATE_CACHED_BASE == 0x801AF7D0
