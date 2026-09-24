@@ -1,9 +1,9 @@
 """Production runtime layout V2.
 
-V2 preserves the runtime-confirmed 1 KiB MKMSZR reservation. The first
-0x3B0 bytes are reloadable native payload space and the final 0x50 bytes are
-persistent state. The expanded code tail hosts the runtime-confirmed optional
-rainbow helper while retaining the same 1 KiB reservation.
+V2 preserves its runtime-confirmed first-1-KiB layout inside the larger
+16 KiB MKMSZR reservation. The first 0x3B0 bytes are reloadable native payload
+space and the next 0x50 bytes are persistent state. Bytes after 0x801AF820 are
+owned by the separate expansion pool and are not implicitly part of Runtime V2.
 """
 
 from __future__ import annotations
