@@ -118,10 +118,24 @@ setting row:
     label pointer
     state bit / enum descriptor
     value-string table
+    availability predicate
     optional on-change callback
 ```
 
-A common menu loop can then own row navigation, left/right mutation, rendering, highlight style, sound, and exit. The first row is the direction-facing feature and should be presented as **`TURN: TOGGLE / LOCK`**. `TOGGLE` means the stock control model: Turn performs the normal standing/crouched turn action and the v10 facing-lock policy is bypassed. `LOCK` means the v10 model: Left/Right follows world direction with immediate facing correction, while held Turn locks facing and uses vanilla backward movement. Releasing Turn while holding direction immediately returns to auto-facing/forward locomotion. The same setting must gate all v10 behavior changes together: opposite-direction auto-facing, active-backward release, and pre-dispatch suppression of player Turn states 23/24. Semantic Turn/Combine bit `0x0001` remains untouched in both modes.
+A common menu loop can then own row navigation, left/right mutation, rendering, highlight/disabled style, sound, exit, and per-row **availability**.
+
+The accepted initial GAME SETTINGS model is:
+
+| Setting | Values | Availability |
+|---|---|---|
+| `TURN` | `TOGGLE` / `LOCK` | Always |
+| `COMBOS` | `CLASSIC` / `ASSIST` | Always |
+| `SPECIALS` | `CLASSIC` / `MODERN` | Always |
+| `JUMP` | `DPAD` / `BUTTON` | Always displayed; editable/selectable only when `COMBOS != CLASSIC` **or** `SPECIALS != CLASSIC` |
+
+`TURN: TOGGLE` means the stock control model: Turn performs the normal standing/crouched turn action and the v10 facing-lock policy is bypassed. `TURN: LOCK` means the v10 model: Left/Right follows world direction with immediate facing correction, while held Turn locks facing and uses vanilla backward movement. Releasing Turn while holding direction immediately returns to auto-facing/forward locomotion. The same TURN setting must gate all v10 behavior changes together: opposite-direction auto-facing, active-backward release, and pre-dispatch suppression of player Turn states 23/24. Semantic Turn/Combine bit `0x0001` remains untouched in both modes.
+
+`COMBOS: CLASSIC / ASSIST`, `SPECIALS: CLASSIC / MODERN`, and `JUMP: DPAD / BUTTON` are accepted menu/product semantics, but their gameplay implementations are **Pending** and must not be inferred from these labels alone. JUMP is an **availability dependency, not a visibility dependency**: the row remains on screen at all times, but when both COMBOS and SPECIALS are CLASSIC it is disabled/non-editable. It becomes available as soon as either alternate control system is enabled. Prefer a stock frontend disabled-option mechanism if one is confirmed by static tracing; otherwise reproduce the smallest equivalent native-looking disabled state.
 
 The settings state should be a versioned MKMSZR bitfield, not individual ad-hoc globals. The first bit can represent the direction-facing preference and later bits/enums can be added without redesigning the menu. The preferred owner is the existing final Runtime V2 word `0x801AF81C..0x801AF81F`, promoted explicitly from **reserved** to a named `settings_flags` word when implementation begins. Runtime V2 initialization validates `MKSV`/version/size and returns without clearing a valid state block; only invalid/uninitialized state is zeroed. That makes this word suitable for title -> gameplay -> stage-transition/session persistence without inventing another lifecycle domain. The setting convention should preserve a deliberate default (for example, zero meaning the accepted modern-control default and one bit requesting classic controls) rather than depending accidentally on zero-initialization.
 
@@ -134,11 +148,13 @@ Do **not** extend the top-level OPTIONS row count. Redirect the existing GAME SE
 The bounded proof should:
 
 1. reuse the native GAME SETTINGS visual/input loop shape and stock frontend text renderer;
-2. keep the submenu title/context as `GAME SETTINGS` and show one configurable row, `TURN`, with values `TOGGLE` / `LOCK`, plus `EXIT`;
-3. store the toggle in one explicitly named proof state word/byte whose title-stage lifecycle is independently marked/checked;
+2. keep the submenu title/context as `GAME SETTINGS`; for the **smallest first proof**, expose only `TURN: TOGGLE / LOCK` plus `EXIT`, while using a descriptor shape that already supports the accepted COMBOS/SPECIALS/JUMP rows above;
+3. store the TURN value in one explicitly named proof state word/byte whose title-stage lifecycle is independently marked/checked;
 4. gate the v10 control-facing helpers on that state;
-5. manually test `ON -> gameplay`, `OFF -> gameplay`, return to title, and re-enter the page;
+5. manually test `TOGGLE -> gameplay`, `LOCK -> gameplay`, return to title, and re-enter the page;
 6. leave Inventory Combine on semantic Turn/Combine `0x0001` and verify it once in each mode.
+
+After TURN is stable, the next UI-only proof should add COMBOS/SPECIALS/JUMP descriptors and validate JUMP's disabled/enabled presentation, focus, and left/right edit behavior across all four COMBOS/SPECIALS combinations before those control modes themselves are implemented.
 
 After that succeeds, production should keep the existing OPTIONS topology and the displayed `GAME SETTINGS` label, while permanently replacing only handler index 4's submenu implementation. There is then no need to relocate or enlarge the top-level dispatch table, no need to change the selector maximum, and no need to move `EXIT`.
 
