@@ -18,10 +18,10 @@ from ..allocations import ExpansionPoolAllocator
 from ..data.addresses import (
     FILE_TABLE_ENTRY_SIZE,
     FILE_TABLE_ROM,
+    PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED,
+    PICKUP_MANAGER_CAPTURE_HOOK_ROM,
     RAW_FILE_LOADER_VA,
-    RUNTIME_V2_CODE_START,
 )
-from ..errors import PatchError
 from ..mips import (
     Emitter,
     addiu,
@@ -30,10 +30,11 @@ from ..mips import (
     jal,
     jalr,
     jr,
+    jump,
+    lhu,
     lui,
     lw,
     ori,
-    sh,
     sw,
     words_blob,
 )
@@ -46,7 +47,7 @@ from .pickup_persistence import (
     CAPTURE_HELPER_VA,
     DESCRIPTOR_TABLE_ROM,
 )
-from .runtime_v2 import CODE_UNCACHED_BASE, LOADER_STUB
+from .runtime_v2 import CODE_UNCACHED_BASE
 
 NOP = 0
 
@@ -357,9 +358,6 @@ class ControlFacingExpansionProofPatch:
         rom.expect_bytes(bootstrap_patch_rom, runtime_entry_words)
 
         # Current production capture hook and untouched control seams.
-        from .pickup_persistence import PICKUP_MANAGER_CAPTURE_HOOK_ROM
-        from ..data.addresses import PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED
-
         rom.expect_u32(PICKUP_MANAGER_CAPTURE_HOOK_ROM, jal(CAPTURE_HELPER_VA))
         rom.expect_u32(
             PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4,
@@ -405,8 +403,6 @@ class ControlFacingExpansionProofPatch:
 
         # Standalone gameplay Turn becomes a modifier-only action for the player.
         # Use J rather than JAL so the caller's RA survives function entry.
-        from ..mips import jump
-
         rom.write_u32(TURN_HOOK_ROM, jump(TURN_TRAMPOLINE_VA))
         rom.write_u32(TURN_HOOK_ROM + 4, NOP)
 
