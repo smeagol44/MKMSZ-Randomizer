@@ -882,3 +882,16 @@ Before another ROM:
 4. only then replace v42's temporary Block+Use trigger with the bounded gameplay trigger.
 
 v42 remains the accepted visual/audio/presentation baseline while this trigger mapping is resolved. Dedicated production audio routing is still a separate Pending integration item because v42 continues to use the disposable v03 pickup-audio host.
+
+#### MKMSZ target-side trigger trace status
+
+**Static-confirmed host facts; exact qualifying reaction mapping Pending.**
+
+The target-side investigation completed before this handoff establishes only the following safe facts:
+
+- MKMSZ's primary player animation table uses slot `0x0B` for Uppercut. This is useful semantic identity, but animation state alone is not a valid final Toasty trigger because the donor source also comments on multiple combo-ending reaction paths.
+- Native fighter strikes dispatch through `0x8004CF3C`, which resolves the fighter-local strike resource and reaches shared collision/damage/reaction core `0x8002BA04`.
+- `0x8002BA04` is a broad shared combat seam and must **not** be hooked generically for Toasty; doing so would observe many unrelated attacks/reactions.
+- The exact stock MKMSZ uppercut action routine -> strike selector -> successful-contact/reaction result chain has **not yet been isolated**. Likewise, the target reaction records corresponding to donor `r_uppercut` / combo-ending comment classes remain Pending.
+
+Therefore the next chat should begin with donor-retail reaction reconciliation, then map those reaction semantics to MKMSZ. It should not resume the abandoned uppercut-only plan or guess from animation slot `0x0B` alone.
