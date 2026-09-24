@@ -2,7 +2,7 @@ from mkmszr.data.addresses import (
     PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED,
     PICKUP_MANAGER_CAPTURE_HOOK_ROM,
 )
-from mkmszr.mips import address_words, jal, jump, words_blob
+from mkmszr.mips import address_words, jal, jr, jump, words_blob
 from mkmszr.patches.base import PatchContext
 from mkmszr.patches.control_facing_proof import (
     BOOTSTRAP_RUNTIME_ENTRY_WORDS_OFFSET,
@@ -20,7 +20,6 @@ from mkmszr.patches.control_facing_proof import (
     EXPANSION_FILE_ID,
     EXPANSION_LOADER_VA,
     EXPANSION_MODULE_ROM,
-    PLAYER_CONTROLLER_PTR_VA,
     RELEASE_EXPECTED,
     RELEASE_HOOK_ROM,
     RELEASE_TRAMPOLINE_VA,
@@ -31,6 +30,7 @@ from mkmszr.patches.control_facing_proof import (
     TURN_HOOK_ROM,
     TURN_TRAMPOLINE_VA,
     ControlFacingExpansionProofPatch,
+    build_turn_gate_helper,
 )
 from mkmszr.patches.native_payload import kseg1_alias
 from mkmszr.patches.pickup_persistence import CAPTURE_HELPER, CAPTURE_HELPER_VA
@@ -77,8 +77,8 @@ def test_current_controller_global_uses_signed_immediate_address() -> None:
     assert CURRENT_CONTROLLER_PTR_VA == 0x802ECE20
 
 
-def test_player_controller_anchor_matches_stock_constructor_global() -> None:
-    assert PLAYER_CONTROLLER_PTR_VA == 0x802C1AC0
+def test_v04_turn_gate_is_unconditional_return() -> None:
+    assert build_turn_gate_helper() == words_blob([jr("ra"), 0])
 
 
 def test_control_module_uses_first_bounded_expansion_slice() -> None:
