@@ -51,6 +51,8 @@ Keep an entry here when the negative result establishes a safety constraint, rul
 | Toasty visual v07 post-load helper instrumentation | Reproduced the Mission Objective + music hang with the stock loader call restored | Helper-based load instrumentation on that route is rejected; it does not prove loader success/failure | [Toasty visual research](Toasty-Visual-Research) |
 | Toasty visual v11 independent fixed-slot `0x17` allocation through a second `0x8001BF70` call | Noisy/multicolored clone instead of the known-good control | Reject that fixed-slot allocation recipe; later diagnostics must isolate slot identity without assuming it | [Toasty visual research](Toasty-Visual-Research) |
 | Toasty visual v24 secondary-rectangle normalization | Fire/Earth reproduced the exact same edge corruption as v23 | The remaining stage variance is not caused by inherited node coordinates at `+0x28/+0x2A/+0x38/+0x3A`; keep the v23 image/stride path and test slot/lifecycle identity separately | [Toasty visual research](Toasty-Visual-Research) |
+| Treat retail `0x80039BF4` / `randper(0x28)` as the reaction-driven Toasty probability | Superseded static interpretation | That 4% branch is a separate Toasty-capable path. Supplied Rev. 2 `FX_COMMENT` entry `0x0E -> 0x8002D810` uses `0x40` normally and `0xA0` on MK2 Pit Star: 6.4% / 16% per thousand. | [Toasty visual research](Toasty-Visual-Research) |
+
 
 The earlier blanket statement that textured-image rendering was unproven is superseded: later Toasty work confirms the image/texture path at its documented bounded scope. The rejected entries above remain useful only for the diagnostic paths they rule out.
 
