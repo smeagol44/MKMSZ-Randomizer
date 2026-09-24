@@ -2070,7 +2070,21 @@ The movement proof uses the donor-retail normal branch:
 
 **Runtime-confirmed acceleration behavior / calibration Pending.** The user reports that the missile definitely accelerates, never hangs, and retains the successful v72 placement. The exact perceived start speed, acceleration rate, and cap are not yet confirmed as donor-faithful in target physical units; the user notes that the inherited Ice sound/tint, missing rocket smoke trail, and MKMSZ camera tracking make visual speed judgment difficult.
 
-Durable conclusion: direct per-tick mutation of projectile actor `+0x14` is a viable stable host seam for translated acceleration at v73 scope. The next static gate is **velocity-unit calibration**: prove how MKMSZ integrates actor `+0x14` into position per tick and compare that unit contract with MKT before treating donor numeric velocity constants as portable.
+Durable conclusion: direct per-tick mutation of projectile actor `+0x14` is a viable stable host seam for translated acceleration at v73 scope.
+
+#### Post-v73 velocity calibration
+
+The requested static calibration closes the main numeric ambiguity:
+
+- MKT uses 16.16 `oxpos/oxvel` and directly performs `oxpos += oxvel` each nominal 60 Hz loop.
+- MKMSZ `0x80017F80` reads projectile `+0x14`, shifts it `>>8`, rotates the local velocity, then adds **three times** the transformed integer into fixed8 world position.
+- MKMSZ ordinary movement/render cadence is approximately 30 Hz, consistent with its main-loop retrace gate and independent frame-step observations.
+
+Under the v72 local-unit mapping, a constant donor velocity therefore maps to approximately `2/3` of the donor numeric field on MKMSZ. The steady-state straight-rocket equivalents are `0x33333 -> 0x22222`, `0x59999 -> ~0x3BBBB`, and `0xB3333 -> 0x77777`.
+
+However, v73 also applies the donor `+1/16` recurrence only once per 30 Hz target callback, whereas donor MKT applies it once per 60 Hz tick. Thus v73 combines an over-large raw host velocity field with a too-slow temporal acceleration recurrence. This reconciles the runtime report that acceleration is obvious but the overall motion still does not confidently feel donor-correct.
+
+The faithful next proof should not merely replace the three constants. It should preserve donor-space velocity state and pair two donor 60 Hz motion intervals into one MKMSZ 30 Hz interval. For normal launch `d0=0x33333`, `d1=0x36666`, the first host interval is approximately `(d0+d1)/3 = 0x23333`; later callbacks advance two donor recurrence steps, use the pair displacement divided by three as host `+0x14`, and retain the later donor state. This **Static-derived resampler remains runtime Pending**.
 
 
 
