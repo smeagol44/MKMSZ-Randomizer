@@ -12,6 +12,7 @@ from mkmszr.patches.control_facing_proof import (
     CONTROL_MODULE,
     CONTROL_MODULE_CACHED_BASE,
     CONTROL_MODULE_UNCACHED_BASE,
+    CURRENT_CONTROLLER_PTR_VA,
     DECISION_EXPECTED,
     DECISION_HOOK_ROM,
     DECISION_TRAMPOLINE_VA,
@@ -66,6 +67,13 @@ def _production_shape() -> RomImage:
         b"\xFF" * len(CONTROL_MODULE)
     )
     return RomImage(data=data, _original=bytes(data))
+
+
+def test_current_controller_global_uses_signed_immediate_address() -> None:
+    # LUI 0x802F + signed low immediate 0xCE20 addresses 0x802ECE20.
+    # 0x802FCE20 was the rejected interpretation that caused proof v01 to hang
+    # immediately on the first opposite-direction flip path.
+    assert CURRENT_CONTROLLER_PTR_VA == 0x802ECE20
 
 
 def test_control_module_uses_first_bounded_expansion_slice() -> None:
