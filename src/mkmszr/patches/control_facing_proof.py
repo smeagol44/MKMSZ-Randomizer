@@ -64,7 +64,7 @@ PLAYER_SEMANTIC_INPUT_VA = 0x800BF2EE
 TURN_MASK = 0x0001
 
 # Current controller/process global.
-CURRENT_CONTROLLER_PTR_VA = 0x802FCE20
+CURRENT_CONTROLLER_PTR_VA = 0x802ECE20
 
 # Host helpers established by the control trace.
 FACE_POLICY_SCANNER_VA = 0x8004A6E8
