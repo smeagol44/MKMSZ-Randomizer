@@ -114,9 +114,10 @@ For the first modern-facing proof, the safe static rule is: defer completely to 
 The first expansion-loaded control proof uses a proof-only file-`0x1A` module in the 15 KiB expansion pool and enters freshly loaded code only through uncached KSEG1 trampolines.
 
 - **v01 — Rejected / failed.** Pressing the first opposite horizontal direction immediately hard-hung. The proof used current-controller global `0x802FCE20`, repeating the already-rejected unsigned-low-immediate interpretation. The actual address is `0x802ECE20`: `lui 0x802F` paired with signed low immediate `0xCE20` subtracts `0x31E0`.
-- **v02 — Runtime-confirmed on the tested route.** Changing only that global to `0x802ECE20` made the control behavior work as intended: opposite horizontal input flips Sub-Zero and proceeds through stock forward locomotion; holding Turn preserves vanilla backward walking / facing lock. The user reported the corrected behavior worked perfectly and matched the requested control model.
+- **v02 — Partially Runtime-confirmed.** Changing only that global to `0x802ECE20` fixed the opposite-direction hang. Opposite horizontal input flips Sub-Zero and proceeds through stock forward locomotion, and holding Turn after the initial stock turn preserves vanilla backward walking / facing lock. Follow-up testing exposed one remaining defect: pressing Turn still executes the stock standalone turn once before acting as the facing-lock modifier.
+- **v03 — Pending runtime.** Static follow-up shows why the v02 gate missed: `0x8003D86C` executes under an action process, so current-process `+0x638` is not a reliable player-identity check there. Stock player construction stores the persistent player controller at `0x802C1AC0` (ROM `0x2F950`), and that controller's `+0x6E0` actor is the appropriate identity anchor. v03 gates the standalone Turn by comparing the current action actor against that persistent player actor while leaving the already-proven locomotion hooks untouched.
 
-v02 establishes the control seam and expansion-module execution on that bounded route. It does **not** promote the feature into the browser/CLI production pipeline, establish every action/lifecycle state, or establish a special rule for the Earth boss.
+v02 therefore establishes the direction-facing/backpedal locomotion seam and expansion-module execution, but not complete modifier semantics. v03 must Runtime-confirm that Turn no longer performs its standalone flip while inventory Combine and the already-working locomotion behavior remain intact.
 
 ## Host action primitives
 
