@@ -59,7 +59,9 @@ The stock facing-flip primitive is `0x8003188C(actor)`. It toggles only actor `+
 
 ### Turn / facing-lock design seam
 
-Semantic Turn is bit `0x0001`. Inventory code separately consumes that same semantic bit, so a modern-control implementation must **not** globally clear or remap Turn; inventory Combine behavior must remain context-local and stock.
+Semantic Turn/Combine is bit `0x0001`. The player controller is wired to the remapping-aware semantic input word `0x800BF2EE` through controller `+0x638` during player construction. Inventory code at `0x8007764C` separately reads that same semantic word and masks `0x0001` for Combine, so a modern-control implementation must **not** globally clear or remap Turn; inventory Combine behavior must remain context-local and stock.
+
+The stock gameplay turn-action routine at `0x8003D86C` selects primary animation slot `0x03`, the canonical `turn` animation, and runs the native turn-action sequence. Because the routine operates through the current controller rather than being intrinsically player-only, a control-assist proof should suppress the standalone turn only when current controller `+0x638 == 0x800BF2EE`; this preserves non-player/native users while making held Turn available as the player-facing modifier.
 
 The accepted control-assist direction is gameplay-local:
 
@@ -79,11 +81,33 @@ This preserves the native backward-walk implementation as an intentional **Facin
 
 While a walk is already active, stock polls `controller+0x68C & semantic_input`. Releasing/changing the active direction exits through the normal stop/cleanup path and the next locomotion entry recomputes direction/facing. A first proof may therefore tolerate a one-tick re-entry on reversal, but release of Turn during an already-active backward walk needs an explicit check if the desired modifier semantics are to switch immediately back to auto-facing without requiring a direction repress.
 
+### Smallest proof contract
+
+A bounded proof can stay almost entirely inside stock locomotion semantics:
+
+```text
+after stock computes controller +0x704:
+    if +0x704 == 0:
+        leave stock forward path unchanged
+    else if Turn/Combine bit 0x0001 is held:
+        leave stock backward path unchanged
+    else if nearest opponent has +0x6BC & 0x0200:
+        leave stock forced-facing behavior unchanged
+    else:
+        0x8003188C(player_actor)
+        controller +0x704 = 0
+        resume stock forward/run selection
+```
+
+The same proof must player-gate the standalone `0x8003D86C` turn action so a held Turn press does not itself consume control before horizontal locomotion sees it. Inventory Combine is outside that gameplay action path and remains vanilla. Earth boss behavior is an explicit manual test item because the generic `0x0200` policy is not statically universal.
+
 ### Stock forced-facing exception
 
 Shared host routines use opponent-controller `+0x6BC bit 0x0200` as a gate for automatic `0x80031EF0` face-opponent behavior. The stock fighter-characteristics table sets this bit for several special/boss fighter types, including the documented Wind `0x08`, Water `0x0B`, Fire `0x0C`, and Fortress `0x1B/0x1D` encounters. This is a **face-policy flag**, not a proven universal "boss bit"; other special types also carry it.
 
-Earth type `0x19` is a separate exception: its stock characteristics-table word does not carry `0x0200`, but Earth overlay logic calls `0x80031EF0` directly during the boss behavior. A modern-facing proof should therefore defer to stock facing whenever the nearest opponent carries the shared `0x0200` policy and also preserve the explicit Earth-boss route rather than fighting it.
+Earth type `0x19` is a separate unresolved exception. Its stock characteristics-table word is zero, and the Earth custom boss constructor at overlay VA `0x802EDF50` (Earth overlay file `0x9C`) bypasses the generic fighter-characteristics initialization: it manually installs type `0x19` at actor `+0x78`. A direct audit of the Earth overlay finds neither a `+0x6BC` write nor a direct call to `0x80031EF0` in that boss constructor/overlay. Therefore `+0x6BC & 0x0200` is **not yet proven to detect the Earth boss**, and it must not be documented or implemented as a universal boss bit.
+
+For the first modern-facing proof, the safe static rule is: defer completely to stock when the nearest opponent carries `+0x6BC & 0x0200`; test Earth separately. If Earth runtime behavior still auto-faces as expected, capture that route and trace its distinct mechanism before production integration instead of hard-coding a stage ID.
 
 This trace establishes the host seam only. No modern-facing patch is production-integrated or runtime-confirmed yet.
 
