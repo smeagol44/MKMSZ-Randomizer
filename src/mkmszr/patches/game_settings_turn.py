@@ -42,7 +42,6 @@ from ..mips import (
     srl,
     sw,
     words_blob,
-    xori,
 )
 from ..rom import RomImage
 from .base import PatchContext
@@ -388,23 +387,18 @@ def build_menu_wrapper() -> bytes:
         NOP,
     )
 
-    # The durable state bit is unchanged while GAME SETTINGS runs.  Compare the
-    # edited 0/1 value with the current bit and toggle only when the user changed
-    # it.  This preserves active-box/latch and every unrelated state bit.
+    # The four-box state word currently defines only low-halfword state bits:
+    # active box, latch, and TURN.  Replace only TURN inside that owned low
+    # halfword; no high-halfword owner exists in the current layout.
     emitter.emit(
         *address_words("t0", STATE_VA),
         lw("t2", 0, "t0"),
-        andi("t3", "t2", TURN_LOCK_STATE_MASK),
-        srl("t3", "t3", 9),
-        *address_words("t4", SETTINGS_UNCACHED_VA),
-        lhu("t1", 0, "t4"),
-    )
-    emitter.beq("t1", "t3", "done")
-    emitter.emit(NOP)
-    emitter.emit(xori("t2", "t2", TURN_LOCK_STATE_MASK), sw("t2", 0, "t0"))
-
-    emitter.label("done")
-    emitter.emit(
+        andi("t2", "t2", (~TURN_LOCK_STATE_MASK) & 0xFFFF),
+        *address_words("t3", SETTINGS_UNCACHED_VA),
+        lhu("t1", 0, "t3"),
+        sll("t1", "t1", 9),
+        or_("t2", "t2", "t1"),
+        sw("t2", 0, "t0"),
         lw("ra", 0x10, "sp"),
         addiu("sp", "sp", 0x18),
         jr("ra"),
