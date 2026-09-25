@@ -28,6 +28,7 @@ from ..mips import (
     Emitter,
     addiu,
     address_words,
+    addu,
     andi,
     jal,
     jalr,
@@ -47,7 +48,11 @@ from ..mips import (
 )
 from ..rom import RomImage
 from .base import PatchContext
-from .inventory_boxes import STATE_VA, TURN_LOCK_STATE_MASK
+from .inventory_boxes import (
+    COMBOS_ASSIST_STATE_MASK,
+    STATE_VA,
+    TURN_LOCK_STATE_MASK,
+)
 from .native_payload import kseg1_alias
 from .pickup_persistence import (
     CAPTURE_HELPER,
@@ -95,6 +100,23 @@ ACTION_EXPECTED = bytes.fromhex("A62406DC 3C058003")
 
 GAME_SETTINGS_VA = 0x800766BC
 GAME_SETTINGS_CALL_ROM = 0x000770B8
+
+# The accepted COMBOS UI/state proof reuses stock row 1.  Stock row 2 remains
+# visually hidden and its now-dead edit blocks become frontend-resident
+# navigation helpers so selection moves 0 -> 1 -> 3 (EXIT) and back.
+COMBOS_RIGHT_ROM = 0x00077524
+COMBOS_RIGHT_END_ROM = 0x00077584
+NAV_DOWN_HELPER_ROM = 0x00077584
+NAV_DOWN_HELPER_VA = 0x80076984
+NAV_DOWN_HELPER_END_ROM = 0x000775DC
+COMBOS_LEFT_ROM = 0x00077654
+COMBOS_LEFT_END_ROM = 0x0007767C
+NAV_UP_HELPER_ROM = 0x0007767C
+NAV_UP_HELPER_VA = 0x80076A7C
+NAV_UP_HELPER_END_ROM = 0x0007769C
+COMBOS_DRAW_ROM = 0x00077888
+COMBOS_DRAW_END_ROM = 0x000778CC
+GAME_TEXT_DRAW_VA = 0x8001CA88
 
 BOOTSTRAP_RUNTIME_ENTRY_WORDS_OFFSET = 0x34
 
@@ -474,17 +496,107 @@ ACTION_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["action"]
 MENU_WRAPPER_VA = STATIC_REGION_VA + STATIC_OFFSETS["menu"]
 
 
+
+def _pad_region(blob: bytes, size: int) -> bytes:
+    if len(blob) > size:
+        raise AssertionError("GAME SETTINGS helper exceeds reclaimed stock region")
+    return blob + bytes(size - len(blob))
+
+
+def build_nav_down_helper() -> bytes:
+    """Move TURN -> COMBOS -> EXIT while skipping hidden stock row 2."""
+
+    e = Emitter()
+    e.emit(addiu("v0", "zero", 1))
+    e.bne("s0", "v0", "increment")
+    e.emit(NOP)
+    e.emit(addiu("s0", "zero", 3), jr("ra"), NOP)
+    e.label("increment")
+    e.emit(addiu("s0", "s0", 1), jr("ra"), NOP)
+    return e.finish()
+
+
+def build_nav_up_helper() -> bytes:
+    """Move EXIT -> COMBOS -> TURN while skipping hidden stock row 2."""
+
+    e = Emitter()
+    e.emit(addiu("v0", "zero", 3))
+    e.bne("s0", "v0", "decrement")
+    e.emit(NOP)
+    e.emit(addiu("s0", "zero", 1), jr("ra"), NOP)
+    e.label("decrement")
+    e.emit(addiu("s0", "s0", -1), jr("ra"), NOP)
+    return e.finish()
+
+
+def build_combos_right_handler() -> bytes:
+    """CLASSIC -> ASSIST; repeated Right while ASSIST is a no-op."""
+
+    return words_blob(
+        [
+            lui("t0", 0x800A),
+            lw("t1", STATE_VA - 0x800A0000, "t0"),
+            ori("t1", "t1", COMBOS_ASSIST_STATE_MASK),
+            sw("t1", STATE_VA - 0x800A0000, "t0"),
+            jump(0x800769DC),
+            NOP,
+        ]
+    )
+
+
+def build_combos_left_handler() -> bytes:
+    """ASSIST -> CLASSIC; repeated Left while CLASSIC is a no-op."""
+
+    return words_blob(
+        [
+            lui("t0", 0x800A),
+            lw("t1", STATE_VA - 0x800A0000, "t0"),
+            andi("t1", "t1", (~COMBOS_ASSIST_STATE_MASK) & 0xFFFF),
+            sw("t1", STATE_VA - 0x800A0000, "t0"),
+            jump(0x80076A9C),
+            NOP,
+        ]
+    )
+
+
+def build_combos_value_draw() -> bytes:
+    """Draw CLASSIC/ASSIST using unused entries 2/3 of the stock value table."""
+
+    return words_blob(
+        [
+            lui("v0", 0x800A),
+            lw("v0", STATE_VA - 0x800A0000, "v0"),
+            andi("v0", "v0", COMBOS_ASSIST_STATE_MASK),
+            srl("v0", "v0", 10),
+            sll("v0", "v0", 2),
+            addu("v0", "v0", "s5"),
+            lw("a0", 16, "v0"),
+            addiu("a1", "zero", 160),
+            addiu("a2", "zero", 125),
+            addiu("a3", "zero", 1),
+            lui("t0", 0x800B),
+            addiu("t0", "t0", 0x2724),
+            sw("t0", 16, "sp"),
+            addiu("t0", "zero", 10),
+            sw("t0", 20, "sp"),
+            jal(GAME_TEXT_DRAW_VA),
+            sw("s1", 24, "sp"),
+        ]
+    )
+
+
 def _patch_game_settings(rom: RomImage) -> None:
     rom.expect_bytes(GAME_SETTINGS_CALL_ROM, bytes.fromhex("0C01D9AF 02402021"))
     rom.write_u32(GAME_SETTINGS_CALL_ROM, jal(MENU_WRAPPER_VA))
 
-    # Stock indices are settings 0/1/2 and EXIT 3.  Keep EXIT at 3 while
-    # skipping the now-hidden former Lives/Continues rows.
+    # Stock indices are settings 0/1/2 and EXIT 3.  TURN uses row 0 and COMBOS
+    # uses row 1.  Row 2 stays hidden, while small reclaimed stock-row helpers
+    # make vertical navigation 0 <-> 1 <-> 3 without an invisible stop.
     rom.expect_u32(0x00077400, 0x2A020003)
     rom.expect_u32(0x00077418, 0x26100001)
     rom.expect_u32(0x0007744C, 0x2610FFFF)
-    rom.write_u32(0x00077418, 0x26100003)
-    rom.write_u32(0x0007744C, 0x2610FFFD)
+    rom.write_u32(0x00077418, jal(NAV_DOWN_HELPER_VA))
+    rom.write_u32(0x0007744C, jal(NAV_UP_HELPER_VA))
 
     replacements = {
         0x000774B0: (0x3C02800A, 0x3C02A01B),
@@ -505,21 +617,86 @@ def _patch_game_settings(rom: RomImage) -> None:
         rom.expect_u32(offset, expected)
         rom.write_u32(offset, replacement)
 
+    rom.expect_bytes(
+        COMBOS_RIGHT_ROM,
+        bytes.fromhex(
+            "3c02800a84425fa82842000210400008000000003c02800a84425faa"
+            "2842000c10400025000000000801da5a000000003c02800a84425faa"
+            "284200061040001e000000003c02800a94425faa244200013c01800a"
+            "a4225faa0801da7700000000"
+        ),
+    )
+    rom.expect_bytes(
+        NAV_DOWN_HELPER_ROM,
+        bytes.fromhex(
+            "3c02800a84425fa82842000210400008000000003c02800a84425fac"
+            "284200081040000d000000000801da72000000003c02800a84425fac"
+            "2842000410400006000000003c02800a94425fac244200013c01800a"
+            "a4225fac"
+        ),
+    )
+    rom.expect_bytes(
+        COMBOS_LEFT_ROM,
+        bytes.fromhex(
+            "3c02800a84425faa00401821284200041440000d2462ffff3c01800a"
+            "a4225faa0801daa700000000"
+        ),
+    )
+    rom.expect_bytes(
+        NAV_UP_HELPER_ROM,
+        bytes.fromhex(
+            "3c02800a84425fac0040182128420002144000032462ffff3c01800a"
+            "a4225fac"
+        ),
+    )
+    rom.expect_bytes(
+        COMBOS_DRAW_ROM,
+        bytes.fromhex(
+            "3c06800a84c65faa3c05800b24a5eb300c023a2002a0202102a02021"
+            "240500a02406007d240700013c08800b25082724afa800102408000a"
+            "afa800140c0072a2afb10018"
+        ),
+    )
+
+    rom.write_bytes(
+        COMBOS_RIGHT_ROM,
+        _pad_region(build_combos_right_handler(), COMBOS_RIGHT_END_ROM - COMBOS_RIGHT_ROM),
+    )
+    rom.write_bytes(
+        NAV_DOWN_HELPER_ROM,
+        _pad_region(build_nav_down_helper(), NAV_DOWN_HELPER_END_ROM - NAV_DOWN_HELPER_ROM),
+    )
+    rom.write_bytes(
+        COMBOS_LEFT_ROM,
+        _pad_region(build_combos_left_handler(), COMBOS_LEFT_END_ROM - COMBOS_LEFT_ROM),
+    )
+    rom.write_bytes(
+        NAV_UP_HELPER_ROM,
+        _pad_region(build_nav_up_helper(), NAV_UP_HELPER_END_ROM - NAV_UP_HELPER_ROM),
+    )
+    rom.write_bytes(
+        COMBOS_DRAW_ROM,
+        _pad_region(build_combos_value_draw(), COMBOS_DRAW_END_ROM - COMBOS_DRAW_ROM),
+    )
+
     rom.expect_bytes(0x000AF6CC, b"VERY EASY\x00\x00\x00")
     rom.expect_bytes(0x000AF6D8, b"EASY\x00\x00\x00\x00")
+    rom.expect_bytes(0x000AF6E0, b"MEDIUM\x00\x00")
+    rom.expect_bytes(0x000AF6E8, b"HARD\x00\x00\x00\x00")
     rom.expect_bytes(0x000AF710, b"DIFFICULTY\x00\x00")
     rom.expect_bytes(0x000AF71C, b"LIVES\x00\x00\x00")
     rom.expect_bytes(0x000AF724, b"CONTINUES\x00\x00\x00")
     rom.write_bytes(0x000AF6CC, b"TOGGLE\x00" + bytes(5))
     rom.write_bytes(0x000AF6D8, b"LOCK\x00" + bytes(3))
+    rom.write_bytes(0x000AF6E0, b"CLASSIC\x00")
+    rom.write_bytes(0x000AF6E8, b"ASSIST\x00" + bytes(1))
     rom.write_bytes(0x000AF710, b"TURN\x00" + bytes(7))
-    rom.write_bytes(0x000AF71C, bytes(8))
+    rom.write_bytes(0x000AF71C, b"COMBOS\x00" + bytes(1))
     rom.write_bytes(0x000AF724, bytes(12))
 
-    # The former numeric Lives/Continues value draws are no longer used.
-    rom.expect_u32(0x000778C4, 0x0C0072A2)
+    # Row 1 is now drawn by the COMBOS text-value replacement above.  The
+    # hidden former Continues row remains blank and its numeric draw stays off.
     rom.expect_u32(0x00077908, 0x0C0072A2)
-    rom.write_u32(0x000778C4, NOP)
     rom.write_u32(0x00077908, NOP)
 
 
@@ -574,7 +751,8 @@ class GameSettingsTurnPatch:
         _patch_game_settings(rom)
 
         return (
-            "GAME SETTINGS exposes TURN: TOGGLE / LOCK; default is TOGGLE",
+            "GAME SETTINGS exposes TURN: TOGGLE / LOCK and UI-only COMBOS: CLASSIC / ASSIST",
+            "COMBOS defaults to CLASSIC and has no gameplay effect in this proof",
             (
                 f"TURN module ROM 0x{SHARED_EXPANSION_ROM:08X}.."
                 f"0x{module_end - 1:08X} -> RDRAM "
