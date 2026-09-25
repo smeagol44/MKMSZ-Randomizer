@@ -14,6 +14,9 @@ from mkmszr.patches.game_settings_turn import (
     STATIC_REGION_SIZE,
     TOASTY_RUNTIME_BASE,
     build_action_gate_helper,
+    build_combos_value_draw,
+    build_nav_down_helper,
+    build_nav_up_helper,
     build_release_helper,
 )
 from mkmszr.patches.inventory_boxes import (
@@ -69,4 +72,6 @@ def test_combos_ui_proof_uses_second_owned_settings_bit() -> None:
 def test_combos_menu_reuses_frontend_resident_stock_regions() -> None:
     assert NAV_DOWN_HELPER_VA == 0x80076984
     assert NAV_UP_HELPER_VA == 0x80076A7C
-    assert COMBOS_DRAW_END_ROM - COMBOS_DRAW_ROM == 0x44
+    assert len(build_nav_down_helper()) <= 0x58
+    assert len(build_nav_up_helper()) <= 0x20
+    assert len(build_combos_value_draw()) == COMBOS_DRAW_END_ROM - COMBOS_DRAW_ROM
