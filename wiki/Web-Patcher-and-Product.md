@@ -13,15 +13,15 @@ The web patcher is organized around an explicit **patch target**, not a list of 
 Current supported web target:
 
 - **Nintendo 64** — clean MKMSZ USA Rev. 0 big-endian `.z64` is the patch target.
-- **MKT N64 donor** — Mortal Kombat Trilogy (USA) Rev. 2 big-endian `.z64` is required by the web UI and is read locally to extract the Runtime-confirmed Toasty visual/audio assets. The donor itself is never patched.
+- **MKT N64 donor** — Mortal Kombat Trilogy (USA) Rev. 2 big-endian `.z64` is optional. When supplied, it is read locally as a donor source for supported donor-backed features; the donor itself is never patched.
 - **PlayStation** — shown only as a planned target. There is no PS1 file picker until a PS1 patch pipeline exists; future labels use **ISO**, not ROM.
 
-The default web workflow therefore asks for exactly two game files: the MKMSZ N64 target and the MKT N64 donor. Additional donors should appear only when an enabled feature genuinely requires them.
+The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor is presented as an optional second file and should remain optional unless a future user-selected feature explicitly requires it. Additional donors should appear only when an enabled feature genuinely needs them.
 
 - Clean USA Rev. 0 big-endian `.z64` target only.
 - A new output is produced; the CLI refuses in-place patching and existing-output overwrite.
 - Seed is trimmed; absent seed becomes a random 64-bit hex value.
-- CLI output reports applied modules, notes, CRC1/CRC2, and SHA-256. The browser completion panel reports seed, SHA-256, CRC1/CRC2, applied patches, and pickup mode, but intentionally omits the generated boot message and title edition so those remain in-game discoveries.
+- CLI output reports applied modules, notes, CRC1/CRC2, and SHA-256. The browser completion panel intentionally stays product-facing and reports only target, seed, SHA-256, and CRC1/CRC2 rather than enumerating internal patch modules or discovery-oriented features.
 - Pickup layout, progression-reward selection, boot phrase, and seeded palette use independent deterministic domains.
 
 ## Current configuration surface
@@ -39,7 +39,7 @@ The default web workflow therefore asks for exactly two game files: the MKMSZ N6
 
 Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.
 
-The shared patch core includes the Runtime-confirmed Toasty production module at **80/1000 (8%)**. The browser now derives `ToastyAssets` directly from the user-supplied MKT USA Rev. 2 N64 donor and passes them into that module. The repository and deployed site contain no donor art/audio bytes. The developer CLI exposes the same path through optional `--mkt-rom`; without that option it retains the prior no-Toasty developer behavior.
+The shared patch core includes donor-backed production features without embedding donor game data in the repository or deployed site. When the optional MKT USA Rev. 2 N64 donor is supplied, the browser derives the currently supported donor assets locally and passes them into the shared patch core. The developer CLI exposes the same optional path through `--mkt-rom`; without a donor, the normal MKMSZR build remains valid.
 
 ## Deployment
 
