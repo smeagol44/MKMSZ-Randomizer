@@ -51,7 +51,14 @@ from .pickup_persistence import (
     CAPTURE_HELPER_VA,
     DESCRIPTOR_TABLE_ROM,
 )
-from .runtime_v2 import CODE_UNCACHED_BASE, STATE_SIZE, STATE_UNCACHED_BASE
+from .runtime_v2 import (
+    CODE_UNCACHED_BASE,
+    STATE_SETTINGS_MARKER,
+    STATE_SETTINGS_OFFSET,
+    STATE_TURN_LOCK,
+    STATE_TURN_TOGGLE,
+    STATE_UNCACHED_BASE,
+)
 
 NOP = 0
 
@@ -68,10 +75,10 @@ TURN_MASK = 0x0001
 # Final word of Runtime V2 state.  Low halfword is settings flags/value space;
 # high halfword is a validity marker.  The common Runtime V2 initializer leaves
 # this word untouched when clearing an invalid run state.
-SETTINGS_UNCACHED_VA = STATE_UNCACHED_BASE + STATE_SIZE - 4
-SETTINGS_MARKER = 0x5452
-TURN_TOGGLE = 0
-TURN_LOCK = 1
+SETTINGS_UNCACHED_VA = STATE_UNCACHED_BASE + STATE_SETTINGS_OFFSET
+SETTINGS_MARKER = STATE_SETTINGS_MARKER
+TURN_TOGGLE = STATE_TURN_TOGGLE
+TURN_LOCK = STATE_TURN_LOCK
 
 FACE_POLICY_SCANNER_VA = 0x8004A6E8
 FACING_FLIP_VA = 0x8003188C
