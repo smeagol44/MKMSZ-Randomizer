@@ -456,7 +456,10 @@ def _pack_static_region() -> tuple[bytes, dict[str, int]]:
     blob = bytearray()
     offsets: dict[str, int] = {}
     for name, piece in pieces:
-        aligned = _align(len(blob))
+        # Static global-code entries only require instruction alignment.  Using
+        # 16-byte padding here needlessly consumed the last bytes needed by the
+        # frontend-resident menu wrapper.
+        aligned = _align(len(blob), 4)
         blob.extend(bytes(aligned - len(blob)))
         offsets[name] = aligned
         blob.extend(piece)
