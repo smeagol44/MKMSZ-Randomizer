@@ -519,13 +519,16 @@ def build_nav_down_helper() -> bytes:
 def build_nav_up_helper() -> bytes:
     """Move EXIT -> COMBOS -> TURN while skipping hidden stock row 2."""
 
+    # The delay-slot decrement handles COMBOS(1) -> TURN(0).  EXIT(3) does not
+    # take the branch and therefore executes one additional decrement: 3 -> 2
+    # in the delay slot, then 2 -> 1 before returning.
     e = Emitter()
     e.emit(addiu("v0", "zero", 3))
-    e.bne("s0", "v0", "decrement")
-    e.emit(NOP)
-    e.emit(addiu("s0", "zero", 1), jr("ra"), NOP)
-    e.label("decrement")
-    e.emit(addiu("s0", "s0", -1), jr("ra"), NOP)
+    e.bne("s0", "v0", "done")
+    e.emit(addiu("s0", "s0", -1))
+    e.emit(addiu("s0", "s0", -1))
+    e.label("done")
+    e.emit(jr("ra"), NOP)
     return e.finish()
 
 
