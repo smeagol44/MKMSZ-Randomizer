@@ -421,7 +421,7 @@ For exact proof ROM identities and the broader animation/gameplay chronology, se
 
 The current Sektor direction no longer needs a twelve-physical-pose Run. The accepted asset set is the six retail N64 MKT poses `RBRUN1,3,5,7,9,11`; the six WIMP-derived even poses are intentionally omitted.
 
-A later cadence audit supersedes the earlier “hold each pose twice” timing rule. Retail MKT advances Sektor Run at rate 6 on a 60-Hz scheduler (~100 ms/pose), while stock MKMSZ Run advances rate-2 script entries on the ~30-Hz gameplay scheduler (~66.7 ms/entry). The cadence-equivalent target setting is therefore **MKMSZ Run rate 3 with one visual entry per retained pose**. Exact timing/control details are owned by [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) and [MKT adapter primitives](MKT-Adapter-Primitives).
+A later cadence audit supersedes the earlier “hold each pose twice” timing rule. Retail MKT advances Sektor Run at rate 6 on a 60-Hz scheduler (~100 ms/pose), while stock MKMSZ Run advances rate-2 script entries on the ~30-Hz gameplay scheduler (~66.7 ms/entry). The cadence-equivalent target setting is therefore **MKMSZ Run rate 3 with one visual entry per retained pose**. This is now Runtime-confirmed in v03. v04 additionally Runtime-confirms that the live target Run script can end after the donor's sixth visual pose and loop immediately, rather than preserving a fixed 12-entry MKMSZ container. Exact timing/control details are owned by [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) and [MKT adapter primitives](MKT-Adapter-Primitives).
 
 Consequences for the converter/build pipeline:
 
@@ -430,6 +430,7 @@ Consequences for the converter/build pipeline:
 - remove the Run-only WIMP supplemental dependency when the physical six-pose repack is integrated;
 - retain the v55-v58 PS1/WIMP history as provenance only, not as current build requirements;
 - do not synthesize intermediate Run poses merely to fill MKMSZ's historical twelve visual positions;
+- generate Run scripts at the donor fighter's actual frame count; append target loop/control grammar after the final donor pose, with animation cadence translated separately;
 - keep all non-Run Sektor asset conversion behavior unchanged.
 
 The analyzed physical repack reduces file `0x87` from `0x4E3FC` to `0x4CD68`: **5,780 bytes (`0x1694`) saved**. Against the established v49 working bound, headroom increases from `0x148` to `0x17DC`. This repack is Implementation/static-confirmed; its asset-removal result remains valid independently of the later rate-3 cadence correction. A bounded runtime regression is still required before promoting it as the new common-animation baseline.
