@@ -4,6 +4,8 @@
 
 The browser frontend and developer CLI are configuration shells around `src/mkmszr/patcher.py`. The same `RandomizerConfig`, ROM validation, patch modules, output CRC update, deterministic seed behavior, and byte guards apply in both environments.
 
+The shared patch core now always installs the Runtime-confirmed native `GAME SETTINGS -> TURN: TOGGLE / LOCK` menu. This is intentionally an **in-game** preference, not a browser/CLI build option: generated ROMs default to stock `TOGGLE`, while players can opt into `LOCK` from the game's own frontend.
+
 The browser build compiles the Python package to a wheel and serves it with the static `web/` application. The user supplies the ROM locally; the repository and deployed site do not contain copyrighted ROM data.
 
 ## Inputs and output guarantees
