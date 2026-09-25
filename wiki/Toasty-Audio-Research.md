@@ -848,4 +848,4 @@ Waveform 533 carries the confirmed donor waveform-77 metadata/predictor/sample, 
 
 ### v47 production-composition audio gate
 
-**Implementation/static-confirmed; runtime Pending.** v47 layers the v46 dedicated route after the exact current production patch pipeline. The stock pickup chain remains a strict guarded negative control. The donor sample is stored after the packed Toasty expansion module in high ROM, outside current rainbow and title ownership. The integration build keeps the trigger at 500/1000 only to make manual composition validation fast; the selected product rate remains 80/1000 (8%).
+**Runtime-confirmed on 2026-09-25.** The user reported the full current production-composition v47 ROM works perfectly. The v46 dedicated route remains intact, ordinary pickup audio remains stock, and no regression was reported in the exercised production systems. v47 used 500/1000 only to make this composition gate fast to validate. The merged production module changes only that tuning to the selected **80/1000 (8%)**; the dedicated event/patch/subpatch/waveform route and donor audio bytes are otherwise unchanged.
