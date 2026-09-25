@@ -2,7 +2,11 @@ from mkmszr.config import OutfitConfig, RandomizerConfig
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
 from mkmszr.patches.toasty import ToastyProductionCompositionPatch
-from mkmszr.patches.toasty_codegen import _build_call_trampoline, _build_init_loader, pack_toasty_module
+from mkmszr.patches.toasty_codegen import (
+    _build_call_trampoline,
+    _build_init_loader,
+    pack_toasty_module,
+)
 from mkmszr.patches.toasty_constants import (
     DEFAULT_PROBABILITY_PER_THOUSAND,
     MODULE_K0,
