@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..data.addresses import EXPANSION_POOL_START, FILE_TABLE_ENTRY_SIZE, FILE_TABLE_ROM
-from .box_indicator import BOX_REGION, BOX_REGION_END, BOX_REGION_ROM
+from .box_indicator import BOX_REGION_END
 from .inventory_boxes import SELECTOR_CAVE_BLOB, SELECTOR_CAVE_ROM, SELECTOR_CAVE_SIZE
 
 # Runtime/presentation contract proven by v42/v44/v46.
