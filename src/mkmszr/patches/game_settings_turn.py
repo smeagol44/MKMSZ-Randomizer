@@ -119,7 +119,7 @@ COMBOS_DRAW_END_ROM = 0x000778CC
 SPECIALS_DRAW_ROM = 0x000778CC
 SPECIALS_DRAW_END_ROM = 0x00077910
 JUMP_DRAW_HOOK_ROM = 0x00077910
-JUMP_DRAW_HOOK_EXPECTED = bytes.fromhex("24080002 AFD006F4")
+JUMP_DRAW_HOOK_EXPECTED = bytes.fromhex("24080002 AFD006F4 AFC806F8")
 
 GAME_TEXT_DRAW_VA = 0x8001CA88
 VALUE_STYLE_VA = 0x800B2724
@@ -921,6 +921,10 @@ def _patch_game_settings(rom: RomImage) -> None:
     rom.expect_bytes(JUMP_DRAW_HOOK_ROM, JUMP_DRAW_HOOK_EXPECTED)
     rom.write_u32(JUMP_DRAW_HOOK_ROM, jal(JUMP_DRAW_HELPER_VA))
     rom.write_u32(JUMP_DRAW_HOOK_ROM + 4, NOP)
+    # v03 left the third displaced stock store live.  It rewrote process +0x6F8
+    # after our helper returned, forcing cursor type 1 and producing the exact
+    # stock Y sequence 50/95/150/210 seen in runtime screenshots.
+    rom.write_u32(JUMP_DRAW_HOOK_ROM + 8, NOP)
 
     # Repack the five stock difficulty strings and their pointer table into the
     # four binary value pairs needed by MKMSZR.
