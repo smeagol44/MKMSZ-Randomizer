@@ -13,8 +13,6 @@ const resultPanel = document.querySelector("#result");
 const resultSeed = document.querySelector("#resultSeed");
 const outputSha = document.querySelector("#outputSha");
 const outputCrc = document.querySelector("#outputCrc");
-const patchList = document.querySelector("#patchList");
-const pickupMode = document.querySelector("#pickupMode");
 const downloadButton = document.querySelector("#downloadButton");
 const log = document.querySelector("#log");
 
@@ -101,10 +99,6 @@ async function patchRom() {
     setLog("Choose the clean MKMSZ N64 target ROM first.", true);
     return;
   }
-  if (!donorFile) {
-    setLog("Choose the Mortal Kombat Trilogy (USA) Rev. 2 N64 donor ROM.", true);
-    return;
-  }
 
   const mode = outfitMode.value;
   let editionValue = normalizeEditionName(editionName.value).trim().replace(/\s+/g, " ");
@@ -119,24 +113,26 @@ async function patchRom() {
 
   patchButton.disabled = true;
   patchButton.textContent = "Patching…";
-  setLog("Reading target and donor ROMs locally…");
+  setLog("Reading game files locally…");
 
   try {
-    const [targetBytes, donorBytes] = await Promise.all([
-      targetFile.arrayBuffer(),
-      donorFile.arrayBuffer(),
-    ]);
+    const targetBytes = await targetFile.arrayBuffer();
     pyodide.FS.writeFile("/tmp/input.z64", new Uint8Array(targetBytes));
-    pyodide.FS.writeFile("/tmp/mkt.z64", new Uint8Array(donorBytes));
+    try { pyodide.FS.unlink("/tmp/mkt.z64"); } catch (_) {}
+    if (donorFile) {
+      const donorBytes = await donorFile.arrayBuffer();
+      pyodide.FS.writeFile("/tmp/mkt.z64", new Uint8Array(donorBytes));
+    }
 
     try { pyodide.FS.unlink("/tmp/output.z64"); } catch (_) {}
 
+    pyodide.globals.set("web_has_mkt_donor", Boolean(donorFile));
     pyodide.globals.set("web_outfit_mode", mode);
     pyodide.globals.set("web_seed", seedValue);
     pyodide.globals.set("web_rgb", customColor.value);
     pyodide.globals.set("web_edition_name", editionValue);
 
-    setLog("Validating MKMSZ target and MKT donor, extracting Toasty assets, and applying patches…");
+    setLog("Validating game files and applying patches…");
 
     await pyodide.runPythonAsync(`
 from pathlib import Path
@@ -154,7 +150,11 @@ _config = RandomizerConfig(
     outfit=OutfitConfig(mode=_mode, rgb=_rgb if _mode == "rgb" else None),
     edition_name=_edition_name,
 )
-_toasty_assets = extract_toasty_assets(Path("/tmp/mkt.z64").read_bytes())
+_toasty_assets = (
+    extract_toasty_assets(Path("/tmp/mkt.z64").read_bytes())
+    if bool(web_has_mkt_donor)
+    else None
+)
 _result = patch_file(
     Path("/tmp/input.z64"),
     Path("/tmp/output.z64"),
@@ -166,14 +166,6 @@ web_patch_result = {
     "crc1": f"{_result.crc1:08X}",
     "crc2": f"{_result.crc2:08X}",
     "sha256": _result.output_sha256,
-    "patches": [patch.name for patch in _result.patches],
-    "pickup_mode": (
-        "Stage-local ordinary pickups (84) + 9 XP progression rewards"
-        if any(patch.name == "xp-progression" for patch in _result.patches)
-        else "Stage-local ordinary pickups (84)"
-        if any(patch.name == "pickup-randomization" for patch in _result.patches)
-        else "Off"
-    ),
 }
 `);
 
@@ -187,13 +179,9 @@ web_patch_result = {
     resultSeed.textContent = metadata.seed;
     outputSha.textContent = metadata.sha256;
     outputCrc.textContent = `${metadata.crc1} / ${metadata.crc2}`;
-    patchList.textContent = metadata.patches.length ? metadata.patches.join(", ") : "CRC refresh only";
-    pickupMode.textContent = metadata.pickup_mode;
-
     resultPanel.hidden = false;
     setLog(
-      `Success. Patched ${(outputBytes.byteLength / 1024 / 1024).toFixed(1)} MiB locally. ` +
-      "The MKT donor was read only for donor assets; no ROM data was uploaded."
+      `Success. Patched ${(outputBytes.byteLength / 1024 / 1024).toFixed(1)} MiB locally; no ROM data was uploaded.`
     );
   } catch (error) {
     console.error(error);
