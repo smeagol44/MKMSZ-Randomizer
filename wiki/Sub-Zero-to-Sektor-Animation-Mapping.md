@@ -15,9 +15,9 @@
 
 ## Main conclusion
 
-**Static-confirmed:** the inherited primary animation layout is shared through the ordinary fighter core. MKMSZ table-0 slots `0x00..0x25` and MKT Sektor primary slots `0x00..0x25` carry the same generic fighter meanings. These are the strongest first direct graphical-replacement candidates.
+**Static-confirmed:** much of the inherited primary animation layout is shared through the ordinary fighter core, but numeric table position is **not** by itself a MKMSZ product requirement. Ordinary common states in the early table remain the strongest direct graphical-replacement candidates; later reachability tracing shows that MKMSZ repurposes some inherited positions for Mythologies-only control/special data.
 
-Do **not** infer the same for secondary tables. MKMSZ's 43-entry table 1 is Mythologies-specific, while the MKT robot family's 27-entry table 2 contains robot specials and family-shared entries. Secondary mapping must be semantic.
+Do **not** infer semantic equivalence for secondary tables or for inherited labels whose MKMSZ call sites disagree with the old Midway name. MKMSZ's 43-entry table 1 is Mythologies-specific, while the MKT robot family's 27-entry table 2 contains robot specials and family-shared entries. Secondary mapping must be semantic and reachability-driven.
 
 ## Direct core mapping
 
@@ -36,7 +36,7 @@ Do **not** infer the same for secondary tables. MKMSZ's 43-entry table 1 is Myth
 | `0x0A` | duck_low_kick | `+0x004C0` | `+0x00334` | **DIRECT candidate** |
 | `0x0B` | uppercut | `+0x0049C` | `+0x0037C` | **DIRECT candidate** |
 | `0x0C` | block | `+0x00624` | `+0x0050C` | **DIRECT candidate** |
-| `0x0D` | inherited `victory` label; no MKMSZ Victory requirement established | `+0x00D90` | `+0x01148` | **NOT A CURRENT IMPORT REQUIREMENT** |
+| `0x0D` | inherited `victory` label; MKMSZ selector path has no caller; `+0xD90` is reused by the stock Ice projectile loop | `+0x00D90` | `+0x01148` | **NOT A PLAYER-VICTORY IMPORT REQUIREMENT** |
 | `0x0E` | high_punch | `+0x00504` | `+0x003A0` | **DIRECT candidate** |
 | `0x0F` | low_punch | `+0x00574` | `+0x00410` | **DIRECT candidate** |
 | `0x10` | elbow/combo | `+0x005E0` | `+0x0047C` | **DIRECT candidate** |
@@ -59,13 +59,13 @@ Do **not** infer the same for secondary tables. MKMSZ's 43-entry table 1 is Myth
 | `0x21` | getup | `+0x00898` | `+0x0082C` | **DIRECT candidate** |
 | `0x22` | sweep_getup | `+0x008D8` | `+0x01124` | **DIRECT candidate** |
 | `0x23` | throw | `+0x008F8` | `+0x01180` | **DIRECT candidate** |
-| `0x24` | zap/projectile_generic | `+0x00DA0` | `+0x001D4` | **DIRECT candidate** |
-| `0x25` | dizzy | `+0x0084C` | `+0x00778` | **DIRECT candidate** |
+| `0x24` | inherited zap/projectile slot; live MKMSZ Ice-family player-special script | `+0x00DA0` | `+0x001D4` | **HOST-SPECIAL / EXTENSION** |
+| `0x25` | inherited dizzy label; no current Sub-Zero/player caller established | `+0x0084C` | `+0x00778` | **NO CURRENT IMPORT REQUIREMENT** |
 
 
 The detailed runtime progression that originally followed this table has moved to [Sektor takeover proof history](Sektor-Takeover-Proof-History). The table below remains a semantic slot reference; its `DIRECT candidate` labels describe inherited layout compatibility, not an assertion that every row has been individually runtime-tested.
 
-**Reachability rule:** inherited Midway slot names are not requirements by themselves. In particular, primary `0x0D` carries the inherited `victory` label, but MKMSZ has no established Victory animation/pose requirement. Do not spend importer/storage budget on an inherited donor state unless MKMSZ has a demonstrated live call site or product requirement for it.
+**Reachability rule:** inherited Midway slot names are not requirements by themselves. Primary `0x0D` is the clearest example: its inherited name is `victory`, but no static caller was found for the MKMSZ selector routine that requests `0x0D`. The underlying `+0xD90` script is nevertheless physically live through the stock Ice projectile child, so "not a player Victory requirement" does **not** mean "free storage." Importer semantics and physical-script liveness must be audited separately.
 
 ## MKMSZ Sub-Zero primary table — all 65 slots
 
@@ -328,11 +328,69 @@ Physical relocation is still allowed when donor data does not fit in the origina
 
 Current buckets:
 
-- **Direct core:** primary `0x00..0x25`; map same semantic slot first.
-- **Legacy reaction slots:** MKMSZ `0x26..0x40`; only map if MKMSZ actually calls them.
-- **Sektor extra primary:** donor `0x41..0x59`; use as semantic substitutes when a Mythologies-only state needs one.
-- **Secondary/special:** no numeric mapping assumption.
-- **Mythologies-only traversal/specials:** choose the closest Sektor pose/sequence or compose donor frames after the MKMSZ slot is positively identified.
+- **Common direct body:** ordinary primary states with demonstrated shared semantics; use donor-equivalent art first, but do not promote an inherited label into a requirement without MKMSZ reachability evidence.
+- **Live host-only state / fallback:** MKMSZ player states that are demonstrably reached but have no established direct donor semantic; preserve host control grammar and choose/compose a donor fallback only after the target state is identified.
+- **Character-specific / extension:** MKMSZ powers/projectiles and donor-specific specials, actors, palettes, effects, reactions, and multipart art. These do not belong in the generic body budget.
+- **No current import requirement:** inherited/legacy slots with no Sub-Zero/player reachability evidence. Preserve physical data if another alias/reference is live, but do not manufacture donor art merely to fill the slot.
+- **Sektor extra donor primary:** donor `0x41..0x59` may supply semantic substitutes only when an actual live MKMSZ state needs one; numeric position is never sufficient.
+
+## MKMSZ player-state reachability audit — 2026-09-25
+
+**Static-confirmed; no ROM built.** The audit used the clean USA Rev. 0 executable and the preserved Ghidra function map, then followed direct calls to `0x8002FE54` plus the stock select/play wrappers used by the player/action machinery.
+
+A critical layout rule is now explicit:
+
+```text
+table 0 base = file 0x87 + 0x000
+65 table-0 entries -> last entry at +0x100
+table 1 base = file 0x87 + 0x104
+
+therefore:
+table0 index (0x41 + n) == table1 index n
+```
+
+`0x8002FE54` performs no bounds check before indexing. Stock code intentionally uses both forms; for example the main player process requests table-0 index `0x46`, which resolves to secondary slot `0x05`. A generic importer must normalize these aliases before deciding whether a physical script/state is live.
+
+### Current player/importer classification
+
+| Target state | Reachability evidence | Classification / importer consequence |
+|---|---|---|
+| ordinary mapped primary body states through attacker Throw `0x23` | Existing mapping/proof line; many bounded Runtime-confirmed routes | **COMMON / DIRECT or already-resolved host mapping.** Low Hit `0x1D` remains runtime-unexercised but its direct donor mapping is already present; this is a validation gap, not a missing asset family. |
+| primary `0x0D -> +0xD90` | The selector routine at `0x80030064` has no static inbound call/pointer in the clean ROM. Separately, stock Ice child `0x8004B82C` obtains `+0xD90` through file-`0x87 +0xFD0` and uses it as the projectile loop. | **Not a player Victory requirement.** Do not import MKT Victory. The `+0xD90` bytes/art remain physically live while stock Ice compatibility exists, so they are not reclaimable merely because the inherited slot label is unused. |
+| primary `0x24 -> +0xDA0`, `0x2C -> +0xDE8`, `0x2D -> +0xE30` | Complete stock Ice action root `0x8004AB84` selects `0x2C`, `0x2D`, and `0x24`; special selector-1 path `0x8004BD28` also selects `0x24`. | **CHARACTER-SPECIFIC / HOST-SPECIAL EXTENSION.** Real MKMSZ states, but not generic fighter-body requirements. Preserve/translate them only for the selected special-move policy. |
+| primary `0x25 -> +0x84C` | Only selector found is inside `0x8005578C`; no static inbound call/pointer found for that routine. Primary `0x30` aliases the same script and has no selector access found. | **NO CURRENT PLAYER IMPORT REQUIREMENT.** Do not import donor Dizzy merely because of the inherited name. Keep physical liveness separate if a later caller is discovered. |
+| primary `0x28 -> +0x31C` | Directly selected by the main player process at `0x8002A9AC`. | **LIVE HOST STATE — semantic mapping/fallback still required.** The inherited `fb_jax` name is not accepted as its MKMSZ meaning. |
+| primary `0x29 -> +0x394` | Main player process calls `0x80030484(0x29)` at `0x8002A970`. | **LIVE HOST STATE — semantic mapping/fallback still required.** The inherited `fb_indian` name is not accepted as its MKMSZ meaning. |
+| primary `0x2A -> +0x244` | Directly selected by the main player process at `0x800290A8`. | **LIVE HOST STATE — semantic mapping/fallback still required.** The inherited `fb_johnny_cage` name is not accepted as its MKMSZ meaning. |
+| primary `0x2B -> +0xEE8` | Ordinary Run setup `0x8002EB38` | **LIVE / SOLVED.** v03–v05 establish donor-count Run scripts, translated cadence, and compact physical storage. |
+| primary `0x26` | No static selector request found; script `+0x974` is shared with secondary `0x20`. | **NO PRIMARY-SEMANTIC REQUIREMENT ESTABLISHED.** Shared physical script cannot be reclaimed until secondary ownership is resolved. |
+| primary `0x27` | One selector exists inside unreferenced `0x8004CEA4`; slot aliases stance `+0x2EC`. | **No extra fighter art required.** No player requirement established by this audit. |
+| primary `0x2E -> +0xD78` | Selector exists in `0x800361E4`, but no static inbound call/pointer was found; the same script is secondary `0x24`. | **NO PRIMARY-SEMANTIC REQUIREMENT ESTABLISHED; physical alias remains conditional.** |
+| primary `0x2F -> +0x85C` | Selector exists in `0x80069730`, but no static inbound call/pointer was found. | **NO CURRENT PLAYER IMPORT REQUIREMENT.** |
+| primary `0x31 -> +0x1E8` | Selected by `0x80059070`; that routine is present as global reaction callback `0x3A`. | **CONDITIONAL REACTION.** Keep a safe fallback until it is proven whether any stock enemy/route can apply reaction `0x3A` to the Sub-Zero/player actor; do not treat inherited `fb_sheevagoro` as semantics. |
+| primary `0x32..0x40` | Stock Sub-Zero table entries are zero. | **No physical fighter-art requirement** unless a future product path deliberately adds one. |
+
+### Secondary-table result
+
+The secondary table is **not** a list of 43 donor poses to fill.
+
+- **Secondary `0x03 -> +0xE84` is live in the main player process** at `0x80029D5C`. The separately traced native turn-action routine `0x8003D86C` also selects table 1 / index `0x03`; the old registry wording that called this primary `0x03` was incorrect.
+- **Secondary `0x05 -> +0x290` is live in the main player process** through the table-0 alias `0x46` at `0x8002ADDC/0x8002ADE4`.
+- **Secondary `0x27 -> +0x1B0` is live Push** and is already Runtime-confirmed with the documented Sektor fallback.
+- **Secondary `0x0B -> +0xF58` and `0x0C -> +0xE9C` are reachable stock-special states** through special roots `0x8004BD28` and `0x8004B1D0` referenced by dispatch table `0x800A1050`. They belong to the host-special extension budget, not the generic body.
+- Secondary `0x00..0x0A` appear in generic fighter/action code, but except for the player-owned cases above this audit does **not** establish Sub-Zero/player ownership for each numeric slot. Do not import donor art merely because generic fighter code can request that index for some actor.
+- The many aliases to `+0x928` (secondary `0x0E/0x0F/0x10/0x11/0x13/0x14/0x15/0x18/0x19/0x1F/0x28`) remain **semantic/reachability Pending** for the player. The few constant-selector routines found for that family have no static inbound references; this does not prove the physical block dead because victim/reaction code may reach it by another route.
+- Zero secondary entries `0x0D`, `0x12`, `0x25`, and `0x26` require no physical image merely to satisfy the table.
+
+**Audit boundary:** "no static caller found" means no direct JAL/J, literal function pointer, or traced wrapper call was found in the clean base executable for the checked path. It is not a proof that overlays or data-driven indirect dispatch can never reach the bytes. Therefore such states are excluded from the **current importer requirement**, not declared free storage.
+
+### Immediate consequence
+
+The next common-fighter task is **not** Victory or Dizzy. Before importing more art, identify the exact MKMSZ semantics/control grammar for the five still-unresolved main-player host states:
+
+`P28, P29, P2A, S03, S05`
+
+Then classify each as direct donor equivalent or deterministic host fallback. Stock Ice-family states stay on the separate special-extension track, and the `+0x928` victim/reaction family remains a later focused reachability trace.
 
 ## Current mapping coverage
 
@@ -384,12 +442,12 @@ The physical-removal repack is **Runtime-confirmed** as v05: `MKMSZR_sektor-run-
 
 The current canonical gaps are:
 
-- primary `0x0D` retains the inherited Midway `victory` label, but MKMSZ has no established Victory presentation requirement; do **not** import Sektor Victory unless a live MKMSZ call site later proves a real target use;
-- generic projectile/Zap `0x24` is now **partially exercised** by the v69/v70 Sektor missile diagnostics: chest and horizontal rocket visuals are proven independently, but the inherited Ice helper/palette/spawn/flight behavior is not accepted. Dizzy `0x25` remains outside the common mapped set;
-- Low Hit `0x1D` still lacks a practical direct runtime trigger despite its exact mapping;
-- victim-side Grab/Throw presentation remains pending; inherited primary `fb_*` slots beginning at `0x26` are candidates only after call-site ownership is established;
-- later primary reaction/presentation families and Mythologies-specific secondary states are not exhaustively mapped;
-- donor special-move behavior is not solved by slot replacement alone: donor semantics belong to [MKT adapter primitives](MKT-Adapter-Primitives), while the target host action ABI belongs to [Player actions and special moves](Player-Actions-and-Special-Moves);
+- identify and translate/fallback the five Static-confirmed live main-player host states `P28`, `P29`, `P2A`, `S03`, and `S05`; inherited `fb_*` names are explicitly not accepted as their MKMSZ semantics;
+- Low Hit `0x1D` still lacks a practical direct runtime trigger despite its exact mapping; this is a validation gap, not a missing donor asset;
+- victim-side Grab/Throw/reaction ownership, especially the shared `+0x928` family, remains a focused reachability/semantic gap;
+- stock Ice-family presentation (`P24/P2C/P2D`, indirect `+0xD90`, `S0B/S0C`) is a **character-specific host-special extension**, not common body coverage; donor special-move behavior belongs to [MKT adapter primitives](MKT-Adapter-Primitives) and the host ABI to [Player actions and special moves](Player-Actions-and-Special-Moves);
+- primary reaction callback `P31` remains conditional until reaction `0x3A` is tied to or excluded from player-victim routes;
+- inherited slots with no player reachability evidence are not importer TODOs merely because the table contains a pointer;
 - imported fighter asset/codec/palette/storage rules belong to [MKT fighter asset translation](MKT-Fighter-Asset-Translation);
 - proof allocations do not become production-safe through successful testing. Literal ownership and the v62 bootstrap conflict remain canonical in [Memory and allocation map](Memory-and-Allocation-Map).
 
