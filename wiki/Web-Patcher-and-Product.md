@@ -27,7 +27,7 @@ The browser build compiles the Python package to a wheel and serves it with the 
 | `rgb` | Requires `RRGGBB` or `#RRGGBB` |
 | Title character | Temporary freeform uppercase name, default `SUB-ZERO`, max 12 characters; patcher appends ` EDITION` and rasterizes it into the generated title CI8 image |
 
-Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.
+Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.\n\nThe shared patch core now also contains the Runtime-confirmed Toasty production module at the selected **80/1000 (8%)** rate. It is donor-aware and contains no MKT art/audio bytes: callers must supply translated `ToastyAssets`. The current browser/CLI surfaces do **not yet** derive those assets from the MKT N64 upload, so ordinary product builds remain unchanged until that product-surface extraction/wiring task is completed.
 
 ## Deployment
 
