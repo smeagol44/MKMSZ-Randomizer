@@ -48,6 +48,10 @@ def ori(rt: str, rs: str, imm: int) -> int:
     return (0x0D << 26) | (_reg(rs) << 21) | (_reg(rt) << 16) | (imm & 0xFFFF)
 
 
+def xori(rt: str, rs: str, imm: int) -> int:
+    return (0x0E << 26) | (_reg(rs) << 21) | (_reg(rt) << 16) | (imm & 0xFFFF)
+
+
 def lui(rt: str, imm: int) -> int:
     return (0x0F << 26) | (_reg(rt) << 16) | (imm & 0xFFFF)
 
