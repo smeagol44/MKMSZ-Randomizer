@@ -16,7 +16,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x00015CD0` | — | Stage selector | load from `0x800C11E0` | JAL compact-index mapper |
 | `0x0001674C` | — | Four-box input | `3C03802F 9463CE18` | Call switching action routine, then resume `0x80015B54` |
 | `0x0001C9A0..0x0001C9AF` | `0x8001BDA0` | Rainbow outfit | guarded first four frame-setup instructions | `rainbow` mode only: tail-jump through uncached helper `0xA01AF700`, which replays displaced instructions and resumes `0x8001BDB0` |
-| `0x000396CC` | `0x80038ACC` | Persistence | `3C03800A 8C63A910` | Restore collected flags, resume `0x80038AD4` |
+| `0x0002EB28` | `0x8002DF28` | Toasty production trigger | `0C00B81E 03C02821` | JAL shared Toasty dispatcher; only qualifying successful/unblocked reactions arm the comment countdown |\n| `0x0005CCE0` | `0x8005C0E0` | Toasty stage init | `3C048029 8C841C10` | Jump through production-owned selector padding to load file `0x1A` and initialize Toasty |\n| `0x0005D2E0` | `0x8005C6E0` | Toasty HUD compositor | `0C007AB9 A0C20046` | JAL shared Toasty dispatcher while preserving the stock HUD submission path |\n| `0x000396CC` | `0x80038ACC` | Persistence | `3C03800A 8C63A910` | Restore collected flags, resume `0x80038AD4` |
 | `0x0003A018` | `0x80039418` | Persistence | `ACA2002C` | Capture stage/ordinal after collected store while preserving displaced store |
 | `0x0005D9CC` | HUD function | Box indicator | JAL `0x8001EAE4` | JAL native box-indicator wrapper |
 | `0x00066F60..0x00066F67` | arena construction | Arena reservation | `3C02801B 2442F420` | `3C02801B 24423420` = floor `0x801B3420` |
@@ -26,7 +26,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x0007B900..0x0007B94B` | `0x8007AD00` | Four-box mask | guarded stock sanitizer body | Replace with stage-local key mask-copy routine |
 | `0x0007B94C..0x0007B97F` | `0x8007AD4C` | Four-box load | guarded stock default-loader body | Rebuild live inventory from authoritative backing box |
 | `0x0009B7DC` | `0x8009ABDC` | Stage selector | 12 stock pointers | Eight safe stage labels plus zeros |
-| `0x000A5154` | file entry `0x1B` | Native payload | guarded stock file-table entry | Point file `0x1B` at the production payload source/destination descriptor |
+| `0x000A5148` | file entry `0x1A` | Toasty production transport | guarded clean zero entry | Conditionally points to packed module at `0x00F68000..0x00F6B31F` when donor assets are supplied |\n| `0x000A5154` | file entry `0x1B` | Native payload | guarded stock file-table entry | Point file `0x1B` at the production payload source/destination descriptor |
 | `0x000A6BE4..0x000A6C0B` | `0x800A5FE4..0x800A600B` | Four-box keys | guarded obsolete default-inventory template | Write item-`0x0D..0x22` stage map |
 | `0x000A6C48..0x000A6CEF` | `0x800A6048..0x800A60EF` | Four-box state | guarded stock data | Four backing boxes, active state, and `MKBX` magic |
 | `0x000A6E88` | item-use table | Glass mask | `0x80071F58` | Inert `0x80071F50` |

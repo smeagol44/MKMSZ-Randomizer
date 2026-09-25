@@ -20,6 +20,8 @@ from .patches import (
     SafeStageSelectSkipAutoSavePatch,
     SubZeroPalettePatch,
     TitleBrandingPatch,
+    ToastyAssets,
+    ToastyProductionCompositionPatch,
     XPProgressionPatch,
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
@@ -36,8 +38,12 @@ class BuildResult:
     patches: tuple[PatchResult, ...]
 
 
-def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
-    # Core native infrastructure is always installed in randomizer ROMs.
+def build_pipeline(
+    config: RandomizerConfig,
+    *,
+    toasty_assets: ToastyAssets | None = None,
+    toasty_probability_per_thousand: int = 80,
+) -> PatchPipeline:
     patches = [
         SafeStageSelectorPatch(),
         ArenaReservationPatch(),
@@ -63,12 +69,29 @@ def build_pipeline(config: RandomizerConfig) -> PatchPipeline:
                 rgb=config.outfit.rgb,
             )
         )
+    if toasty_assets is not None:
+        patches.append(
+            ToastyProductionCompositionPatch(
+                toasty_assets,
+                probability_per_thousand=toasty_probability_per_thousand,
+            )
+        )
     return PatchPipeline(patches)
 
 
-def patch_bytes(source: bytes, config: RandomizerConfig) -> BuildResult:
+def patch_bytes(
+    source: bytes,
+    config: RandomizerConfig,
+    *,
+    toasty_assets: ToastyAssets | None = None,
+    toasty_probability_per_thousand: int = 80,
+) -> BuildResult:
     rom = RomImage.from_bytes(source, require_clean=True)
-    results = build_pipeline(config).apply(rom, PatchContext(seed=config.seed))
+    results = build_pipeline(
+        config,
+        toasty_assets=toasty_assets,
+        toasty_probability_per_thousand=toasty_probability_per_thousand,
+    ).apply(rom, PatchContext(seed=config.seed))
     crc1, crc2 = rom.update_header_crc()
     return BuildResult(
         data=rom.to_bytes(),
@@ -80,12 +103,24 @@ def patch_bytes(source: bytes, config: RandomizerConfig) -> BuildResult:
     )
 
 
-def patch_file(source: Path, output: Path, config: RandomizerConfig) -> BuildResult:
+def patch_file(
+    source: Path,
+    output: Path,
+    config: RandomizerConfig,
+    *,
+    toasty_assets: ToastyAssets | None = None,
+    toasty_probability_per_thousand: int = 80,
+) -> BuildResult:
     if source.resolve() == output.resolve():
         raise ValueError("output must be a separate file; the clean ROM is never modified in place")
     if output.exists():
         raise FileExistsError(f"refusing to overwrite existing output: {output}")
-    result = patch_bytes(source.read_bytes(), config)
+    result = patch_bytes(
+        source.read_bytes(),
+        config,
+        toasty_assets=toasty_assets,
+        toasty_probability_per_thousand=toasty_probability_per_thousand,
+    )
     output.write_bytes(result.data)
     if output.read_bytes() != result.data:
         raise OSError("output re-read verification failed")
