@@ -342,28 +342,39 @@ The takeover remains **proof-only**, but the current slot mapping is much broade
 | Low Hit `0x1D` | Exact direct mapping is present, but v34 did not obtain a practical runtime trigger. Treat the mapping as established but that exact state as **runtime-unexercised**. |
 | Elbow / Combo `0x10` | Genuine Sektor visuals are mapped; v59 Runtime-confirms the repaired middle Combo visuals on the tested route. |
 | Throw attacker `0x23` | The attacker-side Sektor/mechanical-arm presentation is mapped through the flattened target representation; later takeover routes carried the Grab/Throw repair successfully. Victim-side grabbed/thrown reactions remain a separate gap. |
-| Ordinary Run | **Accepted current design:** use only the six retail N64 MKT Run poses `RBRUN1,3,5,7,9,11`, each held for two MKMSZ visual ticks: `1,1,3,3,5,5,7,7,9,9,11,11`. This was manually preferred over the tested double-loop alternative. v58's twelve-physical-pose Run remains the historical Runtime-confirmed baseline, but the six supplemental even poses are now intentionally superseded for the next integration/repack. |
+| Ordinary Run | **Accepted current design, Static-confirmed cadence / Runtime Pending:** use only the six retail N64 MKT Run poses `RBRUN1,3,5,7,9,11`. Retail Sektor advances them at rate 6 on the 60-Hz donor scheduler (~100 ms/pose); MKMSZ ordinary Run currently uses rate 2 on the ~30-Hz gameplay scheduler (~66.7 ms/script entry). Therefore neither one target entry (~66.7 ms, too fast) nor two duplicate entries (~133.3 ms, too slow) matches the donor. The target cadence match is Run rate **3** with each donor pose once per visual cycle (~100 ms/pose). v58 remains the historical twelve-physical-pose Runtime-confirmed baseline; the six supplemental even poses are superseded for the next integration/repack. |
 | Gameplay combo graph | v62 Runtime-confirms the tested Sektor MKT combo strings after translating donor reaction selectors to MKMSZ-native semantics. This is semantic/gameplay proof coverage, not production integration. |
 | Straight-missile presentation | v69 Runtime-confirms the genuine chest-open pose can be installed safely on the player for one frame through the resolved animation cursor. v70 Runtime-confirms a genuine horizontal rocket frame can reach and travel as the projectile. The helper-clone/palette/spawn/flight behavior is still wrong, so this is **partial presentation coverage**, not an accepted special-move mapping. |
 | Alternate Scorpion/type-`0x12` palette | v60 Runtime-confirms the first yellow/gold Cyrax-style alternate palette on its tested route. This is proof-history evidence rather than an animation-slot mapping rule. |
 
 Coverage statements are deliberately bounded. A later takeover proof can demonstrate that a composition works without proving every mapped slot individually, and a static mapping does not become Runtime-confirmed merely because neighboring states were exercised.
 
-### Accepted six-pose Run integration
+### Accepted six-pose Run integration and cadence
 
 The next Sektor integration/repack must remove the six supplemental even Run poses from the physical resource and keep only the six retail N64 MKT poses:
 
 `RBRUN1, RBRUN3, RBRUN5, RBRUN7, RBRUN9, RBRUN11`
 
-The target script remains twelve visual ticks long by holding each pose twice:
+**Static-confirmed donor script:** retail MKT Sektor primary slot `0x4A` points to heap `+0x1444`, whose words are:
 
-`1,1,3,3,5,5,7,7,9,9,11,11 -> loop`
+`+2708, +271C, +2730, 6, 8, +2744, +2758, +276C, 1, +1444, 0`
 
-This is an intentional product/design choice accepted after manual comparison against a double-loop variant. The double-loop sequence `1,3,5,7,9,11,1,3,5,7,9,11` should not be adopted.
+The six frame words are `RBRUN1,3,5,7,9,11`. Control pair `6,8` is the donor animation callback/footstep event and consumes no independent frame hold; `1,+0x1444` jumps back to the Run root.
+
+**Static-confirmed cadence:** ordinary retail MKT Run setup selects slot `0x4A`, indexes rate table `0x800A7E08` by fighter ID, and passes the selected byte to donor rate initializer `0x8000E13C`. Retail Sektor is fighter index `7`, whose table byte is `6`. Its ordinary Run loop performs `process_sleep(1)` then donor rate advance `0x8000E184` once per iteration. On the 60-Hz donor scheduler, one pose therefore lasts `6/60 = 100 ms` after the initial primed advance.
+
+MKMSZ ordinary Run setup `0x8002EB38` selects primary slot `0x2B -> file 0x87 +0xEE8` and calls `0x80031724(2)`. The active Run loop sleeps with `0x80028794(1)`, then calls `0x8003174C` once per gameplay scheduler iteration. That scheduler runs once per main gameplay iteration, while the loop waits for two retrace increments before the next iteration, so the target Run advance call is approximately 30 Hz. Native rate 2 therefore makes one script entry last about `2/30 = 66.7 ms`.
+
+This resolves the two manual tests:
+- `1,3,5,7,9,11,1,3,5,7,9,11` at native rate 2 gives ~66.7 ms/pose and a ~400 ms six-pose cycle: **too fast** versus MKT's ~600 ms cycle.
+- `1,1,3,3,5,5,7,7,9,9,11,11` at native rate 2 gives ~133.3 ms/pose and an ~800 ms cycle: **too slow**.
+- target Run rate **3** gives `3/30 = 100 ms` per script entry, matching MKT's `6/60 = 100 ms` steady-state dwell exactly without inventing intermediate poses.
+
+The smallest cadence-only proof should therefore reuse the already-built six-pose double-loop resource/script and change only the Run-rate immediate at `ROM 0x2F7A0 / VA 0x8002EBA0` from `24040002` to `24040003`. Keeping the existing 12-pointer double-loop isolates cadence: visually it is simply two consecutive repetitions of the same six-pose cycle. A later production repack may compact that to one six-entry loop as a separate storage cleanup.
 
 Because the accepted six-pose Run no longer needs the rejected PS1-derived Run path or the later WIMP-derived even-pose repair assets, future Sektor builders should remove those Run-only inputs/decoders/dependencies rather than carry them forward as dead build requirements. Historical v55-v58 provenance remains documented in proof history and asset translation.
 
-A physical-removal repack analysis is **Implementation/static-confirmed** at file-`0x87 = 0x4CD68`, saving `0x1694` = **5,780 bytes** versus the current `0x4E3FC` v58-style resource and increasing v49-bound headroom from `0x148` to `0x17DC`. Runtime regression of the physically repacked six-pose composition is still Pending.
+A physical-removal repack analysis is **Implementation/static-confirmed** at file-`0x87 = 0x4CD68`, saving `0x1694` = **5,780 bytes** versus the current `0x4E3FC` v58-style resource and increasing v49-bound headroom from `0x148` to `0x17DC`. That storage result does not depend on whether the final pointer script is represented as one six-entry loop or two identical six-entry cycles. Runtime regression of the physically repacked six-pose composition remains Pending.
 
 ## Current remaining gaps
 

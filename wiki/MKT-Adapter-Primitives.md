@@ -193,6 +193,26 @@ Animation-script control words are also engine semantics. The Sektor Sweep proof
 
 **Coverage:** **Frame/animation primitives covered; generic script-token translator missing.** Plain visual frame sequences are well-supported. Donor callback/control tokens require explicit semantic mapping.
 
+### Ordinary Run cadence translation
+
+**Static-confirmed for retail MKT USA Rev. 2 Sektor and clean MKMSZ USA Rev. 0.** Animation frame identity and animation time are separate donor semantics.
+
+Retail Sektor primary slot `0x4A` points to robot heap `+0x1444` and contains:
+
+`RBRUN1, RBRUN3, RBRUN5, [control 6,8], RBRUN7, RBRUN9, RBRUN11, [jump 1,+0x1444], 0`
+
+The six visual entries are heap offsets `+0x2708,+0x271C,+0x2730,+0x2744,+0x2758,+0x276C`. Control `6,8` is the animation callback/footstep event; the interpreter handles it as control flow rather than a timed visual pose. `1,+0x1444` loops to the Run root.
+
+Ordinary donor Run setup at `0x8003F4E0` selects slot `0x4A`, reads fighter ID from actor `+0x38`, indexes the byte table at `0x800A7E08`, and passes that value to rate initializer `0x8000E13C`. Retail name-table order and the retained fighter-ID lineage identify Sektor as index `7`; table byte `[7]` is `6`. Donor `0x8000E13C` stores the period at process `+0x3F2` and primes countdown `+0x3F4` to 1. The ordinary Run loop sleeps one tick with `0x8005A88C(1)` and calls rate advance `0x8000E184` once per iteration; the latter decrements `+0x3F4`, reloads `+0x3F2` at zero, and advances the animation. At the donor's nominal 60-Hz cadence, steady-state Sektor Run dwell is therefore `6/60 = 100 ms` per genuine pose.
+
+MKMSZ ordinary Run setup `0x8002EB38` selects primary slot `0x2B` and calls target rate initializer `0x80031724(2)`. Target `0x80031724` stores period at controller `+0x6A6` and primes countdown `+0x6A8` to 1. The active Run loop at `0x800296E0..0x80029778` sleeps one process tick through `0x80028794(1)` and calls `0x8003174C` once per loop; `0x8003174C` decrements `+0x6A8`, reloads `+0x6A6` at zero, and only then advances the script. The MKMSZ process scheduler `0x80028610` is reached once per gameplay main-loop iteration, and the same main loop waits for two increments of `0x802FCD44` before the next iteration, establishing the ordinary ~30-Hz gameplay cadence already used by the movement/projectile adapter.
+
+Therefore the time-domain translation for this Run is:
+
+`6 donor ticks / 60 Hz = 3 target ticks / 30 Hz = 100 ms per pose`
+
+The generic adapter must translate animation **rate/cadence** as well as frame sequence. For this exact Sektor Run, the target-equivalent setting is native Run rate **3** with the six donor poses repeated in order. Duplicating each pose at stock target rate 2 produces ~133.3 ms/pose; using each once at stock rate 2 produces ~66.7 ms/pose. Both are expected mismatches and match the reported slow/fast observations.
+
 ## Strike and reaction translation
 
 MKT strike numbers are donor-table indices, **not MKMSZ strike IDs**.

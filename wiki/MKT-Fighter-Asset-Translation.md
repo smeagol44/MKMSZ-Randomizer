@@ -293,6 +293,14 @@ The later alternate-palette proof establishes an additional stable compatibility
 
 That first type-`0x12` route is **Runtime-confirmed** by the v60 proof. The durable adapter lesson is to inventory every reachable palette-binding path for a whole-character takeover and translate each required TLUT deliberately; one working normal-player palette does not prove arbitrary alternate/enemy palettes. Exact v60 ROM identities, proof offsets, byte-diff counts, and the bounded manual result remain canonical in [Sektor takeover proof history](Sektor-Takeover-Proof-History).
 
+### Accepted generic 16-color normalization direction
+
+**Design-accepted 2026-09-25; bounded visual proof accepted by the user.** For the generic N64 MKT -> MKMSZ fighter importer, normalize donor fighter art to a **16-color indexed palette** by default. The Sektor 16-color proof was judged visually successful, so restoring a 32-color body palette is **not** a fidelity goal by itself.
+
+This is an importer policy, not a claim that historical Sektor proofs used only 16 colors. The v53/v60 32-color resident-TLUT line remains valid runtime evidence for palette ownership and alternate-palette binding. The generic route should preserve those semantic lessons while quantizing/remapping the imported fighter body to 16 colors unless new technical evidence shows unacceptable quality, animation-specific palette breakage, collision with required effect/attachment colors, or another concrete incompatibility.
+
+The 16-color decision also does **not** change the target storage contract: imported frames must still be emitted as valid MKMSZ-native Type-5 assets with correct dimensions, anchors, dictionary/model encoding, palette binding, and lifecycle ownership. Do not infer a new raw 4-bpp target format merely from the 16-color palette policy.
+
 ### Mechanical-arm palette
 
 The flattened Sektor throw cannot interpret codec-15 arm indices through the body palette. The donor `MECARM_P` metal ramp is translated into resident Sektor TLUT indices as:
@@ -401,7 +409,7 @@ This table is intentionally limited to **stable asset/codec/storage conclusions*
 | v55 | Adds the `normal_bits >= 1` compatibility guard; the optimizer searches normal-class widths from **1 through 16 bits** across all 52 emitted model records. The first PS1 Run import is rejected because its POVBQ output cursor collapsed each row pair into four columns |
 | v56 | Cursor-corrected PS1 decode still produces invalid speckled bodies; PS1 POVBQ Run pixels are rejected as the current N64 donor source |
 | v57 | Preserved WIMP/MK3 source selected; first extraction is rejected because it ignored `align4(xsize)` source stride |
-| v58 | Runtime-confirmed stride-corrected full twelve-pose Run; preserves WIMP-derived even poses and native Type-5 packing inside the bounded working footprint. **Superseded as the intended final Run composition:** the accepted 2026-09-25 design uses only retail N64 poses `1,3,5,7,9,11`, each held twice, and physically removes the six even-pose assets. |
+| v58 | Runtime-confirmed stride-corrected full twelve-pose Run; preserves WIMP-derived even poses and native Type-5 packing inside the bounded working footprint. **Superseded as the intended final Run composition:** the accepted 2026-09-25 design uses only retail N64 poses `1,3,5,7,9,11` and physically removes the six even-pose assets. Later static cadence reconciliation shows those six poses should run at MKMSZ Run rate **3**, not be duplicated at stock rate 2. |
 | v63 | Rejected storage assumption: replacing a file-`0x87` bank classified as dead caused normal hit/blood corruption and a hard hang |
 | v64 | Compact one-chest/one-rocket Type-5 composition reaches the special path at `0x4E788`; presentation/lifecycle remains wrong |
 | v69 | Runtime-confirms the single chest asset itself can be installed safely for one frame through the resolved target cursor |
@@ -411,7 +419,9 @@ For exact proof ROM identities and the broader animation/gameplay chronology, se
 
 ## Accepted Run simplification
 
-The current Sektor direction no longer needs a twelve-physical-pose Run. After manual comparison, the accepted animation is the six retail N64 MKT poses `RBRUN1,3,5,7,9,11`, each displayed for two MKMSZ visual ticks. This preserves the target's 12-tick Run timing while matching the lower-frame-count N64 presentation more closely.
+The current Sektor direction no longer needs a twelve-physical-pose Run. The accepted asset set is the six retail N64 MKT poses `RBRUN1,3,5,7,9,11`; the six WIMP-derived even poses are intentionally omitted.
+
+A later cadence audit supersedes the earlier “hold each pose twice” timing rule. Retail MKT advances Sektor Run at rate 6 on a 60-Hz scheduler (~100 ms/pose), while stock MKMSZ Run advances rate-2 script entries on the ~30-Hz gameplay scheduler (~66.7 ms/entry). The cadence-equivalent target setting is therefore **MKMSZ Run rate 3 with one visual entry per retained pose**. Exact timing/control details are owned by [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) and [MKT adapter primitives](MKT-Adapter-Primitives).
 
 Consequences for the converter/build pipeline:
 
@@ -419,9 +429,10 @@ Consequences for the converter/build pipeline:
 - remove the PS1 Run extraction/POVBQ decode path from the active Sektor build, because it is historical/rejected and no longer needed by any accepted Run asset;
 - remove the Run-only WIMP supplemental dependency when the physical six-pose repack is integrated;
 - retain the v55-v58 PS1/WIMP history as provenance only, not as current build requirements;
+- do not synthesize intermediate Run poses merely to fill MKMSZ's historical twelve visual positions;
 - keep all non-Run Sektor asset conversion behavior unchanged.
 
-The analyzed physical repack reduces file `0x87` from `0x4E3FC` to `0x4CD68`: **5,780 bytes (`0x1694`) saved**. Against the established v49 working bound, headroom increases from `0x148` to `0x17DC`. This repack is Implementation/static-confirmed; a bounded runtime regression is still required before promoting it as the new common-animation baseline.
+The analyzed physical repack reduces file `0x87` from `0x4E3FC` to `0x4CD68`: **5,780 bytes (`0x1694`) saved**. Against the established v49 working bound, headroom increases from `0x148` to `0x17DC`. This repack is Implementation/static-confirmed; its asset-removal result remains valid independently of the later rate-3 cadence correction. A bounded runtime regression is still required before promoting it as the new common-animation baseline.
 
 ## Current compatibility boundaries
 

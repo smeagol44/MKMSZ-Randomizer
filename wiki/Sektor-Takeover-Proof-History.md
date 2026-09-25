@@ -14,15 +14,16 @@ The straight-missile line has user runtime evidence through **v89**. v75 is the 
 
 The strongest current production conflict remains the proof-code line inside the production bootstrap composite `[0x9AD84,0x9AF20)`. v62's standalone combo continuation uses `[0x9AD90,0x9ADA0)`; v65-v70 helper code begins at `0x9ADA0`, with v70 using the same proof-owned interval up to the bootstrap boundary. These artifacts validate semantics only; none of those offsets are reusable production allocations. The early Sektor helper line demonstrates the same rule from the opposite direction: zero-filled-looking `[0xA1308,0xA1544)` was live stock action/dispatch data, and overwriting it caused input-specific hangs.
 
-## Accepted Run simplification branch
+## Six-pose Run branch and cadence reconciliation
 
 A separate 2026-09-25 branch tested reducing ordinary Run presentation back to the six retail N64 MKT poses.
 
-- **Run branch v01 — Runtime-confirmed / accepted visual policy.** `MKMSZR_sektor-run-six-pose_common-proof_v01.z64`, SHA-256 `7f8dc72abb39e5863b64730eb669bed41bb3d308a063905fb6d6aaf9b8a21e1d`. The existing 12 visual ticks are preserved as `1,1,3,3,5,5,7,7,9,9,11,11`. The user explicitly preferred this presentation.
-- **Run branch v02 — Runtime-confirmed / rejected preference.** `MKMSZR_sektor-run-six-pose-double-loop_common-proof_v02.z64`, SHA-256 `68c4a258eb4d6caf40cb639ea2d7fe36ed2a8b856fbab026188fdccae297bb92`. Sequence `1,3,5,7,9,11,1,3,5,7,9,11` was tested and explicitly rejected in favor of v01.
+- **Run branch v01 — Runtime-confirmed / timing superseded.** `MKMSZR_sektor-run-six-pose_common-proof_v01.z64`, SHA-256 `7f8dc72abb39e5863b64730eb669bed41bb3d308a063905fb6d6aaf9b8a21e1d`. The existing 12 visual entries are `1,1,3,3,5,5,7,7,9,9,11,11`. It was initially preferred relative to v02, but the later clarified observation is that it still feels **too slow**.
+- **Run branch v02 — Runtime-confirmed / timing superseded.** `MKMSZR_sektor-run-six-pose-double-loop_common-proof_v02.z64`, SHA-256 `68c4a258eb4d6caf40cb639ea2d7fe36ed2a8b856fbab026188fdccae297bb92`. Sequence `1,3,5,7,9,11,1,3,5,7,9,11` keeps one script entry per pose; the later clarified observation is that it feels **too fast**.
+- **Static cadence reconciliation — 2026-09-25, no ROM built.** Retail MKT Sektor slot `0x4A -> +0x1444` contains exactly the six visual poses plus callback/loop control. Ordinary donor Run uses fighter-indexed rate `6` for Sektor and advances once per 60-Hz Run-loop tick, yielding ~100 ms/pose. MKMSZ ordinary Run `+0xEE8` installs rate `2` and advances once per ~30-Hz gameplay scheduler tick, yielding ~66.7 ms per script entry. Thus v01 holds each pose for ~133.3 ms and v02 for ~66.7 ms; they correctly bracket the donor. Rate **3** yields ~100 ms/pose and is the Static-confirmed cadence target.
 - **Physical-removal repack — Implementation/static-confirmed, Runtime Pending.** Repacking with only the six physical retail Run poses yields file-`0x87 = 0x4CD68` versus `0x4E3FC`, saving `0x1694` / 5,780 bytes and increasing v49-bound headroom from `0x148` to `0x17DC`.
 
-**Integration directive:** future Sektor takeover work should implement the v01 hold-each-pose-twice policy, physically remove the six supplemental even Run poses, and remove now-dead PS1 Run extraction/decoder and Run-only WIMP supplemental dependencies from the active builder. Historical v55-v58 evidence remains canonical provenance and should not be erased.
+**Integration directive:** future Sektor takeover work should use only the six retail N64 Run poses and match donor timing through the target animation-rate mechanism rather than frame duplication. The smallest next proof should reuse v02's already-built six-pose/double-loop composition unchanged and alter only ordinary Run rate `2 -> 3` at `ROM 0x2F7A0 / VA 0x8002EBA0`, isolating cadence from assets/repacking. No such ROM has been built yet. Physical integration should still remove the six supplemental even Run assets and now-dead PS1/WIMP Run dependencies. Historical v55-v58 evidence remains canonical provenance and should not be erased.
 
 ## Reconciled status rules
 
