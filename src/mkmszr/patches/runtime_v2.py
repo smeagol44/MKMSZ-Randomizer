@@ -14,7 +14,7 @@ from ..data.addresses import (
     RUNTIME_V2_STATE_END_EXCLUSIVE,
     RUNTIME_V2_STATE_START,
 )
-from ..mips import Emitter, addiu, address_words, jr, lui, lw, ori, sw
+from ..mips import Emitter, addiu, address_words, jr, lhu, lui, lw, ori, sh, sltiu, sw
 from .native_payload import build_loader_and_call_stub, kseg1_alias
 
 NOP = 0
@@ -31,6 +31,10 @@ STATE_MAGIC = 0x4D4B5356  # MKSV
 STATE_VERSION = 2
 STATE_HEADER_SIZE = 0x20
 STATE_FLAGS_OFFSET = 0x10
+STATE_SETTINGS_OFFSET = STATE_SIZE - 4
+STATE_SETTINGS_MARKER = 0x5452  # TR
+STATE_TURN_TOGGLE = 0
+STATE_TURN_LOCK = 1
 
 LOADER_STUB = build_loader_and_call_stub(payload_rdram=CODE_CACHED_BASE)
 
@@ -59,6 +63,28 @@ def build_init() -> bytes:
     emitter.emit(NOP, jr("ra"), NOP)
 
     emitter.label("initialize")
+
+    # GAME SETTINGS exists before the first stage/runtime initialization.
+    # Preserve only a validated TURN preference across an otherwise-invalid
+    # V2 run-state reset; everything else still clears exactly as before.
+    emitter.emit(
+        lhu("t5", STATE_SETTINGS_OFFSET, "t0"),
+        lhu("t6", STATE_SETTINGS_OFFSET + 2, "t0"),
+        addiu("t7", "zero", STATE_SETTINGS_MARKER),
+    )
+    emitter.bne("t6", "t7", "settings_default")
+    emitter.emit(NOP)
+    emitter.emit(sltiu("t7", "t5", 2))
+    emitter.bne("t7", "zero", "settings_ready")
+    emitter.emit(NOP)
+
+    emitter.label("settings_default")
+    emitter.emit(
+        addiu("t5", "zero", STATE_TURN_TOGGLE),
+        addiu("t6", "zero", STATE_SETTINGS_MARKER),
+    )
+
+    emitter.label("settings_ready")
     emitter.emit(addiu("t3", "t0", 0), addiu("t4", "zero", STATE_SIZE // 4))
     emitter.label("clear_loop")
     emitter.emit(sw("zero", 0, "t3"), addiu("t3", "t3", 4), addiu("t4", "t4", -1))
@@ -69,5 +95,10 @@ def build_init() -> bytes:
     emitter.emit(addiu("t1", "zero", STATE_VERSION), sw("t1", 0x04, "t0"))
     emitter.emit(addiu("t1", "zero", STATE_SIZE), sw("t1", 0x08, "t0"))
     emitter.emit(addiu("t1", "zero", STATE_HEADER_SIZE), sw("t1", 0x0C, "t0"))
-    emitter.emit(jr("ra"), NOP)
+    emitter.emit(
+        sh("t5", STATE_SETTINGS_OFFSET, "t0"),
+        sh("t6", STATE_SETTINGS_OFFSET + 2, "t0"),
+        jr("ra"),
+        NOP,
+    )
     return emitter.finish()
