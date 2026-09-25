@@ -906,3 +906,16 @@ Proof limitations remain explicit:
 - if another qualifying reaction arrives while Toasty is already visibly active, the proof retains the pending countdown until the presentation returns idle; exact donor concurrent-process behavior is not claimed.
 
 v42 remains the accepted Runtime-confirmed presentation baseline. v43 changes only trigger semantics around that baseline.
+
+
+### v44 trigger validation and v47 production-composition gate
+
+**v44 Runtime-confirmed.** The 50% diagnostic build changed only the per-thousand probability immediate from the reconciled v43 trigger proof. The user confirmed the real successful-reaction trigger works and the complete effect is correct. This promotes the `08/0E/12/13/14/15/17` successful/unblocked reaction-family trigger on the tested route; 50% was diagnostic only.
+
+**v46 Runtime-confirmed.** The dedicated-audio successor restores ordinary pickup sound and keeps the accepted v42 image/timing/voice presentation intact.
+
+**v47 Implementation/static-confirmed; runtime Pending.** v47 is the first bounded composition against the exact current production patcher rather than the disposable proof harness. It packs Toasty code, TLUT, tables/state, and all nine Runtime-confirmed padded CI8 slices into one raw expansion module loaded through file ID `0x1A` at RDRAM `0x801B0000`. The packed module is `0x3320` bytes and ends at `0x801B331F`, leaving `0x100` bytes before the reserved-pool boundary `0x801B3420`.
+
+High-ROM layout for the integration proof is `0xF68000..0xF6B31F` for the module and `0xF6B320..0xF6BB35` for the confirmed Toasty sample. This starts after optional rainbow file-87 ownership ending at `0xF679E0` and remains below title ownership beginning at `0xF90000`. Tiny entry stubs compose only inside padding already owned by the production four-box selector helper and box-indicator regions; no old proof cave is promoted to production-free storage.
+
+The vanilla and rainbow production compositions both pass guards/bounds checks. The manual v47 ROM intentionally uses 500/1000 probability for fast validation. After a runtime pass, the selected normal MKMSZR tuning is 80/1000 = **8%**; no other presentation or trigger semantic change is planned.
