@@ -6,6 +6,8 @@
 
 The supported clean input is the 16 MiB big-endian USA Rev. 0 ROM, SHA-256 <code>9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6</code>.
 
+**Missile proof ownership clarification:** exact v75/v80–v85 use file-`0x87` fixed projectile texture slot `0x24`; helper `0x80060A3C` allocates a separate dynamic texture slot in `0x200..0x2FF` and constructs two independently listed actors. Palette acquisition returns a handle whose selector is handle minus `0x80`; fixed selector zero does not own the resident player Sektor TLUT. Helper cleanup frees its dynamic texture and actors, with no traced palette release. These are native runtime resources, **not new free ROM/RDRAM ranges**. v85 suppresses insertion on normal straight flight and is statically rejected; it does not change the proof cave allocations or make them production-owned.
+
 ## Coordinate conventions
 
 All bounded intervals on this page are **end-exclusive**: <code>[start, end_exclusive)</code>. Size is therefore <code>end_exclusive - start</code>.
