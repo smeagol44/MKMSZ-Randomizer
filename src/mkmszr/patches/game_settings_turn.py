@@ -697,6 +697,10 @@ def build_jump_draw_helper() -> bytes:
     """Draw the always-visible JUMP row and restore displaced loop-tail stores."""
 
     e = Emitter()
+    # This helper is entered by JAL and itself calls the frontend renderer.
+    # Preserve the incoming return address in a private frame; v01 failed
+    # because nested JALs clobbered RA before the helper returned.
+    e.emit(addiu("sp", "sp", -0x20), sw("ra", 0x1C, "sp"))
     e.emit(
         *address_words("a0", JUMP_LABEL_VA),
         addiu("a1", "zero", 160),
@@ -756,6 +760,8 @@ def build_jump_draw_helper() -> bytes:
         addiu("t0", "zero", 2),
         sw("s0", 0x6F4, "fp"),
         sw("t0", 0x6F8, "fp"),
+        lw("ra", 0x1C, "sp"),
+        addiu("sp", "sp", 0x20),
         jr("ra"),
         NOP,
     )
