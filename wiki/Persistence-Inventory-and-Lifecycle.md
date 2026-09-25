@@ -33,7 +33,7 @@ The game continues to see its stock ten-word live array at `0x800A600C`. Four ba
 | 3 | `0x800A6098..0x800A60BF` |
 | 4 | `0x800A60C0..0x800A60E7` |
 
-State at `0x800A60E8` stores active index bits `0..1` and input latch `0x100`; magic `MKBX` at `0x800A60EC` distinguishes initialized backing data. The design deliberately has no auto-spill and no global item scan: only the active backing box is copied into the live window.
+State at `0x800A60E8` stores active index bits `0..1`, input latch `0x100`, and the production GAME SETTINGS durable TURN preference bit `0x0200` (`0` = TOGGLE, set = LOCK). Box switching preserves the TURN bit. Magic `MKBX` at `0x800A60EC` distinguishes initialized backing data. The design deliberately has no auto-spill and no global item scan: only the active backing box is copied into the live window.
 
 ## Switching input
 
