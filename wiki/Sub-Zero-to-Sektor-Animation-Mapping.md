@@ -376,7 +376,7 @@ Because the accepted six-pose Run no longer needs the rejected PS1-derived Run p
 
 **Generic importer rule (Runtime-confirmed at Sektor scope):** do not normalize Run to a fixed MKMSZ visual-entry count. Emit exactly the donor Run frame sequence that exists for that fighter, then append the target loop/control grammar and translate donor time to the target animation-rate mechanism independently. A donor fighter with 7 Run frames should therefore receive a 7-frame target Run script, not padding, truncation, duplication, or a forced 12-entry container.
 
-A physical-removal repack analysis is **Implementation/static-confirmed** at file-`0x87 = 0x4CD68`, saving `0x1694` = **5,780 bytes** versus the current `0x4E3FC` v58-style resource and increasing v49-bound headroom from `0x148` to `0x17DC`. That storage result does not depend on whether the final pointer script is represented as one six-entry loop or two identical six-entry cycles. Runtime regression of the physically repacked six-pose composition remains Pending.
+The physical-removal repack is now **built and Implementation/static-confirmed** as v05: `MKMSZR_sektor-run-compact-six-pose_common-proof_v05.z64`, SHA-256 `3073bd0b77e88a8bb1ea22a5a45ce1fe933512434188e9c578c35adb4f4f5363`. It contains 152 generated frames and 40,577 shared patterns; file `0x87 = 0x4CD68`, saving `0x1694` = **5,780 bytes** versus the `0x4E3FC` v58-style resource and increasing v49-bound headroom from `0x148` to `0x17DC`. The builder no longer accepts or references PS1/WIMP Run inputs. Runtime regression of this physically compacted composition remains Pending.
 
 ## Current remaining gaps
 
