@@ -123,3 +123,9 @@ After COMBOS is stable, follow the same pattern for SPECIALS. JUMP should be add
 
 This future-control menu work remains outside the 1.0 release blocker chain unless explicitly promoted later. It must not silently redefine existing combo, special-move, or jump semantics.
 
+### Full frontend proof v01/v02
+
+**Full frontend proof v01 — Rejected / failed.** The first compact four-setting layout (`TURN`, `COMBOS`, `SPECIALS`, `JUMP`, then `EXIT`) hard-hung immediately on entering GAME SETTINGS. Static reconciliation identified an exact ABI error in the custom JUMP draw helper: the helper was entered by `jal`, then called the frontend renderer with nested `jal` instructions without preserving its incoming `ra`. The first nested call therefore destroyed the helper return address and guaranteed invalid control flow before the menu could finish drawing.
+
+**Full frontend proof v02 — Runtime Pending.** Preserve/restore `ra` in a private helper stack frame around the nested frontend-renderer calls. No other full-menu behavior is promoted by this correction until manual validation. The COMBOS-only v01 UI/state proof remains independently Runtime-confirmed on its tested routes.
+
