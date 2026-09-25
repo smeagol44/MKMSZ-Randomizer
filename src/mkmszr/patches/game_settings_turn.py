@@ -371,37 +371,6 @@ def build_action_gate_helper() -> bytes:
     return emitter.finish()
 
 
-def _pack_module() -> tuple[bytes, dict[str, int]]:
-    routines = [
-        ("capture", CAPTURE_HELPER),
-        ("decision", build_decision_helper()),
-        ("release", build_release_helper()),
-        ("action", build_action_gate_helper()),
-    ]
-    blob = bytearray()
-    offsets: dict[str, int] = {}
-    for name, routine in routines:
-        aligned = _align(len(blob))
-        blob.extend(bytes(aligned - len(blob)))
-        offsets[name] = aligned
-        blob.extend(routine)
-    return bytes(blob), offsets
-
-
-CONTROL_MODULE, CONTROL_MODULE_OFFSETS = _pack_module()
-_pool = ExpansionPoolAllocator()
-CONTROL_ALLOCATION = _pool.allocate("turn-controls-production", len(CONTROL_MODULE), align=16)
-CONTROL_MODULE_CACHED_BASE = CONTROL_ALLOCATION.start
-CONTROL_MODULE_UNCACHED_BASE = kseg1_alias(CONTROL_MODULE_CACHED_BASE)
-if CONTROL_ALLOCATION.end_exclusive > TOASTY_RUNTIME_BASE:
-    raise AssertionError("TURN production module reaches Toasty runtime base")
-
-CAPTURE_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["capture"]
-DECISION_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["decision"]
-RELEASE_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["release"]
-ACTION_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["action"]
-
-
 def build_menu_wrapper() -> bytes:
     """Mirror durable TURN state into the stock editor, then commit it on exit."""
 
@@ -445,6 +414,61 @@ def build_menu_wrapper() -> bytes:
     return emitter.finish()
 
 
+def _pack_module() -> tuple[bytes, dict[str, int]]:
+    routines = [
+        ("capture", CAPTURE_HELPER),
+        ("decision", build_decision_helper()),
+        ("release", build_release_helper()),
+        ("action", build_action_gate_helper()),
+        ("menu", build_menu_wrapper()),
+    ]
+    blob = bytearray()
+    offsets: dict[str, int] = {}
+    for name, routine in routines:
+        aligned = _align(len(blob))
+        blob.extend(bytes(aligned - len(blob)))
+        offsets[name] = aligned
+        blob.extend(routine)
+    return bytes(blob), offsets
+
+
+CONTROL_MODULE, CONTROL_MODULE_OFFSETS = _pack_module()
+_pool = ExpansionPoolAllocator()
+CONTROL_ALLOCATION = _pool.allocate("turn-controls-production", len(CONTROL_MODULE), align=16)
+CONTROL_MODULE_CACHED_BASE = CONTROL_ALLOCATION.start
+CONTROL_MODULE_UNCACHED_BASE = kseg1_alias(CONTROL_MODULE_CACHED_BASE)
+if CONTROL_ALLOCATION.end_exclusive > TOASTY_RUNTIME_BASE:
+    raise AssertionError("TURN production module reaches Toasty runtime base")
+
+CAPTURE_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["capture"]
+DECISION_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["decision"]
+RELEASE_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["release"]
+ACTION_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["action"]
+MENU_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["menu"]
+
+
+def build_menu_loader() -> bytes:
+    """Load shared file 0x1A at title time, then tail-enter its menu wrapper."""
+
+    high = ((CONTROL_MODULE_CACHED_BASE + 0x8000) >> 16) & 0xFFFF
+    low = CONTROL_MODULE_CACHED_BASE & 0xFFFF
+    emitter = Emitter()
+    emitter.emit(
+        addiu("sp", "sp", -0x18),
+        sw("ra", 0x10, "sp"),
+        addiu("a0", "zero", EXPANSION_FILE_ID),
+        lui("a1", high),
+        jal(RAW_FILE_LOADER_VA),
+        addiu("a1", "a1", low),
+        *address_words("t9", MENU_ENTRY),
+        lw("ra", 0x10, "sp"),
+        addiu("sp", "sp", 0x18),
+        jr("t9"),
+        NOP,
+    )
+    return emitter.finish()
+
+
 def _pack_static_region() -> tuple[bytes, dict[str, int]]:
     pieces = [
         ("loader", build_expansion_loader()),
@@ -452,7 +476,7 @@ def _pack_static_region() -> tuple[bytes, dict[str, int]]:
         ("decision", _indirect_jump(DECISION_ENTRY)),
         ("release", _indirect_jump(RELEASE_ENTRY)),
         ("action", _indirect_jump(ACTION_ENTRY)),
-        ("menu", build_menu_wrapper()),
+        ("menu_loader", build_menu_loader()),
     ]
     blob = bytearray()
     offsets: dict[str, int] = {}
@@ -462,7 +486,7 @@ def _pack_static_region() -> tuple[bytes, dict[str, int]]:
         offsets[name] = aligned
         blob.extend(piece)
     if len(blob) > STATIC_REGION_SIZE:
-        raise AssertionError("TURN loader/trampolines/menu exceed repurposed capture region")
+        raise AssertionError("TURN loaders/trampolines exceed repurposed capture region")
     blob.extend(bytes(STATIC_REGION_SIZE - len(blob)))
     return bytes(blob), offsets
 
@@ -473,7 +497,7 @@ CAPTURE_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["capture"]
 DECISION_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["decision"]
 RELEASE_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["release"]
 ACTION_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["action"]
-MENU_WRAPPER_VA = STATIC_REGION_VA + STATIC_OFFSETS["menu"]
+MENU_WRAPPER_VA = STATIC_REGION_VA + STATIC_OFFSETS["menu_loader"]
 
 
 def _patch_game_settings(rom: RomImage) -> None:
