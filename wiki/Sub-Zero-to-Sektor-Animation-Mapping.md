@@ -342,12 +342,28 @@ The takeover remains **proof-only**, but the current slot mapping is much broade
 | Low Hit `0x1D` | Exact direct mapping is present, but v34 did not obtain a practical runtime trigger. Treat the mapping as established but that exact state as **runtime-unexercised**. |
 | Elbow / Combo `0x10` | Genuine Sektor visuals are mapped; v59 Runtime-confirms the repaired middle Combo visuals on the tested route. |
 | Throw attacker `0x23` | The attacker-side Sektor/mechanical-arm presentation is mapped through the flattened target representation; later takeover routes carried the Grab/Throw repair successfully. Victim-side grabbed/thrown reactions remain a separate gap. |
-| Ordinary Run | The full twelve-pose Sektor Run is Runtime-confirmed in v58. This is distinct from the separate Push animation that earlier proofs had misidentified. |
+| Ordinary Run | **Accepted current design:** use only the six retail N64 MKT Run poses `RBRUN1,3,5,7,9,11`, each held for two MKMSZ visual ticks: `1,1,3,3,5,5,7,7,9,9,11,11`. This was manually preferred over the tested double-loop alternative. v58's twelve-physical-pose Run remains the historical Runtime-confirmed baseline, but the six supplemental even poses are now intentionally superseded for the next integration/repack. |
 | Gameplay combo graph | v62 Runtime-confirms the tested Sektor MKT combo strings after translating donor reaction selectors to MKMSZ-native semantics. This is semantic/gameplay proof coverage, not production integration. |
 | Straight-missile presentation | v69 Runtime-confirms the genuine chest-open pose can be installed safely on the player for one frame through the resolved animation cursor. v70 Runtime-confirms a genuine horizontal rocket frame can reach and travel as the projectile. The helper-clone/palette/spawn/flight behavior is still wrong, so this is **partial presentation coverage**, not an accepted special-move mapping. |
 | Alternate Scorpion/type-`0x12` palette | v60 Runtime-confirms the first yellow/gold Cyrax-style alternate palette on its tested route. This is proof-history evidence rather than an animation-slot mapping rule. |
 
 Coverage statements are deliberately bounded. A later takeover proof can demonstrate that a composition works without proving every mapped slot individually, and a static mapping does not become Runtime-confirmed merely because neighboring states were exercised.
+
+### Accepted six-pose Run integration
+
+The next Sektor integration/repack must remove the six supplemental even Run poses from the physical resource and keep only the six retail N64 MKT poses:
+
+`RBRUN1, RBRUN3, RBRUN5, RBRUN7, RBRUN9, RBRUN11`
+
+The target script remains twelve visual ticks long by holding each pose twice:
+
+`1,1,3,3,5,5,7,7,9,9,11,11 -> loop`
+
+This is an intentional product/design choice accepted after manual comparison against a double-loop variant. The double-loop sequence `1,3,5,7,9,11,1,3,5,7,9,11` should not be adopted.
+
+Because the accepted six-pose Run no longer needs the rejected PS1-derived Run path or the later WIMP-derived even-pose repair assets, future Sektor builders should remove those Run-only inputs/decoders/dependencies rather than carry them forward as dead build requirements. Historical v55-v58 provenance remains documented in proof history and asset translation.
+
+A physical-removal repack analysis is **Implementation/static-confirmed** at file-`0x87 = 0x4CD68`, saving `0x1694` = **5,780 bytes** versus the current `0x4E3FC` v58-style resource and increasing v49-bound headroom from `0x148` to `0x17DC`. Runtime regression of the physically repacked six-pose composition is still Pending.
 
 ## Current remaining gaps
 
