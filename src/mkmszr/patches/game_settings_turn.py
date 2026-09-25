@@ -45,6 +45,7 @@ from ..mips import (
     srl,
     sw,
     words_blob,
+    xori,
 )
 from ..rom import RomImage
 from .base import PatchContext
@@ -767,24 +768,19 @@ def build_jump_draw_helper() -> bytes:
         sw("s1", 24, "sp"),
     )
 
-    # Publish only cursor indices valid for the stock cursor renderer.
-    # Rows 0..3 use compacted GAME SETTINGS type 2.  Logical EXIT index 4 is
-    # mapped to stock OPTIONS type 0, entry 5 = the native (120,210) EXIT pair.
-    e.emit(addiu("t0", "zero", 4))
-    e.bne("s0", "t0", "settings_cursor")
-    e.emit(addiu("t1", "zero", 2))
+    # Publish only indices valid for the stock cursor renderer, without
+    # growing this reclaimed region:
+    #   s0 0..3 -> type 2, index s0
+    #   s0 4    -> type 0, index 5 (stock OPTIONS EXIT coordinate)
     e.emit(
-        addiu("t2", "zero", 5),
+        sltiu("t0", "s0", 4),
+        sll("t1", "t0", 1),
+        xori("t2", "t0", 1),
+        addu("t2", "s0", "t2"),
         sw("t2", 0x6F4, "fp"),
-        sw("zero", 0x6F8, "fp"),
+        sw("t1", 0x6F8, "fp"),
     )
-    e.beq("zero", "zero", "cursor_done")
-    e.emit(NOP)
 
-    e.label("settings_cursor")
-    e.emit(sw("s0", 0x6F4, "fp"), sw("t1", 0x6F8, "fp"))
-
-    e.label("cursor_done")
     e.emit(
         lw("ra", 0x1C, "sp"),
         addiu("sp", "sp", 0x20),
