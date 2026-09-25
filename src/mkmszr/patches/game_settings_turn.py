@@ -136,7 +136,6 @@ GAME_SETTINGS_CURSOR_TABLE_EXPECTED = bytes.fromhex(
 GAME_SETTINGS_CURSOR_TABLE_COMPACT = bytes.fromhex(
     "00460037 0050005A 0050007D 005000A0"
 )
-SELECTED_LABEL_STYLE_VA = 0x800B273C
 
 BOOTSTRAP_RUNTIME_ENTRY_WORDS_OFFSET = 0x34
 
@@ -719,15 +718,7 @@ def build_jump_draw_helper() -> bytes:
         addiu("a1", "zero", 160),
         addiu("a2", "zero", 160),
         addiu("a3", "zero", 1),
-        addu("t4", "s7", "zero"),
-        addiu("t0", "zero", 3),
-    )
-    e.bne("s0", "t0", "jump_label_style_ready")
-    e.emit(NOP)
-    e.emit(*address_words("t4", SELECTED_LABEL_STYLE_VA))
-    e.label("jump_label_style_ready")
-    e.emit(
-        sw("t4", 16, "sp"),
+        sw("s7", 16, "sp"),
         sw("s6", 20, "sp"),
         jal(GAME_TEXT_DRAW_VA),
         sw("s1", 24, "sp"),
