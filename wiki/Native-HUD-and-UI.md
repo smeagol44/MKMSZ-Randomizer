@@ -97,3 +97,29 @@ The stock top-level `GAME SETTINGS` entry is now reused by the shared browser/CL
 The first production integration attempt is **Rejected / failed**: it tried to raw-load shared file `0x1A` into the gameplay expansion pool while still in the title/frontend lifecycle and hard-hung immediately on entering GAME SETTINGS. The accepted implementation keeps the menu wrapper in global/title-resident code and loads file `0x1A` only at stage initialization.
 
 The durable TURN preference is bit `0x0200` in the already-owned four-box state word at `0x800A60E8`. The reserved Runtime V2 word at `0xA01AF81C` is only transient editor storage while GAME SETTINGS is open; it is not the durable owner.
+
+### Accepted future GAME SETTINGS rows
+
+The accepted follow-on menu architecture is **not yet implemented gameplay behavior**. It is the current design contract for extending the production GAME SETTINGS page without changing its top-level OPTIONS slot:
+
+| Setting | Values | Current status / rule |
+|---|---|---|
+| `TURN` | `TOGGLE` / `LOCK` | **Production / Runtime-confirmed.** Defaults to `TOGGLE`. |
+| `COMBOS` | `CLASSIC` / `ASSIST` | **Pending.** Next menu item. `CLASSIC` is the intended default; exact ASSIST gameplay semantics still require their own design/proof. |
+| `SPECIALS` | `CLASSIC` / `MODERN` | **Pending.** `CLASSIC` is the intended default; exact MODERN gameplay semantics still require their own design/proof. |
+| `JUMP` | `DPAD` / `BUTTON` | **Pending and conditional.** Visible only when `COMBOS != CLASSIC` **or** `SPECIALS != CLASSIC`. |
+
+`JUMP` is a **visibility dependency**, not a disabled row. When both COMBOS and SPECIALS are CLASSIC, JUMP is omitted entirely. As soon as either alternate control mode is selected, JUMP appears. Because left/right only edits the currently highlighted row, changing COMBOS or SPECIALS changes JUMP visibility while the cursor remains on COMBOS/SPECIALS; there is no separate cursor-recovery case.
+
+The next bounded implementation step is intentionally **UI/state only**:
+
+1. extend the current production GAME SETTINGS page with `COMBOS: CLASSIC / ASSIST`;
+2. default to `CLASSIC`;
+3. make row navigation, EXIT behavior, state mutation, and session/stage persistence work with two rows;
+4. do **not** change combo gameplay yet;
+5. only after that menu/state proof is Runtime-confirmed, define and implement ASSIST semantics in a separate guarded gameplay proof.
+
+After COMBOS is stable, follow the same pattern for SPECIALS. JUMP should be added as a UI/state row only after COMBOS/SPECIALS exist, so its four visibility combinations can be validated before any jump-control gameplay change is attempted.
+
+This future-control menu work remains outside the 1.0 release blocker chain unless explicitly promoted later. It must not silently redefine existing combo, special-move, or jump semantics.
+
