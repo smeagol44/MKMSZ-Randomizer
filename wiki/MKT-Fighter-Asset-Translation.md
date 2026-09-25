@@ -25,6 +25,7 @@ The stable compatibility conclusions are:
 - Donor palettes must be translated into MKMSZ source-palette semantics before rendering. Palette binding is a resource-lifetime problem as well as a color-conversion problem.
 - Generated native Type-5 is the accepted target storage format for imported fighter art. Its format contract remains canonical in [Data structures and encodings](Data-Structures-and-Encodings).
 - Fighter-resource file size is gameplay-sensitive. Proof footprints establish bounded working/failing envelopes, not a universal production-safe threshold.
+- Generic fighter storage is **reachability-driven**: inherited Midway animation labels do not automatically consume importer budget. MKMSZ table-0 indices `0x41+n` alias secondary slot `n`, and physically shared scripts may remain live even when one inherited slot name has no player caller. Use the reachability classification in [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping) before adding or reclaiming art.
 
 ## Evidence boundary
 
@@ -433,7 +434,7 @@ Consequences for the converter/build pipeline:
 - generate Run scripts at the donor fighter's actual frame count; append target loop/control grammar after the final donor pose, with animation cadence translated separately;
 - keep all non-Run Sektor asset conversion behavior unchanged.
 
-The analyzed physical repack reduces file `0x87` from `0x4E3FC` to `0x4CD68`: **5,780 bytes (`0x1694`) saved**. Against the established v49 working bound, headroom increases from `0x148` to `0x17DC`. This repack is Implementation/static-confirmed; its asset-removal result remains valid independently of the later rate-3 cadence correction. A bounded runtime regression is still required before promoting it as the new common-animation baseline.
+The compact six-retail-pose repack reduces file `0x87` from `0x4E3FC` to `0x4CD68`: **5,780 bytes (`0x1694`) saved**. Against the established v49 working bound, headroom increases from `0x148` to `0x17DC`. v05 Runtime-confirms this physical repack on the tested route while preserving the six-entry rate-3 Run and removing the obsolete PS1/WIMP Run dependencies.
 
 ## Current compatibility boundaries
 
