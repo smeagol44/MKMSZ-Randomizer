@@ -43,6 +43,7 @@ from ..mips import (
     srl,
     sw,
     words_blob,
+    xori,
 )
 from ..rom import RomImage
 from .base import PatchContext
@@ -372,7 +373,7 @@ def build_action_gate_helper() -> bytes:
 
 
 def build_menu_wrapper() -> bytes:
-    """Mirror durable TURN state into the stock editor, then commit it on exit."""
+    """Frontend-safe TURN editor wrapper using only global/title-resident code."""
 
     emitter = Emitter()
     emitter.emit(
@@ -388,24 +389,23 @@ def build_menu_wrapper() -> bytes:
         NOP,
     )
 
-    # GAME SETTINGS may clobber all temporaries.  Reload both owners and replace
-    # only the TURN bit, preserving active-box/latch and future state bits.
+    # The durable state bit is unchanged while GAME SETTINGS runs.  Compare the
+    # edited 0/1 value with the current bit and toggle only when the user changed
+    # it.  This preserves active-box/latch and every unrelated state bit.
     emitter.emit(
         *address_words("t0", STATE_VA),
         lw("t2", 0, "t0"),
-        lui("t3", 0xFFFF),
-        ori("t3", "t3", (~TURN_LOCK_STATE_MASK) & 0xFFFF),
-        and_("t2", "t2", "t3"),
-        *address_words("t3", SETTINGS_UNCACHED_VA),
-        lhu("t1", 0, "t3"),
+        andi("t3", "t2", TURN_LOCK_STATE_MASK),
+        srl("t3", "t3", 9),
+        *address_words("t4", SETTINGS_UNCACHED_VA),
+        lhu("t1", 0, "t4"),
     )
-    emitter.beq("t1", "zero", "commit")
+    emitter.beq("t1", "t3", "done")
     emitter.emit(NOP)
-    emitter.emit(ori("t2", "t2", TURN_LOCK_STATE_MASK))
+    emitter.emit(xori("t2", "t2", TURN_LOCK_STATE_MASK), sw("t2", 0, "t0"))
 
-    emitter.label("commit")
+    emitter.label("done")
     emitter.emit(
-        sw("t2", 0, "t0"),
         lw("ra", 0x10, "sp"),
         addiu("sp", "sp", 0x18),
         jr("ra"),
@@ -420,7 +420,6 @@ def _pack_module() -> tuple[bytes, dict[str, int]]:
         ("decision", build_decision_helper()),
         ("release", build_release_helper()),
         ("action", build_action_gate_helper()),
-        ("menu", build_menu_wrapper()),
     ]
     blob = bytearray()
     offsets: dict[str, int] = {}
@@ -444,29 +443,6 @@ CAPTURE_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["capture"]
 DECISION_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["decision"]
 RELEASE_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["release"]
 ACTION_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["action"]
-MENU_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["menu"]
-
-
-def build_menu_loader() -> bytes:
-    """Load shared file 0x1A at title time, then tail-enter its menu wrapper."""
-
-    high = ((CONTROL_MODULE_CACHED_BASE + 0x8000) >> 16) & 0xFFFF
-    low = CONTROL_MODULE_CACHED_BASE & 0xFFFF
-    emitter = Emitter()
-    emitter.emit(
-        addiu("sp", "sp", -0x18),
-        sw("ra", 0x10, "sp"),
-        addiu("a0", "zero", EXPANSION_FILE_ID),
-        lui("a1", high),
-        jal(RAW_FILE_LOADER_VA),
-        addiu("a1", "a1", low),
-        *address_words("t9", MENU_ENTRY),
-        lw("ra", 0x10, "sp"),
-        addiu("sp", "sp", 0x18),
-        jr("t9"),
-        NOP,
-    )
-    return emitter.finish()
 
 
 def _pack_static_region() -> tuple[bytes, dict[str, int]]:
@@ -476,7 +452,7 @@ def _pack_static_region() -> tuple[bytes, dict[str, int]]:
         ("decision", _indirect_jump(DECISION_ENTRY)),
         ("release", _indirect_jump(RELEASE_ENTRY)),
         ("action", _indirect_jump(ACTION_ENTRY)),
-        ("menu_loader", build_menu_loader()),
+        ("menu", build_menu_wrapper()),
     ]
     blob = bytearray()
     offsets: dict[str, int] = {}
@@ -497,7 +473,7 @@ CAPTURE_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["capture"]
 DECISION_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["decision"]
 RELEASE_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["release"]
 ACTION_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["action"]
-MENU_WRAPPER_VA = STATIC_REGION_VA + STATIC_OFFSETS["menu_loader"]
+MENU_WRAPPER_VA = STATIC_REGION_VA + STATIC_OFFSETS["menu"]
 
 
 def _patch_game_settings(rom: RomImage) -> None:
