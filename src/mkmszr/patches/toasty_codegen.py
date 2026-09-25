@@ -192,7 +192,10 @@ def _build_call_trampoline()->bytes:
     return words_blob([lui(T9,0xA01B),jr(T9),NOP])
 
 def _build_init_loader()->bytes:
-    return words_blob([addiu(A0,ZERO,EXPANSION_FILE_ID),lui(A1,0x801B),jal(RAW_FILE_LOADER_VA),NOP,lui(T9,0xA01B),jr(T9),NOP])
+    # GAME SETTINGS TURN owns the shared file-0x1A stage-init load.  By the
+    # time the post-13 Toasty hook runs, the packed Toasty module is already
+    # resident at its established 0x801B0000 runtime base.
+    return _build_call_trampoline()
 
 def _align(value:int,alignment:int=16)->int:
     return (value+alignment-1)&~(alignment-1)
