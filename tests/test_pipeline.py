@@ -1,6 +1,7 @@
 from mkmszr.config import OutfitConfig, RandomizerConfig
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.arena import ArenaReservationPatch
+from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
 from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
 from mkmszr.patches.native_payload import NativePayloadPatch
 from mkmszr.patches.pickup_persistence import PickupPersistencePatch
@@ -23,6 +24,14 @@ def test_progression_runs_after_generated_pickups_and_four_box_resume_patch() ->
     types = [type(patch) for patch in pipeline.patches]
     assert types.index(PickupRandomizationPatch) < types.index(FourBoxInventoryPatch)
     assert types.index(FourBoxInventoryPatch) < types.index(XPProgressionPatch)
+
+
+def test_turn_settings_run_after_progression_in_shared_pipeline() -> None:
+    pipeline = build_pipeline(RandomizerConfig())
+    types = [type(patch) for patch in pipeline.patches]
+    assert XPProgressionPatch in types
+    assert GameSettingsTurnPatch in types
+    assert types.index(XPProgressionPatch) < types.index(GameSettingsTurnPatch)
 
 
 def test_rainbow_outfit_uses_runtime_palette_patch() -> None:
