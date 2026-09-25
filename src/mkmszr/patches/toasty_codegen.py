@@ -1,4 +1,3 @@
-# ruff: noqa: E701, E702, F403, F405
 """Native Toasty code generation and expansion-module packing."""
 
 from dataclasses import dataclass
