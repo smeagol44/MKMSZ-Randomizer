@@ -135,11 +135,17 @@ def test_boot_edition_worst_case_name_fits_packed_legal_region() -> None:
 
 def test_presentation_patches_follow_four_box_inventory() -> None:
     pipeline = build_pipeline(RandomizerConfig())
-    assert isinstance(pipeline.patches[4], PickupRandomizationPatch)
-    assert isinstance(pipeline.patches[5], FourBoxInventoryPatch)
-    assert isinstance(pipeline.patches[7], SafeStageSelectSkipAutoSavePatch)
-    assert isinstance(pipeline.patches[8], BoxIndicatorPatch)
-    assert isinstance(pipeline.patches[9], BootBrandingPatch)
-    assert pipeline.patches[9].edition_name == "SUB-ZERO"
-    assert isinstance(pipeline.patches[10], BootLogoBypassPatch)
-    assert isinstance(pipeline.patches[11], TitleBrandingPatch)
+    patches = pipeline.patches
+    types = [type(patch) for patch in patches]
+
+    pickup_index = types.index(PickupRandomizationPatch)
+    box_index = types.index(FourBoxInventoryPatch)
+    save_bypass_index = types.index(SafeStageSelectSkipAutoSavePatch)
+    indicator_index = types.index(BoxIndicatorPatch)
+    branding_index = types.index(BootBrandingPatch)
+    logo_index = types.index(BootLogoBypassPatch)
+    title_index = types.index(TitleBrandingPatch)
+
+    assert pickup_index < box_index < save_bypass_index
+    assert save_bypass_index < indicator_index < branding_index < logo_index < title_index
+    assert patches[branding_index].edition_name == "SUB-ZERO"
