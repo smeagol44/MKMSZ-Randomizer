@@ -88,38 +88,36 @@ The existing Runtime-confirmed `BOX n OF 4` text satisfies only the storage-stat
 - [Presentation and branding](Presentation-and-Branding) — legal screen, title art, edition text, boot phrase presentation, and visual acceptance.
 - [Toasty visual research](Toasty-Visual-Research) — Toasty visual target, complete v01-v16 chronology, rejected diagnostics, and proof provenance.
 
-## Production GAME SETTINGS / TURN controls
+## Production GAME SETTINGS frontend
 
-The stock top-level `GAME SETTINGS` entry is now reused by the shared browser/CLI patch core for a native one-row MKMSZR settings page. The production page exposes `TURN: TOGGLE / LOCK` plus `EXIT`, defaults to `TOGGLE`, and keeps the stock frontend renderer/input loop rather than introducing a separate web-only option.
+The stock top-level `GAME SETTINGS` entry is now the complete MKMSZR control frontend. **Full-menu v04 is Runtime-confirmed** and is the accepted frontend baseline:
 
-**Runtime-confirmed production composition:** menu entry/exit, TOGGLE and LOCK behavior, inventory-box switching, a stage transition, both former Temple hang regressions, and first-Scorpion forced-facing fallback were manually validated in the full production build with optional Toasty composition. During a detected forced-facing encounter, a selected `LOCK` temporarily behaves as stock/TOGGLE without changing the stored preference; LOCK resumes afterward. Earth type `0x19` remains outside this runtime claim.
-
-The first production integration attempt is **Rejected / failed**: it tried to raw-load shared file `0x1A` into the gameplay expansion pool while still in the title/frontend lifecycle and hard-hung immediately on entering GAME SETTINGS. The accepted implementation keeps the menu wrapper in global/title-resident code and loads file `0x1A` only at stage initialization.
-
-The durable TURN preference is bit `0x0200` in the already-owned four-box state word at `0x800A60E8`. The reserved Runtime V2 word at `0xA01AF81C` is only transient editor storage while GAME SETTINGS is open; it is not the durable owner.
-
-### Accepted future GAME SETTINGS rows
-
-The accepted follow-on menu architecture is **not yet implemented gameplay behavior**. It is the current design contract for extending the production GAME SETTINGS page without changing its top-level OPTIONS slot:
-
-| Setting | Values | Current status / rule |
+| Setting | Values | Frontend status |
 |---|---|---|
-| `TURN` | `TOGGLE` / `LOCK` | **Production / Runtime-confirmed.** Defaults to `TOGGLE`. |
-| `COMBOS` | `CLASSIC` / `ASSIST` | **Pending.** Next menu item. `CLASSIC` is the intended default; exact ASSIST gameplay semantics still require their own design/proof. |
-| `SPECIALS` | `CLASSIC` / `MODERN` | **Pending.** `CLASSIC` is the intended default; exact MODERN gameplay semantics still require their own design/proof. |
-| `JUMP` | `DPAD` / `BUTTON` | **Pending and conditional.** The row is planned to remain visible, but `BUTTON` is available only when `COMBOS = ASSIST` **and** `SPECIALS = MODERN`; otherwise JUMP remains unavailable/greyed and effectively fixed to `DPAD`. |
+| `TURN` | `TOGGLE` / `LOCK` | Runtime-confirmed gameplay + frontend. Defaults to TOGGLE. |
+| `COMBOS` | `CLASSIC` / `ASSIST` | Runtime-confirmed UI/state. Gameplay ASSIST semantics Pending. |
+| `SPECIALS` | `CLASSIC` / `MODERN` | Runtime-confirmed UI/state. Gameplay MODERN semantics Pending. |
+| `JUMP` | `DPAD` / `BUTTON` | Runtime-confirmed UI/state. Visible at all times; greyed/fixed to DPAD unless **COMBOS=ASSIST AND SPECIALS=MODERN**. Gameplay BUTTON semantics Pending. |
+| `EXIT` | — | Runtime-confirmed navigation/return. |
 
-`JUMP` is now an **availability dependency**, not a visibility dependency. The intended frontend keeps the row visible so players can discover the option, but the row/value should be visually disabled (greyed) unless **both** `COMBOS = ASSIST` and `SPECIALS = MODERN`. This reflects the control-layout constraint: classic combos still need the four attack buttons, and classic specials still depend on those normal attack buttons, so neither setting alone actually frees a reliable button for Jump. Exact disabled-row presentation is still a frontend detail to validate.
+The compact layout reuses the stock font and frontend loop while reclaiming the old GAME SETTINGS edit/draw regions. Four setting rows fit above the stock EXIT position without introducing a new frontend allocation or title-time expansion load.
 
-The next bounded implementation step is intentionally **UI/state only**:
+**Runtime-confirmed v04 frontend behavior:** cursor alignment is correct on all five logical rows; JUMP is selectable and its value becomes editable only under ASSIST+MODERN; the disabled DPAD state is visibly greyed; values survive the tested leave/re-enter, stage, and inventory activity routes; the accelerated/crunchy music observed in v02 does not reproduce.
 
-1. extend the current production GAME SETTINGS page with `COMBOS: CLASSIC / ASSIST`;
-2. default to `CLASSIC`;
-3. make row navigation, EXIT behavior, state mutation, and session/stage persistence work with two rows;
-4. do **not** change combo gameplay yet;
-5. only after that menu/state proof is Runtime-confirmed, define and implement ASSIST semantics in a separate guarded gameplay proof.
+The durable state word at `0x800A60E8` owns:
+- `0x0200` TURN=LOCK;
+- `0x0400` COMBOS=ASSIST;
+- `0x0800` SPECIALS=MODERN;
+- `0x1000` JUMP=BUTTON.
 
-After COMBOS is stable, follow the same pattern for SPECIALS. JUMP should then be added as a visible UI/state row with its disabled/enabled presentation validated across all four COMBOS/SPECIALS combinations before any jump-control gameplay change is attempted. Only `ASSIST + MODERN` enables `BUTTON`.
+Box switching preserves all four settings bits. If COMBOS or SPECIALS is returned to its classic mode, the JUMP button bit is cleared back to DPAD.
 
-This future-control menu work remains outside the 1.0 release blocker chain unless explicitly promoted later. It must not silently redefine existing combo, special-move, or jump semantics.
+Frontend proof history:
+- **v01 — Rejected / failed:** custom JUMP draw helper failed to preserve `ra` across nested renderer calls; menu entry hard-hung.
+- **v02 — Rejected / unsafe:** menu rendered but published logical index 4 into the stock four-entry GAME SETTINGS cursor contract, causing cursor corruption and accelerated/crunchy menu audio.
+- **v03 — Superseded:** safe cursor-index mapping removed the music corruption, but a trailing displaced stock store still overwrote cursor type and produced wrong cursor positions.
+- **v04 — Runtime-confirmed:** owns all three words at the JUMP draw/cursor hook, preserving the corrected cursor contract and final compact coordinates.
 
+The first older production integration failure remains relevant: loading shared file `0x1A` from the title/frontend lifecycle hard-hung. The accepted frontend remains title-resident; file `0x1A` is loaded only at stage initialization.
+
+The GAME SETTINGS **frontend is now complete**. Future work should not reopen frontend structure unless a new requirement appears. The next work is the gameplay semantics behind COMBOS ASSIST, SPECIALS MODERN, and JUMP BUTTON. These remain outside the 1.0 blocker chain unless explicitly promoted later.
