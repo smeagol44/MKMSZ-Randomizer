@@ -28,6 +28,7 @@ from ..mips import (
     Emitter,
     addiu,
     address_words,
+    and_,
     andi,
     jal,
     jalr,
@@ -38,12 +39,14 @@ from ..mips import (
     lw,
     ori,
     sh,
+    srl,
     sltiu,
     sw,
     words_blob,
 )
 from ..rom import RomImage
 from .base import PatchContext
+from .inventory_boxes import STATE_VA, TURN_LOCK_STATE_MASK
 from .native_payload import kseg1_alias
 from .pickup_persistence import (
     CAPTURE_HELPER,
@@ -51,14 +54,7 @@ from .pickup_persistence import (
     CAPTURE_HELPER_VA,
     DESCRIPTOR_TABLE_ROM,
 )
-from .runtime_v2 import (
-    CODE_UNCACHED_BASE,
-    STATE_SETTINGS_MARKER,
-    STATE_SETTINGS_OFFSET,
-    STATE_TURN_LOCK,
-    STATE_TURN_TOGGLE,
-    STATE_UNCACHED_BASE,
-)
+from .runtime_v2 import CODE_UNCACHED_BASE, STATE_SIZE, STATE_UNCACHED_BASE
 
 NOP = 0
 
@@ -72,13 +68,13 @@ CURRENT_CONTROLLER_PTR_VA = 0x802ECE20
 CONTROLLER_LIST_HEAD_VA = 0x80111EAC
 TURN_MASK = 0x0001
 
-# Final word of Runtime V2 state.  Low halfword is settings flags/value space;
-# high halfword is a validity marker.  The common Runtime V2 initializer leaves
-# this word untouched when clearing an invalid run state.
-SETTINGS_UNCACHED_VA = STATE_UNCACHED_BASE + STATE_SETTINGS_OFFSET
-SETTINGS_MARKER = STATE_SETTINGS_MARKER
-TURN_TOGGLE = STATE_TURN_TOGGLE
-TURN_LOCK = STATE_TURN_LOCK
+# The final reserved Runtime V2 word is only the native GAME SETTINGS editor's
+# transient halfword backing while that frontend is open.  The durable user
+# preference lives in the already-owned four-box state word so normal Runtime V2
+# stage initialization cannot erase it.
+SETTINGS_UNCACHED_VA = STATE_UNCACHED_BASE + STATE_SIZE - 4
+TURN_TOGGLE = 0
+TURN_LOCK = 1
 
 FACE_POLICY_SCANNER_VA = 0x8004A6E8
 FACING_FLIP_VA = 0x8003188C
@@ -139,14 +135,11 @@ def build_expansion_loader() -> bytes:
 
 
 def _emit_turn_lock_gate(emitter: Emitter, *, fallback_label: str) -> None:
-    """Branch to fallback unless the settings marker is valid and TURN is LOCK."""
+    """Branch to fallback unless the durable MKMSZR preference is TURN=LOCK."""
 
-    emitter.emit(*address_words("t0", SETTINGS_UNCACHED_VA))
-    emitter.emit(lhu("t1", 2, "t0"), addiu("t2", "zero", SETTINGS_MARKER))
-    emitter.bne("t1", "t2", fallback_label)
-    emitter.emit(NOP)
-    emitter.emit(lhu("t1", 0, "t0"), addiu("t2", "zero", TURN_LOCK))
-    emitter.bne("t1", "t2", fallback_label)
+    emitter.emit(*address_words("t0", STATE_VA))
+    emitter.emit(lw("t1", 0, "t0"), andi("t1", "t1", TURN_LOCK_STATE_MASK))
+    emitter.beq("t1", "zero", fallback_label)
     emitter.emit(NOP)
 
 
@@ -410,26 +403,45 @@ ACTION_ENTRY = CONTROL_MODULE_UNCACHED_BASE + CONTROL_MODULE_OFFSETS["action"]
 
 
 def build_menu_wrapper() -> bytes:
-    """Normalize TURN state at title time, then tail-jump to stock GAME SETTINGS."""
+    """Mirror durable TURN state into the stock editor, then commit it on exit."""
 
     emitter = Emitter()
-    emitter.emit(*address_words("t0", SETTINGS_UNCACHED_VA))
-    emitter.emit(lhu("t1", 2, "t0"), addiu("t2", "zero", SETTINGS_MARKER))
-    emitter.bne("t1", "t2", "initialize")
-    emitter.emit(NOP)
-    emitter.emit(lhu("t1", 0, "t0"), sltiu("t2", "t1", 2))
-    emitter.bne("t2", "zero", "ready")
-    emitter.emit(NOP)
-
-    emitter.label("initialize")
     emitter.emit(
-        sh("zero", 0, "t0"),
-        addiu("t1", "zero", SETTINGS_MARKER),
-        sh("t1", 2, "t0"),
+        addiu("sp", "sp", -0x18),
+        sw("ra", 0x10, "sp"),
+        *address_words("t0", STATE_VA),
+        lw("t1", 0, "t0"),
+        andi("t1", "t1", TURN_LOCK_STATE_MASK),
+        srl("t1", "t1", 9),
+        *address_words("t2", SETTINGS_UNCACHED_VA),
+        sh("t1", 0, "t2"),
+        jal(GAME_SETTINGS_VA),
+        NOP,
     )
 
-    emitter.label("ready")
-    emitter.emit(jump(GAME_SETTINGS_VA), NOP)
+    # GAME SETTINGS may clobber all temporaries.  Reload both owners and replace
+    # only the TURN bit, preserving active-box/latch and future state bits.
+    emitter.emit(
+        *address_words("t0", STATE_VA),
+        lw("t2", 0, "t0"),
+        lui("t3", 0xFFFF),
+        ori("t3", "t3", (~TURN_LOCK_STATE_MASK) & 0xFFFF),
+        and_("t2", "t2", "t3"),
+        *address_words("t3", SETTINGS_UNCACHED_VA),
+        lhu("t1", 0, "t3"),
+    )
+    emitter.beq("t1", "zero", "commit")
+    emitter.emit(NOP)
+    emitter.emit(ori("t2", "t2", TURN_LOCK_STATE_MASK))
+
+    emitter.label("commit")
+    emitter.emit(
+        sw("t2", 0, "t0"),
+        lw("ra", 0x10, "sp"),
+        addiu("sp", "sp", 0x18),
+        jr("ra"),
+        NOP,
+    )
     return emitter.finish()
 
 
