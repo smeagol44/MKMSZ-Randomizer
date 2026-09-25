@@ -125,6 +125,19 @@ VALUE_STYLE_VA = 0x800B2724
 JUMP_LABEL_VA = 0x800AEB15
 DPAD_VALUE_VA = 0x800AEAF0
 
+# Stock cursor type 2 is the GAME SETTINGS four-entry table.  Keep its native
+# size but repurpose its four coordinates for the four compact setting rows.
+# EXIT uses the stock OPTIONS type-0 entry 5 instead of publishing invalid
+# GAME SETTINGS index 4.
+GAME_SETTINGS_CURSOR_TABLE_ROM = 0x000AF824
+GAME_SETTINGS_CURSOR_TABLE_EXPECTED = bytes.fromhex(
+    "00460046 0050006E 00500096 007800D2"
+)
+GAME_SETTINGS_CURSOR_TABLE_COMPACT = bytes.fromhex(
+    "00460037 0050005A 0050007D 005000A0"
+)
+SELECTED_LABEL_STYLE_VA = 0x800B273C
+
 BOOTSTRAP_RUNTIME_ENTRY_WORDS_OFFSET = 0x34
 
 STATIC_REGION_ROM = CAPTURE_HELPER_ROM
@@ -706,7 +719,15 @@ def build_jump_draw_helper() -> bytes:
         addiu("a1", "zero", 160),
         addiu("a2", "zero", 160),
         addiu("a3", "zero", 1),
-        sw("s7", 16, "sp"),
+        addu("t4", "s7", "zero"),
+        addiu("t0", "zero", 3),
+    )
+    e.bne("s0", "t0", "jump_label_style_ready")
+    e.emit(NOP)
+    e.emit(*address_words("t4", SELECTED_LABEL_STYLE_VA))
+    e.label("jump_label_style_ready")
+    e.emit(
+        sw("t4", 16, "sp"),
         sw("s6", 20, "sp"),
         jal(GAME_TEXT_DRAW_VA),
         sw("s1", 24, "sp"),
@@ -755,11 +776,25 @@ def build_jump_draw_helper() -> bytes:
         sw("s1", 24, "sp"),
     )
 
-    # Recreate the two displaced stock loop-tail stores from 0x80076D10.
+    # Publish only cursor indices valid for the stock cursor renderer.
+    # Rows 0..3 use compacted GAME SETTINGS type 2.  Logical EXIT index 4 is
+    # mapped to stock OPTIONS type 0, entry 5 = the native (120,210) EXIT pair.
+    e.emit(addiu("t0", "zero", 4))
+    e.bne("s0", "t0", "settings_cursor")
+    e.emit(addiu("t1", "zero", 2))
     e.emit(
-        addiu("t0", "zero", 2),
-        sw("s0", 0x6F4, "fp"),
-        sw("t0", 0x6F8, "fp"),
+        addiu("t2", "zero", 5),
+        sw("t2", 0x6F4, "fp"),
+        sw("zero", 0x6F8, "fp"),
+    )
+    e.beq("zero", "zero", "cursor_done")
+    e.emit(NOP)
+
+    e.label("settings_cursor")
+    e.emit(sw("s0", 0x6F4, "fp"), sw("t1", 0x6F8, "fp"))
+
+    e.label("cursor_done")
+    e.emit(
         lw("ra", 0x1C, "sp"),
         addiu("sp", "sp", 0x20),
         jr("ra"),
@@ -788,6 +823,15 @@ LEFT_EDIT_BLOB = _pad_region(
 def _patch_game_settings(rom: RomImage) -> None:
     rom.expect_bytes(GAME_SETTINGS_CALL_ROM, bytes.fromhex("0C01D9AF 02402021"))
     rom.write_u32(GAME_SETTINGS_CALL_ROM, jal(MENU_WRAPPER_VA))
+
+    rom.expect_bytes(
+        GAME_SETTINGS_CURSOR_TABLE_ROM,
+        GAME_SETTINGS_CURSOR_TABLE_EXPECTED,
+    )
+    rom.write_bytes(
+        GAME_SETTINGS_CURSOR_TABLE_ROM,
+        GAME_SETTINGS_CURSOR_TABLE_COMPACT,
+    )
 
     # Four visible setting rows (0..3), EXIT at index 4.
     rom.expect_u32(0x00077400, 0x2A020003)
