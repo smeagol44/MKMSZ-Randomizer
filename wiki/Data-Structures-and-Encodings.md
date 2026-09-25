@@ -63,7 +63,7 @@ Fire's 19 manager ordinals translate to catalog bits as:
 | `0x800A6070` | 10 | Box 2 backing |
 | `0x800A6098` | 10 | Box 3 backing |
 | `0x800A60C0` | 10 | Box 4 backing |
-| `0x800A60E8` | 1 | Active index and input latch |
+| `0x800A60E8` | 1 | Active index, input latch, and TURN preference (`0x0200` = LOCK) |
 | `0x800A60EC` | 1 | `MKBX` magic |
 
 Empty stock slots use `0xFFFFFFFF`. Foreign-stage keys appear in the live window as item `0x08` only; the true item remains in backing storage.
