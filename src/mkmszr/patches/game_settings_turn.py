@@ -39,8 +39,8 @@ from ..mips import (
     lw,
     ori,
     sh,
-    srl,
     sltiu,
+    srl,
     sw,
     words_blob,
 )
