@@ -328,3 +328,26 @@ Those translation-layer gaps are tracked in [MKT adapter primitives](MKT-Adapter
 - [Function registry](Function-Registry) — flat canonical function semantics.
 - [Address and patch-site registry](Address-and-Patch-Site-Registry) — exact guarded patch sites.
 - [Memory and allocation map](Memory-and-Allocation-Map) — literal ownership/allocation and proof-vs-production boundaries.
+
+
+## ATTACK: CLASSIC / MODERN control contract
+
+**Accepted design; gameplay implementation Pending.** The previously named `COMBOS: CLASSIC / ASSIST` setting is renamed to **`ATTACK: CLASSIC / MODERN`** because the alternate mode changes the whole attack-button role rather than combos alone. The current frontend text may remain `COMBOS / ASSIST` until the next ROM build; that is a pending text-only correction, not a semantic ambiguity.
+
+`ATTACK: CLASSIC` preserves stock attack inputs.
+
+`ATTACK: MODERN` makes semantic C-Left the single context-sensitive Attack button. Accepted priority/behavior contract:
+
+1. **Blocking + Attack -> Low Punch.** Cancel block immediately and enter the stock LP action, preserving the normal grab/throw opportunity.
+2. **Airborne + Down + Attack -> air kick.**
+3. **Airborne + Attack -> air punch.**
+4. **Backward locomotion + Run + Attack -> Roundhouse.** This mapping is accepted provisionally and should be evaluated separately in runtime because it is the least certain ergonomic choice.
+5. **Backward locomotion + Attack -> Sweep.**
+6. **Grounded and in valid combo proximity/window -> advance the fighter's longest stock combo by one semantic hit per Attack press.** For stock Sub-Zero's full N64 combo, the user-facing sequence becomes six Attack presses instead of `C-Left, C-Left, C-Down, C-Right, C-Up, Back+C-Up`. The implementation should translate each Attack press into the next stock semantic combo input rather than inventing a new six-hit action or bypassing stock timing/hit-window rules.
+7. **Otherwise -> High Punch.** At neutral/out-of-combo range, Attack remains the stock HP action.
+
+The backward cases must use the game's established **backward locomotion state**, not infer "backward" merely from raw direction vs facing. This avoids conflicts with `TURN: LOCK` and preserves the host locomotion contract.
+
+ATTACK MODERN is intended as an **input translator into existing native action/combo semantics**, not a replacement combat engine. If the stock combo timing/window expires, the assisted chain must expire too. Do not force hits, fabricate combo state, or hard-code Sub-Zero choreography in a way that prevents later fighter-generic translation.
+
+The frontend dependency is now: **JUMP: BUTTON is available only when ATTACK=MODERN and SPECIALS=MODERN.** Either setting alone leaves JUMP fixed to DPAD.
