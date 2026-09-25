@@ -12,6 +12,7 @@ from mkmszr.patches.game_settings_turn import (
     build_action_gate_helper,
     build_release_helper,
 )
+from mkmszr.patches.inventory_boxes import STATE_VA, TURN_LOCK_STATE_MASK
 
 
 def _has_link_call(blob: bytes) -> bool:
@@ -25,8 +26,10 @@ def _has_link_call(blob: bytes) -> bool:
     return False
 
 
-def test_turn_settings_own_final_runtime_v2_word() -> None:
+def test_turn_editor_uses_reserved_runtime_word_and_durable_inventory_state_bit() -> None:
     assert SETTINGS_UNCACHED_VA == 0xA01AF81C
+    assert STATE_VA == 0x800A60E8
+    assert TURN_LOCK_STATE_MASK == 0x0200
 
 
 def test_turn_module_uses_low_expansion_slice_before_toasty() -> None:
