@@ -87,3 +87,13 @@ The existing Runtime-confirmed `BOX n OF 4` text satisfies only the storage-stat
 - [Memory and allocation map](Memory-and-Allocation-Map) — literal production/proof allocation ownership.
 - [Presentation and branding](Presentation-and-Branding) — legal screen, title art, edition text, boot phrase presentation, and visual acceptance.
 - [Toasty visual research](Toasty-Visual-Research) — Toasty visual target, complete v01-v16 chronology, rejected diagnostics, and proof provenance.
+
+## Production GAME SETTINGS / TURN controls
+
+The stock top-level `GAME SETTINGS` entry is now reused by the shared browser/CLI patch core for a native one-row MKMSZR settings page. The production page exposes `TURN: TOGGLE / LOCK` plus `EXIT`, defaults to `TOGGLE`, and keeps the stock frontend renderer/input loop rather than introducing a separate web-only option.
+
+**Runtime-confirmed production composition:** menu entry/exit, TOGGLE and LOCK behavior, inventory-box switching, a stage transition, both former Temple hang regressions, and first-Scorpion forced-facing fallback were manually validated in the full production build with optional Toasty composition. During a detected forced-facing encounter, a selected `LOCK` temporarily behaves as stock/TOGGLE without changing the stored preference; LOCK resumes afterward. Earth type `0x19` remains outside this runtime claim.
+
+The first production integration attempt is **Rejected / failed**: it tried to raw-load shared file `0x1A` into the gameplay expansion pool while still in the title/frontend lifecycle and hard-hung immediately on entering GAME SETTINGS. The accepted implementation keeps the menu wrapper in global/title-resident code and loads file `0x1A` only at stage initialization.
+
+The durable TURN preference is bit `0x0200` in the already-owned four-box state word at `0x800A60E8`. The reserved Runtime V2 word at `0xA01AF81C` is only transient editor storage while GAME SETTINGS is open; it is not the durable owner.
