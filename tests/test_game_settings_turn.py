@@ -5,22 +5,31 @@ from mkmszr.patches.game_settings_turn import (
     CONTROL_ALLOCATION,
     CONTROL_MODULE,
     CONTROL_MODULE_CACHED_BASE,
-    NAV_DOWN_HELPER_VA,
-    NAV_UP_HELPER_VA,
+    JUMP_DRAW_HELPER_VA,
+    LEFT_EDIT_BLOB,
+    LEFT_EDIT_END_ROM,
+    LEFT_EDIT_ROM,
     RELEASE_ENTRY,
+    RIGHT_EDIT_BLOB,
+    RIGHT_EDIT_END_ROM,
+    RIGHT_EDIT_ROM,
     SETTINGS_UNCACHED_VA,
     SHARED_EXPANSION_ROM,
+    SPECIALS_DRAW_END_ROM,
+    SPECIALS_DRAW_ROM,
     STATIC_REGION_BLOB,
     STATIC_REGION_SIZE,
     TOASTY_RUNTIME_BASE,
     build_action_gate_helper,
     build_combos_value_draw,
-    build_nav_down_helper,
-    build_nav_up_helper,
+    build_jump_draw_helper,
     build_release_helper,
+    build_specials_value_draw,
 )
 from mkmszr.patches.inventory_boxes import (
     COMBOS_ASSIST_STATE_MASK,
+    JUMP_BUTTON_STATE_MASK,
+    SPECIALS_MODERN_STATE_MASK,
     STATE_VA,
     TURN_LOCK_STATE_MASK,
     USER_SETTINGS_STATE_MASK,
@@ -38,12 +47,14 @@ def _has_link_call(blob: bytes) -> bool:
     return False
 
 
-def test_turn_editor_uses_reserved_runtime_word_and_durable_inventory_state_bit() -> None:
+def test_settings_state_bits_are_distinct_and_owned() -> None:
     assert SETTINGS_UNCACHED_VA == 0xA01AF81C
     assert STATE_VA == 0x800A60E8
     assert TURN_LOCK_STATE_MASK == 0x0200
     assert COMBOS_ASSIST_STATE_MASK == 0x0400
-    assert USER_SETTINGS_STATE_MASK == 0x0600
+    assert SPECIALS_MODERN_STATE_MASK == 0x0800
+    assert JUMP_BUTTON_STATE_MASK == 0x1000
+    assert USER_SETTINGS_STATE_MASK == 0x1E00
 
 
 def test_turn_module_uses_low_expansion_slice_before_toasty() -> None:
@@ -64,14 +75,13 @@ def test_static_loader_trampolines_fit_repurposed_capture_region() -> None:
     assert len(STATIC_REGION_BLOB) == STATIC_REGION_SIZE == 0xD8
 
 
-def test_combos_ui_proof_uses_second_owned_settings_bit() -> None:
-    assert COMBOS_ASSIST_STATE_MASK == 0x0400
-    assert TURN_LOCK_STATE_MASK & COMBOS_ASSIST_STATE_MASK == 0
+def test_full_settings_frontend_fits_reclaimed_stock_regions() -> None:
+    assert len(RIGHT_EDIT_BLOB) == RIGHT_EDIT_END_ROM - RIGHT_EDIT_ROM
+    assert len(LEFT_EDIT_BLOB) == LEFT_EDIT_END_ROM - LEFT_EDIT_ROM
+    assert RIGHT_EDIT_ROM < JUMP_DRAW_HELPER_VA - 0x80000000 + 0xC00 < RIGHT_EDIT_END_ROM
 
 
-def test_combos_menu_reuses_frontend_resident_stock_regions() -> None:
-    assert NAV_DOWN_HELPER_VA == 0x80076984
-    assert NAV_UP_HELPER_VA == 0x80076A7C
-    assert len(build_nav_down_helper()) <= 0x58
-    assert len(build_nav_up_helper()) <= 0x20
+def test_enum_value_draws_fit_stock_draw_regions() -> None:
     assert len(build_combos_value_draw()) == COMBOS_DRAW_END_ROM - COMBOS_DRAW_ROM
+    assert len(build_specials_value_draw()) == SPECIALS_DRAW_END_ROM - SPECIALS_DRAW_ROM
+    assert len(build_jump_draw_helper()) < RIGHT_EDIT_END_ROM - RIGHT_EDIT_ROM
