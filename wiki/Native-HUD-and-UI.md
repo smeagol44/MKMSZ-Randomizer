@@ -107,9 +107,9 @@ The accepted follow-on menu architecture is **not yet implemented gameplay behav
 | `TURN` | `TOGGLE` / `LOCK` | **Production / Runtime-confirmed.** Defaults to `TOGGLE`. |
 | `COMBOS` | `CLASSIC` / `ASSIST` | **Pending.** Next menu item. `CLASSIC` is the intended default; exact ASSIST gameplay semantics still require their own design/proof. |
 | `SPECIALS` | `CLASSIC` / `MODERN` | **Pending.** `CLASSIC` is the intended default; exact MODERN gameplay semantics still require their own design/proof. |
-| `JUMP` | `DPAD` / `BUTTON` | **Pending and conditional.** Visible only when `COMBOS != CLASSIC` **or** `SPECIALS != CLASSIC`. |
+| `JUMP` | `DPAD` / `BUTTON` | **Pending and conditional.** The row is planned to remain visible, but `BUTTON` is available only when `COMBOS = ASSIST` **and** `SPECIALS = MODERN`; otherwise JUMP remains unavailable/greyed and effectively fixed to `DPAD`. |
 
-`JUMP` is a **visibility dependency**, not a disabled row. When both COMBOS and SPECIALS are CLASSIC, JUMP is omitted entirely. As soon as either alternate control mode is selected, JUMP appears. Because left/right only edits the currently highlighted row, changing COMBOS or SPECIALS changes JUMP visibility while the cursor remains on COMBOS/SPECIALS; there is no separate cursor-recovery case.
+`JUMP` is now an **availability dependency**, not a visibility dependency. The intended frontend keeps the row visible so players can discover the option, but the row/value should be visually disabled (greyed) unless **both** `COMBOS = ASSIST` and `SPECIALS = MODERN`. This reflects the control-layout constraint: classic combos still need the four attack buttons, and classic specials still depend on those normal attack buttons, so neither setting alone actually frees a reliable button for Jump. Exact disabled-row presentation is still a frontend detail to validate.
 
 The next bounded implementation step is intentionally **UI/state only**:
 
@@ -119,7 +119,7 @@ The next bounded implementation step is intentionally **UI/state only**:
 4. do **not** change combo gameplay yet;
 5. only after that menu/state proof is Runtime-confirmed, define and implement ASSIST semantics in a separate guarded gameplay proof.
 
-After COMBOS is stable, follow the same pattern for SPECIALS. JUMP should be added as a UI/state row only after COMBOS/SPECIALS exist, so its four visibility combinations can be validated before any jump-control gameplay change is attempted.
+After COMBOS is stable, follow the same pattern for SPECIALS. JUMP should then be added as a visible UI/state row with its disabled/enabled presentation validated across all four COMBOS/SPECIALS combinations before any jump-control gameplay change is attempted. Only `ASSIST + MODERN` enables `BUTTON`.
 
 This future-control menu work remains outside the 1.0 release blocker chain unless explicitly promoted later. It must not silently redefine existing combo, special-move, or jump semantics.
 
