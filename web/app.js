@@ -1,5 +1,6 @@
 const runtimeStatus = document.querySelector("#runtimeStatus");
 const romFile = document.querySelector("#romFile");
+const mktN64File = document.querySelector("#mktN64File");
 const outfitMode = document.querySelector("#outfitMode");
 const editionName = document.querySelector("#editionName");
 const seed = document.querySelector("#seed");
@@ -18,6 +19,7 @@ const downloadButton = document.querySelector("#downloadButton");
 const log = document.querySelector("#log");
 
 let pyodide;
+let runtimeReady = false;
 let outputBytes = null;
 let outputName = "MKMSZR-patched.z64";
 
@@ -31,9 +33,12 @@ function updateModeUi() {
   seedField.style.opacity = "1";
 }
 
+function updatePatchButton() {
+  patchButton.disabled = !runtimeReady;
+}
+
 function normalizeEditionName(value) {
-  const upper = value.toUpperCase().replace(/[^A-Z0-9 -]/g, "").slice(0, 12);
-  return upper;
+  return value.toUpperCase().replace(/[^A-Z0-9 -]/g, "").slice(0, 12);
 }
 
 function generateSeed() {
@@ -45,7 +50,7 @@ function generateSeed() {
 }
 
 function outputFilename(inputName, mode, seedValue) {
-  const stem = inputName.replace(/\.(z64|n64|v64)$/i, "");
+  const stem = inputName.replace(/\.z64$/i, "");
   let suffix = mode === "vanilla" ? "mkmszr" : `mkmszr-${mode}`;
   const safeSeed = seedValue.replace(/[^a-z0-9_-]/gi, "").slice(0, 24);
   if (safeSeed) suffix += `-${safeSeed}`;
@@ -74,9 +79,10 @@ import micropip
 await micropip.install(str(web_wheel_url))
 `);
 
+    runtimeReady = true;
     runtimeStatus.dataset.state = "ready";
     runtimeStatus.textContent = "Patcher ready";
-    patchButton.disabled = false;
+    updatePatchButton();
   } catch (error) {
     console.error(error);
     runtimeStatus.dataset.state = "error";
@@ -89,9 +95,14 @@ async function patchRom() {
   resultPanel.hidden = true;
   outputBytes = null;
 
-  const file = romFile.files?.[0];
-  if (!file) {
-    setLog("Choose a clean MKMSZ USA .z64 ROM first.", true);
+  const targetFile = romFile.files?.[0];
+  const donorFile = mktN64File.files?.[0];
+  if (!targetFile) {
+    setLog("Choose the clean MKMSZ N64 target ROM first.", true);
+    return;
+  }
+  if (!donorFile) {
+    setLog("Choose the Mortal Kombat Trilogy (USA) Rev. 2 N64 donor ROM.", true);
     return;
   }
 
@@ -108,11 +119,15 @@ async function patchRom() {
 
   patchButton.disabled = true;
   patchButton.textContent = "Patching…";
-  setLog("Reading ROM locally…");
+  setLog("Reading target and donor ROMs locally…");
 
   try {
-    const inputBytes = new Uint8Array(await file.arrayBuffer());
-    pyodide.FS.writeFile("/tmp/input.z64", inputBytes);
+    const [targetBytes, donorBytes] = await Promise.all([
+      targetFile.arrayBuffer(),
+      donorFile.arrayBuffer(),
+    ]);
+    pyodide.FS.writeFile("/tmp/input.z64", new Uint8Array(targetBytes));
+    pyodide.FS.writeFile("/tmp/mkt.z64", new Uint8Array(donorBytes));
 
     try { pyodide.FS.unlink("/tmp/output.z64"); } catch (_) {}
 
@@ -121,11 +136,12 @@ async function patchRom() {
     pyodide.globals.set("web_rgb", customColor.value);
     pyodide.globals.set("web_edition_name", editionValue);
 
-    setLog("Validating clean ROM and applying patches…");
+    setLog("Validating MKMSZ target and MKT donor, extracting Toasty assets, and applying patches…");
 
     await pyodide.runPythonAsync(`
 from pathlib import Path
 from mkmszr.config import OutfitConfig, RandomizerConfig
+from mkmszr.donors import extract_toasty_assets
 from mkmszr.patcher import patch_file
 
 _mode = str(web_outfit_mode)
@@ -138,7 +154,13 @@ _config = RandomizerConfig(
     outfit=OutfitConfig(mode=_mode, rgb=_rgb if _mode == "rgb" else None),
     edition_name=_edition_name,
 )
-_result = patch_file(Path("/tmp/input.z64"), Path("/tmp/output.z64"), _config)
+_toasty_assets = extract_toasty_assets(Path("/tmp/mkt.z64").read_bytes())
+_result = patch_file(
+    Path("/tmp/input.z64"),
+    Path("/tmp/output.z64"),
+    _config,
+    toasty_assets=_toasty_assets,
+)
 web_patch_result = {
     "seed": _seed,
     "crc1": f"{_result.crc1:08X}",
@@ -160,7 +182,7 @@ web_patch_result = {
     proxy.destroy();
 
     outputBytes = pyodide.FS.readFile("/tmp/output.z64");
-    outputName = outputFilename(file.name, mode, metadata.seed);
+    outputName = outputFilename(targetFile.name, mode, metadata.seed);
 
     resultSeed.textContent = metadata.seed;
     outputSha.textContent = metadata.sha256;
@@ -169,14 +191,17 @@ web_patch_result = {
     pickupMode.textContent = metadata.pickup_mode;
 
     resultPanel.hidden = false;
-    setLog(`Success. Patched ${(outputBytes.byteLength / 1024 / 1024).toFixed(1)} MiB locally; no ROM data was uploaded.`);
+    setLog(
+      `Success. Patched ${(outputBytes.byteLength / 1024 / 1024).toFixed(1)} MiB locally. ` +
+      "The MKT donor was read only for donor assets; no ROM data was uploaded."
+    );
   } catch (error) {
     console.error(error);
     const message = error.message ?? String(error);
     setLog(message.replace(/^PythonError:\s*/, ""), true);
   } finally {
-    patchButton.disabled = false;
-    patchButton.textContent = "Patch ROM";
+    updatePatchButton();
+    patchButton.textContent = "Patch MKMSZ N64";
   }
 }
 

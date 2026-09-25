@@ -8,7 +8,17 @@ The browser build compiles the Python package to a wheel and serves it with the 
 
 ## Inputs and output guarantees
 
-- Clean USA Rev. 0 big-endian `.z64` only.
+The web patcher is organized around an explicit **patch target**, not a list of every research or donor image the project may someday use.
+
+Current supported web target:
+
+- **Nintendo 64** — clean MKMSZ USA Rev. 0 big-endian `.z64` is the patch target.
+- **MKT N64 donor** — Mortal Kombat Trilogy (USA) Rev. 2 big-endian `.z64` is required by the web UI and is read locally to extract the Runtime-confirmed Toasty visual/audio assets. The donor itself is never patched.
+- **PlayStation** — shown only as a planned target. There is no PS1 file picker until a PS1 patch pipeline exists; future labels use **ISO**, not ROM.
+
+The default web workflow therefore asks for exactly two game files: the MKMSZ N64 target and the MKT N64 donor. Additional donors should appear only when an enabled feature genuinely requires them.
+
+- Clean USA Rev. 0 big-endian `.z64` target only.
 - A new output is produced; the CLI refuses in-place patching and existing-output overwrite.
 - Seed is trimmed; absent seed becomes a random 64-bit hex value.
 - CLI output reports applied modules, notes, CRC1/CRC2, and SHA-256. The browser completion panel reports seed, SHA-256, CRC1/CRC2, applied patches, and pickup mode, but intentionally omits the generated boot message and title edition so those remain in-game discoveries.
@@ -27,7 +37,9 @@ The browser build compiles the Python package to a wheel and serves it with the 
 | `rgb` | Requires `RRGGBB` or `#RRGGBB` |
 | Title character | Temporary freeform uppercase name, default `SUB-ZERO`, max 12 characters; patcher appends ` EDITION` and rasterizes it into the generated title CI8 image |
 
-Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.\n\nThe shared patch core now also contains the Runtime-confirmed Toasty production module at the selected **80/1000 (8%)** rate. It is donor-aware and contains no MKT art/audio bytes: callers must supply translated `ToastyAssets`. The current browser/CLI surfaces do **not yet** derive those assets from the MKT N64 upload, so ordinary product builds remain unchanged until that product-surface extraction/wiring task is completed.
+Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.
+
+The shared patch core includes the Runtime-confirmed Toasty production module at **80/1000 (8%)**. The browser now derives `ToastyAssets` directly from the user-supplied MKT USA Rev. 2 N64 donor and passes them into that module. The repository and deployed site contain no donor art/audio bytes. The developer CLI exposes the same path through optional `--mkt-rom`; without that option it retains the prior no-Toasty developer behavior.
 
 ## Deployment
 

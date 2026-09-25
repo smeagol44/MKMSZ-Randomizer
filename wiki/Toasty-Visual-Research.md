@@ -919,3 +919,8 @@ v42 remains the accepted Runtime-confirmed presentation baseline. v43 changes on
 High-ROM layout for the integration proof is `0xF68000..0xF6B31F` for the module and `0xF6B320..0xF6BB35` for the confirmed Toasty sample. This starts after optional rainbow file-87 ownership ending at `0xF679E0` and remains below title ownership beginning at `0xF90000`. Tiny entry stubs compose only inside padding already owned by the production four-box selector helper and box-indicator regions; no old proof cave is promoted to production-free storage.
 
 The vanilla and rainbow compositions pass guards/bounds checks, and the manually exercised v47 production composition is Runtime-confirmed. The v47 ROM intentionally used 500/1000 only for fast validation. The merged production tuning is now 80/1000 = **8%**; no presentation, trigger-family, audio-route, or allocation semantic changes accompany that tuning change.
+
+
+### Browser donor extraction
+
+**Implementation/CI-confirmed.** The production web path reconstructs the exact v47 visual assets from the user-supplied MKT USA Rev. 2 N64 ROM instead of carrying decoded donor bytes. Retail anchors are image `0xF2FC0` (type-25 dictionary compression, 80×85 decoded with 78 visible columns), 0x100-byte control dictionary `0xF0B18`, and 64-color palette `0xB9008`. The translator crops the 80-pixel source stride to 78 visible pixels, compacts palette indices in first-appearance order, emits the same nine padded CI8 slices, and reproduces the Runtime-confirmed v47 TLUT hash `d70dacdfe067f516b0647b62bf7effdb167bc077037f4a4f45e5d754168dae31`. No donor visual bytes are stored in the repository.

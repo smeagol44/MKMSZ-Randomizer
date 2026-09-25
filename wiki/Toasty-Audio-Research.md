@@ -849,3 +849,8 @@ Waveform 533 carries the confirmed donor waveform-77 metadata/predictor/sample, 
 ### v47 production-composition audio gate
 
 **Runtime-confirmed on 2026-09-25.** The user reported the full current production-composition v47 ROM works perfectly. The v46 dedicated route remains intact, ordinary pickup audio remains stock, and no regression was reported in the exercised production systems. v47 used 500/1000 only to make this composition gate fast to validate. The merged production module changes only that tuning to the selected **80/1000 (8%)**; the dedicated event/patch/subpatch/waveform route and donor audio bytes are otherwise unchanged.
+
+
+### Browser donor extraction
+
+**Implementation/CI-confirmed.** The browser/CLI donor extractor validates the exact MKT USA Rev. 2 N64 ROM and derives the confirmed Toasty audio chain locally: deflated CTL at `0xA8F588`, subpatch-111 offset `0x0F8C`, waveform-77 offset `0x2F60`, predictor offset `0x9EB0`, and encoded sample `0xB0FBFC..0xB10411`. The extracted records are guarded against the Runtime-confirmed v46/v47 hashes before being translated into the dedicated MKMSZ host chain. No MKT audio bytes are stored in GitHub or the deployed site.

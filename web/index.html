@@ -17,34 +17,79 @@
         </div>
         <p class="flavor-quote">"There is no knowledge that is not power"</p>
       </div>
-      <div id="runtimeStatus" class="runtime-status" data-state="loading">
-        Loading Python patcher…
+      <div id="runtimeStatus" class="runtime-status" data-state="loading">Loading Python patcher…</div>
+    </section>
+
+    <section class="panel">
+      <header class="section-heading">
+        <span class="step">1</span>
+        <div>
+          <h2>Choose the game to patch</h2>
+          <p>The target determines which files and options you need.</p>
+        </div>
+      </header>
+
+      <div class="target-grid">
+        <button type="button" class="target-card selected" aria-pressed="true">
+          <span class="target-name">Nintendo 64</span>
+          <span class="status-chip supported">Supported</span>
+          <span class="target-detail">Patch MKMSZ N64 into a standalone randomized ROM.</span>
+        </button>
+        <button type="button" class="target-card disabled" disabled>
+          <span class="target-name">PlayStation</span>
+          <span class="status-chip planned">Planned</span>
+          <span class="target-detail">PlayStation ISO support is not available yet.</span>
+        </button>
       </div>
     </section>
 
     <section class="panel">
-      <div class="field">
-        <label for="romFile">Clean MKMSZ USA ROM</label>
-        <input id="romFile" type="file" accept=".z64,.n64,.v64,application/octet-stream">
-        <p class="hint">The patcher verifies the clean ROM SHA-256 before changing anything.</p>
+      <header class="section-heading">
+        <span class="step">2</span>
+        <div>
+          <h2>Game files</h2>
+          <p>Both files stay in your browser. Nothing is uploaded.</p>
+        </div>
+      </header>
+
+      <div class="file-stack">
+        <div class="file-row">
+          <div class="file-copy">
+            <div class="file-label-line">
+              <label for="romFile">MKMSZ N64 target ROM</label>
+              <span class="role-chip target">Patch target</span>
+            </div>
+            <p class="hint">Clean <strong>Mortal Kombat Mythologies: Sub-Zero (USA) Rev. 0</strong> <code>.z64</code>. This is the game that will be patched.</p>
+          </div>
+          <input id="romFile" type="file" accept=".z64,application/octet-stream">
+        </div>
+
+        <div class="file-row">
+          <div class="file-copy">
+            <div class="file-label-line">
+              <label for="mktN64File">MKT N64 donor ROM</label>
+              <span class="role-chip donor">Donor</span>
+            </div>
+            <p class="hint"><strong>Mortal Kombat Trilogy (USA) Rev. 2</strong> <code>.z64</code>. Used locally to extract Toasty art/audio; this ROM is never patched.</p>
+          </div>
+          <input id="mktN64File" type="file" accept=".z64,application/octet-stream">
+        </div>
       </div>
 
-      <div class="grid">
-        <div class="field">
-          <label for="mktN64File">Mortal Kombat Trilogy N64 ROM</label>
-          <input id="mktN64File" type="file" accept=".z64,.n64,.v64,application/octet-stream">
-        </div>
-
-        <div class="field">
-          <label for="mkmszPs1File">MKMSZ PlayStation ROM / ISO</label>
-          <input id="mkmszPs1File" type="file" accept=".bin,.cue,.iso,.img,application/octet-stream">
-        </div>
-
-        <div class="field">
-          <label for="mktPs1File">Mortal Kombat Trilogy PlayStation ROM / ISO</label>
-          <input id="mktPs1File" type="file" accept=".bin,.cue,.iso,.img,application/octet-stream">
-        </div>
+      <div class="feature-note">
+        <strong>Why MKT?</strong>
+        <span>The donor supplies the genuine Toasty image and voice. Toasty is included at the production 8% trigger rate.</span>
       </div>
+    </section>
+
+    <section class="panel">
+      <header class="section-heading">
+        <span class="step">3</span>
+        <div>
+          <h2>Randomizer settings</h2>
+          <p>These settings affect the patched MKMSZ N64 output.</p>
+        </div>
+      </header>
 
       <div class="grid">
         <div class="field">
@@ -67,8 +112,8 @@
         <div class="field">
           <label for="editionName">Title character</label>
           <input id="editionName" class="uppercase-input" type="text"
-                 value="SUB-ZERO" maxlength="12" autocomplete="off" spellcheck="false"
-                 inputmode="text">
+                 value="SUB-ZERO" maxlength="12" autocomplete="off" spellcheck="false">
+          <p class="hint">Shown as <code>&lt;NAME&gt; EDITION</code> on the title screen.</p>
         </div>
 
         <div class="field" id="seedField">
@@ -79,16 +124,29 @@
 
         <div class="field color-field" id="colorField" hidden>
           <label for="customColor">Custom color</label>
-          <input id="customColor" type="color" value="#a64dff">
-          <output id="colorValue" for="customColor">#A64DFF</output>
+          <div class="color-row">
+            <input id="customColor" type="color" value="#a64dff">
+            <output id="colorValue" for="customColor">#A64DFF</output>
+          </div>
         </div>
       </div>
+    </section>
 
-      <button id="patchButton" type="button" disabled>Patch ROM</button>
+    <section class="panel build-panel">
+      <header class="section-heading">
+        <span class="step">4</span>
+        <div>
+          <h2>Build randomized ROM</h2>
+          <p>Target: Nintendo 64 · Output: new <code>.z64</code> · Toasty: 8%</p>
+        </div>
+      </header>
+
+      <button id="patchButton" class="primary-action" type="button" disabled>Patch MKMSZ N64</button>
 
       <div id="result" class="result" hidden>
         <h2>Patch complete</h2>
         <dl>
+          <div><dt>Target</dt><dd>Nintendo 64</dd></div>
           <div><dt>Seed</dt><dd id="resultSeed"></dd></div>
           <div><dt>Output SHA-256</dt><dd id="outputSha"></dd></div>
           <div><dt>CRC1 / CRC2</dt><dd id="outputCrc"></dd></div>
@@ -102,7 +160,7 @@
     </section>
 
     <footer>
-      <p>This project does not distribute game ROMs. You must provide your own legally obtained copy.</p>
+      <p>All ROM processing happens locally in your browser. This project does not distribute game data.</p>
       <span class="build-version">By Smeag · v0.DEV</span>
     </footer>
   </main>
