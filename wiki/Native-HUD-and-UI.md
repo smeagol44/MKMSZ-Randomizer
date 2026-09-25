@@ -95,9 +95,9 @@ The stock top-level `GAME SETTINGS` entry is now the complete MKMSZR control fro
 | Setting | Values | Frontend status |
 |---|---|---|
 | `TURN` | `TOGGLE` / `LOCK` | Runtime-confirmed gameplay + frontend. Defaults to TOGGLE. |
-| `COMBOS` | `CLASSIC` / `ASSIST` | Runtime-confirmed UI/state. Gameplay ASSIST semantics Pending. |
+| `ATTACK` | `CLASSIC` / `MODERN` | Runtime-confirmed UI/state. Gameplay ASSIST semantics Pending. |
 | `SPECIALS` | `CLASSIC` / `MODERN` | Runtime-confirmed UI/state. Gameplay MODERN semantics Pending. |
-| `JUMP` | `DPAD` / `BUTTON` | Runtime-confirmed UI/state. Visible at all times; greyed/fixed to DPAD unless **COMBOS=ASSIST AND SPECIALS=MODERN**. Gameplay BUTTON semantics Pending. |
+| `JUMP` | `DPAD` / `BUTTON` | Runtime-confirmed UI/state. Visible at all times; greyed/fixed to DPAD unless **ATTACK=MODERN AND SPECIALS=MODERN**. Gameplay BUTTON semantics Pending. |
 | `EXIT` | — | Runtime-confirmed navigation/return. |
 
 The compact layout reuses the stock font and frontend loop while reclaiming the old GAME SETTINGS edit/draw regions. Four setting rows fit above the stock EXIT position without introducing a new frontend allocation or title-time expansion load.
@@ -106,11 +106,11 @@ The compact layout reuses the stock font and frontend loop while reclaiming the 
 
 The durable state word at `0x800A60E8` owns:
 - `0x0200` TURN=LOCK;
-- `0x0400` COMBOS=ASSIST;
+- `0x0400` ATTACK=MODERN;
 - `0x0800` SPECIALS=MODERN;
 - `0x1000` JUMP=BUTTON.
 
-Box switching preserves all four settings bits. If COMBOS or SPECIALS is returned to its classic mode, the JUMP button bit is cleared back to DPAD.
+Box switching preserves all four settings bits. If ATTACK or SPECIALS is returned to its classic mode, the JUMP button bit is cleared back to DPAD.
 
 Frontend proof history:
 - **v01 — Rejected / failed:** custom JUMP draw helper failed to preserve `ra` across nested renderer calls; menu entry hard-hung.
