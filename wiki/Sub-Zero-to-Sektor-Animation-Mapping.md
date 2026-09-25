@@ -36,7 +36,7 @@ Do **not** infer the same for secondary tables. MKMSZ's 43-entry table 1 is Myth
 | `0x0A` | duck_low_kick | `+0x004C0` | `+0x00334` | **DIRECT candidate** |
 | `0x0B` | uppercut | `+0x0049C` | `+0x0037C` | **DIRECT candidate** |
 | `0x0C` | block | `+0x00624` | `+0x0050C` | **DIRECT candidate** |
-| `0x0D` | victory | `+0x00D90` | `+0x01148` | **DIRECT candidate** |
+| `0x0D` | inherited `victory` label; no MKMSZ Victory requirement established | `+0x00D90` | `+0x01148` | **NOT A CURRENT IMPORT REQUIREMENT** |
 | `0x0E` | high_punch | `+0x00504` | `+0x003A0` | **DIRECT candidate** |
 | `0x0F` | low_punch | `+0x00574` | `+0x00410` | **DIRECT candidate** |
 | `0x10` | elbow/combo | `+0x005E0` | `+0x0047C` | **DIRECT candidate** |
@@ -65,6 +65,8 @@ Do **not** infer the same for secondary tables. MKMSZ's 43-entry table 1 is Myth
 
 The detailed runtime progression that originally followed this table has moved to [Sektor takeover proof history](Sektor-Takeover-Proof-History). The table below remains a semantic slot reference; its `DIRECT candidate` labels describe inherited layout compatibility, not an assertion that every row has been individually runtime-tested.
 
+**Reachability rule:** inherited Midway slot names are not requirements by themselves. In particular, primary `0x0D` carries the inherited `victory` label, but MKMSZ has no established Victory animation/pose requirement. Do not spend importer/storage budget on an inherited donor state unless MKMSZ has a demonstrated live call site or product requirement for it.
+
 ## MKMSZ Sub-Zero primary table — all 65 slots
 
 | Slot | Inherited semantic | Script offset |
@@ -82,7 +84,7 @@ The detailed runtime progression that originally followed this table has moved t
 | `0x0A` | duck_low_kick | `+0x004C0` |
 | `0x0B` | uppercut | `+0x0049C` |
 | `0x0C` | block | `+0x00624` |
-| `0x0D` | victory | `+0x00D90` |
+| `0x0D` | inherited `victory` label; no MKMSZ Victory requirement established | `+0x00D90` |
 | `0x0E` | high_punch | `+0x00504` |
 | `0x0F` | low_punch | `+0x00574` |
 | `0x10` | elbow/combo | `+0x005E0` |
@@ -382,7 +384,7 @@ The physical-removal repack is **Runtime-confirmed** as v05: `MKMSZR_sektor-run-
 
 The current canonical gaps are:
 
-- primary Victory `0x0D` still lacks an accepted genuine-Sektor mapping in the takeover line;
+- primary `0x0D` retains the inherited Midway `victory` label, but MKMSZ has no established Victory presentation requirement; do **not** import Sektor Victory unless a live MKMSZ call site later proves a real target use;
 - generic projectile/Zap `0x24` is now **partially exercised** by the v69/v70 Sektor missile diagnostics: chest and horizontal rocket visuals are proven independently, but the inherited Ice helper/palette/spawn/flight behavior is not accepted. Dizzy `0x25` remains outside the common mapped set;
 - Low Hit `0x1D` still lacks a practical direct runtime trigger despite its exact mapping;
 - victim-side Grab/Throw presentation remains pending; inherited primary `fb_*` slots beginning at `0x26` are candidates only after call-site ownership is established;
