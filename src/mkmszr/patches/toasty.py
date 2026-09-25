@@ -13,7 +13,8 @@ from .toasty_codegen import (
     jump,
     pack_toasty_module,
 )
-from .toasty_constants import *  # noqa: F403
+from .toasty_constants import *
+
 
 class ToastyProductionCompositionPatch:
     """Compose the runtime-confirmed Toasty feature with the current production pipeline."""
