@@ -5,6 +5,7 @@ import hashlib
 from ..errors import PatchError
 from ..rom import RomImage
 from .base import PatchContext
+from .box_indicator import BOX_REGION, BOX_REGION_ROM
 from .game_settings_turn import CONTROL_MODULE, SHARED_EXPANSION_ROM
 from .toasty_codegen import (
     _align,
