@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from .config import OutfitConfig, RandomizerConfig
+from .donors import extract_toasty_assets
 from .errors import MKMSZRError
 from .patcher import patch_file
 from .patches.palette import PRESET_HUES
@@ -26,6 +27,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="MKMSZ Randomizer native ROM patcher")
     parser.add_argument("source", type=Path, help="clean MKMSZ USA Rev. 0 .z64 ROM")
     parser.add_argument("output", type=Path, help="new disposable output .z64")
+    parser.add_argument(
+        "--mkt-rom",
+        type=Path,
+        help="Mortal Kombat Trilogy (USA) Rev. 2 N64 donor .z64; enables production Toasty",
+    )
     parser.add_argument(
         "--seed",
         help="seed string; omit to generate a random 64-bit hexadecimal seed",
@@ -58,7 +64,17 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
-        result = patch_file(args.source, args.output, config)
+        toasty_assets = (
+            extract_toasty_assets(args.mkt_rom.read_bytes())
+            if args.mkt_rom is not None
+            else None
+        )
+        result = patch_file(
+            args.source,
+            args.output,
+            config,
+            toasty_assets=toasty_assets,
+        )
     except (MKMSZRError, OSError, ValueError) as exc:
         parser.exit(2, f"error: {exc}\n")
 
