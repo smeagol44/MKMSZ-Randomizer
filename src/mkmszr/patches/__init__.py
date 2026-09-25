@@ -24,6 +24,8 @@ from .runtime_v1 import (
 )
 from .stage_selector import SafeStageSelectorPatch
 from .title_branding import TitleBrandingPatch
+from .toasty import ToastyProductionCompositionPatch
+from .toasty_constants import ToastyAssets
 from .xp_progression import XPProgressionPatch
 
 __all__ = [
@@ -44,6 +46,8 @@ __all__ = [
     "SafeStageSelectorPatch",
     "SubZeroPalettePatch",
     "TitleBrandingPatch",
+    "ToastyAssets",
+    "ToastyProductionCompositionPatch",
     "XPProgressionPatch",
     "manager_persistence_fire_patches",
     "pickup_persistence_patches",
