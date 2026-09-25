@@ -8,6 +8,7 @@ from .base import PatchContext
 from .box_indicator import BOX_REGION, BOX_REGION_ROM
 from .game_settings_turn import CONTROL_MODULE, SHARED_EXPANSION_ROM
 from .toasty_codegen import (
+    NOP,
     _align,
     _build_call_trampoline,
     _build_init_loader,
