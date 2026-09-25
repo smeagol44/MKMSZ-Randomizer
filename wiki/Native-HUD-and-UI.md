@@ -164,7 +164,9 @@ After that succeeds, production should keep the existing OPTIONS topology and th
 
 v02 exposed one narrow navigation defect: the stock GAME SETTINGS selector uses indices 0/1/2 for its three settings and index 3 for `EXIT`. Reducing the down-bound to index 1 made an invisible former row selectable while making `EXIT` unreachable by cursor. This does **not** invalidate the menu->state->v10 linkage.
 
-**v03 — Runtime Pending.** Keep stock `EXIT` at index 3, but change vertical navigation to jump directly `0 <-> 3`, skipping the hidden former Lives/Continues indices 1/2. TURN/state/v10 behavior is otherwise byte-identical to v02. Fresh/uninitialized state defaults to `TURN: TOGGLE`; `LOCK` remains opt-in.
+**v03 — Runtime-confirmed.** Keeping stock `EXIT` at index 3 while changing vertical navigation to jump directly `0 <-> 3` fixes the v02 cursor defect: TURN and EXIT are both selectable, EXIT returns normally, and the hidden former Lives/Continues rows are no longer reachable. The user reported the menu works perfectly. TURN/state/v10 behavior remains correct in both `TOGGLE` and `LOCK`; fresh/uninitialized state defaults to `TURN: TOGGLE` and `LOCK` remains opt-in.
+
+**v04 — Runtime Pending boss-fallback proof.** v03 exposed one gameplay-composition issue: `TURN: LOCK` remained partially active during stock boss/special forced-facing, causing retreat movement to fight the game's own auto-facing. v04 keeps the v03 menu/state unchanged but makes the stock face-policy scanner at `0x8004A6E8` gate all three LOCK paths. When the scanner reports forced-facing (`0x8000`), gameplay temporarily uses stock/`TOGGLE` semantics without changing the saved menu value; LOCK resumes automatically when forced-facing ends. The first Scorpion encounter is the bounded manual runtime gate. Earth remains explicitly Pending because its custom type-`0x19` path is not statically proven to use the generic `+0x6BC & 0x0200` policy.
 
 The stock GAME SETTINGS implementation remains the accepted native behavioral template even though its Difficulty/Lives/Continues editing behavior is no longer exposed.
 
