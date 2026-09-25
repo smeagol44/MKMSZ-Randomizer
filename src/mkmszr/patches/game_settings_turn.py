@@ -50,6 +50,8 @@ from ..rom import RomImage
 from .base import PatchContext
 from .inventory_boxes import (
     COMBOS_ASSIST_STATE_MASK,
+    JUMP_BUTTON_STATE_MASK,
+    SPECIALS_MODERN_STATE_MASK,
     STATE_VA,
     TURN_LOCK_STATE_MASK,
 )
@@ -101,22 +103,27 @@ ACTION_EXPECTED = bytes.fromhex("A62406DC 3C058003")
 GAME_SETTINGS_VA = 0x800766BC
 GAME_SETTINGS_CALL_ROM = 0x000770B8
 
-# The accepted COMBOS UI/state proof reuses stock row 1.  Stock row 2 remains
-# visually hidden and its now-dead edit blocks become frontend-resident
-# navigation helpers so selection moves 0 -> 1 -> 3 (EXIT) and back.
-COMBOS_RIGHT_ROM = 0x00077524
-COMBOS_RIGHT_END_ROM = 0x00077584
-NAV_DOWN_HELPER_ROM = 0x00077584
-NAV_DOWN_HELPER_VA = 0x80076984
-NAV_DOWN_HELPER_END_ROM = 0x000775DC
-COMBOS_LEFT_ROM = 0x00077654
-COMBOS_LEFT_END_ROM = 0x0007767C
-NAV_UP_HELPER_ROM = 0x0007767C
-NAV_UP_HELPER_VA = 0x80076A7C
-NAV_UP_HELPER_END_ROM = 0x0007769C
+# Full frontend proof: rows 0..3 are TURN/COMBOS/SPECIALS/JUMP and EXIT is
+# index 4.  The stock right/left edit blocks are reclaimed as compact MKMSZR
+# dispatchers; the right block also hosts the fourth-row draw helper.
+RIGHT_EDIT_ROM = 0x00077480
+RIGHT_EDIT_VA = 0x80076880
+RIGHT_EDIT_END_ROM = 0x000775DC
+LEFT_EDIT_ROM = 0x00077600
+LEFT_EDIT_VA = 0x80076A00
+LEFT_EDIT_END_ROM = 0x0007769C
+
 COMBOS_DRAW_ROM = 0x00077888
 COMBOS_DRAW_END_ROM = 0x000778CC
+SPECIALS_DRAW_ROM = 0x000778CC
+SPECIALS_DRAW_END_ROM = 0x00077910
+JUMP_DRAW_HOOK_ROM = 0x00077910
+JUMP_DRAW_HOOK_EXPECTED = bytes.fromhex("24080002 AFD006F4")
+
 GAME_TEXT_DRAW_VA = 0x8001CA88
+VALUE_STYLE_VA = 0x800B2724
+JUMP_LABEL_VA = 0x800AEB15
+DPAD_VALUE_VA = 0x800AEAF0
 
 BOOTSTRAP_RUNTIME_ENTRY_WORDS_OFFSET = 0x34
 
@@ -503,67 +510,141 @@ def _pad_region(blob: bytes, size: int) -> bytes:
     return blob + bytes(size - len(blob))
 
 
-def build_nav_down_helper() -> bytes:
-    """Move TURN -> COMBOS -> EXIT while skipping hidden stock row 2."""
+def build_right_edit_dispatch() -> bytes:
+    """Right edits for TURN/COMBOS/SPECIALS/JUMP; EXIT is inert."""
 
     e = Emitter()
-    e.emit(addiu("v0", "zero", 1))
-    e.bne("s0", "v0", "increment")
+    e.emit(addiu("t0", "zero", 1))
+    e.beq("s0", "zero", "turn")
     e.emit(NOP)
-    e.emit(addiu("s0", "zero", 3), jr("ra"), NOP)
-    e.label("increment")
-    e.emit(addiu("s0", "s0", 1), jr("ra"), NOP)
-    return e.finish()
+    e.beq("s0", "t0", "combos")
+    e.emit(addiu("t0", "zero", 2))
+    e.beq("s0", "t0", "specials")
+    e.emit(addiu("t0", "zero", 3))
+    e.beq("s0", "t0", "jump")
+    e.emit(NOP)
+    e.emit(jump(0x800769DC), NOP)
 
+    e.label("turn")
+    e.emit(
+        *address_words("t0", SETTINGS_UNCACHED_VA),
+        addiu("t1", "zero", TURN_LOCK),
+        sh("t1", 0, "t0"),
+        jump(0x800769DC),
+        NOP,
+    )
 
-def build_nav_up_helper() -> bytes:
-    """Move EXIT -> COMBOS -> TURN while skipping hidden stock row 2."""
+    e.label("combos")
+    e.emit(
+        lui("t0", 0x800A),
+        lw("t1", STATE_VA - 0x800A0000, "t0"),
+        ori("t1", "t1", COMBOS_ASSIST_STATE_MASK),
+        sw("t1", STATE_VA - 0x800A0000, "t0"),
+        jump(0x800769DC),
+        NOP,
+    )
 
-    # The delay-slot decrement handles COMBOS(1) -> TURN(0).  EXIT(3) does not
-    # take the branch and therefore executes one additional decrement: 3 -> 2
-    # in the delay slot, then 2 -> 1 before returning.
-    e = Emitter()
-    e.emit(addiu("v0", "zero", 3))
-    e.bne("s0", "v0", "done")
-    e.emit(addiu("s0", "s0", -1))
-    e.emit(addiu("s0", "s0", -1))
+    e.label("specials")
+    e.emit(
+        lui("t0", 0x800A),
+        lw("t1", STATE_VA - 0x800A0000, "t0"),
+        ori("t1", "t1", SPECIALS_MODERN_STATE_MASK),
+        sw("t1", STATE_VA - 0x800A0000, "t0"),
+        jump(0x800769DC),
+        NOP,
+    )
+
+    e.label("jump")
+    e.emit(
+        lui("t0", 0x800A),
+        lw("t1", STATE_VA - 0x800A0000, "t0"),
+        andi(
+            "t2",
+            "t1",
+            COMBOS_ASSIST_STATE_MASK | SPECIALS_MODERN_STATE_MASK,
+        ),
+        addiu(
+            "t3",
+            "zero",
+            COMBOS_ASSIST_STATE_MASK | SPECIALS_MODERN_STATE_MASK,
+        ),
+    )
+    e.bne("t2", "t3", "done")
+    e.emit(NOP)
+    e.emit(
+        ori("t1", "t1", JUMP_BUTTON_STATE_MASK),
+        sw("t1", STATE_VA - 0x800A0000, "t0"),
+    )
     e.label("done")
-    e.emit(jr("ra"), NOP)
+    e.emit(jump(0x800769DC), NOP)
     return e.finish()
 
 
-def build_combos_right_handler() -> bytes:
-    """CLASSIC -> ASSIST; repeated Right while ASSIST is a no-op."""
+def build_left_edit_dispatch() -> bytes:
+    """Left edits for TURN/COMBOS/SPECIALS/JUMP; EXIT is inert."""
 
-    return words_blob(
-        [
-            lui("t0", 0x800A),
-            lw("t1", STATE_VA - 0x800A0000, "t0"),
-            ori("t1", "t1", COMBOS_ASSIST_STATE_MASK),
-            sw("t1", STATE_VA - 0x800A0000, "t0"),
-            jump(0x800769DC),
-            NOP,
-        ]
+    e = Emitter()
+    e.emit(addiu("t0", "zero", 1))
+    e.beq("s0", "zero", "turn")
+    e.emit(NOP)
+    e.beq("s0", "t0", "combos")
+    e.emit(addiu("t0", "zero", 2))
+    e.beq("s0", "t0", "specials")
+    e.emit(addiu("t0", "zero", 3))
+    e.beq("s0", "t0", "jump")
+    e.emit(NOP)
+    e.emit(jump(0x80076A9C), NOP)
+
+    e.label("turn")
+    e.emit(
+        *address_words("t0", SETTINGS_UNCACHED_VA),
+        sh("zero", 0, "t0"),
+        jump(0x80076A9C),
+        NOP,
     )
 
-
-def build_combos_left_handler() -> bytes:
-    """ASSIST -> CLASSIC; repeated Left while CLASSIC is a no-op."""
-
-    return words_blob(
-        [
-            lui("t0", 0x800A),
-            lw("t1", STATE_VA - 0x800A0000, "t0"),
-            andi("t1", "t1", (~COMBOS_ASSIST_STATE_MASK) & 0xFFFF),
-            sw("t1", STATE_VA - 0x800A0000, "t0"),
-            jump(0x80076A9C),
-            NOP,
-        ]
+    e.label("combos")
+    e.emit(
+        lui("t0", 0x800A),
+        lw("t1", STATE_VA - 0x800A0000, "t0"),
+        andi(
+            "t1",
+            "t1",
+            (~(COMBOS_ASSIST_STATE_MASK | JUMP_BUTTON_STATE_MASK)) & 0xFFFF,
+        ),
+        sw("t1", STATE_VA - 0x800A0000, "t0"),
+        jump(0x80076A9C),
+        NOP,
     )
+
+    e.label("specials")
+    e.emit(
+        lui("t0", 0x800A),
+        lw("t1", STATE_VA - 0x800A0000, "t0"),
+        andi(
+            "t1",
+            "t1",
+            (~(SPECIALS_MODERN_STATE_MASK | JUMP_BUTTON_STATE_MASK)) & 0xFFFF,
+        ),
+        sw("t1", STATE_VA - 0x800A0000, "t0"),
+        jump(0x80076A9C),
+        NOP,
+    )
+
+    e.label("jump")
+    e.emit(
+        lui("t0", 0x800A),
+        lw("t1", STATE_VA - 0x800A0000, "t0"),
+        andi("t1", "t1", (~JUMP_BUTTON_STATE_MASK) & 0xFFFF),
+        sw("t1", STATE_VA - 0x800A0000, "t0"),
+        jump(0x80076A9C),
+        NOP,
+    )
+    return e.finish()
 
 
 def build_combos_value_draw() -> bytes:
-    """Draw CLASSIC/ASSIST using unused entries 2/3 of the stock value table."""
+    """Draw CLASSIC/ASSIST at the compact second-row value position."""
 
     return words_blob(
         [
@@ -575,10 +656,9 @@ def build_combos_value_draw() -> bytes:
             addu("v0", "v0", "s5"),
             lw("a0", 16, "v0"),
             addiu("a1", "zero", 160),
-            addiu("a2", "zero", 125),
+            addiu("a2", "zero", 105),
             addiu("a3", "zero", 1),
-            lui("t0", 0x800B),
-            addiu("t0", "t0", 0x2724),
+            *address_words("t0", VALUE_STYLE_VA),
             sw("t0", 16, "sp"),
             addiu("t0", "zero", 10),
             sw("t0", 20, "sp"),
@@ -588,19 +668,129 @@ def build_combos_value_draw() -> bytes:
     )
 
 
+def build_specials_value_draw() -> bytes:
+    """Draw CLASSIC/MODERN at the compact third-row value position."""
+
+    return words_blob(
+        [
+            lui("v0", 0x800A),
+            lw("v0", STATE_VA - 0x800A0000, "v0"),
+            andi("v0", "v0", SPECIALS_MODERN_STATE_MASK),
+            srl("v0", "v0", 10),
+            sll("v0", "v0", 2),
+            addu("v0", "v0", "s5"),
+            lw("a0", 16, "v0"),
+            addiu("a1", "zero", 160),
+            addiu("a2", "zero", 140),
+            addiu("a3", "zero", 1),
+            *address_words("t0", VALUE_STYLE_VA),
+            sw("t0", 16, "sp"),
+            addiu("t0", "zero", 10),
+            sw("t0", 20, "sp"),
+            jal(GAME_TEXT_DRAW_VA),
+            sw("s1", 24, "sp"),
+        ]
+    )
+
+
+def build_jump_draw_helper() -> bytes:
+    """Draw the always-visible JUMP row and restore displaced loop-tail stores."""
+
+    e = Emitter()
+    e.emit(
+        *address_words("a0", JUMP_LABEL_VA),
+        addiu("a1", "zero", 160),
+        addiu("a2", "zero", 160),
+        addiu("a3", "zero", 1),
+        sw("s7", 16, "sp"),
+        sw("s6", 20, "sp"),
+        jal(GAME_TEXT_DRAW_VA),
+        sw("s1", 24, "sp"),
+    )
+
+    # Re-read durable settings after the renderer call.  Disabled JUMP always
+    # displays DPAD and uses the stock inactive style.  ASSIST+MODERN enables
+    # the stored DPAD/BUTTON choice and normal value style.
+    e.emit(
+        lui("t0", 0x800A),
+        lw("t1", STATE_VA - 0x800A0000, "t0"),
+        andi(
+            "t2",
+            "t1",
+            COMBOS_ASSIST_STATE_MASK | SPECIALS_MODERN_STATE_MASK,
+        ),
+        addiu(
+            "t3",
+            "zero",
+            COMBOS_ASSIST_STATE_MASK | SPECIALS_MODERN_STATE_MASK,
+        ),
+        *address_words("a0", DPAD_VALUE_VA),
+        addu("t4", "s7", "zero"),
+    )
+    e.bne("t2", "t3", "draw_value")
+    e.emit(NOP)
+
+    e.emit(
+        *address_words("t4", VALUE_STYLE_VA),
+        andi("t2", "t1", JUMP_BUTTON_STATE_MASK),
+        srl("t2", "t2", 12),
+        sll("t3", "t2", 2),
+        addu("t2", "t2", "t3"),
+        addu("a0", "a0", "t2"),
+    )
+
+    e.label("draw_value")
+    e.emit(
+        addiu("a1", "zero", 160),
+        addiu("a2", "zero", 175),
+        addiu("a3", "zero", 1),
+        sw("t4", 16, "sp"),
+        addiu("t0", "zero", 10),
+        sw("t0", 20, "sp"),
+        jal(GAME_TEXT_DRAW_VA),
+        sw("s1", 24, "sp"),
+    )
+
+    # Recreate the two displaced stock loop-tail stores from 0x80076D10.
+    e.emit(
+        addiu("t0", "zero", 2),
+        sw("s0", 0x6F4, "fp"),
+        sw("t0", 0x6F8, "fp"),
+        jr("ra"),
+        NOP,
+    )
+    return e.finish()
+
+
+def _pack_right_edit_region() -> tuple[bytes, int]:
+    dispatch = build_right_edit_dispatch()
+    helper_offset = _align(len(dispatch), 4)
+    blob = dispatch + bytes(helper_offset - len(dispatch)) + build_jump_draw_helper()
+    if len(blob) > RIGHT_EDIT_END_ROM - RIGHT_EDIT_ROM:
+        raise AssertionError("right edit dispatcher/JUMP draw exceed reclaimed stock region")
+    return _pad_region(blob, RIGHT_EDIT_END_ROM - RIGHT_EDIT_ROM), helper_offset
+
+
+RIGHT_EDIT_BLOB, JUMP_DRAW_HELPER_OFFSET = _pack_right_edit_region()
+JUMP_DRAW_HELPER_VA = RIGHT_EDIT_VA + JUMP_DRAW_HELPER_OFFSET
+LEFT_EDIT_BLOB = _pad_region(
+    build_left_edit_dispatch(),
+    LEFT_EDIT_END_ROM - LEFT_EDIT_ROM,
+)
+
+
 def _patch_game_settings(rom: RomImage) -> None:
     rom.expect_bytes(GAME_SETTINGS_CALL_ROM, bytes.fromhex("0C01D9AF 02402021"))
     rom.write_u32(GAME_SETTINGS_CALL_ROM, jal(MENU_WRAPPER_VA))
 
-    # Stock indices are settings 0/1/2 and EXIT 3.  TURN uses row 0 and COMBOS
-    # uses row 1.  Row 2 stays hidden, while small reclaimed stock-row helpers
-    # make vertical navigation 0 <-> 1 <-> 3 without an invisible stop.
+    # Four visible setting rows (0..3), EXIT at index 4.
     rom.expect_u32(0x00077400, 0x2A020003)
-    rom.expect_u32(0x00077418, 0x26100001)
-    rom.expect_u32(0x0007744C, 0x2610FFFF)
-    rom.write_u32(0x00077418, jal(NAV_DOWN_HELPER_VA))
-    rom.write_u32(0x0007744C, jal(NAV_UP_HELPER_VA))
+    rom.write_u32(0x00077400, 0x2A020004)
+    rom.expect_u32(0x000776EC, 0x2A020003)
+    rom.write_u32(0x000776EC, 0x2A020004)
 
+    # TURN still uses the transient stock row-0 halfword while the menu is
+    # open.  The wrapper mirrors/commits its durable 0x0200 state bit.
     replacements = {
         0x000774B0: (0x3C02800A, 0x3C02A01B),
         0x000774B4: (0x84425FA8, 0x8442F81C),
@@ -616,42 +806,61 @@ def _patch_game_settings(rom: RomImage) -> None:
         0x0007784C: (0x3C02800A, 0x3C02A01B),
         0x00077850: (0x84425FA8, 0x8442F81C),
     }
+    # The reclaimed edit blocks supersede some of these stock row-0 sites, so
+    # only keep replacements that remain outside those blocks.
     for offset, (expected, replacement) in replacements.items():
+        if RIGHT_EDIT_ROM <= offset < RIGHT_EDIT_END_ROM:
+            continue
+        if LEFT_EDIT_ROM <= offset < LEFT_EDIT_END_ROM:
+            continue
         rom.expect_u32(offset, expected)
         rom.write_u32(offset, replacement)
 
     rom.expect_bytes(
-        COMBOS_RIGHT_ROM,
+        RIGHT_EDIT_ROM,
         bytes.fromhex(
-            "3c02800a84425fa82842000210400008000000003c02800a84425faa"
-            "2842000c10400025000000000801da5a000000003c02800a84425faa"
-            "284200061040001e000000003c02800a94425faa244200013c01800a"
-            "a4225faa0801da7700000000"
+            "121100282a020002104000052408000212000007000000000801da7700000000"
+            "12080038000000000801da77000000003c02800a84425fa80040182128420004"
+            "10400003246200013c01800aa4225fa83c02800a84425fa8284200021440003f"
+            "000000003c03800a84635faa2862000750400001240300063c04800a84845fac"
+            "3c01800aa4235faa2882000550400001240400043c01800aa4245fac0801da77"
+            "000000003c02800a84425fa82842000210400008000000003c02800a84425faa"
+            "2842000c10400025000000000801da5a000000003c02800a84425faa28420006"
+            "1040001e000000003c02800a94425faa244200013c01800aa4225faa0801da77"
+            "000000003c02800a84425fa82842000210400008000000003c02800a84425fac"
+            "284200081040000d000000000801da72000000003c02800a84425fac28420004"
+            "10400006000000003c02800a94425fac244200013c01800aa4225fac"
         ),
     )
+    rom.write_bytes(RIGHT_EDIT_ROM, RIGHT_EDIT_BLOB)
+
     rom.expect_bytes(
-        NAV_DOWN_HELPER_ROM,
+        LEFT_EDIT_ROM,
         bytes.fromhex(
-            "3c02800a84425fa82842000210400008000000003c02800a84425fac"
-            "284200081040000d000000000801da72000000003c02800a84425fac"
-            "2842000410400006000000003c02800a94425fac244200013c01800a"
-            "a4225fac"
+            "121100142a020002104000052408000212000007000000000801daa700000000"
+            "12080016000000000801daa7000000003c02800a84425fa81840001800401821"
+            "2462ffff3c01800aa4225fa80801daa7000000003c02800a84425faa00401821"
+            "284200041440000d2462ffff3c01800aa4225faa0801daa7000000003c02800a"
+            "84425fac0040182128420002144000032462ffff3c01800aa4225fac"
         ),
     )
-    rom.expect_bytes(
-        COMBOS_LEFT_ROM,
-        bytes.fromhex(
-            "3c02800a84425faa00401821284200041440000d2462ffff3c01800a"
-            "a4225faa0801daa700000000"
-        ),
-    )
-    rom.expect_bytes(
-        NAV_UP_HELPER_ROM,
-        bytes.fromhex(
-            "3c02800a84425fac0040182128420002144000032462ffff3c01800a"
-            "a4225fac"
-        ),
-    )
+    rom.write_bytes(LEFT_EDIT_ROM, LEFT_EDIT_BLOB)
+
+    # Compact four-row geometry.  Keep stock font sizes and EXIT at y=210.
+    coordinate_words = {
+        0x00077748: (0x24060046, 0x24060037),
+        0x00077768: (0x24060046, 0x24060037),
+        0x0007779C: (0x2406006E, 0x2406005A),
+        0x000777BC: (0x2406006E, 0x2406005A),
+        0x000777F0: (0x24060096, 0x2406007D),
+        0x00077810: (0x24060096, 0x2406007D),
+        0x00077858: (0x24060055, 0x24060046),
+    }
+    for offset, (expected, replacement) in coordinate_words.items():
+        rom.expect_u32(offset, expected)
+        rom.write_u32(offset, replacement)
+
+    # Row 1/2 values are text enums rather than stock numeric values.
     rom.expect_bytes(
         COMBOS_DRAW_ROM,
         bytes.fromhex(
@@ -660,51 +869,71 @@ def _patch_game_settings(rom: RomImage) -> None:
             "afa800140c0072a2afb10018"
         ),
     )
+    rom.write_bytes(COMBOS_DRAW_ROM, build_combos_value_draw())
 
-    rom.write_bytes(
-        COMBOS_RIGHT_ROM,
-        _pad_region(build_combos_right_handler(), COMBOS_RIGHT_END_ROM - COMBOS_RIGHT_ROM),
+    rom.expect_bytes(
+        SPECIALS_DRAW_ROM,
+        bytes.fromhex(
+            "3c06800a84c65fac3c05800b24a5eb300c023a2002a0202102a02021"
+            "240500a0240600a5240700013c08800b25082724afa800102408000a"
+            "afa800140c0072a2afb10018"
+        ),
+    )
+    rom.write_bytes(SPECIALS_DRAW_ROM, build_specials_value_draw())
+
+    rom.expect_bytes(JUMP_DRAW_HOOK_ROM, JUMP_DRAW_HOOK_EXPECTED)
+    rom.write_u32(JUMP_DRAW_HOOK_ROM, jal(JUMP_DRAW_HELPER_VA))
+    rom.write_u32(JUMP_DRAW_HOOK_ROM + 4, NOP)
+
+    # Repack the five stock difficulty strings and their pointer table into the
+    # four binary value pairs needed by MKMSZR.
+    rom.expect_bytes(
+        0x000AF6CC,
+        b"VERY EASY\x00\x00\x00"
+        b"EASY\x00\x00\x00\x00"
+        b"MEDIUM\x00\x00"
+        b"HARD\x00\x00\x00\x00"
+        b"VERY HARD\x00\x00\x00",
     )
     rom.write_bytes(
-        NAV_DOWN_HELPER_ROM,
-        _pad_region(build_nav_down_helper(), NAV_DOWN_HELPER_END_ROM - NAV_DOWN_HELPER_ROM),
-    )
-    rom.write_bytes(
-        COMBOS_LEFT_ROM,
-        _pad_region(build_combos_left_handler(), COMBOS_LEFT_END_ROM - COMBOS_LEFT_ROM),
-    )
-    rom.write_bytes(
-        NAV_UP_HELPER_ROM,
-        _pad_region(build_nav_up_helper(), NAV_UP_HELPER_END_ROM - NAV_UP_HELPER_ROM),
-    )
-    rom.write_bytes(
-        COMBOS_DRAW_ROM,
-        _pad_region(build_combos_value_draw(), COMBOS_DRAW_END_ROM - COMBOS_DRAW_ROM),
+        0x000AF6CC,
+        b"TOGGLE\x00LOCK\x00"
+        b"ASSIST\x00\x00"
+        b"CLASSIC\x00MODERN\x00\x00"
+        b"DPAD\x00BUTTON\x00",
     )
 
-    rom.expect_bytes(0x000AF6CC, b"VERY EASY\x00\x00\x00")
-    rom.expect_bytes(0x000AF6D8, b"EASY\x00\x00\x00\x00")
-    rom.expect_bytes(0x000AF6E0, b"MEDIUM\x00\x00")
-    rom.expect_bytes(0x000AF6E8, b"HARD\x00\x00\x00\x00")
+    expected_value_ptrs = words_blob(
+        [
+            0x800AEACC,
+            0x800AEAD8,
+            0x800AEAE0,
+            0x800AEAE8,
+            0x800AEAF0,
+        ]
+    )
+    replacement_value_ptrs = words_blob(
+        [
+            0x800AEACC,  # TOGGLE
+            0x800AEAD3,  # LOCK
+            0x800AEAE0,  # CLASSIC
+            0x800AEAD8,  # ASSIST
+            0x800AEAE8,  # MODERN
+        ]
+    )
+    rom.expect_bytes(0x000AF6FC, expected_value_ptrs)
+    rom.write_bytes(0x000AF6FC, replacement_value_ptrs)
+
     rom.expect_bytes(0x000AF710, b"DIFFICULTY\x00\x00")
     rom.expect_bytes(0x000AF71C, b"LIVES\x00\x00\x00")
     rom.expect_bytes(0x000AF724, b"CONTINUES\x00\x00\x00")
-    rom.write_bytes(0x000AF6CC, b"TOGGLE\x00" + bytes(5))
-    rom.write_bytes(0x000AF6D8, b"LOCK\x00" + bytes(3))
-    rom.write_bytes(0x000AF6E0, b"CLASSIC\x00")
-    rom.write_bytes(0x000AF6E8, b"ASSIST\x00" + bytes(1))
-    rom.write_bytes(0x000AF710, b"TURN\x00" + bytes(7))
+    rom.write_bytes(0x000AF710, b"TURN\x00JUMP\x00\x00\x00")
     rom.write_bytes(0x000AF71C, b"COMBOS\x00" + bytes(1))
-    rom.write_bytes(0x000AF724, bytes(12))
-
-    # Row 1 is now drawn by the COMBOS text-value replacement above.  The
-    # hidden former Continues row remains blank and its numeric draw stays off.
-    rom.expect_u32(0x00077908, 0x0C0072A2)
-    rom.write_u32(0x00077908, NOP)
+    rom.write_bytes(0x000AF724, b"SPECIALS\x00" + bytes(3))
 
 
 class GameSettingsTurnPatch:
-    """Install production TURN: TOGGLE/LOCK menu and v06 control behavior."""
+    """Install production TURN plus UI/state-only COMBOS/SPECIALS/JUMP settings."""
 
     name = "game-settings-turn"
 
@@ -754,8 +983,12 @@ class GameSettingsTurnPatch:
         _patch_game_settings(rom)
 
         return (
-            "GAME SETTINGS exposes TURN: TOGGLE / LOCK and UI-only COMBOS: CLASSIC / ASSIST",
-            "COMBOS defaults to CLASSIC and has no gameplay effect in this proof",
+            (
+                "GAME SETTINGS exposes TURN, COMBOS, SPECIALS, JUMP, and EXIT "
+                "in a compact four-row frontend"
+            ),
+            "COMBOS/SPECIALS/JUMP are UI/state-only and have no gameplay effect",
+            "JUMP: BUTTON is editable only when COMBOS=ASSIST and SPECIALS=MODERN",
             (
                 f"TURN module ROM 0x{SHARED_EXPANSION_ROM:08X}.."
                 f"0x{module_end - 1:08X} -> RDRAM "
