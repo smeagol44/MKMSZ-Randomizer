@@ -48,7 +48,7 @@
         <span class="step">2</span>
         <div>
           <h2>Game files</h2>
-          <p>Both files stay in your browser. Nothing is uploaded.</p>
+          <p>Your game files stay in your browser. Nothing is uploaded.</p>
         </div>
       </header>
 
@@ -67,10 +67,10 @@
         <div class="file-row">
           <div class="file-copy">
             <div class="file-label-line">
-              <label for="mktN64File">MKT N64 donor ROM</label>
-              <span class="role-chip donor">Donor</span>
+              <label for="mktN64File">MKT N64 donor ROM <span class="optional-text">(optional)</span></label>
+              <span class="role-chip donor">Optional donor</span>
             </div>
-            <p class="hint"><strong>Mortal Kombat Trilogy (USA) Rev. 2</strong> <code>.z64</code>. Used locally to extract Toasty art/audio; this ROM is never patched.</p>
+            <p class="hint"><strong>Mortal Kombat Trilogy (USA) Rev. 2</strong> <code>.z64</code>. Optional source for additional art, audio, and game data used by supported features; this ROM is never patched.</p>
           </div>
           <input id="mktN64File" type="file" accept=".z64,application/octet-stream">
         </div>
@@ -78,7 +78,7 @@
 
       <div class="feature-note">
         <strong>Why MKT?</strong>
-        <span>The donor supplies the genuine Toasty image and voice. Toasty is included at the production 8% trigger rate.</span>
+        <span>The optional donor lets MKMSZR use compatible art, audio, and game data from MKT for supported features. It is read locally and never modified.</span>
       </div>
     </section>
 
@@ -137,7 +137,7 @@
         <span class="step">4</span>
         <div>
           <h2>Build randomized ROM</h2>
-          <p>Target: Nintendo 64 · Output: new <code>.z64</code> · Toasty: 8%</p>
+          <p>Target: Nintendo 64 · Output: new <code>.z64</code></p>
         </div>
       </header>
 
@@ -150,8 +150,6 @@
           <div><dt>Seed</dt><dd id="resultSeed"></dd></div>
           <div><dt>Output SHA-256</dt><dd id="outputSha"></dd></div>
           <div><dt>CRC1 / CRC2</dt><dd id="outputCrc"></dd></div>
-          <div><dt>Applied patches</dt><dd id="patchList"></dd></div>
-          <div><dt>Pickup mode</dt><dd id="pickupMode"></dd></div>
         </dl>
         <button id="downloadButton" type="button">Save patched ROM</button>
       </div>
