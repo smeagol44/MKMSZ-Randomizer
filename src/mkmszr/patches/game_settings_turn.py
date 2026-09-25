@@ -28,7 +28,6 @@ from ..mips import (
     Emitter,
     addiu,
     address_words,
-    and_,
     andi,
     jal,
     jalr,
