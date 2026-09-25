@@ -1,8 +1,7 @@
-# ruff: noqa: E701, E702
 """Production-composition Toasty patch.
 
 The patch contains no donor artwork or audio bytes. Callers supply translated
-visual/audio assets through :class:\`ToastyAssets\`. The native feature is loaded
+visual/audio assets through :class:`ToastyAssets`. The native feature is loaded
 through file ID 0x1A into the reserved expansion pool and composes only with
 already-owned production padding plus three guarded gameplay hooks.
 
@@ -14,12 +13,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..allocations import ExpansionPoolAllocator
-from ..data.addresses import FILE_TABLE_ENTRY_SIZE, FILE_TABLE_ROM, RAW_FILE_LOADER_VA
-from ..errors import PatchError
-from ..rom import RomImage
-from .base import PatchContext
-from .box_indicator import BOX_REGION, BOX_REGION_END, BOX_REGION_ROM
+from ..data.addresses import FILE_TABLE_ENTRY_SIZE, FILE_TABLE_ROM
+from .box_indicator import BOX_REGION_END
 from .inventory_boxes import SELECTOR_CAVE_BLOB, SELECTOR_CAVE_ROM, SELECTOR_CAVE_SIZE
 
 # Runtime/presentation contract proven by v42/v44/v46.
@@ -135,8 +130,8 @@ ALLOCATION_ORDER = (1, 4, 7, 0, 3, 6, 2, 5, 8)
 class ToastyAssets:
     """Translated assets supplied by a donor-aware caller.
 
-    \`\`visual_slices\`\` are the nine already-padded CI8 slices in v38 order.
-    \`\`palette_tlut\`\` is the 256-entry hardware-ready RGBA5551 TLUT.
+    ``visual_slices`` are the nine already-padded CI8 slices in v38 order.
+    ``palette_tlut`` is the 256-entry hardware-ready RGBA5551 TLUT.
     The audio fields are the confirmed donor subpatch/wave/predictor/sample.
     """
 
