@@ -1,5 +1,9 @@
 from mkmszr.patches.game_settings_turn import (
     ACTION_ENTRY,
+    COMBOS_DRAW_END_ROM,
+    COMBOS_DRAW_ROM,
+    NAV_DOWN_HELPER_VA,
+    NAV_UP_HELPER_VA,
     CONTROL_ALLOCATION,
     CONTROL_MODULE,
     CONTROL_MODULE_CACHED_BASE,
@@ -12,7 +16,12 @@ from mkmszr.patches.game_settings_turn import (
     build_action_gate_helper,
     build_release_helper,
 )
-from mkmszr.patches.inventory_boxes import STATE_VA, TURN_LOCK_STATE_MASK
+from mkmszr.patches.inventory_boxes import (
+    COMBOS_ASSIST_STATE_MASK,
+    STATE_VA,
+    TURN_LOCK_STATE_MASK,
+    USER_SETTINGS_STATE_MASK,
+)
 
 
 def _has_link_call(blob: bytes) -> bool:
@@ -30,6 +39,8 @@ def test_turn_editor_uses_reserved_runtime_word_and_durable_inventory_state_bit(
     assert SETTINGS_UNCACHED_VA == 0xA01AF81C
     assert STATE_VA == 0x800A60E8
     assert TURN_LOCK_STATE_MASK == 0x0200
+    assert COMBOS_ASSIST_STATE_MASK == 0x0400
+    assert USER_SETTINGS_STATE_MASK == 0x0600
 
 
 def test_turn_module_uses_low_expansion_slice_before_toasty() -> None:
@@ -48,3 +59,14 @@ def test_v06_fragile_helpers_remain_leaf_only() -> None:
 
 def test_static_loader_trampolines_fit_repurposed_capture_region() -> None:
     assert len(STATIC_REGION_BLOB) == STATIC_REGION_SIZE == 0xD8
+
+
+def test_combos_ui_proof_uses_second_owned_settings_bit() -> None:
+    assert COMBOS_ASSIST_STATE_MASK == 0x0400
+    assert TURN_LOCK_STATE_MASK & COMBOS_ASSIST_STATE_MASK == 0
+
+
+def test_combos_menu_reuses_frontend_resident_stock_regions() -> None:
+    assert NAV_DOWN_HELPER_VA == 0x80076984
+    assert NAV_UP_HELPER_VA == 0x80076A7C
+    assert COMBOS_DRAW_END_ROM - COMBOS_DRAW_ROM == 0x44
