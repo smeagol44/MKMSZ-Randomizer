@@ -14,6 +14,16 @@ The straight-missile line has user runtime evidence through **v84**. v75 is the 
 
 The strongest current production conflict remains the proof-code line inside the production bootstrap composite `[0x9AD84,0x9AF20)`. v62's standalone combo continuation uses `[0x9AD90,0x9ADA0)`; v65-v70 helper code begins at `0x9ADA0`, with v70 using the same proof-owned interval up to the bootstrap boundary. These artifacts validate semantics only; none of those offsets are reusable production allocations. The early Sektor helper line demonstrates the same rule from the opposite direction: zero-filled-looking `[0xA1308,0xA1544)` was live stock action/dispatch data, and overwriting it caused input-specific hangs.
 
+## Accepted Run simplification branch
+
+A separate 2026-09-25 branch tested reducing ordinary Run presentation back to the six retail N64 MKT poses.
+
+- **Run branch v01 — Runtime-confirmed / accepted visual policy.** `MKMSZR_sektor-run-six-pose_common-proof_v01.z64`, SHA-256 `7f8dc72abb39e5863b64730eb669bed41bb3d308a063905fb6d6aaf9b8a21e1d`. The existing 12 visual ticks are preserved as `1,1,3,3,5,5,7,7,9,9,11,11`. The user explicitly preferred this presentation.
+- **Run branch v02 — Runtime-confirmed / rejected preference.** `MKMSZR_sektor-run-six-pose-double-loop_common-proof_v02.z64`, SHA-256 `68c4a258eb4d6caf40cb639ea2d7fe36ed2a8b856fbab026188fdccae297bb92`. Sequence `1,3,5,7,9,11,1,3,5,7,9,11` was tested and explicitly rejected in favor of v01.
+- **Physical-removal repack — Implementation/static-confirmed, Runtime Pending.** Repacking with only the six physical retail Run poses yields file-`0x87 = 0x4CD68` versus `0x4E3FC`, saving `0x1694` / 5,780 bytes and increasing v49-bound headroom from `0x148` to `0x17DC`.
+
+**Integration directive:** future Sektor takeover work should implement the v01 hold-each-pose-twice policy, physically remove the six supplemental even Run poses, and remove now-dead PS1 Run extraction/decoder and Run-only WIMP supplemental dependencies from the active builder. Historical v55-v58 evidence remains canonical provenance and should not be erased.
+
 ## Reconciled status rules
 
 A proof entry may preserve its historical **pre-test** status, but the section's final status is always the latest recorded evidence. In particular:
