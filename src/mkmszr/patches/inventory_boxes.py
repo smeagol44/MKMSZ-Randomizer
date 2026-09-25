@@ -152,6 +152,15 @@ CHORD_DIRECTION_MASK = RIGHT_MASK | LEFT_MASK
 CHORD_CLEAR_MASK = (~(CHORD_ACTION_MASK | CHORD_DIRECTION_MASK)) & 0xFFFF
 LATCH_MASK = 0x0100
 TURN_LOCK_STATE_MASK = 0x0200
+COMBOS_ASSIST_STATE_MASK = 0x0400
+SPECIALS_MODERN_STATE_MASK = 0x0800
+JUMP_BUTTON_STATE_MASK = 0x1000
+USER_SETTINGS_STATE_MASK = (
+    TURN_LOCK_STATE_MASK
+    | COMBOS_ASSIST_STATE_MASK
+    | SPECIALS_MODERN_STATE_MASK
+    | JUMP_BUTTON_STATE_MASK
+)
 
 # Reuse only regions that already have inventory/stage-selector research behind
 # them. The old 412-byte inventory cave is now occupied by MKMSZR bootstrap and
@@ -318,8 +327,8 @@ def build_switch_helper(
     e.emit(srl("t4", "t7", 15), sll("t4", "t4", 1))
     e.emit(addiu("t2", "t2", 1), subu("t2", "t2", "t4"), andi("t2", "t2", 3))
 
-    # Preserve the MKMSZR user-setting bit while replacing active-box/latch state.
-    e.emit(andi("t1", "t1", TURN_LOCK_STATE_MASK), addu("t1", "t1", "t2"))
+    # Preserve MKMSZR user-setting bits while replacing active-box/latch state.
+    e.emit(andi("t1", "t1", USER_SETTINGS_STATE_MASK), addu("t1", "t1", "t2"))
     e.emit(ori("t1", "t1", LATCH_MASK), sw("t1", 0, "t0"))
     e.emit(jal(load_wrapper_va), NOP)
     e.emit(jump(action_done_va), NOP)
