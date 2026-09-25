@@ -5,7 +5,10 @@ import hashlib
 from ..errors import PatchError
 from ..rom import RomImage
 from .base import PatchContext
+from .box_indicator import BOX_REGION, BOX_REGION_ROM
+from .game_settings_turn import CONTROL_MODULE, SHARED_EXPANSION_ROM
 from .toasty_codegen import (
+    NOP,
     _align,
     _build_call_trampoline,
     _build_init_loader,
@@ -37,10 +40,21 @@ class ToastyProductionCompositionPatch:
         rom.expect_bytes(REACTION_HOOK_ROM,EXPECTED_REACTION_HOOK)
         rom.expect_bytes(HUD_HOOK_ROM,EXPECTED_HUD_HOOK)
         rom.expect_bytes(POST13_HOOK_ROM,EXPECTED_POST13_HOOK)
-        rom.expect_bytes(EXPANSION_FILE_ENTRY_ROM,bytes(FILE_TABLE_ENTRY_SIZE))
+        control_end_rom = SHARED_EXPANSION_ROM + len(CONTROL_MODULE)
+        expected_shared_entry = (
+            SHARED_EXPANSION_ROM.to_bytes(4, "big")
+            + control_end_rom.to_bytes(4, "big")
+            + bytes(4)
+        )
+        rom.expect_bytes(EXPANSION_FILE_ENTRY_ROM, expected_shared_entry)
+        rom.expect_bytes(SHARED_EXPANSION_ROM, CONTROL_MODULE)
         rom.expect_bytes(SELECTOR_CAVE_ROM,SELECTOR_CAVE_BLOB)
         rom.expect_bytes(INIT_LOADER_ROM,bytes(INIT_LOADER_END-INIT_LOADER_ROM))
         rom.expect_bytes(BOX_REGION_ROM,BOX_REGION)
+        rom.expect_bytes(
+            control_end_rom,
+            b"\xFF" * (MODULE_ROM - control_end_rom),
+        )
         rom.expect_bytes(MODULE_ROM,b'\xFF'*(audio_end-MODULE_ROM))
         for selector,callback in zip(QUALIFYING_REACTION_SELECTORS,QUALIFYING_REACTION_CALLBACKS,strict=True):
             if rom.read_u32(TARGET_REACTION_TABLE_ROM+selector*4)!=callback:
@@ -61,7 +75,7 @@ class ToastyProductionCompositionPatch:
             if file_id==EXPANSION_FILE_ID: continue
             entry=FILE_TABLE_ROM+file_id*FILE_TABLE_ENTRY_SIZE
             start=rom.read_u32(entry);end=rom.read_u32(entry+4)
-            if start and end and end>start and not (end<=MODULE_ROM or start>=audio_end):
+            if start and end and end>start and not (end<=SHARED_EXPANSION_ROM or start>=audio_end):
                 raise PatchError(f"Toasty high-ROM allocation overlaps file 0x{file_id:02X}")
 
         sub=bytearray(self.assets.audio_subpatch);sub[0x0A:0x0C]=TARGET_WAVE_ID.to_bytes(2,'big')
@@ -70,7 +84,7 @@ class ToastyProductionCompositionPatch:
         rom.write_bytes(PRED_533_ROM,self.assets.audio_predictor);rom.write_bytes(EVENT_52_PATCH_ROM,TOASTY_EVENT_52_PATCH)
         rom.write_bytes(audio_rom,self.assets.audio_sample)
 
-        rom.write_u32(EXPANSION_FILE_ENTRY_ROM,MODULE_ROM)
+        rom.write_u32(EXPANSION_FILE_ENTRY_ROM,SHARED_EXPANSION_ROM)
         rom.write_u32(EXPANSION_FILE_ENTRY_ROM+4,MODULE_ROM+len(module))
         rom.write_u32(EXPANSION_FILE_ENTRY_ROM+8,0)
         rom.write_bytes(MODULE_ROM,module)
@@ -88,7 +102,12 @@ class ToastyProductionCompositionPatch:
         rom.expect_bytes(WAVE_133_ROM,EXPECTED_WAVE_133)
 
         return (
-            f"Toasty module ROM 0x{MODULE_ROM:08X}..0x{MODULE_ROM+len(module)-1:08X} -> RDRAM 0x{MODULE_K0:08X}",
+            (
+                f"shared file 0x{EXPANSION_FILE_ID:02X}: TURN prefix at "
+                f"0x{SHARED_EXPANSION_ROM:08X}; Toasty ROM "
+                f"0x{MODULE_ROM:08X}..0x{MODULE_ROM+len(module)-1:08X} -> "
+                f"RDRAM 0x{MODULE_K0:08X}"
+            ),
             f"dedicated Toasty audio sample ROM 0x{audio_rom:08X}..0x{audio_end-1:08X}; stock pickup audio unchanged",
             f"successful-reaction family uses {self.probability_per_thousand}/1000 test/product gate",
             "v42 3/16/8 lower-right presentation retained",

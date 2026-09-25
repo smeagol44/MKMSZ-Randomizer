@@ -105,7 +105,7 @@ def test_stage_key_map_matches_originating_stage_policy() -> None:
 
 def test_four_box_binary_layout_fits_confirmed_regions() -> None:
     assert len(ACTION_ROUTINE) <= SECONDARY_CAVE_SIZE == 0x68
-    assert SWITCH_HELPER_SIZE == 0x44
+    assert SWITCH_HELPER_SIZE == 0x4C
     assert LOAD_MASK_WRAPPER_VA == SWITCH_HELPER_VA + SWITCH_HELPER_SIZE
     assert len(SELECTOR_CAVE_BLOB) <= SELECTOR_CAVE_SIZE == 0x90
 

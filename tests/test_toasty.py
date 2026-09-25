@@ -1,10 +1,17 @@
 from mkmszr.config import OutfitConfig, RandomizerConfig
 from mkmszr.patcher import build_pipeline
+from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
 from mkmszr.patches.toasty import ToastyProductionCompositionPatch
-from mkmszr.patches.toasty_codegen import pack_toasty_module
+from mkmszr.patches.toasty_codegen import (
+    _build_call_trampoline,
+    _build_init_loader,
+    pack_toasty_module,
+)
 from mkmszr.patches.toasty_constants import (
     DEFAULT_PROBABILITY_PER_THOUSAND,
     MODULE_K0,
+    MODULE_ROM,
+    SHARED_EXPANSION_ROM,
     ToastyAssets,
 )
 
@@ -44,6 +51,19 @@ def test_toasty_is_optional_and_runs_after_rainbow() -> None:
     assert isinstance(composed.patches[-1], ToastyProductionCompositionPatch)
     assert composed.patches[-1].probability_per_thousand == DEFAULT_PROBABILITY_PER_THOUSAND
 
+    types = [type(patch) for patch in composed.patches]
+    assert types.index(GameSettingsTurnPatch) < types.index(ToastyProductionCompositionPatch)
+
 
 def test_product_default_probability_is_eight_percent() -> None:
     assert DEFAULT_PROBABILITY_PER_THOUSAND == 80
+
+
+def test_toasty_source_offset_matches_shared_runtime_offset() -> None:
+    assert SHARED_EXPANSION_ROM == 0x00F68000
+    assert MODULE_ROM == 0x00F687E0
+    assert MODULE_ROM - SHARED_EXPANSION_ROM == MODULE_K0 - 0x801AF820
+
+
+def test_toasty_init_reuses_shared_stage_load() -> None:
+    assert _build_init_loader() == _build_call_trampoline()
