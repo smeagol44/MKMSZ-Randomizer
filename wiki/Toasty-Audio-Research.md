@@ -832,3 +832,20 @@ The v03 pickup replacement is still a disposable routing proof, not final Toasty
 v41 composes the Runtime-confirmed v03 voice with the compact Toasty visual state machine. The voice is invoked once when the six-tick slide-in completes and the 32-tick hold begins.
 
 This does **not** yet solve production audio routing. The disposable proof deliberately reuses v03's event-524/subpatch host, so ordinary pickup playback is also redirected to Toasty in v41. The purpose is only to validate audio/visual timing and lifecycle together before the final trigger work. A dedicated production-safe audio definition/route is still Pending.
+
+
+### Toasty dedicated-audio proof v46 — runtime confirmed
+
+**Runtime-confirmed on 2026-09-25.** The user reported v46 works perfectly. The proof removes the disposable pickup-audio hijack and preserves the ordinary pickup chain byte-for-byte:
+
+`descriptor 0x3B -> event 524 -> patch 681 -> subpatch 524 -> waveform 133`.
+
+Toasty instead uses the isolated dedicated host:
+
+`event 52 -> patch 68 -> subpatch 608 -> waveform 533`.
+
+Waveform 533 carries the confirmed donor waveform-77 metadata/predictor/sample, including the required `-2253`-cent correction. This runtime result establishes both sides of the production audio boundary on the tested route: the genuine Toasty voice still plays correctly, and ordinary pickup sound is restored to vanilla behavior.
+
+### v47 production-composition audio gate
+
+**Implementation/static-confirmed; runtime Pending.** v47 layers the v46 dedicated route after the exact current production patch pipeline. The stock pickup chain remains a strict guarded negative control. The donor sample is stored after the packed Toasty expansion module in high ROM, outside current rainbow and title ownership. The integration build keeps the trigger at 500/1000 only to make manual composition validation fast; the selected product rate remains 80/1000 (8%).
