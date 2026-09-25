@@ -85,3 +85,11 @@ def test_enum_value_draws_fit_stock_draw_regions() -> None:
     assert len(build_combos_value_draw()) == COMBOS_DRAW_END_ROM - COMBOS_DRAW_ROM
     assert len(build_specials_value_draw()) == SPECIALS_DRAW_END_ROM - SPECIALS_DRAW_ROM
     assert len(build_jump_draw_helper()) < RIGHT_EDIT_END_ROM - RIGHT_EDIT_ROM
+
+
+def test_jump_draw_hook_replaces_all_three_stock_cursor_words() -> None:
+    from mkmszr.patches.game_settings_turn import JUMP_DRAW_HOOK_EXPECTED
+
+    assert JUMP_DRAW_HOOK_EXPECTED == bytes.fromhex(
+        "24080002 AFD006F4 AFC806F8"
+    )
