@@ -90,11 +90,13 @@ Empty stock slots use `0xFFFFFFFF`. Foreign-stage keys appear in the live window
 | Structure / offset | Locomotion meaning |
 |---|---|
 | controller `+0x638` | Pointer to semantic input; player construction stores `0x800BF2EE` here |
+| controller `+0x650` | Token-`0x10` companion actor pointer for paired animation; set on creation, retained when the actor is parked through actor `+0x64 bit 0x20`, and reused when the bit is cleared by the next token. Fresh player-controller initialization zeros this field; stage-wide teardown remains unresolved. |
 | controller `+0x68C` | Active horizontal semantic direction: `0x8000` Left or `0x2000` Right |
 | controller `+0x680` | During normal walk setup, shadows the temporary `1`/`2` locomotion selector before `+0x6E4` becomes the animation cursor |
 | controller `+0x6BC` bit `0x0200` | Shared fighter face-policy flag used by several host routines to conditionally face a nearest opponent; **not a universal boss bit** |
 | controller `+0x6E0` | Current actor pointer |
 | controller `+0x6E4` | Animation cursor; temporarily receives the forward/back selector immediately before animation selection |
+| controller `+0x6E8` | Texture-slot ID copied to token-`0x10` companion actor `+0x9C`; no separate slot allocation was found in that token path. |
 | controller `+0x6FC` | Normal locomotion mode written as `1` by forward setup and `2` by backward setup |
 | controller `+0x704` | In normal horizontal entry, direction-vs-facing mismatch: `0` means forward-compatible, `0x10` means requested direction opposes facing |
 | actor `+0x78` | Fighter type |
