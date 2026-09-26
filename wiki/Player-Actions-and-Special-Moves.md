@@ -15,7 +15,7 @@ semantic Low Kick 0x80014C60
 -> installer 0x80032CD4
 ```
 
-The Low Kick table is RAM `0x800B0F68` / ROM `0xB1B68`. It has two active `0x2C`-byte records, followed by a zero `u16` sentinel at `0x800B0FC0`. Unrelated data begins eight bytes later, so adding a third record in place is unsafe; an added descriptor must use relocated owned storage.
+The Low Kick table is RAM `0x800B0F68` / ROM `0xB1B68`. **Corrected 2026-09-26 clean-ROM reconciliation:** it contains one active `0x2C`-byte record, followed by the zero `u16` sentinel at `0x800B0F94`. RAM `0x800B0F98` begins the separate High Kick table; it is not a second Low Kick record. The older two-record interpretation is superseded. Any added descriptor still requires separately owned/relocated storage rather than extending through the sentinel into the HK table.
 
 | Offset | Type | MKMSZ host meaning |
 |---:|---|---|
@@ -208,6 +208,91 @@ The production integration must preserve v04 semantics exactly; it is not an opp
 
 The v04 semantics and check-v01 composition are accepted **runtime proof baselines**. ATTACK: MODERN is still absent from the normal browser/CLI patch core; production source, integration tests, and product validation are Pending.
 
+## SPECIALS: MODERN + JUMP: BUTTON control-suite proof line (2026-09-26)
+
+### Stock-special reconciliation
+
+A fresh clean-ROM trace reconciled the stock special parser before implementing MODERN recognition. The descriptor parser at `0x8004A0E0` advances records by exactly `0x2C`; matcher `0x80049E60`, transfer dispatcher `0x80049D14`, and callback installer `0x80032CD4` remain the stock authority. The relevant stock commands are:
+
+| Ability | Stock command / route | Native condition/action facts |
+|---|---|---|
+| Ice Blast | Down -> Forward + LP | LP record at `0x800B0F38`; condition `0x8004A304`; callback `0x80049C34`; normal Ice root `0x8004AB84`; tier >=1; cost `0x20` |
+| Slide | Back + Block + LP + LK | Direct recognizer `0x8003C9F8`, not a descriptor record; callback `0x8003CFAC` -> action index `0x10` -> `0x80059FF0`; tier >=2; no Ice-resource cost observed in the traced root |
+| Directional Ice — Up | Down -> Forward + HK | HK table at `0x800B0F98`; condition `0x8004A434`; callback `0x80049C84`, Ice mode 1; tier >=3; cost `0x20` |
+| Directional Ice — Down | Down -> Back + LK | sole LK record at `0x800B0F68`; condition `0x8004A4A4`; callback `0x80049CB0`, Ice mode 2; tier >=3; cost `0x60` |
+| Air Ice Blast | Down -> Forward + LP while airborne | same LP callback `0x80049C34`, selector 2 -> root `0x8004B1D0`; tier >=4; cost `0x20` |
+| Ice Clone | Down -> Back + LP | LP record at `0x800B0F0C`; condition `0x8004A22C`; callback `0x8003CF8C` -> action index 4 -> `0x80059750`; tier >=5; cost `0x60` |
+| Ice Shatter | contextual after two Ice Blasts | Not a standalone special descriptor; qualifying stock attack/reaction paths gate it at tier >=6. MODERN must preserve this contextual behavior rather than assign a Special-button command. |
+| Super Slide | Back + Block + LP + HP | Direct recognizer `0x8003CAF4`; callback `0x8005A5C0`; tier >=7; cost `0x60` |
+| Freeze on Contact | Down -> Forward -> Forward + HP | HP record at `0x800B1080`; condition `0x8005A9AC`; action `0x8005A7B4`; tier >=8; cost `0x80` |
+| Polar Blast | Forward -> Back -> Back + HP | HP record at `0x800B1054`; condition `0x8004A684`; action/root `0x8004BD28`; tier >=9; cost `0xA6` |
+| Spine Rip | Forward -> Down -> Forward + HP | HP record at `0x800B1028`; condition `0x8004A514`; callback `0x80049BE8`; fatality/context checks rather than progression-tier gating |
+
+This reconciliation supersedes the earlier claim that `0x800B0F68` contained two LK records and also corrects the earlier misidentification of the first HP record as Ice Shatter: that record is Spine Rip. Native progression evaluator `0x80074FBC` returns tiers 0..9; the established thresholds remain 85, 258, 834, 1410, 2323, 3315, 4503, 5911, and 7354 XP.
+
+### Accepted SPECIALS: MODERN mapping
+
+The physical button normally mapped to LP is the **Special Button**. SPECIALS: CLASSIC leaves vanilla recognition intact. SPECIALS: MODERN bypasses the old directional/chord recognizers for the ordinary special family and uses the following direct mapping while preserving native condition checks, costs, callbacks, scheduler/action ownership, and contextual Ice Shatter behavior:
+
+| Context | MODERN input | Result |
+|---|---|---|
+| Ground | Special | Ice Blast |
+| Ground or air | Back + Special | Ice Clone |
+| Ground | Forward + Special | Slide |
+| Ground | Block + Forward + Special | Directional Ice — Up |
+| Ground | Block + Back + Special | Directional Ice — Down |
+| Ground | Action + Special | Freeze on Contact |
+| Ground | Run + Forward + Special | Super Slide |
+| Ground | Block + Special | Polar Blast |
+| Air | Special | Air Ice Blast |
+| Fatality context | Block + Run + Special | Spine Rip, only when the native fatality condition accepts |
+
+Forward/Back are facing-relative. The proof explicitly gives airborne Back+Special priority over bare airborne Special so Clone wins instead of Air Ice Blast. The old Up+Special / Down+Special candidates are rejected as ergonomic mappings because their useful window was only the few frames before stock jump/crouch took ownership.
+
+In SPECIALS: MODERN, the Special/LP button itself no longer performs ordinary LP. **Block + Attack is the sole accepted LP macro.** The temporary Run + Forward + Attack -> LP route was removed from both ATTACK and SPECIALS paths after runtime review and must not return. ATTACK: MODERN also suppresses ordinary raw LP/LK/HK gameplay attacks while leaving semantic history available where stock systems need it.
+
+### Block startup cancellation and JUMP: BUTTON
+
+Control proof v05 moved Block+Attack ownership into the Block startup itself. Stock Block startup at `0x80032810` plays its animation synchronously; polling only the later Block loop cannot cancel the wind-up. The accepted proof uses an equivalent bounded startup loop that polls Block+Attack every scheduler tick and enters the same proven native LP route immediately. The user confirmed simultaneous Block+Attack and presses at arbitrary points during startup cancel correctly into LP.
+
+JUMP: BUTTON uses **both LK and HK as Jump**. The accepted v05 behavior is runtime-confirmed from standing, forward movement, backward movement, and Run; ordinary D-pad Up no longer initiates those locomotion jumps while BUTTON mode is active. The moving/running route is tied to the native diagonal-jump classifier rather than only the standing Up branch.
+
+Proof v06 extends the accepted behavior to the ledge-hanging state `0x030F`: LK or HK invokes the exact native Up action used by the hanging loop. Existing contextual D-pad Up behavior in that ledge state is intentionally left stock. The same v06 state gate allows **Block + Forward + Special -> Directional Ice Up** while hanging, using the normal facing-relative Forward classification and the stock Directional-Ice-Up condition/cost/action route.
+
+### Control proof chronology and accepted baseline
+
+- **SPECIALS v01 — partial Runtime-confirmed / superseded.** `MKMSZR_specials-modern_common-proof_v01.z64`, SHA-256 `a29f31545fca6279aee2b5a21c762fd562074eb73ce365c57233f8256f3f9109`. Core callbacks worked, but Up/Down inputs raced jump/crouch, Air Clone lost priority to Air Ice, and Attack+Special was not a usable LP macro.
+- **SPECIALS v02 — partial Runtime-confirmed / superseded.** SHA-256 `bc54bc84aada41a83f44f4150a2ae66615087e1d119e2b4b8548055711bd118b`. Revised chords and Air Clone worked, but facing-relative Forward/Back was wrong because the proof read the 16-bit fighter-facing field with a 32-bit `lw`.
+- **SPECIALS v03 — Runtime-confirmed / superseded by later control composition.** `MKMSZR_specials-modern_common-proof_v03.z64`, SHA-256 `5511a708945b1c5188176f9afd431d76a2df17241c337ab50ec68a4e118c59fd`. Correct `lhu` facing read fixed both facings; Run+Forward+Attack -> LP was removed, leaving Block+Attack as the sole LP macro.
+- **Controls v04 — partial Runtime-confirmed / superseded.** `MKMSZR_controls-modern_final-proof_v04.z64`, SHA-256 `e14efaf99f8ff3a3d8638cd21f9e96ea6464b9b6bc65e59eaef152ad68a895e7`. Standing BUTTON jump worked, but moving/running jump and Block-startup cancellation were incomplete.
+- **Controls v05 — Runtime-confirmed / superseded by v06 extension.** `MKMSZR_controls-modern_final-proof_v05.z64`, SHA-256 `e4dd8f5caaa9b5d3289fcd3cfcc906aa02827f35b4370357a361588c1aea788f`, CRC1/CRC2 `BF447A12 / 517A0FBC`. User reported all requested standing/moving/running BUTTON jumps, D-pad suppression, and Block-startup cancellation working.
+- **Controls v06 — Runtime-confirmed accepted proof baseline.** `MKMSZR_controls-modern_ledge-extension-proof_v06.z64`, SHA-256 `7ea9cf1d606e303fe04a67bc40e76940a90a3ff6232a8f301a8a35eab809c411`, CRC1/CRC2 `8C209838 / 1D5CDE46`. Adds ledge-button Jump and ledge Directional Ice Up. The user reported: **“It works! It's fantastic!”** This is the current accepted ATTACK + SPECIALS + JUMP gameplay proof baseline.
+
+The SPECIALS/JUMP proof builders temporarily force current XP to **20,000** while SPECIALS: MODERN is active so all native power tiers are immediately testable. That is a proof-only convenience and is **not** part of the accepted product semantics. These proofs also use disposable no-Toasty allocation/composition and therefore remain proof-only until proper production packing/integration is completed.
+
+## RUN: HOLD / AUTO — current design and failed frontend proofs
+
+The accepted product design under investigation is:
+
+- **HOLD:** vanilla behavior.
+- **AUTO:** ordinary locomotion defaults to Run; holding the configured physical Run button acts as a temporary Walk modifier.
+- The physical/remapped Run semantic must remain real and observable for **Run + Forward + Special -> Super Slide**, **Block + Run + Special -> Spine Rip**, and other Run chords. Do not globally invert or clear semantic Run.
+- Full analog-stick deflection must retain vanilla auto-run synthesis.
+- `0x2000` is the candidate durable RUN=AUTO state bit in `0x800A60E8`; box-switch persistence must preserve it together with the existing control bits. This remains proof design, not production ownership.
+
+**v07 — Rejected / failed.** `MKMSZR_controls-run-auto_common-proof_v07.z64`, SHA-256 `a476315ddb64250855f65f7b500597d04f094e448a42942c10af55684d1c67a9`, CRC1/CRC2 `33C4EA17 / F40250E0`.
+
+Runtime observations:
+- the five-setting menu rendered but was visually far too cramped;
+- Block by itself hard-hung regardless of mode;
+- in AUTO, holding Run before movement produced walking as intended, but pressing Run during an already-active run did not transition to walking;
+- full analog-stick left/right no longer produced vanilla auto-run.
+
+Post-test static diagnosis established two reusable lessons. First, the frontend rewrite overwrote the proof-specific ATTACK trampolines embedded at the ends of the reclaimed GAME SETTINGS edit regions, including the Block trampoline; frontend reclamation and gameplay trampoline ownership must be reconciled explicitly. Second, vanilla semantic Run can also be synthesized by full analog deflection, so globally inverting the merged semantic Run predicate cannot distinguish the physical Run button from analog auto-run.
+
+**v08 — Rejected / failed.** `MKMSZR_controls-run-auto_common-proof_v08.z64`, SHA-256 `1967cbe4902d2b10ddca461714edb8e1fbe229fd61f9f55bf6bfe516d7ecfd4e`, CRC1/CRC2 `42C273BE / 30FF39EA`. Rebuilt from accepted v06 rather than v07. Block no longer hung, but **entering GAME SETTINGS hard-hung**, so no RUN gameplay claim is promoted from v08. Its attempted design separates a pre-analog/remapping-aware physical Run-button snapshot from vanilla analog-run synthesis and adds an active-run Run->Walk transition, but those changes remain runtime-unvalidated because the frontend failed before the setting could be exercised.
+
+**Current boundary:** v06 remains the accepted Runtime-confirmed gameplay baseline. RUN:HOLD/AUTO is still Pending. The next task is a focused frontend ownership/entry audit of the five-setting GAME SETTINGS design, comparing accepted production full-menu v04 and the v07/v08 rewrites. Do not redesign or disturb the accepted v06 ATTACK/SPECIALS/JUMP gameplay semantics while resolving the frontend.
 
 ## Host action primitives
 

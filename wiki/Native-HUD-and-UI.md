@@ -95,9 +95,9 @@ The stock top-level `GAME SETTINGS` entry is now the complete MKMSZR control fro
 | Setting | Values | Frontend status |
 |---|---|---|
 | `TURN` | `TOGGLE` / `LOCK` | Runtime-confirmed gameplay + frontend. Defaults to TOGGLE. |
-| `COMBOS` | `CLASSIC` / `ASSIST` | Runtime-confirmed UI/state. Gameplay ASSIST semantics Pending. |
-| `SPECIALS` | `CLASSIC` / `MODERN` | Runtime-confirmed UI/state. Gameplay MODERN semantics Pending. |
-| `JUMP` | `DPAD` / `BUTTON` | Runtime-confirmed UI/state. Visible at all times; greyed/fixed to DPAD unless **COMBOS=ASSIST AND SPECIALS=MODERN**. Gameplay BUTTON semantics Pending. |
+| `COMBOS` | `CLASSIC` / `ASSIST` | Runtime-confirmed production UI/state. Accepted proof semantics now replace this label with `ATTACK: CLASSIC / MODERN`; product integration remains Pending. |
+| `SPECIALS` | `CLASSIC` / `MODERN` | Runtime-confirmed production UI/state. MODERN gameplay is now Runtime-confirmed in the accepted proof-only v06 control composition; product integration remains Pending. |
+| `JUMP` | `DPAD` / `BUTTON` | Runtime-confirmed production UI/state. Visible at all times; greyed/fixed to DPAD unless **COMBOS=ASSIST AND SPECIALS=MODERN**. BUTTON gameplay is Runtime-confirmed in proof-only v05/v06; product integration remains Pending. |
 | `EXIT` | — | Runtime-confirmed navigation/return. |
 
 The compact layout reuses the stock font and frontend loop while reclaiming the old GAME SETTINGS edit/draw regions. Four setting rows fit above the stock EXIT position without introducing a new frontend allocation or title-time expansion load.
@@ -120,6 +120,17 @@ Frontend proof history:
 
 The first older production integration failure remains relevant: loading shared file `0x1A` from the title/frontend lifecycle hard-hung. The accepted frontend remains title-resident; file `0x1A` is loaded only at stage initialization.
 
-The GAME SETTINGS **frontend structure is complete** and should not be reopened unless a new requirement appears. Production still exposes the historical `COMBOS: CLASSIC / ASSIST` label and durable `0x0400` state bit, but the accepted replacement semantics are now the **Runtime-confirmed proof-only `ATTACK: CLASSIC / MODERN` v04 contract** documented in [Player actions and special moves](Player-Actions-and-Special-Moves). Production integration should rename that row while reusing the same durable bit. SPECIALS MODERN and JUMP BUTTON gameplay remain Pending, and these control features remain outside the 1.0 blocker chain unless explicitly promoted later.
+A new requirement appeared after full-menu v04: **RUN: HOLD / AUTO**. Therefore the production v04 frontend remains the accepted baseline, but the frontend structure is no longer considered closed. Production still exposes the historical `COMBOS: CLASSIC / ASSIST` label and durable `0x0400` state bit; accepted proof semantics replace it with `ATTACK: CLASSIC / MODERN`. SPECIALS: MODERN and JUMP: BUTTON gameplay are now Runtime-confirmed in the accepted proof-only control-suite v06, but none of ATTACK/SPECIALS/JUMP gameplay is yet integrated into the normal browser/CLI patch core.
 
-The disposable full-composition ATTACK check v01 displays `ATTACK: CLASSIC / MODERN` by changing only the row label and second value pointer while reusing bit `0x0400`. The user reported the check ROM working as expected on 2026-09-26; this does not change the current production frontend listed above. The check ROM's exact identity and bounded runtime report are in [Player actions and special moves](Player-Actions-and-Special-Moves).
+The disposable full-composition ATTACK check v01 displays `ATTACK: CLASSIC / MODERN` by changing only the row label and second value pointer while reusing bit `0x0400`. The user reported the check ROM working as expected on 2026-09-26. The later accepted proof-only gameplay baseline is `MKMSZR_controls-modern_ledge-extension-proof_v06.z64`, SHA-256 `7ea9cf1d606e303fe04a67bc40e76940a90a3ff6232a8f301a8a35eab809c411`; exact control semantics and bounded runtime scope are canonical in [Player actions and special moves](Player-Actions-and-Special-Moves).
+
+### Five-setting RUN frontend experiments
+
+The intended additional row is `RUN: HOLD / AUTO`, with candidate durable bit `0x2000`. The desired semantics are locomotion-local: HOLD is vanilla; AUTO defaults horizontal locomotion to Run while holding the configured Run button temporarily requests Walk. The physical/remapped Run semantic must remain intact for Run-based attacks/specials, and full analog deflection must preserve vanilla analog auto-run.
+
+The first two five-setting frontend proofs are **Rejected / failed**:
+
+- **RUN v07:** the menu rendered but the stacked label/value layout was visibly over-compressed. More importantly, Block hard-hung. Static post-test reconciliation found that the frontend rewrite had overwritten the two small proof-specific gameplay trampolines embedded at the ends of the reclaimed GAME SETTINGS edit regions, including the accepted Block trampoline. AUTO also failed to transition an already-running player to Walk on a new Run-button press, and full analog deflection stopped auto-running because the proof inverted the merged semantic Run signal.
+- **RUN v08:** rebuilt from accepted control-suite v06 and preserved the Block/combo trampolines; Block no longer hung. The attempted AUTO logic separated physical Run-button state from vanilla analog-run synthesis and added a live Run->Walk transition. However, **entering GAME SETTINGS itself hard-hung**, so the proof is rejected and the RUN gameplay changes remain runtime-unvalidated.
+
+The current UI task is therefore not another visual spacing tweak. It is a focused ownership/entry audit of a real five-setting frontend, comparing production full-menu v04 with v07/v08. The safe requirements are: preserve the accepted four-row cursor contract unless explicitly extended with proven ownership, preserve both ATTACK proof trampolines, keep frontend code title-resident, and do not load gameplay expansion file `0x1A` from the frontend lifecycle.
