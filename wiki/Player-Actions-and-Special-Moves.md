@@ -118,6 +118,89 @@ The first expansion-loaded control proof uses a proof-only file-`0x1A` module in
 
 The proof line continued through v10/v06 and has now been promoted into the shared browser/CLI patch core. **Runtime-confirmed production composition:** `TURN: TOGGLE` preserves vanilla controls; `TURN: LOCK` uses the accepted v10 world-direction/facing-lock model, while v06 makes the fragile release/action-install hooks leaf-only and temporarily defers to stock semantics when the bounded controller-list scan finds opponent `+0x6BC & 0x0200`. The full production build passed both former Temple hang regressions and the first Scorpion forced-facing route. Earth type `0x19` remains Pending and is not generalized from Scorpion.
 
+## ATTACK: MODERN semantic input translation
+
+**Accepted control contract / proof status.** The accepted user-facing setting is `ATTACK: CLASSIC / MODERN`. The current production frontend/code still names the same durable `0x0400` state bit `COMBOS=ASSIST` / `COMBOS_ASSIST_STATE_MASK`; that historical name remains current until production integration. The v04 common proof is **Runtime-confirmed on the tested control routes** and is the accepted ATTACK: MODERN gameplay baseline. No state-layout migration is required to integrate it.
+
+ATTACK: MODERN is an input-translation layer over stock combat, not a replacement combat engine. The accepted priority is:
+
+| Context | ATTACK: MODERN result | Stock authority preserved |
+|---|---|---|
+| Blocking + Attack | Low Punch; Block is cancelled directly into the stock LP state | Close LP still reaches the normal grab/throw route |
+| Straight jump or somersault + Down + Attack | Air kick semantic | Stock airborne attack states, timing and presentation |
+| Straight jump or somersault + Attack | Air punch semantic | Stock airborne attack state |
+| Normal grounded control, currently moving backward + Run + Attack | Roundhouse semantic | Stock HK/roundhouse action |
+| Normal grounded control, currently moving backward + Attack | Sweep semantic | Stock LK/sweep action |
+| Active stock combo | Each Attack press satisfies the stock combo parser's current expected button while the parser retains its own timing, chaining, reaction data and conditions | Final Back requirement remains a real stock condition |
+| Otherwise | High Punch | Stock neutral HP path |
+
+### Live backward predicate
+
+Controller `+0x6FC` is **not** a live "currently walking backward" flag. Stock writes locomotion mode `1` or `2` during forward/backward setup and the value can remain after returning to idle. ATTACK v03 therefore leaked the last walk direction into later attacks: after a backward walk, idle Attack produced kicks; after a forward walk, it produced punches.
+
+v04 instead requires all of the following at the event-0 seam:
+
+- active player input map `0x8009F9E8` (normal grounded control);
+- a horizontal semantic direction is currently held: `Left|Right = 0xA000`;
+- controller `+0x704 != 0`, the stock current direction-vs-facing mismatch;
+- Run bit `0x0004` selects Roundhouse; otherwise Sweep.
+
+This makes the predicate about **current backward locomotion intent**, not historical locomotion setup. It is independent of `TURN: TOGGLE / LOCK`.
+
+### Airborne translation
+
+The event-0 wrapper recognizes both stock airborne control maps:
+
+- straight-air map `0x8009FA00`;
+- somersault map `0x8009F9A0`.
+
+With Down `0x4000` held, Attack translates to semantic event 3 and stock chooses the airborne kick path. Without Down, event 0 remains the stock airborne punch. v02 Runtime-confirmed the somersault correction and v04 preserves it.
+
+### Stock combo-parser translation
+
+The accepted combo implementation does **not** synthesize a hard-coded combo or force animation states. The stock parser at `0x8004D764` remains authoritative.
+
+At `0x8004D7A8`, stock stores the current expected semantic event into controller `+0x71C`. The v04 proof hook at VA `0x8004D7AC` / ROM `0x0004E3AC` changes only the history source while ATTACK: MODERN is active:
+
+- CLASSIC replays stock `sll v0,v0,3` and reads the expected event's history;
+- MODERN uses event-0 / Attack history for that combo record;
+- the displaced actor load is replayed;
+- the parser's record chaining, windows, misses/expiry, strike/reaction data and condition callbacks remain stock-owned.
+
+The accepted Sub-Zero sequence is therefore **Attack x5, then Back+Attack**. Back is not synthesized: the final stock Back condition still has to be physically satisfied.
+
+### Proof chronology v01-v04
+
+- **v01 — Rejected / unsafe composition.** Artifact `MKMSZR_attack-modern_common-proof_v01.z64`, SHA-256 `665afc2e60373ad20f009c474089ec28eae61b39d3698c8f9619fbcca6aa65ba`, CRC1/CRC2 `CA215655 / A8146A72`. Neutral HP, Block+Attack LP/grab, and ordinary airborne punch were observed; Down+Attack worked only in straight jump; Sweep, Roundhouse and combo failed. Music later accelerated, matching an earlier class of unsafe frontend/runtime corruption symptoms. The exact audio corruption writer was not isolated. The bespoke standalone bootstrap/composition is rejected and was not carried forward.
+- **v02 — Partial Runtime-confirmed / superseded.** SHA-256 `b36bc02366040cd1b44b780fa5753ece0f10046dbb8629518f824dc130fcea08`, CRC1/CRC2 `5A438C7E / AA682D64`. Rebuilt on the production Runtime-V2/file-`0x1A` lifecycle; music remained normal and somersault Down+Attack was fixed. Sweep, Roundhouse and combo still failed because the helper loaded the address `0x802C1AC0` but omitted the dereference needed to obtain the actual player controller.
+- **v03 — Partial Runtime-confirmed / superseded.** Artifact `MKMSZR_attack-modern_common-proof_v03.z64`, SHA-256 `794ded0efcc1907d6899e25c5c01f81ddfbcb585d6deeb5a092342370f352ffd`, CRC1/CRC2 `5A438C7E / AA682D64`. Adding the missing pointer dereference made Sweep and Roundhouse work, but exposed the sticky-`+0x6FC` error: attacks after a completed backward walk kept producing kicks, and the combo still did not work.
+- **v04 — Runtime-confirmed accepted gameplay proof.** Artifact `MKMSZR_attack-modern_common-proof_v04.z64`, SHA-256 `914905a6d880c0533fbfc7fce3223d1f248c1f1aaefc437f6b2997b8ed343abc`, CRC1/CRC2 `A8B1BCB0 / C6D26323`. v04 replaces the sticky locomotion test with the live normal-map + held-horizontal + `+0x704` predicate and moves combo assist into the stock parser. The user reported the complete behavior works perfectly: neutral HP, Block+Attack LP/grab, straight-air and somersault attacks, Sweep, Roundhouse, no stale last-direction behavior, and the full Attack x5 -> Back+Attack stock combo. Music remained normal. Runtime confirmation is bounded to the exercised routes; it is not exhaustive stage/enemy coverage.
+
+### v04 proof layout and production boundary
+
+v04 extends the existing shared proof file `0x1A` only through ROM `0x00F685B0` / runtime `0x801AFDD0`, still below the established Toasty runtime base `0x801B0000`. Its high-ROM helper layout is proof evidence, not production ownership:
+
+- event helper: ROM `0x00F68410` / runtime `0x801AFC30`;
+- inherited Block helper: ROM `0x00F68510` / runtime `0x801AFD30`;
+- combo helper: ROM `0x00F68578` / runtime `0x801AFD98`;
+- combo trampoline: ROM `0x0009AEC0` / VA `0x8009A2C0`.
+
+The combo trampoline is inside the production bootstrap-composite ownership range. Its success in the disposable proof **does not make that address reusable production space**.
+
+### Production integration plan
+
+The production integration must preserve v04 semantics exactly; it is not an opportunity to redesign ATTACK: MODERN.
+
+1. **Frontend/state:** reuse durable bit `0x0400`; rename the user-facing row from `COMBOS: CLASSIC / ASSIST` to `ATTACK: CLASSIC / MODERN`. JUMP remains enabled/editable only when **ATTACK=MODERN AND SPECIALS=MODERN**. An internal constant rename may follow as cleanup, but changing the bit or persistence semantics is unnecessary.
+2. **Shared expansion composition:** append the ATTACK event, Block and combo helpers after the existing production TURN module through the normal `ExpansionPoolAllocator` / shared file-`0x1A` composition. Do not copy v04's literal proof offsets. The resulting low module must remain below Toasty `0x801B0000`, and optional Toasty must still start at its established aligned base.
+3. **Guarded hook seams:** compose the accepted event-0 dispatcher hook, Block-to-LP seam, and combo-parser hook with exact expected-byte guards. CLASSIC paths must replay stock semantics byte-for-byte. The v04 combo-parser seam is ROM `0x0004E3AC` / VA `0x8004D7AC`; the Block seam remains VA `0x80029C48`; the event-0 dispatcher seam remains VA `0x80014B38`.
+4. **Production trampoline capacity:** do not promote v04's `0x9AEC0` proof trampoline. The current bootstrap composite owns that region. Either compose additional KSEG0 trampoline capacity inside an explicitly owned/refactored production region with CI bounds, or establish another production-safe entry mechanism. No zero/padding assumption is sufficient.
+5. **Implementation/CI gate:** add exact hook guards, helper/classic-fallback tests, state-bit/UI tests, deterministic module packing, expansion-pool bounds, shared file-`0x1A` end checks, and explicit no-overlap assertions against Toasty. Build both ordinary and Toasty-enabled compositions statically.
+6. **Disposable production-composition proof:** before normal browser/CLI promotion, build the smallest current-main integration proof and manually exercise ATTACK CLASSIC plus every accepted MODERN branch, both TURN modes, inventory Combine, menu persistence, stage transition, normal music, and a Toasty-enabled shared-file-`0x1A` composition. Only after that bounded runtime pass should the gameplay semantics be marked production.
+
+Until that integration proof passes, v04 remains the accepted **proof baseline**, not a normal browser/CLI feature.
+
+
 ## Host action primitives
 
 | Address | Correct MKMSZ meaning |
