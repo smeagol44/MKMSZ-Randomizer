@@ -187,6 +187,14 @@ v04 extends the existing shared proof file `0x1A` only through ROM `0x00F685B0` 
 
 The combo trampoline is inside the production bootstrap-composite ownership range. Its success in the disposable proof **does not make that address reusable production space**.
 
+### Full-composition check v01 (2026-09-26)
+
+**Runtime-confirmed, bounded disposable composition.** From main `70ac6ba6bf661e6fcbbf4417dffbf2b4881e1f20`, `build_attack_modern_production_check_v01.py` built `MKMSZR_attack-modern_full-composition-check_v01.z64` using the clean USA Rev. 0 ROM (SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`), MKT USA Rev. 2 donor (SHA-256 `30efdbe266dda8b8b12652a8d0a71b3b4bfec88bdf11ed12c219f5c4e1eaf7bb`), and seed `ATTACKMODERN01`. Output SHA-256 is `797ed2cae81bbe99f9b2a0edd49f535945ece4f4026e12a5208c578871d1105a`; CRC1/CRC2 are `4DCE4172 / 5EE0A00D`. The user reported **“Everything working as expected”** after the requested manual check. That is confirmation of this artifact, not separately itemized observations for every suggested control, stage, or Toasty trigger; the assistant did not run an emulator.
+
+The builder reuses the exact v04 event, Block, and combo helper bytes (each hash-checked against the accepted v04 proof) after the `0x404`-byte production TURN prefix in shared file `0x1A`. The low file extends through ROM `0x00F68600` / cached runtime `0x801AFE20`; optional Toasty still begins at ROM `0x00F687E0` / runtime `0x801B0000`. The event helper occupies `0x801AFC30..0x801AFD2F`, Block `0x801AFD30..0x801AFD97`, combo `0x801AFDA0..0x801AFDD3`, and the capture/event dispatcher `0x801AFDE0..0x801AFE1F`. An ordinary no-donor composition was also built and statically checked against the same low file contents; its runtime is untested.
+
+This check **does not use** v04's conflicting `0x9AEC0` trampoline. It reroutes the already-owned pickup-capture trampoline at ROM `[0x9AE18,0x9AE28)` through a KSEG1 capture/event dispatcher that preserves the original capture caller's `t0` and return address; the event-0 JAL shares that entry. Two guarded, proof-specific frontend tails route Block and combo to their KSEG1 helpers: ROM `[0x77688,0x77694)` and `[0x775D0,0x775DC)` respectively. Their hooks preload the high target word in the delay slot. The disposable frontend says `ATTACK: CLASSIC / MODERN` while reusing durable bit `0x0400` and the existing JUMP dependency. The builder guarded all three stock hook pairs, the production capture stub, shared file/table ownership, both frontend tails, and the label/value pointer; an independent rebuild was byte-identical and the changed-byte audit was bounded to those edits plus header CRC. These guards validate this artifact; they are not yet normal browser/CLI source tests.
+
 ### Production integration plan
 
 The production integration must preserve v04 semantics exactly; it is not an opportunity to redesign ATTACK: MODERN.
@@ -196,9 +204,9 @@ The production integration must preserve v04 semantics exactly; it is not an opp
 3. **Guarded hook seams:** compose the accepted event-0 dispatcher hook, Block-to-LP seam, and combo-parser hook with exact expected-byte guards. CLASSIC paths must replay stock semantics byte-for-byte. The v04 combo-parser seam is ROM `0x0004E3AC` / VA `0x8004D7AC`; the Block seam remains VA `0x80029C48`; the event-0 dispatcher seam remains VA `0x80014B38`.
 4. **Production trampoline capacity:** do not promote v04's `0x9AEC0` proof trampoline. The current bootstrap composite owns that region. Either compose additional KSEG0 trampoline capacity inside an explicitly owned/refactored production region with CI bounds, or establish another production-safe entry mechanism. No zero/padding assumption is sufficient.
 5. **Implementation/CI gate:** add exact hook guards, helper/classic-fallback tests, state-bit/UI tests, deterministic module packing, expansion-pool bounds, shared file-`0x1A` end checks, and explicit no-overlap assertions against Toasty. Build both ordinary and Toasty-enabled compositions statically.
-6. **Disposable production-composition proof:** before normal browser/CLI promotion, build the smallest current-main integration proof and manually exercise ATTACK CLASSIC plus every accepted MODERN branch, both TURN modes, inventory Combine, menu persistence, stage transition, normal music, and a Toasty-enabled shared-file-`0x1A` composition. Only after that bounded runtime pass should the gameplay semantics be marked production.
+6. **Disposable production-composition proof:** the Toasty-enabled check v01 has a positive user runtime report, and the ordinary no-donor composition has passed static checks. The report does not itemize each suggested manual route; retain that limit when citing it. Carry the accepted composition into the patch core with guarded tests before calling it production.
 
-Until that integration proof passes, v04 remains the accepted **proof baseline**, not a normal browser/CLI feature.
+The v04 semantics and check-v01 composition are accepted **runtime proof baselines**. ATTACK: MODERN is still absent from the normal browser/CLI patch core; production source, integration tests, and product validation are Pending.
 
 
 ## Host action primitives
