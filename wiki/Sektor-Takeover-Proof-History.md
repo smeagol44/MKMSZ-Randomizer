@@ -28,6 +28,10 @@ A separate 2026-09-25 branch tested reducing ordinary Run presentation back to t
 
 **Integration directive:** future Sektor/importer work should use the donor fighter's actual Run-frame count, emit target loop/control grammar immediately after that sequence, and translate timing through the target animation-rate mechanism independently. Do not pad, duplicate, truncate, or force Run into Sub-Zero's historical 12-entry layout. Physical integration should still remove the six supplemental even Run assets and now-dead PS1/WIMP Run dependencies. Historical v55-v58 evidence remains canonical provenance and should not be erased.
 
+### P28/P29 attachment owner-probe — 2026-09-25
+
+- **Owner-probe common-proof v06 — Runtime-confirmed on the tested rope route.** `MKMSZR_sektor-p28-p29-owner-probe_common-proof_v06.z64`, SHA-256 `b4b098a411ad5712b3574cc96f8667a7684d2927e9c4df900af52792e9ede644`, CRC1/CRC2 `A6256BDA / C01C8AB6`; builder SHA-256 `1820ddae85304699a987ee3ea0e9771a7ad6002f1f1c58b49b89ffc9441cb0eb`. This is a bounded diagnostic derived from the compact common-animation line, not a finished visual mapping. It preserves the stock P28/P29 token-`0x10` grammar, timing, facing flip, attachment logic and narrow companion visual controls, while substituting only the first owner-side descriptor in P28/P29 with genuine retail N64 Sektor art. The user observed the stock Sub-Zero arm companion moving while attached; both Sektor and the arm turned together; the arm vanished on detach and returned on reattach; no duplication, lingering image, corruption or freeze was observed. This Runtime-confirms owner/companion coexistence and normal park/reuse on the tested rope route. It does not establish complete interruption, death-while-attached, stage-exit or old-actor teardown behavior, and the mixed Sektor/stock-arm presentation is not an accepted final fallback pose manifest.
+
 ## Reconciled status rules
 
 A proof entry may preserve its historical **pre-test** status, but the section's final status is always the latest recorded evidence. In particular:
