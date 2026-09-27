@@ -57,7 +57,14 @@ The experimental progression model is pale blue-grey and visually Herbs-like. Th
 
 Temple Herbs labels in the stage catalog are **ROM/storage order, not stage-traversal order**. More importantly, the proof callback does not assign a threshold to a physical Herbs location: it advances from the current XP value to the next native threshold. The repeated 85 -> 258 result from different progression-pickup locations confirms the intended location-independent progression semantics on those tested routes.
 
-**Production direction, user-approved:** seed the nine power-tier slots independently and deterministically, while leaving the native XP threshold sequence itself unchanged. The same shuffled slot order must drive both gameplay eligibility and the native Power Ups icon/help presentation. The first-two swap is Runtime-confirmed; full arbitrary nine-slot permutation remains an implementation/final-composition validation task, not an unresolved feasibility question.
+**Production direction, user-approved:** expose power-order randomization as an optional setting. When disabled, preserve the vanilla nine-slot order exactly. When enabled, seed the nine power-tier slots independently and deterministically while leaving the native XP threshold sequence itself unchanged. The same generated slot order must drive both gameplay eligibility and the native Power Ups icon/help presentation.
+
+The shuffled order has exactly two semantic constraints and no additional hidden ordering rules:
+
+- **Ice Shatter** must appear after at least one freezing-enabling Power Up: **Ice Blast**, **Directional Ice** (the native slot that includes Directional Ice Up/Down), or **Air Ice Blast**.
+- **Super Slide** must appear after **Slide**.
+
+The power-order generator must use its own deterministic namespace and bounded explicit retry/validation so rejected constrained permutations cannot perturb other RNG domains. The first-two swap is Runtime-confirmed; full constrained nine-slot permutation remains a bounded runtime/integration validation task.
 
 ## Production semantics
 
