@@ -7,7 +7,7 @@ from __future__ import annotations
 from ..mips import Emitter, addiu, address_words, andi, jal, lui, ori, sltiu, sw
 from .inventory_boxes import SPECIALS_MODERN_STATE_MASK
 
-__all__ = ["SPECIALS_MODERN_STATE_MASK", "lui", "sltiu", "sw", "emit_condition_route"]
+__all__ = ["SPECIALS_MODERN_STATE_MASK", "emit_condition_route", "lui", "sltiu", "sw"]
 
 FILE_ROM = 0x00F68000
 
