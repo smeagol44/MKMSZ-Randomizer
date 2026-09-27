@@ -120,45 +120,29 @@ Two explanations remain materially plausible and must be distinguished before an
 - **Location-bound progression state (strong hypothesis):** the stock L1 record at ROM `0xCA030` / RDRAM `0x802F21F0` has collected flag `0x802F221C`. The randomizer moves the seven-word identity slice but deliberately leaves `+0x2C` collected state attached to the destination location. A Prison script/door that reads the stock record or a derivative location state would therefore still see the native L1 location as uncollected.
 - **Respawn room/state mismatch (hypothesis):** if the door was tested only after death, spawning at selector-0 coordinates while the global stage selector remains `7` may reconstruct an inconsistent room/script context even though key progression variables remain set.
 
-### Prison L1 door backward trace
+### Prison L1 door scene-record trace and v08 runtime closure
 
-**Static-confirmed limits:** the first-door predicate is still not closed, but several candidate interpretations are rejected or narrowed:
+**Static-confirmed:** the first configured Prison door actor group uses scene-record indices **`0xFB` and `0xFC`**. They are addressed as `*(0x80111FF8)+0x4698` and `+0x46E0`; in decompressed stage file `0x44` they begin at offsets `0x46B0` and `0x46F8`. File `0x44` is compressed in ROM at `0x3BCD20..0x3D6A0F`, so these records have no direct patchable ROM offsets.
 
-- Inventory item `0x1A` is awarded through `0x80075448`; its inventory-use dispatch entry at ROM `0xA6ED0` points to `0x80071F50`, which returns zero without an opening action. This rules out **using the inventory item** as the door-open action, while leaving an indirect possession check elsewhere possible.
-- L1 writes selector `7` to `0x802C18F8`. Prison setup reads that selector, including at overlay VA `0x802EE010` / ROM `0xC5E50`, but the located reads do not establish a direct selector-7 door comparison.
-- The generic key callback sets bit 0 in `0x802C0D54`. Prison reads this word at `0x802EE648` / ROM `0xC6488`, but the configured index-zero actor takes a special branch at `0x802EE690..0x802EE6A0` / ROM `0xC64D0..0xC64E0` **before** the bit test. Therefore this reader is a key-related actor-state mechanism, not proof that bit 0 directly opens the L1 door.
-- Stock L1 collected flag `0x802F221C` is cleared by the Prison overlay reset loop at `0x802ED544` / ROM `0xC5384`. No direct Prison-overlay read of this exact address was found. Generic indexed pickup-manager use remains possible, but a direct door predicate is unproven.
-- Prison actor routine `0x802EE320` manipulates scene actors/positions and later changes animation/geometry at `0x802EE9F0..0x802EECF0` / ROM `0xC6830..0xC6B30`. Stage trigger dispatcher `0x802F1E44` / ROM `0xC9C84` selects callbacks from scene-record flags and player position. The first L1 door's scene-record index has not yet been mapped to either path.
+The first configured group's process `0x802EE320` reads `0x802C0D54` at `0x802EE648` / ROM `0xC6488`. For this configuration, the panel entry resolves the test at `0x802EE6A4..0x802EE6B0` / ROM `0xC64E4..0xC64F0` to **bit 0 of `0x802C0D54`**. When set, `0x802EE6B8` assigns the enabled panel animation. The later opening path still requires the ordinary player/collision/input conditions; the decisive interaction branch is `0x802EE874..0x802EE888` / ROM `0xC66B4..0xC66C8`, and the physical movement updates both scene records, collision geometry, and visible actors at `0x802EE9F0..0x802EECE4`.
 
-One static false lead is explicitly rejected: calls to `0x8001C2B4(0x1B,0x1A)` at ROM `0xC5D2C..0xC5D68` allocate geometry/collision entries; those constants are coordinates/dimensions in that helper, **not** an inventory-`0x1A` test.
+The traced opening branch does **not** directly read inventory `0x1A`, selector `0x802C18F8=7`, or stock collected flag `0x802F221C`. This explains why selector 7 can be treated as checkpoint/respawn state while acquired bit 0 remains the door credential.
 
-**Remaining exact task:** resolve the first Prison L1 door's scene-record index in the data addressed through `0x80111FF8`, then follow that record's collision/animation callback to its final branch condition. Only after that branch is identified should another randomized-key progression proof be built.
+### v08 door-safe checkpoint suppression
 
-The next justified runtime diagnostic is instrumentation, not another blind suppression patch: use a bounded in-ROM write-only ring buffer at specific candidate request sites, then poll that buffer from ordinary per-frame Lua RAM reads (Ares64 execute callbacks are not required). Compare exactly three cases through the first banner frame: relocated Prison L1 key at the easy Herbs location, untouched Herbs, and one ordinary checkpoint. Record site ID, stage, current pickup identity, `0x802C18F8`, and `0x802C0D54`; then perform one death/re-entry comparison for relocation separately.
+**Runtime-confirmed, bounded Prison L1 route.** v08 moves the full seven-word Prison L1 identity onto the first easy Herbs location, then:
 
-#### Fortress defeat-trigger locations
+1. preserves inventory award `0x1A`;
+2. preserves the generic acquired-bit commit so `0x802C0D54` bit 0 becomes set;
+3. suppresses the three direct generic-key `0x80062D60` presentation spawns;
+4. suppresses only the Prison L1 selector-7 store at ROM `0x39454`;
+5. leaves ordinary pickup persistence and door actor logic unchanged.
 
-The three Fortress ordinary records at ROM `0xC4834` (Kia), `0xC4864` (Jataaka), and `0xC4894` (Sareena) are **reward locations**. Defeating the corresponding boss is the location trigger; the stock crystal is the location's current reward. A global assignment must leave each boss-defeat trigger at its own location and materialize **whatever item is assigned there** as the spawned, correctly rendered, collectible reward. Crystal IDs `0x20..0x22` remain independently movable logical rewards and need destination-safe award handling outside Fortress. The records' parameters `0x8001/0x8000/0x8002` and callback `0x80038770` describe stock crystal awards, not immutable boss-trigger identity. The exact boss-death-to-record activation call chain has not been statically established here; preserve that trigger in a bounded Fortress proof.
+Observed runtime state after pickup was `TRACE KA`, `G4 S2 B1`: the key awarded, the door credential was present, and the stage selector remained at its pre-key value rather than becoming 7. The visible `CHECK POINT` banner did not appear. The Level-1 door opened normally. After death, the player respawned at the natural stage-start/no-checkpoint spawn, which the user independently verified matches entering Prison and dying before taking any checkpoint.
 
-## Extension-selector mechanism
+This closes the Prison-L1-specific checkpoint problem with a cleaner two-seam model than v07: **suppress the key-only presentation request and the key-only checkpoint-selector write; preserve the logical door/progression bit.**
 
-Static analysis of the ordinary-pickup manager established the lookup shape:
-
-```text
-entry_ptr      = stage_resource_base + (selector << 2)
-descriptor_ptr = stage_resource_base + *entry_ptr
-```
-
-On this ordinary-pickup path, no selector-count or stock outer-table-width check occurs before the selector is used as a word index. This means a relocated/expanded stage resource file can append an **extension selector table** elsewhere in the file and use:
-
-```text
-pickup +0x24 = appended_selector_entry_offset / 4
-```
-
-The appended entry can then point to an appended descriptor/resource bundle. This does not require inserting a new word into the original outer table.
-
-This result superseded the earlier assumption that a stage with no empty stock outer-table entries necessarily had to shift/rebase the original descriptor region merely to create selector capacity. It does **not** prove that arbitrary out-of-range selectors are safe for every other resource consumer; the confirmed scope is the ordinary-pickup lookup path and the tested materialization proofs below.
-
+Production/global scope remains Pending. Other stage keys/crystals may use different selector writes, acquired bits, boss-spawn semantics, or door consumers; do not generalize the exact Prison L1 bytes without tracing their corresponding progression owner.
 ### Disposable Proof D — extension selector, Runtime-confirmed
 
 Prison's stock resource file was relocated/expanded by four bytes. An appended selector word at file offset `0x48F0` pointed to the existing Herbs descriptor `0x255C`, and all six Prison Herbs ordinary records were changed from selector `8` to selector `0x123C` (`0x48F0 / 4`).
