@@ -27,6 +27,12 @@ from .patches import (
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
 from .patches.controls_production import ControlsProductionPatch
+from .patches.inventory_boxes import (
+    COMBOS_ASSIST_STATE_MASK,
+    JUMP_BUTTON_STATE_MASK,
+    RUN_AUTO_STATE_MASK,
+    SPECIALS_MODERN_STATE_MASK,
+)
 from .patches.toasty_codegen import pack_toasty_module
 from .rom import RomImage
 
@@ -47,13 +53,23 @@ def build_pipeline(
     toasty_assets: ToastyAssets | None = None,
     toasty_probability_per_thousand: int = 80,
 ) -> PatchPipeline:
+    settings_state = 0
+    if config.game_settings.attack_modern:
+        settings_state |= COMBOS_ASSIST_STATE_MASK
+    if config.game_settings.specials_modern:
+        settings_state |= SPECIALS_MODERN_STATE_MASK
+    if config.game_settings.jump_button:
+        settings_state |= JUMP_BUTTON_STATE_MASK
+    if config.game_settings.run_auto:
+        settings_state |= RUN_AUTO_STATE_MASK
+
     patches = [
         SafeStageSelectorPatch(),
         ArenaReservationPatch(),
         NativePayloadPatch(NativePayloadSpec(payload=PICKUP_PERSISTENCE_PAYLOAD)),
         PickupPersistencePatch(),
         PickupRandomizationPatch(),
-        FourBoxInventoryPatch(),
+        FourBoxInventoryPatch(initial_settings_state=settings_state),
         XPProgressionPatch(),
         GameSettingsTurnPatch(),
         SafeStageSelectSkipAutoSavePatch(),
