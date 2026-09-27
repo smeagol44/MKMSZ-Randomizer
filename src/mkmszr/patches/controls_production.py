@@ -24,6 +24,12 @@ FILE_ROM=0x00F68000
 FILE_ENTRY_ROM=0x000A5148
 
 
+# Runtime end of the accepted v02 modern-controls extension. Optional
+# post-controls features may use the guarded gap after this address while
+# remaining below Toasty's fixed 0x801B1000 base.
+CONTROLS_RUNTIME_END=0x801B0880
+
+
 MODULE_K0=0x801AF820
 
 
@@ -388,6 +394,10 @@ class ControlsProductionPatch:
         cursor=align(cursor,16); alloc['capture-event-dispatch']=cursor
         ced=capture_event_dispatch(k1(alloc['event'])); blobs['capture-event-dispatch']=ced; cursor+=len(ced)
         controls_end=align(cursor,16)
+        if controls_end!=CONTROLS_RUNTIME_END:
+            raise AssertionError(
+                f'controls allocation end drifted: {controls_end:#x}!={CONTROLS_RUNTIME_END:#x}'
+            )
         if controls_end>TOASTY_K0:
             raise AssertionError(f'controls reach Toasty: {controls_end:#x}>{TOASTY_K0:#x}')
 
