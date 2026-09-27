@@ -99,33 +99,50 @@ Prison file `0x9F` contains one additional direct `0x80062D60` spawn at overlay 
 
 The exact v04/v05 builders resolve one uncertainty from the static report: the relocation swaps exactly the seven-word identity slice `record+0x10..+0x2B` (type, parameter, callback, extents, stage-local resource slot, and presentation descriptor) onto the easy Herbs destination. Thus runtime evidence establishes that the event follows the **complete key reward identity tuple**, not the stock L1 world position. It does **not** yet isolate callback semantics from type/resource/presentation fields.
 
-**Current decision:** there is **no proven key-only banner suppression seam**. Do not globally patch `0x80062D60`, `0x8001D520`, `0x8001EAE4`, `0x802C0D54`, or `0x802C18F8`. The earlier `0x8003BF4C` selector substitution remains only a separate respawn-coordinate proposal and does not solve the visible banner.
+### Self-reporting v06 runtime result
 
-The next justified runtime diagnostic is instrumentation, not another blind suppression patch: use a bounded in-ROM write-only ring buffer at specific candidate request sites, then poll that buffer from ordinary per-frame Lua RAM reads (Ares64 execute callbacks are not required). Compare exactly three cases through the first banner frame: relocated Prison L1 key at the easy Herbs location, untouched Herbs, and one ordinary checkpoint. Record site ID, stage, current pickup identity, `0x802C18F8`, and `0x802C0D54`; then perform one death/re-entry comparison for relocation separately.
+**Runtime-confirmed, bounded Prison L1 route:** the self-reporting v06 proof moved the full seven-word L1 identity to first Herbs, suppressed the three direct generic-key spawns of `0x80062D60`, and instrumented key callback/award plus known presentation/checkpoint request paths. On pickup, the native HUD showed `TRACE KA` with live state `G4 S7 B1`. The visible `CHECK POINT` banner did **not** appear. No `E`, `O`, or `C` event was logged after the key callback.
 
-#### Fortress defeat-trigger locations
+The user then died and confirmed that the checkpoint relocation **still occurred**. Thus v06 separates the two effects:
 
-The three Fortress ordinary records at ROM `0xC4834` (Kia), `0xC4864` (Jataaka), and `0xC4894` (Sareena) are **reward locations**. Defeating the corresponding boss is the location trigger; the stock crystal is the location's current reward. A global assignment must leave each boss-defeat trigger at its own location and materialize **whatever item is assigned there** as the spawned, correctly rendered, collectible reward. Crystal IDs `0x20..0x22` remain independently movable logical rewards and need destination-safe award handling outside Fortress. The records' parameters `0x8001/0x8000/0x8002` and callback `0x80038770` describe stock crystal awards, not immutable boss-trigger identity. The exact boss-death-to-record activation call chain has not been statically established here; preserve that trigger in a bounded Fortress proof.
+- **presentation/banner:** suppressed on this route when the three direct generic-key `0x80062D60` spawns are removed;
+- **respawn/checkpoint state:** still committed through the normal stage/key state (`S7/B1`) and consumed later by player reconstruction.
 
-## Extension-selector mechanism
+This is stronger than the earlier v01/v02 interpretation and conflicts with their reported visible-banner result. Preserve that discrepancy as artifact-specific evidence rather than deleting it. Before production, confirm the banner result again in a minimal de-instrumented composition.
 
-Static analysis of the ordinary-pickup manager established the lookup shape:
+### v07 combined banner + respawn proof
 
-```text
-entry_ptr      = stage_resource_base + (selector << 2)
-descriptor_ptr = stage_resource_base + *entry_ptr
-```
+**Partial Runtime-confirmed / not production-safe.** v07 kept the v06 banner suppression and added the bounded player-only Prison selector `7 -> 0` substitution at the spawn-coordinate consumer. After L1 pickup the trace remained `KA` with `G4 S7 B1`; after death/reconstruction it became `KAR`, proving the respawn-side override actually executed while the global selector and key-bit state remained `S7/B1`.
 
-On this ordinary-pickup path, no selector-count or stock outer-table-width check occurs before the selector is used as a word index. This means a relocated/expanded stage resource file can append an **extension selector table** elsewhere in the file and use:
+The Level-1 door did **not** open. Therefore preserving inventory award `0x1A`, selector `7`, and key bit `B1` is not by itself sufficient to claim preserved Prison progression under this randomized-location proof.
 
-```text
-pickup +0x24 = appended_selector_entry_offset / 4
-```
+Two explanations remain materially plausible and must be distinguished before another production candidate:
+- **Location-bound progression state (strong hypothesis):** the stock L1 record at ROM `0xCA030` / RDRAM `0x802F21F0` has collected flag `0x802F221C`. The randomizer moves the seven-word identity slice but deliberately leaves `+0x2C` collected state attached to the destination location. A Prison script/door that reads the stock record or a derivative location state would therefore still see the native L1 location as uncollected.
+- **Respawn room/state mismatch (hypothesis):** if the door was tested only after death, spawning at selector-0 coordinates while the global stage selector remains `7` may reconstruct an inconsistent room/script context even though key progression variables remain set.
 
-The appended entry can then point to an appended descriptor/resource bundle. This does not require inserting a new word into the original outer table.
+### Prison L1 door scene-record trace and v08 runtime closure
 
-This result superseded the earlier assumption that a stage with no empty stock outer-table entries necessarily had to shift/rebase the original descriptor region merely to create selector capacity. It does **not** prove that arbitrary out-of-range selectors are safe for every other resource consumer; the confirmed scope is the ordinary-pickup lookup path and the tested materialization proofs below.
+**Static-confirmed:** the first configured Prison door actor group uses scene-record indices **`0xFB` and `0xFC`**. They are addressed as `*(0x80111FF8)+0x4698` and `+0x46E0`; in decompressed stage file `0x44` they begin at offsets `0x46B0` and `0x46F8`. File `0x44` is compressed in ROM at `0x3BCD20..0x3D6A0F`, so these records have no direct patchable ROM offsets.
 
+The first configured group's process `0x802EE320` reads `0x802C0D54` at `0x802EE648` / ROM `0xC6488`. For this configuration, the panel entry resolves the test at `0x802EE6A4..0x802EE6B0` / ROM `0xC64E4..0xC64F0` to **bit 0 of `0x802C0D54`**. When set, `0x802EE6B8` assigns the enabled panel animation. The later opening path still requires the ordinary player/collision/input conditions; the decisive interaction branch is `0x802EE874..0x802EE888` / ROM `0xC66B4..0xC66C8`, and the physical movement updates both scene records, collision geometry, and visible actors at `0x802EE9F0..0x802EECE4`.
+
+The traced opening branch does **not** directly read inventory `0x1A`, selector `0x802C18F8=7`, or stock collected flag `0x802F221C`. This explains why selector 7 can be treated as checkpoint/respawn state while acquired bit 0 remains the door credential.
+
+### v08 door-safe checkpoint suppression
+
+**Runtime-confirmed, bounded Prison L1 route.** v08 moves the full seven-word Prison L1 identity onto the first easy Herbs location, then:
+
+1. preserves inventory award `0x1A`;
+2. preserves the generic acquired-bit commit so `0x802C0D54` bit 0 becomes set;
+3. suppresses the three direct generic-key `0x80062D60` presentation spawns;
+4. suppresses only the Prison L1 selector-7 store at ROM `0x39454`;
+5. leaves ordinary pickup persistence and door actor logic unchanged.
+
+Observed runtime state after pickup was `TRACE KA`, `G4 S2 B1`: the key awarded, the door credential was present, and the stage selector remained at its pre-key value rather than becoming 7. The visible `CHECK POINT` banner did not appear. The Level-1 door opened normally. After death, the player respawned at the natural stage-start/no-checkpoint spawn, which the user independently verified matches entering Prison and dying before taking any checkpoint.
+
+This closes the Prison-L1-specific checkpoint problem with a cleaner two-seam model than v07: **suppress the key-only presentation request and the key-only checkpoint-selector write; preserve the logical door/progression bit.**
+
+Production/global scope remains Pending. Other stage keys/crystals may use different selector writes, acquired bits, boss-spawn semantics, or door consumers; do not generalize the exact Prison L1 bytes without tracing their corresponding progression owner.
 ### Disposable Proof D — extension selector, Runtime-confirmed
 
 Prison's stock resource file was relocated/expanded by four bytes. An appended selector word at file offset `0x48F0` pointed to the existing Herbs descriptor `0x255C`, and all six Prison Herbs ordinary records were changed from selector `8` to selector `0x123C` (`0x48F0 / 4`).
