@@ -40,6 +40,7 @@ Keep an entry here when the negative result establishes a safety constraint, rul
 
 | Attempt / scope | Observed failure | What it established | Detailed owner |
 |---|---|---|---|
+| Key-checkpoint suppression v01/v02: NOP the three `0x8002830C(0x15, 0x80062D60)` spawns inside `0x80038770` | Runtime test still triggered checkpoints on key pickup | Those process spawns are not the checkpoint/death-respawn owner. Preserve this negative control; trace the actual state consumer before another patch. Do not globally disable `0x80062D60`, which is also used by the Strength-urn path. | [Global item materialization and solvability](Global-Item-Materialization-and-Solvability), [Function registry](Function-Registry) |
 | Change pickup callback/type only | Award and art could diverge or change incompletely | Ordinary pickup identity must move as the complete `+0x10..+0x2B` slice | [Pickups and item randomization](Pickups-and-Item-Randomization) |
 | Copy Prison key into Fire without importing its resource | Foreign item was absent/unusable | Pickup `+0x24` is stage-local; the foreign bundle must be resident | [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) |
 | Treat a zero outer resource slot as physical storage | Rejected before production use | Zero selector capacity is not evidence of free backing bytes | [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) |
