@@ -8,6 +8,10 @@ const seedField = document.querySelector("#seedField");
 const colorField = document.querySelector("#colorField");
 const customColor = document.querySelector("#customColor");
 const colorValue = document.querySelector("#colorValue");
+const attackModern = document.querySelector("#attackModern");
+const specialsModern = document.querySelector("#specialsModern");
+const jumpButton = document.querySelector("#jumpButton");
+const runAuto = document.querySelector("#runAuto");
 const patchButton = document.querySelector("#patchButton");
 const resultPanel = document.querySelector("#result");
 const resultSeed = document.querySelector("#resultSeed");
@@ -33,6 +37,12 @@ function updateModeUi() {
 
 function updatePatchButton() {
   patchButton.disabled = !runtimeReady;
+}
+
+function updateGameSettingsUi() {
+  const jumpAvailable = attackModern.checked && specialsModern.checked;
+  if (!jumpAvailable) jumpButton.checked = false;
+  jumpButton.disabled = !jumpAvailable;
 }
 
 function normalizeEditionName(value) {
@@ -131,12 +141,16 @@ async function patchRom() {
     pyodide.globals.set("web_seed", seedValue);
     pyodide.globals.set("web_rgb", customColor.value);
     pyodide.globals.set("web_edition_name", editionValue);
+    pyodide.globals.set("web_attack_modern", attackModern.checked);
+    pyodide.globals.set("web_specials_modern", specialsModern.checked);
+    pyodide.globals.set("web_jump_button", jumpButton.checked);
+    pyodide.globals.set("web_run_auto", runAuto.checked);
 
     setLog("Validating game files and applying patches…");
 
     await pyodide.runPythonAsync(`
 from pathlib import Path
-from mkmszr.config import OutfitConfig, RandomizerConfig
+from mkmszr.config import GameSettingsConfig, OutfitConfig, RandomizerConfig
 from mkmszr.donors import extract_toasty_assets
 from mkmszr.patcher import patch_file
 
@@ -149,6 +163,12 @@ _config = RandomizerConfig(
     seed=_seed,
     outfit=OutfitConfig(mode=_mode, rgb=_rgb if _mode == "rgb" else None),
     edition_name=_edition_name,
+    game_settings=GameSettingsConfig(
+        attack_modern=bool(web_attack_modern),
+        specials_modern=bool(web_specials_modern),
+        jump_button=bool(web_jump_button),
+        run_auto=bool(web_run_auto),
+    ),
 )
 _toasty_assets = (
     extract_toasty_assets(Path("/tmp/mkt.z64").read_bytes())
@@ -207,6 +227,8 @@ function downloadOutput() {
 }
 
 outfitMode.addEventListener("change", updateModeUi);
+attackModern.addEventListener("change", updateGameSettingsUi);
+specialsModern.addEventListener("change", updateGameSettingsUi);
 customColor.addEventListener("input", () => { colorValue.value = customColor.value.toUpperCase(); });
 editionName.addEventListener("input", () => {
   const normalized = normalizeEditionName(editionName.value);
@@ -216,4 +238,5 @@ patchButton.addEventListener("click", patchRom);
 downloadButton.addEventListener("click", downloadOutput);
 
 updateModeUi();
+updateGameSettingsUi();
 bootRuntime();
