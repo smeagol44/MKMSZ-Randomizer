@@ -45,6 +45,20 @@ The disposable proof changed Temple ordinary Herbs #1, #3, and #4 into progressi
 
 The experimental progression model is pale blue-grey and visually Herbs-like. The intended final presentation is a bright-blue Herbs body while retaining the bronze/gold-looking handle. That visual refinement is separate from the confirmed progression logic.
 
+## Power-order shuffle proof — 2026-09-27
+
+**Runtime-confirmed, bounded proof.** The power-order experiment establishes that native XP thresholds, actual move eligibility, and the native Power Ups presentation order can be decoupled from the vanilla ability order.
+
+- v01 swapped only the first two gameplay gates: Slide became tier 1 / 85 XP and ground Ice Blast became tier 2 / 258 XP. Runtime testing confirmed Slide was the first usable power, but the Power Ups screen still displayed the vanilla Ice Blast-first order. That mismatch established that gameplay eligibility and Power Ups presentation are separate mechanisms.
+- v02 kept the successful gameplay-gate swap and also swapped the first two entries in both native Power Ups presentation tables: the icon strip and the move-help/detail pointer order. Disposable ROM `MKMSZR_power-order_temple_proof_v02.z64` has SHA-256 `272befa1eaa5f04f44aadc176b4c497d76a5d2e4a73e1e4f623d72ae35692384`, CRC1/CRC2 `52329D77 / 6999CADF`; builder SHA-256 is `b29c2ab0edab3ee18cf2dbb7583dc15551a4f6939af188954aeb0d7a026ff2e4`.
+- At 85 XP the user observed **Slide usable, Ice Blast unavailable, one Power Ups icon, and that icon was Slide**.
+- In two separate runs, collecting different progression-pickup locations while at 85 XP advanced to 258 XP and unlocked **Ice Blast second**; the Power Ups screen also displayed Ice Blast second.
+- A subsequent progression pickup advanced to 834 XP and displayed a third power icon while preserving Slide first and Ice Blast second. The screenshot evidence SHA-256 is `5899955c98aeaa5ef5709324e69ccd7feeed175de5c11554b8e73f1207525b07`. Execution of the third ability was not separately reported, so this is UI/progression evidence for tier 3 rather than an exhaustive tier-3 action test.
+
+Temple Herbs labels in the stage catalog are **ROM/storage order, not stage-traversal order**. More importantly, the proof callback does not assign a threshold to a physical Herbs location: it advances from the current XP value to the next native threshold. The repeated 85 -> 258 result from different progression-pickup locations confirms the intended location-independent progression semantics on those tested routes.
+
+**Production direction, user-approved:** seed the nine power-tier slots independently and deterministically, while leaving the native XP threshold sequence itself unchanged. The same shuffled slot order must drive both gameplay eligibility and the native Power Ups icon/help presentation. The first-two swap is Runtime-confirmed; full arbitrary nine-slot permutation remains an implementation/final-composition validation task, not an unresolved feasibility question.
+
 ## Production semantics
 
 The production mode has exactly nine rewards and uses a dedicated RNG namespace. Each reward advances to the next native threshold rather than adding an arbitrary fixed amount. A custom award callback avoids inventory insertion, evaluates/clamps the native tier, and caps at the ninth value. A separate stage-init helper restores persistent XP without evaluating tiers at that boundary.
