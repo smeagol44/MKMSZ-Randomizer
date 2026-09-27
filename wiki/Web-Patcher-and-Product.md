@@ -28,6 +28,8 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 
 ## Current configuration surface
 
+> **Accepted pending option:** add a simple **Shuffle Power Progression** checkbox. It must default to the documented product default chosen at integration time, preserve vanilla power order when unchecked, and use the isolated deterministic constrained power-order generator when checked. The option is design-approved but is not yet present in the production web UI pending the constrained nine-slot runtime proof.
+
 | Option | Behavior |
 |---|---|
 | Seed | Drives stage-local pickup layouts, boot phrase, and seeded palette through isolated namespaces |
