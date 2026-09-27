@@ -325,6 +325,8 @@ Native progression mechanics and current runtime evidence through XP 85/258 belo
 
 ## Temple Map and the possible 85th check
 
+**Static ownership update (2026-09-27):** Temple outer-resource **slot 0** is now identified as the scripted Map actor resource. The overlay path around `0x802EEC54` constructs slot 0 at `0x802EECCC` and later awards native item `0x0D` at `0x802EEE5C`. This resolves the Map's visual/resource owner but does **not** turn it into an ordinary pickup record or resolve its elevator/exit trigger and cross-stage lifecycle semantics.
+
 The Temple Map is **not** one of the 84 ordinary `0x30`-byte records. It follows a scripted/special actor path and is deliberately absent from the ordinary stage catalog count.
 
 The current sources do not settle whether the Map should become a randomized **85th check**. Two concerns must be separated:
