@@ -24,11 +24,9 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 - A new output is produced; the CLI refuses in-place patching and existing-output overwrite.
 - Seed is trimmed; absent seed becomes a random 64-bit hex value.
 - CLI output reports applied modules, notes, CRC1/CRC2, and SHA-256. The browser completion panel intentionally stays product-facing and reports only target, seed, SHA-256, and CRC1/CRC2 rather than enumerating internal patch modules or discovery-oriented features.
-- Pickup layout, progression-reward selection, boot phrase, and seeded palette use independent deterministic domains.
+- Pickup layout, progression-reward selection, optional power-order shuffle, boot phrase, and seeded palette use independent deterministic domains.
 
 ## Current configuration surface
-
-> **Accepted pending option:** add a simple **Shuffle Power Progression** checkbox. It must default to the documented product default chosen at integration time, preserve vanilla power order when unchecked, and use the isolated deterministic constrained power-order generator when checked. The option is design-approved but is not yet present in the production web UI pending the constrained nine-slot runtime proof.
 
 | Option | Behavior |
 |---|---|
@@ -40,6 +38,7 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 | `hue` | Requires explicit degrees |
 | `rgb` | Requires `RRGGBB` or `#RRGGBB` |
 | Title character | Temporary freeform uppercase name, default `SUB-ZERO`, max 12 characters; patcher appends ` EDITION` and rasterizes it into the generated title CI8 image |
+| Shuffle Power Progression | Default **off**. When enabled, deterministically shuffles the nine native Power Up slots while preserving the single Ice Shatter prerequisite rule; Slide and Super Slide are independent. The same generated order drives gameplay gates and native Power Ups icon/help presentation. |
 
 Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.
 
