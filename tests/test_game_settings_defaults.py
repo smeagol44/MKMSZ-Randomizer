@@ -7,6 +7,7 @@ from mkmszr.patches.inventory_boxes import (
     JUMP_BUTTON_STATE_MASK,
     RUN_AUTO_STATE_MASK,
     SPECIALS_MODERN_STATE_MASK,
+    TURN_LOCK_STATE_MASK,
     FourBoxInventoryPatch,
     initial_box_data,
 )
@@ -28,6 +29,7 @@ def test_game_settings_defaults_remain_vanilla_when_unselected() -> None:
 def test_selected_game_settings_seed_existing_durable_state_bits() -> None:
     config = RandomizerConfig(
         game_settings=GameSettingsConfig(
+            turn_lock=True,
             attack_modern=True,
             specials_modern=True,
             jump_button=True,
@@ -36,12 +38,13 @@ def test_selected_game_settings_seed_existing_durable_state_bits() -> None:
     )
     patch = _inventory_patch(config)
     expected = (
-        COMBOS_ASSIST_STATE_MASK
+        TURN_LOCK_STATE_MASK
+        | COMBOS_ASSIST_STATE_MASK
         | SPECIALS_MODERN_STATE_MASK
         | JUMP_BUTTON_STATE_MASK
         | RUN_AUTO_STATE_MASK
     )
-    assert expected == 0x3C00
+    assert expected == 0x3E00
     assert patch.initial_settings_state == expected
     assert int.from_bytes(initial_box_data(expected)[160:164], "big") == expected
 
