@@ -110,7 +110,17 @@ The user then died and confirmed that the checkpoint relocation **still occurred
 
 This is stronger than the earlier v01/v02 interpretation and conflicts with their reported visible-banner result. Preserve that discrepancy as artifact-specific evidence rather than deleting it. Before production, confirm the banner result again in a minimal de-instrumented composition.
 
-**Current two-seam model:** likely production behavior will require (1) key-only suppression of the direct generic-key presentation spawns, while leaving ordinary checkpoint/Strength presentation intact, and (2) a separate player-only respawn-coordinate override that substitutes the pre-key selector only when the current selector still matches the key-induced selector. The latter can naturally stop applying after a later legitimate non-key selector change.
+### v07 combined banner + respawn proof
+
+**Partial Runtime-confirmed / not production-safe.** v07 kept the v06 banner suppression and added the bounded player-only Prison selector `7 -> 0` substitution at the spawn-coordinate consumer. After L1 pickup the trace remained `KA` with `G4 S7 B1`; after death/reconstruction it became `KAR`, proving the respawn-side override actually executed while the global selector and key-bit state remained `S7/B1`.
+
+The Level-1 door did **not** open. Therefore preserving inventory award `0x1A`, selector `7`, and key bit `B1` is not by itself sufficient to claim preserved Prison progression under this randomized-location proof.
+
+Two explanations remain materially plausible and must be distinguished before another production candidate:
+- **Location-bound progression state (strong hypothesis):** the stock L1 record at ROM `0xCA030` / RDRAM `0x802F21F0` has collected flag `0x802F221C`. The randomizer moves the seven-word identity slice but deliberately leaves `+0x2C` collected state attached to the destination location. A Prison script/door that reads the stock record or a derivative location state would therefore still see the native L1 location as uncollected.
+- **Respawn room/state mismatch (hypothesis):** if the door was tested only after death, spawning at selector-0 coordinates while the global stage selector remains `7` may reconstruct an inconsistent room/script context even though key progression variables remain set.
+
+The next justified step is a static trace of the Prison L1 door/open progression predicate, starting from the door interaction/script and tracing every dependency on inventory `0x1A`, `0x802C18F8`, `0x802C0D54`, the stock L1 record collected flag `0x802F221C`, and any overlay-local actor/room state. Do not build another checkpoint ROM until that predicate is closed.
 
 The next justified runtime diagnostic is instrumentation, not another blind suppression patch: use a bounded in-ROM write-only ring buffer at specific candidate request sites, then poll that buffer from ordinary per-frame Lua RAM reads (Ares64 execute callbacks are not required). Compare exactly three cases through the first banner frame: relocated Prison L1 key at the easy Herbs location, untouched Herbs, and one ordinary checkpoint. Record site ID, stage, current pickup identity, `0x802C18F8`, and `0x802C0D54`; then perform one death/re-entry comparison for relocation separately.
 
