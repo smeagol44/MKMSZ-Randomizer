@@ -54,7 +54,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80031208` | Facing-aware local-XY to world-position adjustment | Static-confirmed | On fresh projectile path `+0xDC==0`, consumes signed whole local X/Y, mirrors X for flip bit `0x10`, rotates `(x,y,0)` by actor orientation with unity matrix scale, then adds integer world delta `<<8` to actor `+0x2C/+0x30/+0x34`; stock straight-Ice call `0x8004AFF8` supplies `+0x648`, the same staged actor later transferred from `+0x714` |
 | `0x80032CD4` | Special-action callback installer | Static-confirmed | Installed top-level callback must transfer/nonreturn |
 | `0x80034510` | Animation-stream resource actor creation helper | Static-confirmed | Consumes the resource entry following token `0x0B`, reaches `0x800281A0 -> 0x80028128`, and participates in staging a secondary actor while preserving the owner actor |
-| `0x80038770` | Generic stage key/crystal pickup | Static-confirmed | Stage-dependent parameter mapping |
+| `0x80038770` | Generic stage key/crystal pickup | Static-confirmed | Stage-dependent parameter mapping plus native inventory award / acquired-bit bookkeeping / pickup SFX. Three key-path sites separately spawn class-`0x15` processes through `0x8002830C` with callback `0x80062D60`; these spawns are structurally separate from award/bit/SFX logic. The user-observed checkpoint side effect is the leading runtime interpretation; the narrow spawn-suppression proof remains Runtime-pending. |
 | `0x800388FC` | Potion pickup | Runtime-confirmed | Adds inventory ID `0x01` |
 | `0x8003892C` | Shield pickup | Runtime-confirmed | Adds ID `0x06` |
 | `0x8003895C` | Eye pickup | Static/runtime-confirmed | Adds ID `0x03` |

@@ -94,6 +94,16 @@ This confirms one generated stage-local location on that build; it does **not** 
 
 This table is a pickup-domain convenience summary, not a replacement for the canonical function registry or item/key structure tables.
 
+## Key-pickup checkpoint side effect — narrow suppression proof pending
+
+Static reconciliation of the generic key/crystal callback `0x80038770` isolates three class-`0x15` process spawns through `0x8002830C`, all targeting callback `0x80062D60`. These calls are separate from the callback's native inventory award, acquired-bit bookkeeping, stage/key state writes, and pickup SFX.
+
+The user reports that key pickups trigger an unwanted checkpoint and that the behavior is already harmful in stage-local play and would be unsafe for cross-stage placement. The three isolated process spawns are therefore the leading checkpoint seam, but that semantic attribution remains **Runtime-pending** until the bounded proof is tested.
+
+The disposable `key-checkpoint-suppression-proof` changes only the three generic-key spawn JAL words at ROM `0x000393D4`, `0x00039460`, and `0x00039484`. Their delay slots and all award/state/SFX logic remain intact. The shared process callback itself is deliberately **not** disabled globally because the Strength urn callback `0x80038A90` also uses `0x80062D60`; a global suppression would therefore change unrelated item behavior.
+
+Production integration is gated on manual runtime confirmation that representative key pickups still award and progress correctly while the unwanted checkpoint behavior is absent.
+
 ## Current exclusions
 
 The current stage-local ordinary-pickup system deliberately excludes:
