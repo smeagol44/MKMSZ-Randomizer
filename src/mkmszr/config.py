@@ -12,6 +12,7 @@ class OutfitConfig:
 
 @dataclass(frozen=True)
 class GameSettingsConfig:
+    turn_lock: bool = False
     attack_modern: bool = False
     specials_modern: bool = False
     jump_button: bool = False
