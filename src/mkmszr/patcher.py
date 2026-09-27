@@ -108,6 +108,12 @@ def build_pipeline(
             ),
         )
     )
+    # Controls production deliberately verifies the stock Slide/Super Slide
+    # gates before installing helpers that call those recognizers. Apply the
+    # optional order remap afterwards so both safety guards and shuffled tiers
+    # remain authoritative.
+    if config.shuffle_power_progression:
+        patches.append(PowerOrderPatch())
     return PatchPipeline(patches)
 
 
