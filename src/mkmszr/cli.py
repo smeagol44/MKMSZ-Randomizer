@@ -44,6 +44,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default="SUB-ZERO",
         help="temporary uppercase title character name (max 12 chars)",
     )
+    parser.add_argument(
+        "--shuffle-power-progression",
+        action="store_true",
+        help="shuffle the nine Power Up unlock tiers with the accepted Ice Shatter constraint",
+    )
     return parser
 
 
@@ -61,6 +66,7 @@ def main(argv: list[str] | None = None) -> int:
         seed=effective_seed,
         outfit=OutfitConfig(mode=args.outfit, hue_degrees=args.hue, rgb=args.rgb),
         edition_name=args.edition_name,
+        shuffle_power_progression=args.shuffle_power_progression,
     )
 
     try:
