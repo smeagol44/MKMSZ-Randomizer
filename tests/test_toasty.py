@@ -2,6 +2,7 @@ from mkmszr.config import OutfitConfig, RandomizerConfig
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.controls_production import ControlsProductionPatch
 from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
+from mkmszr.patches.rainbow_palette import RainbowPalettePatch
 from mkmszr.patches.toasty import ToastyProductionCompositionPatch
 from mkmszr.patches.toasty_codegen import (
     _build_call_trampoline,
@@ -49,12 +50,16 @@ def test_toasty_is_optional_and_runs_after_rainbow() -> None:
         toasty_assets=assets,
         toasty_probability_per_thousand=DEFAULT_PROBABILITY_PER_THOUSAND,
     )
-    assert isinstance(composed.patches[-2], ToastyProductionCompositionPatch)
-    assert composed.patches[-2].probability_per_thousand == DEFAULT_PROBABILITY_PER_THOUSAND
-    assert isinstance(composed.patches[-1], ControlsProductionPatch)
-
     types = [type(patch) for patch in composed.patches]
-    assert types.index(GameSettingsTurnPatch) < types.index(ToastyProductionCompositionPatch)
+    toasty_index = types.index(ToastyProductionCompositionPatch)
+    controls_index = types.index(ControlsProductionPatch)
+    rainbow_index = types.index(RainbowPalettePatch)
+
+    assert composed.patches[toasty_index].probability_per_thousand == (
+        DEFAULT_PROBABILITY_PER_THOUSAND
+    )
+    assert types.index(GameSettingsTurnPatch) < toasty_index
+    assert toasty_index < controls_index < rainbow_index
 
 
 def test_product_default_probability_is_eight_percent() -> None:
