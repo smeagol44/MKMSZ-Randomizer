@@ -47,6 +47,12 @@ These reusable conclusions are canonical in [Native HUD and UI](Native-HUD-and-U
 | Dynamic CI8 allocation can feed genuine imported pixels into an added gameplay-HUD node | v15 **Runtime-confirmed** |
 | Node halfword `+0x4C` is the gameplay renderer palette selector | v16 **Runtime-confirmed** that clone-local selector `0x11` changes palette resolution; v16's palette bytes themselves were in the wrong source representation |
 
+## Accepted CI4 production composition (2026-09-27)
+
+The accepted controls/CI4 full-product v02 repacks the nine Toasty slices as 16-color CI4 within the existing 16 KiB reservation. The module is ROM `[0x00F697E0,0x00F6B5D0)` / RDRAM `[0x801B1000,0x801B2DF0)`, leaving `0x630` bytes of pool headroom. The donor translator uses a deterministic 16-entry RGBA5551 palette (SHA-256 `687569e2c16520796b0f11ace50915827d50320e73ac15690f9e3bc5914e4a5b`) and packs two pixel indices per byte. The stage-init trampoline and texture-slot CI4 format bit follow the new address and format. Audio, accepted presentation cadence, successful-reaction trigger, and 80/1000 product probability remain as documented.
+
+The user reported **“Works perfectly!”** for the corrected v02 full-product ROM, SHA-256 `b12ed90201ab754aac542b7b89458735b5a756f480fffca89c129c0ed3173147`. The shared builder reproduces that ROM byte for byte with seed `CONTROLSV10CI4` and MKT Rev. 2 donor. The original v47 CI8 allocation and earlier visual proofs remain historical evidence.
+
 ## Rejected or superseded Toasty visual approaches
 
 - **v01-v05 direct use of `0x80073CEC` as the final gameplay renderer:** superseded by preserved evidence showing that renderer family is context-specific. v02 wrapper execution and v05 allocator success remain valid independent findings.
