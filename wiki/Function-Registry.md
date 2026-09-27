@@ -106,6 +106,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80073E74` | Native text draw | Runtime-confirmed | Arbitrary custom RDRAM strings work |
 | `0x80074084` | Text-width helper | Static/runtime-confirmed | Native font at `0x800B1E20` |
 | `0x800741B4` | Inventory item count | Static-confirmed | Native ten-slot inventory |
+| `0x800750F0` | Native Power Ups strip builder | Static-confirmed; first-two order Runtime-confirmed in power-order v02 | Evaluates current power tier, stores the tier state used by the inventory UI, and renders the first N entries from the fixed power-icon table at `0x800A5FB0`. v02 confirms presentation order is independent from gameplay eligibility unless the table is reordered with the gates. |
 | `0x80074FBC` | XP tier evaluator/clamp | Static-confirmed | Uses cap table `0x800A63FC` |
 | `0x80075320` | Find first inventory item | Static-confirmed | Inventory helper |
 | `0x80075448` | Insert inventory item | Runtime-confirmed | Called by fixed pickup callbacks |
