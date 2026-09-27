@@ -31,3 +31,4 @@ class RandomizerConfig:
     outfit: OutfitConfig = field(default_factory=OutfitConfig)
     edition_name: str = "SUB-ZERO"
     game_settings: GameSettingsConfig = field(default_factory=GameSettingsConfig)
+    shuffle_power_progression: bool = False
