@@ -37,6 +37,27 @@ def test_candidate_b_asset_is_exact_native_pixel_image() -> None:
     assert not set(pixels).intersection(title.EDITION_PALETTE_INDICES)
 
 
+def test_16color_title_palette_contract_is_shared_with_edition_text() -> None:
+    assert len(title.TITLE_16COLOR_INDICES) == 16
+    assert len(set(title.TITLE_16COLOR_INDICES)) == 16
+    assert title.TITLE_16COLOR_INDICES[0] == title.TITLE_BACKGROUND_INDEX == 255
+    assert title.TITLE_16COLOR_INDICES[1:] == title.EDITION_PALETTE_INDICES
+    assert title.EDITION_PALETTE_WORDS == (
+        0x0821, 0x0C41, 0x1881, 0x2CE2, 0x3D41,
+        0x3D44, 0x45A6, 0x5E28, 0x628F, 0x6ED1,
+        0x7732, 0x7B75, 0x7778, 0x7FB8, 0x7BDB,
+    )
+
+
+def test_candidate_quantizer_is_bounded_to_shared_16color_indices() -> None:
+    # A synthetic palette is sufficient to verify the quantizer's index budget
+    # without requiring copyrighted ROM bytes in CI.
+    palette = tuple(range(256))
+    quantized = title._quantize_candidate_16color(palette)
+    assert len(quantized) == 320 * 240
+    assert set(quantized) <= set(title.TITLE_16COLOR_INDICES)
+
+
 def test_embedded_edition_font_covers_all_allowed_input() -> None:
     glyphs = title._edition_font()
     required = set(title.EDITION_ALLOWED).union(title.EDITION_SUFFIX)
@@ -102,7 +123,11 @@ def test_title_patch_relocates_data_without_code_hook(
     rom = RomImage(data=data, _original=bytes(data))
 
     fake_package = bytes([0xA5]) * 0x80
-    monkeypatch.setattr(title, "_build_title_package", lambda _stock, _name: fake_package)
+    monkeypatch.setattr(
+        title,
+        "_build_title_package",
+        lambda _stock, _name, _palette: fake_package,
+    )
 
     title.TitleBrandingPatch("sektor").apply(rom, PatchContext())
 

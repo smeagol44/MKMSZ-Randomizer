@@ -6,7 +6,7 @@
 
 ## Current conclusion
 
-The redesigned legal/boot screen and the current data-only Candidate-B title composition are both **Runtime-confirmed** on their documented production routes. The browser/CLI title-character setting drives the uppercase edition presentation consistently across the boot/legal screen and generated title art.
+The redesigned legal/boot screen and the data-only Candidate-B title composition are **Runtime-confirmed** on their documented production routes. On 2026-09-27 the user also visually accepted a bounded 16-color title proof. The shared browser/CLI implementation now constrains Candidate B to that same 16-color visual budget while preserving the native CI8 storage/render path and configurable uppercase edition text.
 
 The accepted title implementation is data-only: no title executable wrapper or title-menu code hook is required. The earlier executable-wrapper composition is **Rejected / failed** because it overlapped production pickup-persistence ownership.
 
@@ -73,7 +73,7 @@ The title art lives in global file ID `0x5E`. File-table/loading and compression
 
 ### Accepted Randomizer title proof
 
-The accepted image direction is the icy-metallic **MORTAL KOMBAT MYTHOLOGIES / RANDOMIZER** Candidate B, converted to the exact native 320x240 CI8 image with the corrected stock BGR555 palette. The user runtime-tested the final art and reported it looks awesome.
+The accepted image direction is the icy-metallic **MORTAL KOMBAT MYTHOLOGIES / RANDOMIZER** Candidate B. The original production path used the exact native 320x240 CI8 image with the corrected stock BGR555 palette. The user runtime-tested that art and reported it looks awesome. The later 16-color proof keeps the native CI8 path but limits visible title art to one near-black background plus 15 icy-blue BGR555 entries; the user reported that this reduced-color version still looks very good and requested it for production.
 
 The final standalone title proof is:
 
@@ -85,6 +85,20 @@ The final standalone title proof is:
 This is **Runtime-confirmed** for the title-screen route shown by the user. The proof's title art and final edition placement are accepted visually.
 
 The proof itself is **not a production allocation**. It used a raw file-`0x5E` relocation overlapping the production payload region and used the bootstrap cave beginning at ROM `0x9AD84`, which production already owns. Those proof locations must not be copied into the browser/CLI pipeline.
+
+### Accepted 16-color title update (2026-09-27)
+
+The bounded proof `MKMSZR_title-16color_title-proof_v01.z64` is **Runtime-confirmed for visual acceptance only**: the user reported that the reduced-color title still looks very good. The proof preserved the native CI8 renderer and reduced the image to a 16-entry visual palette rather than changing the resource grammar to true packed CI4.
+
+The production implementation keeps that conservative renderer contract:
+
+- Candidate B is Floyd-Steinberg quantized at build time into exactly 16 CI8 indices;
+- palette index `0xFF` remains the stock near-black background;
+- the existing 15 edition-text indices become the dark-to-light icy-blue art/text ramp, so configurable `<NAME> EDITION` shares the same palette instead of adding colors;
+- no title code hook, renderer change, or CI4 record-format assumption is introduced;
+- the default `SUB-ZERO` generated file-`0x5E` package is about `0x2E5D4` bytes with the shared implementation, versus `0x3017F` for the earlier high-color production title: approximately `0x1BAB` = 7,083 bytes smaller.
+
+The full `0x31000` high-ROM title allocation remains reserved for now. The smaller generated package therefore creates reclaimable headroom but does not silently transfer ownership of the tail to another feature.
 
 ### Edition text
 
@@ -103,7 +117,7 @@ The accepted production implementation is data-only:
 - no title executable wrapper;
 - no title-menu code hook; stock title `START` setup at ROM `0x00079C24..0x00079C2B` / VA `0x80079024..0x8007902B` remains unchanged;
 - uppercase `<NAME> EDITION` is rasterized into the Candidate-B 320x240 CI8 title at patch time;
-- 15 Candidate-B-unused palette indices are reserved for grayscale antialias levels, with guarded stock words before replacement;
+- the 15 Candidate-B-unused palette indices are repurposed as the shared icy-blue 16-color art/edition ramp, with guarded stock words before replacement;
 - compressed file `0x5E` is relocated from ROM `0xF90000` within a guarded `0x31000`-byte high-ROM allocation;
 - the temporary browser/CLI field defaults to `SUB-ZERO`, accepts at most 12 name characters, normalizes to uppercase, and supports A-Z, 0-9, spaces and hyphens before appending ` EDITION`.
 
