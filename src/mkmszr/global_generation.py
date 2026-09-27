@@ -13,8 +13,8 @@ policy and are deliberately supplied by callers rather than invented here.
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
-from typing import Callable, Iterable, Sequence
 
 from .data.pickups import STAGE_PICKUPS, TOTAL_ORDINARY_PICKUPS
 from .global_items import LogicalItem, build_stock_logical_pool
@@ -312,6 +312,6 @@ def completion_satisfied(
         return False
     if not policy.required_tokens.issubset(result.acquired_tokens):
         return False
-    if policy.require_all_locations and not result.all_locations_reachable:
-        return False
-    return True
+    return not (
+        policy.require_all_locations and not result.all_locations_reachable
+    )
