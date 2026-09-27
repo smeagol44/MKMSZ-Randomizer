@@ -84,6 +84,35 @@ The corrected title implementation is **Runtime-confirmed** through the full pro
 
 The stock START setup at ROM `0x00079C24..0x00079C2B` is intentionally left untouched and therefore is not a patch-site row. The rejected executable-wrapper attempt beginning at `0x9ADE0` is documented as an allocation conflict in the Memory Map; it is not current production.
 
+## Power-order proof sites
+
+| ROM/VA | Proof | Status |
+|---|---|---|
+| ROM `0x0003D62C` / VA `0x8003CA2C` | Slide tier gate | v02 Runtime-confirmed bounded proof. Clean word `28420002` becomes `28420001`, moving Slide from tier >=2 to tier >=1 while preserving the stock recognizer/action path. |
+| ROM `0x0004B018..0x0004B033` / VA `0x8004A418..0x8004A433` | Ground Ice Blast tier-condition tail | v02 Runtime-confirmed bounded proof. Guarded in-place replacement changes only the native condition result from tier >=1 to tier >=2; Ice callback/action/resource behavior remains stock. |
+| ROM `0x000A6BB0..0x000A6BB7` / RAM `0x800A5FB0..0x800A5FB7` | First two native Power Ups icon IDs | v02 Runtime-confirmed presentation proof. Swap stock Ice Blast / Slide entries so the first N icon strip matches the shuffled gameplay order. |
+| ROM `0x000A78A0..0x000A78A7` | First two native Power Ups move-help pointers | v02 Runtime-confirmed presentation proof. Swap stock Ice Blast / Slide help/detail records so selection text/details match the shuffled icon order. |
+
+The first-two v02 proof was generalized by Runtime-confirmed v04. The complete mapped tier-gate set used by the production implementation is:
+
+| ROM/VA | Power | Stock tier / production edit |
+|---|---|---|
+| ROM `0x0003D62C` / VA `0x8003CA2C` | Slide | Stock `slti v0,v0,2`; replace immediate with generated Slide slot |
+| ROM `0x0004B018..0x0004B033` / VA `0x8004A418..0x8004A433` | Ground Ice Blast | Guarded seven-word stock tier-1 return tail; replace in place with arbitrary generated Ice Blast threshold while preserving `0x8000/0x4000` condition convention |
+| ROM `0x0004B084` / VA `0x8004A484` | Directional Ice Up | Stock tier 3 compare -> generated Directional Ice slot |
+| ROM `0x0004B0F4` / VA `0x8004A4F4` | Directional Ice Down | Stock tier 3 compare -> same generated Directional Ice slot |
+| ROM `0x0004AFBC` / VA `0x8004A3BC` | Air Ice Blast | Stock tier 4 compare -> generated Air Ice Blast slot |
+| ROM `0x0004AEA8` / VA `0x8004A2A8` | Ice Clone | Stock tier 5 compare -> generated Ice Clone slot |
+| ROM `0x000515A0` / VA `0x800509A0` | Ice Shatter contextual gate A | Stock tier 6 compare -> generated Ice Shatter slot |
+| ROM `0x000535C4` / VA `0x800529C4` | Ice Shatter contextual gate B | Stock tier 6 compare -> same generated Ice Shatter slot |
+| ROM `0x0003D728` / VA `0x8003CB28` | Super Slide | Stock tier 7 compare -> generated Super Slide slot |
+| ROM `0x0005B5DC` / VA `0x8005A9DC` | Freeze on Contact | Stock tier 8 compare -> generated Freeze on Contact slot |
+| ROM `0x0004B2B4` / VA `0x8004A6B4` | Polar Blast | Stock tier 9 compare -> generated Polar Blast slot |
+| ROM `0x000A6BB0..0x000A6BD3` / RAM `0x800A5FB0..0x800A5FD3` | Power Ups icon table | Reorder all nine icon IDs to the generated power order |
+| ROM `0x000A78A0..0x000A78C3` | Power Ups help/detail pointer table | Reorder all nine pointers to the same generated power order |
+
+v04 Runtime-confirmed the generalized mechanism on its tested nine-slot order. The production generator imposes exactly one ordering constraint: Ice Shatter must follow at least one of Ice Blast / Directional Ice / Air Ice Blast. Slide and Super Slide are independent. Final whole-product all-tier runtime validation remains a release gate.
+
 ## Proof-only sites
 
 | ROM/VA | Proof | Status |
