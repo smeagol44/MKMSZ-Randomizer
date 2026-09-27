@@ -69,6 +69,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80038A58` | Mana pickup | Static-confirmed | Native mana, distinct from Herbs despite legacy Lua substitution |
 | `0x80038A90` | Strength urn pickup | Static-confirmed | Adds ID `0x0B` |
 | `0x80038ACC` | Pickup manager | Static/runtime-confirmed | Production restore hook |
+| `0x802EEC54` | Temple scripted Map actor path | Static-confirmed | Constructs Temple outer-resource slot 0 through `0x800281A0` at `0x802EECCC`; on successful interaction awards inventory item `0x0D` (Map) through `0x80075448` at `0x802EEE5C`. This proves Temple slot 0 is the Map visual/actor resource while the Map remains outside the four ordinary pickup records. |
 | `0x800490CC` | Shinnok Amulet pickup | Static-confirmed | Adds ID `0x23`; outside ordinary tables |
 | `0x8004AA4C` | Special-action scheduler context-transfer shim | Static-confirmed | Dispatch table at `0x800A1050`; not a generic initializer |
 | `0x8004AB84` | Complete ice-projectile action root | Static-confirmed | Includes special lock behavior |
