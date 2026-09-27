@@ -8,6 +8,7 @@ const seedField = document.querySelector("#seedField");
 const colorField = document.querySelector("#colorField");
 const customColor = document.querySelector("#customColor");
 const colorValue = document.querySelector("#colorValue");
+const turnLock = document.querySelector("#turnLock");
 const attackModern = document.querySelector("#attackModern");
 const specialsModern = document.querySelector("#specialsModern");
 const jumpButton = document.querySelector("#jumpButton");
@@ -141,6 +142,7 @@ async function patchRom() {
     pyodide.globals.set("web_seed", seedValue);
     pyodide.globals.set("web_rgb", customColor.value);
     pyodide.globals.set("web_edition_name", editionValue);
+    pyodide.globals.set("web_turn_lock", turnLock.checked);
     pyodide.globals.set("web_attack_modern", attackModern.checked);
     pyodide.globals.set("web_specials_modern", specialsModern.checked);
     pyodide.globals.set("web_jump_button", jumpButton.checked);
@@ -164,6 +166,7 @@ _config = RandomizerConfig(
     outfit=OutfitConfig(mode=_mode, rgb=_rgb if _mode == "rgb" else None),
     edition_name=_edition_name,
     game_settings=GameSettingsConfig(
+        turn_lock=bool(web_turn_lock),
         attack_modern=bool(web_attack_modern),
         specials_modern=bool(web_specials_modern),
         jump_button=bool(web_jump_button),
