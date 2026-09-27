@@ -8,7 +8,7 @@
 
 MKMSZR 1.0 requires one deterministic logical ordinary-item pool across the eight main stages, followed by a destination-stage materialization pass and a whole-run solvability check. The logical assignment and the physical representation are deliberately separate concerns.
 
-Cross-stage feasibility is **Runtime-confirmed in bounded proofs**, including extension selectors, embedded foreign resources, external-to-embedded conversion, and five simultaneous imported visuals in Prison. The generalized pure resource planner exists but remains disconnected from the normal browser/CLI patch pipeline. Fortress composed stress validation and destination-safe key/crystal/boss-reward handling remain Pending, as do the final global shuffle/solver and production integration gate.
+Cross-stage feasibility is **Runtime-confirmed in bounded proofs**, including extension selectors, embedded foreign resources, external-to-embedded conversion, and five simultaneous imported visuals in Prison. The generalized pure resource planner exists but remains disconnected from the normal browser/CLI patch pipeline. Fortress composed stress validation and destination-safe key/crystal award handling remain Pending, as do the final global shuffle/solver and production integration gate.
 
 The normative 1.0 acceptance requirements remain owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). This page owns the technical mechanism, evidence, limits, and unresolved design questions.
 
@@ -32,24 +32,6 @@ A global item/resource-bundle catalog is intentionally **not** created yet. The 
 The base global pool is formed from the **84 ordinary pickup locations** cataloged across Temple, Wind, Water, Earth, Prison, Fire, Bridge, and Fortress. A global assignment chooses a logical item identity independently of the item's original stage.
 
 That logical identity must preserve the item's real gameplay and visual semantics. It cannot be represented by blindly copying a source stage's 28-byte movable tuple into a different stage, because that tuple includes a stage-local resource selector and award semantics that may not transfer safely.
-
-### Fortress boss-defeat reward locations
-
-**Runtime/user-observed:** the three stock Fortress crystal pickups are produced by defeating Kia, Jataaka, and Sareena. For global-randomizer modeling, these are three **reward locations** whose trigger is the corresponding boss defeat. Crystal Kia/Jataaka/Sareena are the stock rewards, not fixed location identities.
-
-Therefore:
-- defeating any of the three bosses must spawn/materialize the logical item assigned to that boss-reward location;
-- the assigned item need not be a crystal;
-- the three crystal logical rewards remain part of the movable global pool and may appear at other locations;
-- the boss trigger/spawn mechanism and the spawned reward identity must be separated in the production materializer.
-
-The existing Fortress `0x30` records remain useful as stock reward/presentation data, but their catalog presence must not be interpreted as evidence that those checks are static world pickups.
-
-### Key-triggered checkpoint side effect
-
-**Rejected / failed:** checkpoint-suppression proofs v01/v02 NOPed the three generic-key callback spawns of `0x8002830C(0x15, 0x80062D60)`. Runtime testing still produced key-triggered checkpoints, so those process spawns are **not** the checkpoint owner. They must not be used as the basis for another suppression proof.
-
-The next trace must follow key acquisition state into the death/respawn/checkpoint consumer and identify the exact state write/transition to suppress while preserving inventory award, progression/key bits, pickup persistence, audio/presentation, and boss-reward spawning.
 
 For planning purposes, a logical ordinary item therefore needs enough information to materialize:
 
@@ -91,6 +73,20 @@ The ordinary key/crystal callback family is stage/parameter dependent. A source 
 The early Fire foreign-key proof used a dedicated native callback at VA `0x8008EAEC` / ROM `0x0008F6EC` to award Prison Level 1 key item `0x1A` in Fire. That is useful feasibility evidence, but it is not a generic production solution.
 
 A reusable destination-safe path for the full key/crystal set remains **Pending** and is a gate before the global materializer can enter the normal browser/CLI pipeline.
+
+#### Key-triggered respawn relocation: static trace (2026-09-27)
+
+The clean USA Rev. 0 ROM (SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`) separates inventory award from a stage-state write in generic pickup callback `0x80038770` (ROM `0x39370`). On `a0=0`, its stage-4 branch calls `0x80075448(s0+0x1A)` and writes `0x802C18F8=7` for `s0=0` or `8` for `s0=1` at VA `0x80038854` / ROM `0x39454` and VA `0x80038878` / ROM `0x39478`. Its stage-3 `s0=0` branch writes `0x802C18F8=2` at VA `0x800387F8` / ROM `0x393F8`. Other stage mappings award `s0+0x11` or `s0+0x20` through `0x80075448`; callback sound is `0x80064C18(0x3B,0,0x40)`. The three `0x8002830C(0x15,0x80062D60)` spawns are separate. Checkpoint-suppression v01/v02 NOPed those spawns and still relocated respawn at runtime: **Rejected / failed** as a suppression seam. Do not patch `0x80062D60` globally.
+
+`0x802C18F8` is a broader stage segment/state selector, not a dedicated key flag. Player construction (`0x8002EC78 -> 0x8002ECF4 -> 0x8002EDFC -> 0x8003BF4C`) reads it at `0x8003BF54` (ROM `0x3CB54`) and selects a 20-byte stage spawn-table entry through the stage-ID pointer at `0x800A025C`. That function writes the chosen X/Y/Z to actor `+0x2C/+0x30/+0x34` and the paired initial coordinates to `+0x38/+0x3C/+0x40`. A second actor-construction path calls it at `0x8002EF08`; a player-only guard matters. Stage loops read the same selector for room/overlay/progression branches, and non-key scripts also write it, so suppressing the key callback stores would risk door and stage flow. The stage-4 entries selected by key indices 7 and 8 begin at `0x8009FFB4` and `0x8009FFC8` (ROM `0xA0BB4` / `0xA0BC8`); their X coordinates are `0x00788000` and `0x00848400`. Stage-3 index 2 begins at `0x8009FE88` (ROM `0xA0A88`), X `0x000C9400`.
+
+The callback also ORs `1<<s0` into `0x802C0D54` for stages other than 1 and 3 (`0x800388C0..D4`, ROM `0x394C0..D4`). Stage/script routines around `0x80072000..0x800724CC` set more bits there after inventory or position conditions; stage-reset paths clear it. No direct read of this address was located in the scanned base executable. It is **not established as the spawn-coordinate consumer**; indirect stage/overlay use is still possible. `0x80073588` reads `0x802C18F8` only for its Fortress menu/display setup and is not the coordinate-selection function.
+
+**Proposed guarded proof seam (Static-confirmed site; behavior Pending):** divert only the `0x8003BF50..54` selector load (ROM `0x3CB50..57`, clean bytes `3C04802C 848418F8`) through a jump/return trampoline that preserves `ra` and the actor pointer `a2`. For the player actor only, with an explicitly valid prior non-key selector captured before one of the listed key writes and matching stage/current-key selector, substitute that saved selector into local `a0` at the spawn lookup. Keep `0x802C18F8` and every pickup callback effect intact. Invalidate the override upon a later non-key selector change and at new-run/stage boundaries. The existing `0x50`-byte Runtime V2 persistent block is fully owned; allocate a guarded durable extension and code within the current composition rather than assuming unused bytes or a proof cave. Do not promote this design before a single-key death/re-entry and subsequent non-key checkpoint runtime proof. The exact death UI/continue branches that re-enter stage construction and all indirect consumers of `0x802C0D54` still require closure before claiming exhaustive lifecycle coverage.
+
+#### Fortress defeat-trigger locations
+
+The three Fortress ordinary records at ROM `0xC4834` (Kia), `0xC4864` (Jataaka), and `0xC4894` (Sareena) are **reward locations**. Defeating the corresponding boss is the location trigger; the stock crystal is the location's current reward. A global assignment must leave each boss-defeat trigger at its own location and materialize **whatever item is assigned there** as the spawned, correctly rendered, collectible reward. Crystal IDs `0x20..0x22` remain independently movable logical rewards and need destination-safe award handling outside Fortress. The records' parameters `0x8001/0x8000/0x8002` and callback `0x80038770` describe stock crystal awards, not immutable boss-trigger identity. The exact boss-death-to-record activation call chain has not been statically established here; preserve that trigger in a bounded Fortress proof.
 
 ## Extension-selector mechanism
 
