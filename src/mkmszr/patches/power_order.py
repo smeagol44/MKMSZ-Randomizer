@@ -185,7 +185,7 @@ class PowerOrderPatch:
         # Guard all gameplay gates and both complete stock UI tables before any
         # writes.  Controls production runs earlier and calls these recognizers;
         # it intentionally leaves the gate instructions themselves untouched.
-        for _label, (offset, vanilla_tier) in SIMPLE_TIER_SITES.items():
+        for offset, vanilla_tier in SIMPLE_TIER_SITES.values():
             rom.expect_u32(offset, _slti("v0", "v0", vanilla_tier))
         rom.expect_bytes(ICE_GROUND_TAIL_ROM, ICE_GROUND_TAIL_EXPECTED)
 
