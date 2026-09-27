@@ -4,9 +4,11 @@ The emitters retain their confirmed MIPS instructions and stock callbacks.
 """
 from __future__ import annotations
 
-from ..mips import Emitter, address_words, addiu, andi, jal, ori
-from ..mips import lui as lui, sltiu as sltiu, sw as sw
-from .inventory_boxes import SPECIALS_MODERN_STATE_MASK as SPECIALS_MODERN_STATE_MASK
+from ..mips import Emitter, addiu, address_words, andi, jal, lui, ori, sltiu, sw
+from .inventory_boxes import SPECIALS_MODERN_STATE_MASK
+
+__all__ = ["SPECIALS_MODERN_STATE_MASK", "lui", "sltiu", "sw", "emit_condition_route"]
+
 FILE_ROM = 0x00F68000
 
 

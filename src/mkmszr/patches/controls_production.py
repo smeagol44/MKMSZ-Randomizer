@@ -4,18 +4,19 @@ Port of the accepted v02 composition; stock progression remains intact.
 """
 from __future__ import annotations
 
-from ..rom import RomImage
-from ..mips import Emitter, addiu, address_words, jal, jr, jump, lui, lw, sw, words_blob
 from ..data.addresses import RESERVED_RDRAM_END_EXCLUSIVE
-from .base import PatchContext
-from . import game_settings_turn as turn
-from . import controls_combo as attackv04
+from ..mips import Emitter, addiu, address_words, jal, jr, jump, lui, lw, sw, words_blob
+from ..rom import RomImage
 from . import controls_actions as cv04
+from . import controls_combo as attackv04
+from . import controls_frontend as v09
 from . import controls_jump as cv05
 from . import controls_ledge as cv06
-from . import controls_frontend as v09
 from . import controls_run as v10
-from .toasty_constants import MODULE_K0 as TOASTY_K0, MODULE_ROM as TOASTY_ROM
+from . import game_settings_turn as turn
+from .base import PatchContext
+from .toasty_constants import MODULE_K0 as TOASTY_K0
+from .toasty_constants import MODULE_ROM as TOASTY_ROM
 
 FILE_ROM=0x00F68000
 

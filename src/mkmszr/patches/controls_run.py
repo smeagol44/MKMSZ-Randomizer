@@ -4,7 +4,23 @@ The emitters retain their confirmed MIPS instructions and stock callbacks.
 """
 from __future__ import annotations
 
-from ..mips import Emitter, addiu, address_words, addu, andi, jal, jalr, jr, lhu, lui, lw, ori, sh, sw
+from ..mips import (
+    Emitter,
+    addiu,
+    address_words,
+    addu,
+    andi,
+    jal,
+    jalr,
+    jr,
+    lhu,
+    lui,
+    lw,
+    ori,
+    sh,
+    sw,
+)
+
 FILE_ROM = 0x00F68000
 
 

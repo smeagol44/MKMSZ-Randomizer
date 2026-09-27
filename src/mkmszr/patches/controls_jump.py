@@ -5,6 +5,7 @@ The emitters retain their confirmed MIPS instructions and stock callbacks.
 from __future__ import annotations
 
 from ..mips import Emitter, addiu, address_words, addu, andi, jr, lhu, lw, ori
+
 FILE_ROM = 0x00F68000
 
 

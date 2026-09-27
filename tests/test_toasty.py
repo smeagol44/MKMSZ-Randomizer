@@ -1,7 +1,7 @@
 from mkmszr.config import OutfitConfig, RandomizerConfig
 from mkmszr.patcher import build_pipeline
-from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
 from mkmszr.patches.controls_production import ControlsProductionPatch
+from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
 from mkmszr.patches.toasty import ToastyProductionCompositionPatch
 from mkmszr.patches.toasty_codegen import (
     _build_call_trampoline,

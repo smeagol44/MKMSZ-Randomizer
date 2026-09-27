@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from ..mips import Emitter, addiu, address_words, addu, andi, jal, jr, lhu, lw, ori
 from . import controls_specials_v03 as v03
+
 FILE_ROM = 0x00F68000
 
 
