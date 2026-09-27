@@ -37,7 +37,7 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 | `seeded` | Deterministic seed-derived clothing color |
 | `hue` | Requires explicit degrees |
 | `rgb` | Requires `RRGGBB` or `#RRGGBB` |
-| Title character | Temporary freeform uppercase name, default `SUB-ZERO`, max 12 characters; patcher appends ` EDITION` and rasterizes it into the generated title CI8 image |
+| Title character | Temporary freeform uppercase name, default `SUB-ZERO`, max 12 characters; patcher appends ` EDITION` and rasterizes it into the generated title image. The shared web/CLI core now constrains Candidate B and the edition text to one 16-color visual palette while retaining the native CI8 renderer/resource path. |
 | Shuffle Power Progression | Default **off**. When enabled, deterministically shuffles the nine native Power Up slots while preserving the single Ice Shatter prerequisite rule; Slide and Super Slide are independent. The same generated order drives gameplay gates and native Power Ups icon/help presentation. |
 
 Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.
