@@ -99,7 +99,18 @@ Prison file `0x9F` contains one additional direct `0x80062D60` spawn at overlay 
 
 The exact v04/v05 builders resolve one uncertainty from the static report: the relocation swaps exactly the seven-word identity slice `record+0x10..+0x2B` (type, parameter, callback, extents, stage-local resource slot, and presentation descriptor) onto the easy Herbs destination. Thus runtime evidence establishes that the event follows the **complete key reward identity tuple**, not the stock L1 world position. It does **not** yet isolate callback semantics from type/resource/presentation fields.
 
-**Current decision:** there is **no proven key-only banner suppression seam**. Do not globally patch `0x80062D60`, `0x8001D520`, `0x8001EAE4`, `0x802C0D54`, or `0x802C18F8`. The earlier `0x8003BF4C` selector substitution remains only a separate respawn-coordinate proposal and does not solve the visible banner.
+### Self-reporting v06 runtime result
+
+**Runtime-confirmed, bounded Prison L1 route:** the self-reporting v06 proof moved the full seven-word L1 identity to first Herbs, suppressed the three direct generic-key spawns of `0x80062D60`, and instrumented key callback/award plus known presentation/checkpoint request paths. On pickup, the native HUD showed `TRACE KA` with live state `G4 S7 B1`. The visible `CHECK POINT` banner did **not** appear. No `E`, `O`, or `C` event was logged after the key callback.
+
+The user then died and confirmed that the checkpoint relocation **still occurred**. Thus v06 separates the two effects:
+
+- **presentation/banner:** suppressed on this route when the three direct generic-key `0x80062D60` spawns are removed;
+- **respawn/checkpoint state:** still committed through the normal stage/key state (`S7/B1`) and consumed later by player reconstruction.
+
+This is stronger than the earlier v01/v02 interpretation and conflicts with their reported visible-banner result. Preserve that discrepancy as artifact-specific evidence rather than deleting it. Before production, confirm the banner result again in a minimal de-instrumented composition.
+
+**Current two-seam model:** likely production behavior will require (1) key-only suppression of the direct generic-key presentation spawns, while leaving ordinary checkpoint/Strength presentation intact, and (2) a separate player-only respawn-coordinate override that substitutes the pre-key selector only when the current selector still matches the key-induced selector. The latter can naturally stop applying after a later legitimate non-key selector change.
 
 The next justified runtime diagnostic is instrumentation, not another blind suppression patch: use a bounded in-ROM write-only ring buffer at specific candidate request sites, then poll that buffer from ordinary per-frame Lua RAM reads (Ares64 execute callbacks are not required). Compare exactly three cases through the first banner frame: relocated Prison L1 key at the easy Herbs location, untouched Herbs, and one ordinary checkpoint. Record site ID, stage, current pickup identity, `0x802C18F8`, and `0x802C0D54`; then perform one death/re-entry comparison for relocation separately.
 
