@@ -8,6 +8,7 @@
 - **Runtime-confirmed:** the Prison resource-file mapping was matched against captured runtime memory at `0x801FB798`.
 - **Runtime-confirmed:** representative Prison ordinary-pickup collection/persistence is established, but all 10 Prison records have not been individually exhausted one by one in runtime testing.
 - **Runtime-confirmed, proof-only:** Prison is the destination used for the six-Herbs extension-selector proof, single imported embedded Potion proof, converted Health-urn proof, and the composed five-import visual stress proof. Exact stage-local configurations are preserved below; the generalized conclusions remain with the global materialization owner.
+- **Static-confirmed overlay identity:** Prison's main-stage raw overlay is global file `0x9F`, file-table entry ROM `0xA5784`, raw ROM `[0xC4C70,0xCA510)`, loaded at `0x802ECE30`. A previously investigated `0xA2` acquired-bit path belongs to a different overlay and must not be attributed to Prison.
 
 ## File mapping
 
@@ -157,6 +158,7 @@
 - The Proof D/F/H and five-import constructions expand a **relocated proof copy** of the stage resource file. They do not convert any ROM range, appended selector word, or appended payload region into a production allocation.
 - Occupied stock slots with zero ordinary-pickup users remain protected. Prison-specific proof success does not establish those selectors as repurposable for production or prove that another stage can use the same resource layout.
 - Current limits remain bounded to the documented routes: the six-Herbs proof observed two of six modified pickups; the single-import proofs observed their chosen location plus a stock control; the composed proof observed five imported visuals plus a stock control. These results do not constitute exhaustive runtime validation of all Prison pickup/resource combinations.
+- **Key-checkpoint diagnostic:** v04/v05 relocate the full seven-word L1 identity slice `+0x10..+0x2B` onto first Herbs record `0xCA0F0`, not merely the callback. The visible `CHECK POINT` event follows that relocated identity. v04 suppressing the L1 selector write and v05 suppressing the acquired-bit store both leave the banner intact; no key-only banner seam is yet proven.
 
 ## Related owners
 
