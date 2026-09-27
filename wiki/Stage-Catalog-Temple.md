@@ -47,23 +47,23 @@
 
 | Slot | Name | Outer offset | Format | Frames | Pickup users |
 |---:|---|---:|---|---:|---:|
-| 0 | Non-pickup/unknown resource | `0xD1C4` | embedded-data-bundle | 12 | 0 |
+| 0 | Temple Map scripted actor | `0xD1C4` | embedded-data-bundle | 12 | 0 |
 | 1 | Unused logical slot | `0` | empty | — | 0 |
 | 2 | Unused logical slot | `0` | empty | — | 0 |
-| 3 | Non-pickup/unknown resource | `0x44` | zero-terminated-record-list | 13 | 0 |
+| 3 | Shared effect family; alternating frames match external IDs `0x38E..0x394` | `0x44` | zero-terminated-record-list | 13 | 0 |
 | 4 | Non-pickup/unknown resource | `0x7C` | zero-terminated-record-list | 15 | 0 |
 | 5 | Non-pickup/unknown resource | `0xBC` | zero-terminated-record-list | 13 | 0 |
-| 6 | Non-pickup/unknown resource | `0xCE74` | single-record-pointer | 1 | 0 |
+| 6 | Temple special long-bar actor; exact gameplay name Pending | `0xCE74` | single-record-pointer | 1 | 0 |
 | 7 | Non-pickup/unknown resource | `0x74BC` | zero-terminated-record-list | 5 | 0 |
 | 8 | Non-pickup/unknown resource | `0x8C7C` | embedded-data-bundle-loop-selector | 18 | 0 |
 | 9 | Non-pickup/unknown resource | `0x8CD0` | zero-terminated-record-list | 5 | 0 |
-| 10 | Non-pickup/unknown resource | `0xADF4` | zero-terminated-record-list | 6 | 0 |
+| 10 | Shared six-frame animation; exact decoded match to IDs `0x37A..0x37F` | `0xADF4` | zero-terminated-record-list | 6 | 0 |
 | 11 | Unused logical slot | `0` | empty | — | 0 |
 | 12 | Unused logical slot | `0` | empty | — | 0 |
 | 13 | Unused logical slot | `0` | empty | — | 0 |
 | 14 | Non-pickup/unknown resource | `0xDF38` | embedded-data-bundle | 8 | 0 |
 | 15 | Herbs | `0xF130` | embedded-data-bundle | 8 | 4 |
-| 16 | Non-pickup/unknown resource | `0xCD60` | external-resource-id-bundle | 10 | 0 |
+| 16 | Shared ten-frame slab/door-like animation candidate (`0x25D..0x266`) | `0xCD60` | external-resource-id-bundle | 10 | 0 |
 
 ## Recognized bundle records
 
@@ -187,9 +187,16 @@
 ## Temple-specific notes and boundaries
 
 - All four ordinary pickup records are Herbs and all use stage-local resource slot `15`.
-- The Temple Map is tracked by the legacy runtime work at collected flag RDRAM `0x8026E9A4`, but it is not one of the four ordinary records and is not assigned an ordinary resource slot here.
+- **Temple Map slot is now Static-confirmed:** the Temple overlay's scripted actor path around `0x802EEC54` constructs the stage resource using outer-table **slot 0** at `0x802EECCC`, then awards native inventory item `0x0D` through `0x80075448` at `0x802EEE5C`. This is the Map actor. It remains a special/scripted path rather than a fifth ordinary `0x30` pickup record. The legacy runtime flag `0x8026E9A4` remains useful lifecycle evidence.
+- **The 17-slot table is not one slot per physical Temple object.** One resource bundle can serve multiple actor instances, stage geometry can be represented outside this table, and several occupied slots are shared effect/animation families rather than Temple props.
+- Slot `3` is demonstrably shared effect content: decoded frames 0/2/4/6/8/10/12 match external resource IDs `0x38E..0x394` byte-for-byte; the same IDs occur in multiple stage packages. Its imagery is an expanding cloud/burst family, not a unique Temple door/pillar resource.
+- Slot `10` is also shared: all six decoded frames match external IDs `0x37A..0x37F` byte-for-byte and the same family occurs in Wind/Water catalogs. It is not a Temple-unique prop slot.
+- Slot `16` uses external IDs `0x25D..0x266`, exactly the same ten-frame family as Wind slot `11`. Static image inspection strongly resembles a stone slab/door rotating through edge-on frames, making it a strong door-resource candidate, but the exact Temple actor-instance mapping is still Pending.
+- Slot `6` has a direct Temple overlay constructor at `0x802EF740`: it passes `resource_base + 0x18` (outer slot 6) to `0x800281A0`. The single visible frame is `182x38` and long/bar-like; the exact gameplay object name remains Pending.
+- Slots `4,5,7,8,9,14` remain semantically unresolved. Decoded imagery for `4,5,7,8,9` is animation/effect-like rather than evidence for a one-slot-per-pillar/door model; slot `14` uses native image type 2 and remains visually undecoded in this audit.
+- Consequently, the observed physical set “four crushing pillars + four stone doors + Map + movable cylinder/block + bounce roof” may still describe Temple gameplay correctly, but **the fact that it totals eleven does not explain the eleven occupied non-Herbs resource slots**. At least three of those slots are shared/common animation families, and the four door instances would not require four different resource slots if they use one shared door bundle.
 - The Map's Temple trigger/reward separation and possible 85th-check/global-shuffle policy are owned by [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
-- Cross-stage Map retention/removal and run-lifecycle behavior are owned by [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle). This catalog records only the Temple-local boundary and does not make the Map policy canonical here.
+- Cross-stage Map retention/removal and run-lifecycle behavior are owned by [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle).
 
 ## Related owners
 
