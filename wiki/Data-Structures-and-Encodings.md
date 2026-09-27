@@ -140,6 +140,23 @@ N64 source colors are 16-bit BGR555 values with a preserved high control/alpha b
 
 Donor-specific source codecs and conversion pipelines are documented in [MKT fighter asset translation](MKT-Fighter-Asset-Translation).
 
+## Global raw indexed-image record
+
+**Static-confirmed from global file `0x5E` and its exact native parser.** The title package is a count-prefixed sequence of records with a 12-byte header followed by aligned pixel payload. The same record grammar supports both CI8 and packed CI4 without a renderer hook.
+
+| Offset | Meaning |
+|---:|---|
+| `+0x00` | flags/placement word; **bit 31 selects packed CI4** when set and CI8 when clear |
+| `+0x04` | packed width field; high byte is visible width, low byte is stored row pitch in pixels; zero low byte means 256 |
+| `+0x06` | packed height field; low byte is image height on the traced records |
+| `+0x08` | texture/resource slot ID |
+| `+0x0A` | matching resource ID on the traced `0x5E` records |
+| `+0x0C` | pixel payload |
+
+The parser at `0x80002DC8` advances CI8 records by `align4(pitch * height)` bytes and CI4 records by `align4((pitch * height) / 2)`. Its CI4 branch calls `0x8001C1FC -> 0x8001C110`; the CI8 branch calls `0x8001C058 -> 0x8001BF70`. The CI4 initializer allocates half-width texture backing and marks the slot metadata for the native 4-bpp renderer branch.
+
+The six current title tiles all have even pitch, so they are structurally packable at two pixels per byte. Existing MKMSZR CI4 assets use the N64 convention of the even-X pixel in the high nibble and odd-X pixel in the low nibble; title-specific runtime confirmation remains Pending.
+
 ## Native fighter image type 5
 
 **Static-confirmed; generated fighter use is Runtime-confirmed on bounded Sektor proof routes.** Stock Sub-Zero fighter frames in global file ID `0x87` predominantly use native image type `5`.
