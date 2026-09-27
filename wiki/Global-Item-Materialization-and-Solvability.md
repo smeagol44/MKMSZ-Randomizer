@@ -8,7 +8,7 @@
 
 MKMSZR 1.0 requires one deterministic logical ordinary-item pool across the eight main stages, followed by a destination-stage materialization pass and a whole-run solvability check. The logical assignment and the physical representation are deliberately separate concerns.
 
-Cross-stage feasibility is **Runtime-confirmed in bounded proofs**, including extension selectors, embedded foreign resources, external-to-embedded conversion, and five simultaneous imported visuals in Prison. The generalized pure resource planner exists but remains disconnected from the normal browser/CLI patch pipeline. Fortress composed stress validation and destination-safe key/crystal award handling remain Pending, as do the final global shuffle/solver and production integration gate.
+Cross-stage feasibility is **Runtime-confirmed in bounded proofs**, including extension selectors, embedded foreign resources, external-to-embedded conversion, and five simultaneous imported visuals in Prison. The generalized pure resource planner exists but remains disconnected from the normal browser/CLI patch pipeline. Fortress composed stress validation and destination-safe key/crystal/boss-reward handling remain Pending, as do the final global shuffle/solver and production integration gate.
 
 The normative 1.0 acceptance requirements remain owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). This page owns the technical mechanism, evidence, limits, and unresolved design questions.
 
@@ -32,6 +32,24 @@ A global item/resource-bundle catalog is intentionally **not** created yet. The 
 The base global pool is formed from the **84 ordinary pickup locations** cataloged across Temple, Wind, Water, Earth, Prison, Fire, Bridge, and Fortress. A global assignment chooses a logical item identity independently of the item's original stage.
 
 That logical identity must preserve the item's real gameplay and visual semantics. It cannot be represented by blindly copying a source stage's 28-byte movable tuple into a different stage, because that tuple includes a stage-local resource selector and award semantics that may not transfer safely.
+
+### Fortress boss-defeat reward locations
+
+**Runtime/user-observed:** the three stock Fortress crystal pickups are produced by defeating Kia, Jataaka, and Sareena. For global-randomizer modeling, these are three **reward locations** whose trigger is the corresponding boss defeat. Crystal Kia/Jataaka/Sareena are the stock rewards, not fixed location identities.
+
+Therefore:
+- defeating any of the three bosses must spawn/materialize the logical item assigned to that boss-reward location;
+- the assigned item need not be a crystal;
+- the three crystal logical rewards remain part of the movable global pool and may appear at other locations;
+- the boss trigger/spawn mechanism and the spawned reward identity must be separated in the production materializer.
+
+The existing Fortress `0x30` records remain useful as stock reward/presentation data, but their catalog presence must not be interpreted as evidence that those checks are static world pickups.
+
+### Key-triggered checkpoint side effect
+
+**Rejected / failed:** checkpoint-suppression proofs v01/v02 NOPed the three generic-key callback spawns of `0x8002830C(0x15, 0x80062D60)`. Runtime testing still produced key-triggered checkpoints, so those process spawns are **not** the checkpoint owner. They must not be used as the basis for another suppression proof.
+
+The next trace must follow key acquisition state into the death/respawn/checkpoint consumer and identify the exact state write/transition to suppress while preserving inventory award, progression/key bits, pickup persistence, audio/presentation, and boss-reward spawning.
 
 For planning purposes, a logical ordinary item therefore needs enough information to materialize:
 
