@@ -34,7 +34,7 @@ EXPECTED_DICT_SHA256 = "dd467f1b389d8f1e83761062638748e4aec0e1f856900b8a24a299c0
 EXPECTED_IMAGE_STREAM_SHA256 = "f78135df4dc0e8d7c1fe42cc3f3a921d162a3d6751a357390b64370e67736204"
 EXPECTED_IMAGE_DECODED_SHA256 = "18eed9a06f82249cd7b3db3b83cb1cd0115df739ca77712fdc4e274413794736"
 EXPECTED_PALETTE_SOURCE_SHA256 = "1e0864523ff24b957738682bd1e8f4d2354f87036dd908291b1e5e98393337dd"
-EXPECTED_TARGET_TLUT_SHA256 = "d70dacdfe067f516b0647b62bf7effdb167bc077037f4a4f45e5d754168dae31"
+EXPECTED_TARGET_TLUT_SHA256 = "687569e2c16520796b0f11ace50915827d50320e73ac15690f9e3bc5914e4a5b"
 EXPECTED_CTL_SHA256 = "8dc6f036dc795cba2aa151e2fa7833d3bc3ac70f454b48fcd50df6c6d365b836"
 EXPECTED_PRED_SHA256 = "6ec8e062f6eff4c49755c0bb27de754313706bc6033f34601601c214235efc5f"
 EXPECTED_SAMPLE_SHA256 = "57090534e758a3d0a1676722b2ce5715da2e0b13ac155aff9cc7df04822d678f"
@@ -51,6 +51,16 @@ _PIECES = (
     (0, 64, 7, 21),
     (7, 64, 64, 21),
     (71, 64, 7, 21),
+)
+
+# Deterministic 16-color quantization confirmed in the accepted composition.
+# Indices address the first-appearance palette of the donor's visible pixels.
+CI4_PALETTE_SOURCES = (0, 15, 37, 10, 50, 1, 3, 40, 7, 51, 16, 47, 25, 45, 31, 41)
+CI4_INDEX_MAP = (
+    0, 5, 6, 6, 5, 10, 8, 8, 4, 8, 3, 9, 1, 10, 9, 1,
+    10, 10, 12, 12, 10, 8, 9, 14, 12, 12, 7, 3, 10, 9, 10, 14,
+    14, 14, 14, 3, 15, 2, 11, 10, 7, 15, 4, 9, 13, 13, 4, 11,
+    9, 6, 4, 9, 6, 6, 4,
 )
 
 
@@ -130,23 +140,24 @@ def _build_visual_assets(decoded: bytes, source_palette: bytes) -> tuple[tuple[b
             seen.add(pixel)
             palette_order.append(pixel)
 
-    remap = {old: new for new, old in enumerate(palette_order)}
-    remapped = bytes(remap[pixel] for pixel in visible)
-
-    colors = [
-        source_palette[index * 2 : index * 2 + 2]
-        for index in palette_order
-    ]
-    tlut = b"".join(colors)
-    tlut += bytes(0x200 - len(tlut))
+    if len(palette_order) != len(CI4_INDEX_MAP):
+        raise ValueError("MKT Toasty visible palette differs from the confirmed 55 colors")
+    remap = {pixel: CI4_INDEX_MAP[index] for index, pixel in enumerate(palette_order)}
+    tlut = b"".join(
+        source_palette[palette_order[index] * 2 : palette_order[index] * 2 + 2]
+        for index in CI4_PALETTE_SOURCES
+    )
 
     slices: list[bytes] = []
     for x, y, width, height in _PIECES:
         stride = (width + 31) & ~31
-        data = bytearray(stride * height)
+        data = bytearray(stride * height // 2)
         for row in range(height):
-            source_row = remapped[(y + row) * TOASTY_VISIBLE_WIDTH : (y + row + 1) * TOASTY_VISIBLE_WIDTH]
-            data[row * stride : row * stride + width] = source_row[x : x + width]
+            source_row = visible[(y + row) * TOASTY_VISIBLE_WIDTH : (y + row + 1) * TOASTY_VISIBLE_WIDTH]
+            for column in range(width):
+                index = remap[source_row[x + column]]
+                offset = row * (stride // 2) + column // 2
+                data[offset] |= index << (4 if column % 2 == 0 else 0)
         slices.append(bytes(data))
 
     return tuple(slices), tlut

@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from ..allocations import ExpansionPoolAllocator
+from ..data.addresses import EXPANSION_POOL_END_EXCLUSIVE
 from .toasty_constants import *
 
 ZERO=0; V0=2; V1=3; A0=4; A1=5; A2=6; A3=7
@@ -149,7 +150,11 @@ def _build_init(state_k1:int,init_table_k1:int,palette_k0:int,feature_state_k1:i
     e.label('alloc_loop')
     e.emit(lbu(A0,2,S3),lbu(A1,3,S3),jalr(S4),NOP);e.bltz(V0,'fail');e.emit(NOP)
     e.emit(lbu(T0,0,S3),sll(T0,T0,2),addu(T1,S0,T0),sw(V0,0,T1))
-    e.emit(sll(T0,V0,4),addu(T1,S1,T0),lhu(T0,4,S3),sh(T0,0x08,T1))
+    e.emit(sll(T0,V0,4),addu(T1,S1,T0))
+    # The stock slot defaults to CI8. Clear its format bit after recording the
+    # stride; keep the remaining init sequence at the confirmed offsets.
+    e.emit(lhu(T2,0,T1),_i(0x0C,T2,T2,0xFF7F),sh(T2,0,T1))
+    e.emit(lhu(T0,4,S3),sh(T0,0x08,T1))
     e.emit(sll(T0,V0,2),addu(T1,S2,T0),lw(T2,0,T1),lui(T3,0x2000),or_reg(T2,T2,T3),lw(T5,8,S3),lhu(T4,6,S3))
     e.label('copy_loop')
     e.emit(lbu(T6,0,T5),sb(T6,0,T2),addiu(T5,T5,1),addiu(T2,T2,1),addiu(T4,T4,-1))
@@ -189,13 +194,13 @@ def _build_dispatcher(init_k1:int,comp_k1:int,trigger_k1:int)->bytes:
     return e.finish()
 
 def _build_call_trampoline()->bytes:
-    return words_blob([lui(T9,0xA01B),jr(T9),NOP])
+    return words_blob([jump(INIT_LOADER_VA),NOP,NOP])
 
 def _build_init_loader()->bytes:
-    # GAME SETTINGS TURN owns the shared file-0x1A stage-init load.  By the
-    # time the post-13 Toasty hook runs, the packed Toasty module is already
-    # resident at its established 0x801B0000 runtime base.
-    return _build_call_trampoline()
+    # The shared file-0x1A stage-init load has completed before this hook.
+    # The 12-byte HUD/reaction trampoline jumps here for the full 16-byte
+    # address jump to the shifted CI4 Toasty module.
+    return words_blob([*addr_words(T9,MODULE_K1),jr(T9),NOP])
 
 def _align(value:int,alignment:int=16)->int:
     return (value+alignment-1)&~(alignment-1)
@@ -223,10 +228,12 @@ def pack_toasty_module(assets:ToastyAssets, probability_per_thousand:int)->Packe
 
     take('dispatcher',len(dispatch_probe));take('compositor',len(comp_probe));take('init',len(init_probe))
     take('audio',len(audio));take('trigger',len(trigger_probe));take('draw-table',len(DRAW_TABLE))
+    # The target keeps the original 0x200-byte TLUT slot, filling only its
+    # first 16 entries. That preserves deterministic module addresses.
     take('init-table',9*12);take('slot-state',9*4);take('feature-state',0x10);take('palette',0x200)
     for index,data in enumerate(assets.visual_slices): take(f'piece-{index}',len(data))
 
-    pool=ExpansionPoolAllocator()
+    pool=ExpansionPoolAllocator(start=MODULE_K0,end_exclusive=EXPANSION_POOL_END_EXCLUSIVE)
     allocation=pool.allocate('toasty-production',cursor,align=0x1000)
     if allocation.start!=MODULE_K0:
         raise ValueError(f"Toasty production base drifted: 0x{allocation.start:08X}")

@@ -13,14 +13,16 @@ The codebase is built around a modular Python patching core. ROMs are never stor
 - include the runtime-confirmed compact safe eight-stage selector in every patched ROM;
 - skip the two mandatory post-legal company/logo screens while preserving the legal/branding screen and normal title initialization;
 - skip only the Safe Stage Select automatic stage-entry save prompt while preserving normal later/manual saves;
-- reserve the runtime-tested 1 KiB MKMSZR native memory block in every patched ROM;
+- reserve the runtime-tested 16 KiB MKMSZR native memory block in every patched ROM;
 - persist all 84 catalogued ordinary pickup locations across the eight main stages;
 - deterministically randomize the 84 ordinary pickup records from the run seed;
 - provide four native 10-slot inventory boxes with remapping-aware switching and title-menu transition persistence;
 - show the active inventory box through the native gameplay text path;
 - brand the boot/legal screen as MKMSZR with the configured character edition, seeded joke text, `BY SMEAG`, and `NOT LICENSED BY NINTENDO`;
 - choose a deterministic two-line boot joke/quote from a 100+ message pool;
-- deterministic Sub-Zero outfit recoloring, including seed-derived colors.
+- deterministic Sub-Zero outfit recoloring, including seed-derived colors;
+- the accepted in-game `TURN / ATTACK / SPECIALS / JUMP / RUN` control suite;
+- optional MKT Rev. 2 donor-backed 16-color CI4 Toasty effect.
 
 ## Native pickup randomization milestone
 

@@ -3,6 +3,8 @@ import hashlib
 import pytest
 
 from mkmszr.donors.mkt_n64 import (
+    CI4_INDEX_MAP,
+    CI4_PALETTE_SOURCES,
     MKT_N64_REV2_SHA256,
     MKT_N64_REV2_SIZE,
     _build_visual_assets,
@@ -33,13 +35,11 @@ def test_dict64_final_decoder_handles_literal_double_dictionary_and_run() -> Non
     assert decoded == bytes((3, 4, 4, 4, 5, 6, 6))
 
 
-def test_visual_translation_uses_first_appearance_palette_order() -> None:
-    # Build 85 rows of 80 pixels. The visible 78 columns use source indices 5,2,7
-    # in first-appearance order; the two padding columns deliberately use 63 and
-    # must not affect the compact target palette.
+def test_visual_translation_uses_confirmed_ci4_palette_order() -> None:
+    # The 55 visible indices appear in order; padding must not affect the palette.
     rows = []
     for row in range(85):
-        visible = bytes([5, 2, 7] + [5] * 75)
+        visible = bytes(range(55)) + bytes(23)
         rows.append(visible + bytes((63, 63)))
     decoded = b"".join(rows)
 
@@ -47,7 +47,12 @@ def test_visual_translation_uses_first_appearance_palette_order() -> None:
     slices, tlut = _build_visual_assets(decoded, palette)
 
     assert len(slices) == 9
-    assert tlut[:6] == bytes.fromhex("0005 0002 0007")
-    assert tlut[6:] == bytes(len(tlut) - 6)
-    assert len(tlut) == 0x200
+    assert len(tlut) == 0x20
+    assert tlut == b"".join(index.to_bytes(2, "big") for index in CI4_PALETTE_SOURCES)
+    assert slices[0][:4] == bytes(
+        (CI4_INDEX_MAP[0] << 4 | CI4_INDEX_MAP[1],
+         CI4_INDEX_MAP[2] << 4 | CI4_INDEX_MAP[3],
+         CI4_INDEX_MAP[4] << 4 | CI4_INDEX_MAP[5],
+         CI4_INDEX_MAP[6] << 4)
+    )
     assert hashlib.sha256(b"".join(slices)).hexdigest()

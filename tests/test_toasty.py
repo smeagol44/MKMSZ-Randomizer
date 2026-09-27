@@ -1,5 +1,6 @@
 from mkmszr.config import OutfitConfig, RandomizerConfig
 from mkmszr.patcher import build_pipeline
+from mkmszr.patches.controls_production import ControlsProductionPatch
 from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
 from mkmszr.patches.toasty import ToastyProductionCompositionPatch
 from mkmszr.patches.toasty_codegen import (
@@ -18,12 +19,12 @@ from mkmszr.patches.toasty_constants import (
 
 def fake_assets() -> ToastyAssets:
     geometry = ((7,32),(64,32),(7,32),(7,32),(64,32),(7,32),(7,21),(64,21),(7,21))
-    slices = tuple(bytes(((w + 31) & ~31) * h) for w,h in geometry)
+    slices = tuple(bytes(((w + 31) & ~31) * h // 2) for w,h in geometry)
     wave = bytearray(24)
     wave[0x0C:0x10] = (-2253).to_bytes(4, "big", signed=True)
     return ToastyAssets(
         visual_slices=slices,
-        palette_tlut=bytes(0x200),
+        palette_tlut=bytes(0x20),
         audio_subpatch=bytes(20),
         audio_wave=bytes(wave),
         audio_predictor=bytes(264),
@@ -33,9 +34,9 @@ def fake_assets() -> ToastyAssets:
 
 def test_toasty_module_fits_reserved_pool_at_aligned_base() -> None:
     packed = pack_toasty_module(fake_assets(), DEFAULT_PROBABILITY_PER_THOUSAND)
-    assert packed.allocation_start == MODULE_K0 == 0x801B0000
-    assert len(packed.data) == 0x3320
-    assert MODULE_K0 + len(packed.data) == 0x801B3320
+    assert packed.allocation_start == MODULE_K0 == 0x801B1000
+    assert len(packed.data) == 0x1DF0
+    assert MODULE_K0 + len(packed.data) == 0x801B2DF0
 
 
 def test_toasty_is_optional_and_runs_after_rainbow() -> None:
@@ -48,8 +49,9 @@ def test_toasty_is_optional_and_runs_after_rainbow() -> None:
         toasty_assets=assets,
         toasty_probability_per_thousand=DEFAULT_PROBABILITY_PER_THOUSAND,
     )
-    assert isinstance(composed.patches[-1], ToastyProductionCompositionPatch)
-    assert composed.patches[-1].probability_per_thousand == DEFAULT_PROBABILITY_PER_THOUSAND
+    assert isinstance(composed.patches[-2], ToastyProductionCompositionPatch)
+    assert composed.patches[-2].probability_per_thousand == DEFAULT_PROBABILITY_PER_THOUSAND
+    assert isinstance(composed.patches[-1], ControlsProductionPatch)
 
     types = [type(patch) for patch in composed.patches]
     assert types.index(GameSettingsTurnPatch) < types.index(ToastyProductionCompositionPatch)
@@ -61,9 +63,10 @@ def test_product_default_probability_is_eight_percent() -> None:
 
 def test_toasty_source_offset_matches_shared_runtime_offset() -> None:
     assert SHARED_EXPANSION_ROM == 0x00F68000
-    assert MODULE_ROM == 0x00F687E0
+    assert MODULE_ROM == 0x00F697E0
     assert MODULE_ROM - SHARED_EXPANSION_ROM == MODULE_K0 - 0x801AF820
 
 
-def test_toasty_init_reuses_shared_stage_load() -> None:
-    assert _build_init_loader() == _build_call_trampoline()
+def test_toasty_init_uses_shifted_ci4_module() -> None:
+    assert _build_call_trampoline() == bytes.fromhex("080266CF 00000000 00000000")
+    assert _build_init_loader() == bytes.fromhex("3C19A01B 27391000 03200008 00000000")
