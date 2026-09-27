@@ -8,8 +8,8 @@ from mkmszr.patches.power_order import (
     ICE_GROUND_TAIL_ROM,
     POWER_HELP,
     POWER_HELP_TABLE_ROM,
-    POWER_ICONS,
     POWER_ICON_TABLE_ROM,
+    POWER_ICONS,
     POWER_NAMES,
     SIMPLE_TIER_SITES,
     VANILLA_POWER_ORDER,
@@ -31,7 +31,7 @@ def _stock_shape() -> RomImage:
         max(offset for offset, _tier in SIMPLE_TIER_SITES.values()) + 4,
     )
     data = bytearray(end)
-    for _label, (offset, tier) in SIMPLE_TIER_SITES.items():
+    for offset, tier in SIMPLE_TIER_SITES.values():
         data[offset : offset + 4] = _slti("v0", "v0", tier).to_bytes(4, "big")
     data[
         ICE_GROUND_TAIL_ROM : ICE_GROUND_TAIL_ROM + len(ICE_GROUND_TAIL_EXPECTED)
