@@ -1,0 +1,177 @@
+"""Native controls emitters ported from the accepted manual-test composition.
+
+The emitters retain their confirmed MIPS instructions and stock callbacks.
+"""
+from __future__ import annotations
+
+from ..mips import Emitter, address_words, addiu, andi, jal, ori
+from ..mips import lui as lui, sltiu as sltiu, sw as sw
+from .inventory_boxes import SPECIALS_MODERN_STATE_MASK as SPECIALS_MODERN_STATE_MASK
+FILE_ROM = 0x00F68000
+
+
+FILE_ENTRY_ROM = 0x000A5148
+
+
+MODULE_K0 = 0x801AF820
+
+
+V05_FILE_END = 0x00F686B0
+
+
+TOASTY_ROM = 0x00F687E0
+
+
+TOASTY_K0 = 0x801B0000
+
+
+EVENT_ROM = 0x00F68410
+
+
+EVENT_SIZE = 0x100
+
+
+BLOCK_ROM = 0x00F68510
+
+
+BLOCK_SIZE = 0x68
+
+
+WRAPPER_ROM = 0x00F68600
+
+
+STATE_VA = 0x800A60E8
+
+
+ATTACK_MODERN_MASK = 0x0400
+
+
+SEMANTIC_INPUT_VA = 0x800BF2EE
+
+
+PLAYER_CTRL_PTR_VA = 0x802C1AC0
+
+
+CURRENT_PROCESS_PTR_VA = 0x802ECE20
+
+
+CURRENT_MAP_PTR_VA = 0x802E7DFC
+
+
+CURRENT_XP_VA = 0x8011200C
+
+
+MAP_SOMERSAULT = 0x8009F9A0
+
+
+MAP_AIR = 0x8009FA00
+
+
+DISPATCH_VA = 0x800155C0
+
+
+TRANSFER_VA = 0x80049D14
+
+
+MATCHER_VA = 0x80049E60
+
+
+PREP_SPECIAL_VA = 0x80032AF8
+
+
+COND_ICE_CLONE = 0x8004A22C; CB_ICE_CLONE = 0x8003CF8C
+
+
+COND_ICE_CLONE = 0x8004A22C; CB_ICE_CLONE = 0x8003CF8C
+
+
+COND_ICE_BLAST = 0x8004A304; CB_ICE_BLAST = 0x80049C34
+
+
+COND_ICE_BLAST = 0x8004A304; CB_ICE_BLAST = 0x80049C34
+
+
+COND_ICE_UP = 0x8004A434; CB_ICE_UP = 0x80049C84
+
+
+COND_ICE_UP = 0x8004A434; CB_ICE_UP = 0x80049C84
+
+
+COND_ICE_DOWN = 0x8004A4A4; CB_ICE_DOWN = 0x80049CB0
+
+
+COND_ICE_DOWN = 0x8004A4A4; CB_ICE_DOWN = 0x80049CB0
+
+
+COND_SPINE = 0x8004A514; CB_SPINE = 0x80049BE8
+
+
+COND_SPINE = 0x8004A514; CB_SPINE = 0x80049BE8
+
+
+COND_POLAR = 0x8004A684; CB_POLAR = 0x8004BD28
+
+
+COND_POLAR = 0x8004A684; CB_POLAR = 0x8004BD28
+
+
+COND_FREEZE = 0x8005A9AC; CB_FREEZE = 0x8005A7B4
+
+
+COND_FREEZE = 0x8005A9AC; CB_FREEZE = 0x8005A7B4
+
+
+CB_SLIDE = 0x8003CFAC
+
+
+CB_SUPER_SLIDE = 0x8005A5C0
+
+
+LP_RECORD_ICE_CLONE = 0x800B0F0C
+
+
+LP_RECORD_ICE_BLAST = 0x800B0F38
+
+
+LP_CALL_RETURN = 0x80014B98
+
+
+HK_CALL_RETURN = 0x80014C48
+
+
+LK_CALL_RETURN = 0x80014CA0
+
+
+SPECIAL_CALL_HOOK_ROM = 0x0001645C
+
+
+SPECIAL_CALL_EXPECTED = bytes.fromhex('10400003 00000000 0040F809 00000000')
+
+
+XP_CAP_TABLE_ROM = 0x000A6FFC
+
+
+XP_CAP_EXPECTED = (20000).to_bytes(2,'big') * 10
+
+
+XP_MAX = 20000
+
+
+EVENT_V05_SHA = 'e4ac874c8372171dcd36dd741b09bfeafbcff3978e0eeb7e63f1c21b5048a425'
+
+
+BLOCK_V05_SHA = 'f3cdf0fe565d2b06ded74fb6d070e7e0458189638f651485eb4d1ecdaf524dfd'
+
+
+WRAPPER_V05_SHA = '2cf1e7df23ca205f50708f7141441b4414d19424ca159cc8b875eb6940c1cdf5'
+
+
+NOP = 0
+
+
+def emit_condition_route(e: Emitter, label: str, cond: int, cb: int, selector: int) -> None:
+    e.label(label)
+    e.emit(jal(cond), NOP, andi('v0','v0',0xFFFF), ori('t0','zero',0x8000))
+    e.bne('v0','t0','done'); e.emit(NOP)
+    e.emit(addiu('a0','zero',selector), *address_words('a1',cb))
+    e.beq('zero','zero','transfer'); e.emit(NOP)

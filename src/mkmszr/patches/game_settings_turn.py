@@ -11,7 +11,7 @@ v06 opponent face-policy scan detects +0x6BC bit 0x0200.
 
 File ID 0x1A is the shared expansion transport.  TURN owns the low expansion
 slice; optional Toasty content is appended later at its established
-0x801B0000 runtime base.
+0x801B1000 runtime base.
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ NOP = 0
 EXPANSION_FILE_ID = 0x1A
 EXPANSION_FILE_ENTRY_ROM = FILE_TABLE_ROM + EXPANSION_FILE_ID * FILE_TABLE_ENTRY_SIZE
 SHARED_EXPANSION_ROM = 0x00F68000
-TOASTY_RUNTIME_BASE = 0x801B0000
+TOASTY_RUNTIME_BASE = 0x801B1000
 
 PLAYER_SEMANTIC_INPUT_VA = 0x800BF2EE
 CURRENT_CONTROLLER_PTR_VA = 0x802ECE20
@@ -974,7 +974,11 @@ def _patch_game_settings(rom: RomImage) -> None:
 
 
 class GameSettingsTurnPatch:
-    """Install production TURN plus UI/state-only COMBOS/SPECIALS/JUMP settings."""
+    """Install TURN and the guarded four-row staging frontend.
+
+    ControlsProductionPatch replaces the staging menu with the accepted
+    five-setting layout after all dependent patches are installed.
+    """
 
     name = "game-settings-turn"
 

@@ -26,6 +26,8 @@ from .patches import (
     XPProgressionPatch,
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
+from .patches.controls_production import ControlsProductionPatch
+from .patches.toasty_codegen import pack_toasty_module
 from .rom import RomImage
 
 
@@ -78,6 +80,14 @@ def build_pipeline(
                 probability_per_thousand=toasty_probability_per_thousand,
             )
         )
+    patches.append(
+        ControlsProductionPatch(
+            toasty_size=(
+                len(pack_toasty_module(toasty_assets, toasty_probability_per_thousand).data)
+                if toasty_assets is not None else None
+            ),
+        )
+    )
     return PatchPipeline(patches)
 
 

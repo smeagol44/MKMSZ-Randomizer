@@ -66,8 +66,8 @@ EXPANSION_FILE_ID = 0x1A
 EXPANSION_FILE_ENTRY_ROM = FILE_TABLE_ROM + EXPANSION_FILE_ID * FILE_TABLE_ENTRY_SIZE
 
 SHARED_EXPANSION_ROM = 0x00F68000
-MODULE_K0 = 0x801B0000
-MODULE_K1 = 0xA01B0000
+MODULE_K0 = 0x801B1000
+MODULE_K1 = 0xA01B1000
 MODULE_ROM = SHARED_EXPANSION_ROM + (MODULE_K0 - EXPANSION_POOL_START)
 TITLE_ROM_START = 0x00F90000
 
@@ -131,8 +131,9 @@ ALLOCATION_ORDER = (1, 4, 7, 0, 3, 6, 2, 5, 8)
 class ToastyAssets:
     """Translated assets supplied by a donor-aware caller.
 
-    ``visual_slices`` are the nine already-padded CI8 slices in v38 order.
-    ``palette_tlut`` is the 256-entry hardware-ready RGBA5551 TLUT.
+    ``visual_slices`` are nine 4-bit CI4 slices in v38 order, with each row
+    padded to a 32- or 64-pixel stride. ``palette_tlut`` is the 16-entry
+    hardware-ready RGBA5551 TLUT.
     The audio fields are the confirmed donor subpatch/wave/predictor/sample.
     """
 
@@ -150,13 +151,13 @@ class ToastyAssets:
             zip(PIECE_GEOMETRY, self.visual_slices, strict=True)
         ):
             stride = (width + 31) & ~31
-            expected = stride * height
+            expected = stride * height // 2
             if len(data) != expected:
                 raise ValueError(
                     f"Toasty slice {index} must be 0x{expected:X} bytes, got 0x{len(data):X}"
                 )
-        if len(self.palette_tlut) != 0x200:
-            raise ValueError("Toasty palette TLUT must be exactly 0x200 bytes")
+        if len(self.palette_tlut) != 0x20:
+            raise ValueError("Toasty CI4 palette TLUT must be exactly 0x20 bytes")
         if len(self.audio_subpatch) != 20:
             raise ValueError("Toasty donor subpatch must be exactly 20 bytes")
         if len(self.audio_wave) != 24:
