@@ -17,6 +17,12 @@ class GameSettingsConfig:
     jump_button: bool = False
     run_auto: bool = False
 
+    def __post_init__(self) -> None:
+        if self.jump_button and not (self.attack_modern and self.specials_modern):
+            raise ValueError(
+                "JUMP: BUTTON requires ATTACK: MODERN and SPECIALS: MODERN"
+            )
+
 
 @dataclass(frozen=True)
 class RandomizerConfig:
