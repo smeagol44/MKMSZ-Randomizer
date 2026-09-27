@@ -1,7 +1,6 @@
 import pytest
 
 from mkmszr.errors import PatchError
-from mkmszr.mips import REGISTERS
 from mkmszr.patches.base import PatchContext
 from mkmszr.patches.power_order import (
     FREEZING_POWERS,
