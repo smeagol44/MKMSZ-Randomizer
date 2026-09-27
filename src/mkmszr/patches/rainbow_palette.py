@@ -343,7 +343,10 @@ class RainbowPalettePatch:
                 alloc_site,
                 addiu("a0", "v0", RAINBOW_PALETTE_BANK_SIZE),
             )
-            rom.write_u32(load_site, jal(RAINBOW_LOADER_UNCACHED_VA))
+            # JAL preserves the caller's KSEG0 high nibble, so the dynamically
+            # loaded wrapper is entered through its cached alias.  File 0x1A is
+            # loaded before these stage-specific fighter paths execute.
+            rom.write_u32(load_site, jal(RAINBOW_LOADER_CACHED_VA))
 
         rom.write_bytes(RAINBOW_HELPER_ROM, RAINBOW_HELPER)
         rom.write_bytes(FRAME_SETUP_ROM, FRAME_SETUP_HOOK)
