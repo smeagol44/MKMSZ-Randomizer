@@ -159,6 +159,7 @@
 - Occupied stock slots with zero ordinary-pickup users remain protected. Prison-specific proof success does not establish those selectors as repurposable for production or prove that another stage can use the same resource layout.
 - Current limits remain bounded to the documented routes: the six-Herbs proof observed two of six modified pickups; the single-import proofs observed their chosen location plus a stock control; the composed proof observed five imported visuals plus a stock control. These results do not constitute exhaustive runtime validation of all Prison pickup/resource combinations.
 - **Key-checkpoint diagnostic:** v04/v05 relocate the full seven-word L1 identity slice `+0x10..+0x2B` onto first Herbs record `0xCA0F0`, not merely the callback. The visible `CHECK POINT` event follows that relocated identity. v04 suppressing the L1 selector write and v05 suppressing the acquired-bit store both leave the banner intact; no key-only banner seam is yet proven.
+- **v06/v07 checkpoint follow-up:** v06 suppresses the visible banner on the relocated L1 route while leaving `S7/B1`; v07 additionally executes the player-only selector `7 -> 0` respawn override (`TRACE KAR` after death). The Level-1 door nevertheless failed to open. Static follow-up must determine whether the door depends on the stock L1 location/record collected state (`0x802F221C`) or another Prison overlay predicate; if the door was tested only after respawn, room/selector reconstruction mismatch remains an alternate hypothesis.
 
 ## Related owners
 
