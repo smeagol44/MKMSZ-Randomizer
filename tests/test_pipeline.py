@@ -6,6 +6,7 @@ from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
 from mkmszr.patches.native_payload import NativePayloadPatch
 from mkmszr.patches.pickup_persistence import PickupPersistencePatch
 from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
+from mkmszr.patches.power_order import PowerOrderPatch
 from mkmszr.patches.rainbow_palette import RainbowPalettePatch
 from mkmszr.patches.stage_selector import SafeStageSelectorPatch
 from mkmszr.patches.xp_progression import XPProgressionPatch
@@ -40,3 +41,14 @@ def test_rainbow_outfit_uses_runtime_palette_patch() -> None:
     )
     types = [type(patch) for patch in pipeline.patches]
     assert RainbowPalettePatch in types
+
+
+def test_power_order_shuffle_is_optional_and_runs_after_controls() -> None:
+    disabled = build_pipeline(RandomizerConfig(seed="POWER"))
+    assert PowerOrderPatch not in [type(patch) for patch in disabled.patches]
+
+    enabled = build_pipeline(
+        RandomizerConfig(seed="POWER", shuffle_power_progression=True)
+    )
+    types = [type(patch) for patch in enabled.patches]
+    assert types[-1] is PowerOrderPatch
