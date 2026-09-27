@@ -13,6 +13,7 @@ const attackModern = document.querySelector("#attackModern");
 const specialsModern = document.querySelector("#specialsModern");
 const jumpButton = document.querySelector("#jumpButton");
 const runAuto = document.querySelector("#runAuto");
+const shufflePowerProgression = document.querySelector("#shufflePowerProgression");
 const patchButton = document.querySelector("#patchButton");
 const resultPanel = document.querySelector("#result");
 const resultSeed = document.querySelector("#resultSeed");
@@ -147,6 +148,7 @@ async function patchRom() {
     pyodide.globals.set("web_specials_modern", specialsModern.checked);
     pyodide.globals.set("web_jump_button", jumpButton.checked);
     pyodide.globals.set("web_run_auto", runAuto.checked);
+    pyodide.globals.set("web_shuffle_power_progression", shufflePowerProgression.checked);
 
     setLog("Validating game files and applying patches…");
 
@@ -165,6 +167,7 @@ _config = RandomizerConfig(
     seed=_seed,
     outfit=OutfitConfig(mode=_mode, rgb=_rgb if _mode == "rgb" else None),
     edition_name=_edition_name,
+    shuffle_power_progression=bool(web_shuffle_power_progression),
     game_settings=GameSettingsConfig(
         turn_lock=bool(web_turn_lock),
         attack_modern=bool(web_attack_modern),
