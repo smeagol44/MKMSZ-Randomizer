@@ -84,6 +84,17 @@ The corrected title implementation is **Runtime-confirmed** through the full pro
 
 The stock START setup at ROM `0x00079C24..0x00079C2B` is intentionally left untouched and therefore is not a patch-site row. The rejected executable-wrapper attempt beginning at `0x9ADE0` is documented as an allocation conflict in the Memory Map; it is not current production.
 
+## Power-order proof sites
+
+| ROM/VA | Proof | Status |
+|---|---|---|
+| ROM `0x0003D62C` / VA `0x8003CA2C` | Slide tier gate | v02 Runtime-confirmed bounded proof. Clean word `28420002` becomes `28420001`, moving Slide from tier >=2 to tier >=1 while preserving the stock recognizer/action path. |
+| ROM `0x0004B018..0x0004B033` / VA `0x8004A418..0x8004A433` | Ground Ice Blast tier-condition tail | v02 Runtime-confirmed bounded proof. Guarded in-place replacement changes only the native condition result from tier >=1 to tier >=2; Ice callback/action/resource behavior remains stock. |
+| ROM `0x000A6BB0..0x000A6BB7` / RAM `0x800A5FB0..0x800A5FB7` | First two native Power Ups icon IDs | v02 Runtime-confirmed presentation proof. Swap stock Ice Blast / Slide entries so the first N icon strip matches the shuffled gameplay order. |
+| ROM `0x000A78A0..0x000A78A7` | First two native Power Ups move-help pointers | v02 Runtime-confirmed presentation proof. Swap stock Ice Blast / Slide help/detail records so selection text/details match the shuffled icon order. |
+
+These four edits establish the first-two permutation mechanism only. Production generalization must keep gameplay gates and both presentation tables driven by one deterministic nine-slot order; this proof does not by itself claim exhaustive runtime coverage of all nine powers.
+
 ## Proof-only sites
 
 | ROM/VA | Proof | Status |
