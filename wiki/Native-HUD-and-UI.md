@@ -124,13 +124,25 @@ A new requirement appeared after full-menu v04: **RUN: HOLD / AUTO**. Therefore 
 
 The disposable full-composition ATTACK check v01 displays `ATTACK: CLASSIC / MODERN` by changing only the row label and second value pointer while reusing bit `0x0400`. The user reported the check ROM working as expected on 2026-09-26. The later accepted proof-only gameplay baseline is `MKMSZR_controls-modern_ledge-extension-proof_v06.z64`, SHA-256 `7ea9cf1d606e303fe04a67bc40e76940a90a3ff6232a8f301a8a35eab809c411`; exact control semantics and bounded runtime scope are canonical in [Player actions and special moves](Player-Actions-and-Special-Moves).
 
-### Five-setting RUN frontend experiments
+### Five-setting controls frontend — v09 accepted proof
 
-The intended additional row is `RUN: HOLD / AUTO`, with candidate durable bit `0x2000`. The desired semantics are locomotion-local: HOLD is vanilla; AUTO defaults horizontal locomotion to Run while holding the configured Run button temporarily requests Walk. The physical/remapped Run semantic must remain intact for Run-based attacks/specials, and full analog deflection must preserve vanilla analog auto-run.
+The five-setting successor is now **Runtime-confirmed in disposable proof v09**. It uses a clean one-line layout with `TURN`, `ATTACK`, `SPECIALS`, `JUMP`, `RUN`, then separated `EXIT`. The user reported that the menu works correctly and that the new layout “looks fantastic.”
 
-The first two five-setting frontend proofs are **Rejected / failed**:
+The accepted proof keeps the stock GAME SETTINGS type-2 cursor table at exactly four entries: logical rows `0..3` use type 2, while RUN row `4` and EXIT row `5` map to existing type-0 coordinates. It preserves the proof-specific ATTACK gameplay tails at ROM `0x775D0..0x775DB` and `0x77688..0x77693`, keeps frontend code title-resident, and does not load gameplay file `0x1A` from the frontend lifecycle.
 
-- **RUN v07:** the menu rendered but the stacked label/value layout was visibly over-compressed. More importantly, Block hard-hung. Static post-test reconciliation found that the frontend rewrite had overwritten the two small proof-specific gameplay trampolines embedded at the ends of the reclaimed GAME SETTINGS edit regions, including the accepted Block trampoline. AUTO also failed to transition an already-running player to Walk on a new Run-button press, and full analog deflection stopped auto-running because the proof inverted the merged semantic Run signal.
-- **RUN v08:** rebuilt from accepted control-suite v06 and preserved the Block/combo trampolines; Block no longer hung. Entering GAME SETTINGS nevertheless hard-hung. Post-test static audit isolates the draw-helper failure: v08 constructs an `0x800A...` base in `t0` in the delay slot of `jal 0x8001CA88`, but the native renderer clobbers caller-saved `t0` (`0x8001CD1C: lw t0,0x68(sp)`); v08 then uses that clobbered register for the durable-state load. The same unsafe pattern recurs later, and `t5` is also carried across a renderer call. Rebuild volatile address bases after renderer calls; do not rely on `t*` survival. The attempted RUN gameplay changes remain runtime-unvalidated.
+Durable proof settings are:
+- `0x0200` TURN=LOCK;
+- `0x0400` ATTACK=MODERN;
+- `0x0800` SPECIALS=MODERN;
+- `0x1000` JUMP=BUTTON;
+- `0x2000` RUN=AUTO.
 
-The current UI task is therefore not another visual spacing tweak. It is a focused ownership/entry audit of a real five-setting frontend, comparing production full-menu v04 with v07/v08. The safe requirements are: preserve the accepted four-row cursor contract unless explicitly extended with proven ownership, preserve both ATTACK proof trampolines, keep frontend code title-resident, and do not load gameplay expansion file `0x1A` from the frontend lifecycle.
+**v07 remains Rejected / failed:** its compressed presentation was visually rejected, its frontend rewrite overwrote ATTACK gameplay tails and caused the Block hang, and its global Run inversion broke analog auto-run and live Run->Walk behavior.
+
+**v08 remains Rejected / failed:** preserving the ATTACK tails removed the Block hang, but GAME SETTINGS entry hard-hung. Static audit isolates the draw-helper cause: it relied on caller-saved `t0` across `0x8001CA88`, which clobbers it; a later `t5` carry was unsafe for the same reason.
+
+**v09 Runtime-confirmed correction:** renderer-dependent code rebuilds volatile bases after renderer calls, preserves `ra`, stays within audited frontend ownership, and publishes only valid cursor type/index pairs. RUN toggling/persistence works; locomotion changes were intentionally absent in v09.
+
+**v10 Runtime-confirmed gameplay successor:** v10 leaves the v09 frontend unchanged except two audited zero-padding trampolines and adds the accepted Block-startup and RUN gameplay fixes. Exact gameplay semantics and proof identity are canonical in [Player actions and special moves](Player-Actions-and-Special-Moves).
+
+The normal browser/CLI product has **not yet been promoted to this five-setting frontend**. Production integration requires a new composed allocation because the disposable v10 file-`0x1A` footprint crosses the current Toasty runtime base. Do not copy proof allocation addresses into production.
