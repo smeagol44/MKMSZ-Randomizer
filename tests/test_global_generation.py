@@ -1,7 +1,7 @@
 from mkmszr.global_generation import (
-    CompletionPolicy,
     GLOBAL_LOCATIONS,
     TOTAL_POWER_UPGRADES,
+    CompletionPolicy,
     candidate_permutation,
     completion_satisfied,
     find_accepted_candidate,
