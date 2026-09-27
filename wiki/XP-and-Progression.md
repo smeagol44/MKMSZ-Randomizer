@@ -65,7 +65,13 @@ The shuffled order has exactly one semantic constraint and no additional hidden 
 
 **Slide and Super Slide are independent for shuffle ordering.** Either may be awarded first; production must not impose a Slide-before-Super-Slide dependency.
 
-The power-order generator must use its own deterministic namespace and bounded explicit retry/validation so rejected constrained permutations cannot perturb other RNG domains. The first-two swap is Runtime-confirmed; full constrained nine-slot permutation remains a bounded runtime/integration validation task.
+The power-order generator must use its own deterministic namespace and bounded explicit retry/validation so rejected constrained permutations cannot perturb other RNG domains.
+
+**v04 generalized proof — Runtime-confirmed, 2026-09-27.** A bounded standalone Temple proof exercised all nine remapped gameplay gates and both native Power Ups presentation tables using the order **Freeze on Contact -> Air Ice Blast -> Super Slide -> Ice Shatter -> Slide -> Ice Clone -> Directional Ice -> Ice Blast -> Polar Blast**. The user reported the tested progression worked perfectly. This specifically confirms that Super Slide may precede Slide and that Ice Shatter can follow Air Ice Blast as its freezing prerequisite.
+
+The same proof started Temple at 85 XP with its first power already awarded. Static review identifies this as a **proof-harness bug, not production progression behavior**: the standalone bootstrap loaded the proof payload and immediately executed the progression callback at stage initialization. The production XP path does not enter its pickup award callback from bootstrap; it restores persistent XP separately and awards a new tier only from a selected progression pickup callback. Do not reproduce the v04 bootstrap behavior in product integration.
+
+The shared product implementation now reuses the production XP lifecycle and adds the power-order remap as a separate final patch stage. Runtime mechanism is confirmed; repository CI and normal-product deployment remain the integration gates.
 
 ## Production semantics
 
