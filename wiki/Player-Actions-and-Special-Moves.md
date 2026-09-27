@@ -272,37 +272,27 @@ Proof v06 extends the accepted behavior to the ledge-hanging state `0x030F`: LK 
 
 The SPECIALS/JUMP research builders temporarily forced current XP to **20,000** while SPECIALS: MODERN was active so all native power tiers were immediately testable. That is strictly a proof-only diagnostic convenience and **must not be integrated into the browser/CLI product**. Production controls must use the player's real progression state and native tier checks.
 
-## RUN: HOLD / AUTO — current design and failed frontend proofs
+## RUN: HOLD / AUTO — Runtime-confirmed proof semantics
 
-The accepted product design under investigation is:
+The accepted behavior is now Runtime-confirmed in control-suite v10:
 
-- **HOLD:** vanilla behavior.
-- **AUTO:** ordinary locomotion defaults to Run; holding the configured physical Run button acts as a temporary Walk modifier.
-- The physical/remapped Run semantic must remain real and observable for **Run + Forward + Special -> Super Slide**, **Block + Run + Special -> Spine Rip**, and other Run chords. Do not globally invert or clear semantic Run.
-- Full analog-stick deflection must retain vanilla auto-run synthesis.
-- `0x2000` is the candidate durable RUN=AUTO state bit in `0x800A60E8`; box-switch persistence must preserve it together with the existing control bits. This remains proof design, not production ownership.
+- **HOLD:** vanilla Run behavior.
+- **AUTO:** ordinary horizontal locomotion defaults to Run; holding the configured/remapped physical Run button acts as a temporary Walk modifier.
+- Pressing Run during an already-active AUTO run transitions to Walk without requiring a stop; releasing Run while movement continues returns to Run.
+- The real semantic Run bit remains available for Run-based attack/special chords.
+- Vanilla full-analog auto-run synthesis remains intact.
+- Durable proof state uses bit `0x2000` in `0x800A60E8`; the five-setting frontend persists it across menu exit/re-entry and box switching.
 
-**v07 — Rejected / failed.** `MKMSZR_controls-run-auto_common-proof_v07.z64`, SHA-256 `a476315ddb64250855f65f7b500597d04f094e448a42942c10af55684d1c67a9`, CRC1/CRC2 `33C4EA17 / F40250E0`.
+**v07 — Rejected / failed.** `MKMSZR_controls-run-auto_common-proof_v07.z64`, SHA-256 `a476315ddb64250855f65f7b500597d04f094e448a42942c10af55684d1c67a9`. It over-compressed the menu, overwrote ATTACK gameplay tails including Block, globally inverted merged semantic Run, failed live Run->Walk, and broke analog auto-run.
 
-Runtime observations:
-- the five-setting menu rendered but was visually far too cramped;
-- Block by itself hard-hung regardless of mode;
-- in AUTO, holding Run before movement produced walking as intended, but pressing Run during an already-active run did not transition to walking;
-- full analog-stick left/right no longer produced vanilla auto-run.
+**v08 — Rejected / failed.** `MKMSZR_controls-run-auto_common-proof_v08.z64`, SHA-256 `1967cbe4902d2b10ddca461714edb8e1fbe229fd61f9f55bf6bfe516d7ecfd4e`. Block ownership was repaired, but GAME SETTINGS entry hard-hung because the draw helper reused caller-saved `t0` after `0x8001CA88` clobbered it. Its active-run hook at `0x800296E8` was also rejected because it could bypass the accepted running-jump classifier.
 
-Post-test static diagnosis established two reusable lessons. First, the frontend rewrite overwrote the proof-specific ATTACK trampolines embedded at the ends of the reclaimed GAME SETTINGS edit regions, including the Block trampoline; frontend reclamation and gameplay trampoline ownership must be reconciled explicitly. Second, vanilla semantic Run can also be synthesized by full analog deflection, so globally inverting the merged semantic Run predicate cannot distinguish the physical Run button from analog auto-run.
+**v09 — Runtime-confirmed frontend.** The corrected frontend rebuilds volatile bases after renderer calls, preserves the ATTACK tails, keeps type-2 cursor indices to `0..3`, and maps RUN/EXIT through existing type-0 coordinates. The user confirmed the new menu works and looks correct. RUN state toggling/persistence was confirmed while locomotion intentionally remained stock.
 
-**v08 — Rejected / failed.** `MKMSZR_controls-run-auto_common-proof_v08.z64`, SHA-256 `1967cbe4902d2b10ddca461714edb8e1fbe229fd61f9f55bf6bfe516d7ecfd4e`, CRC1/CRC2 `42C273BE / 30FF39EA`. Rebuilt from accepted v06 rather than v07. Block no longer hung, but **entering GAME SETTINGS hard-hung**, so no RUN gameplay claim is promoted from v08.
+**v10 — Runtime-confirmed gameplay.** The final runtime design leaves stock predicate `0x8002EAFC` byte-for-byte intact. At `0x80015B4C`, after remapping but before the later analog-generated Run merge, it snapshots semantic Run bit `0x0004` as the configured physical/remapped Run-button state. The four stock locomotion Run-predicate call sites are wrapped locally: HOLD returns the stock predicate result; AUTO for the actual player returns Run when the physical button is released and Walk when it is held. Active AUTO Run->Walk is interposed at the post-classifier back-edge `0x80029778` / ROM `0x0002A378`, after `0x800296E8 -> 0x8002B1F8`, preserving running JUMP:BUTTON priority. Walk re-entry uses `0x800293A8`, whose accepted TURN decision path reconstructs the needed direction classification.
 
-**Static-confirmed v08 frontend cause (post-test audit):** the new GAME SETTINGS draw helper preloaded `t0=0x800A...` in the delay slot of `jal 0x8001CA88` and then used `t0` after that renderer returned. The renderer is free to clobber caller-saved `t0` and does so on the traced path (`0x8001CD1C: lw t0,0x68(sp)`). v08 therefore dereferenced the durable settings word through a replaced base at `0x80076920`; the same unsafe pattern occurs again later in the helper. Carrying `t5` across a renderer call is also rejected as an unsafe caller-saved assumption. Future frontend code must rebuild volatile address bases after native renderer calls and preserve `ra` across nested calls.
+The Runtime-confirmed v10 proof file uses a disposable no-Toasty file-`0x1A` layout through runtime `0x801B0DC0`. That address range overlaps current production Toasty ownership beginning at `0x801B0000`; therefore **the proof allocation must not be copied into production**. Browser/CLI integration requires a new guarded composed allocation and runtime validation. This is an allocation/composition gate, not an unresolved control-semantic question.
 
-**Static-confirmed RUN transition follow-up:** the earlier concern that re-entering the walk decision at `0x800293A8` requires an incoming `a0` is incorrect. In accepted v06, `0x800293B0` calls the TURN decision trampoline `0x8009A228`, whose file-`0x1A` helper reloads `a0` from current-controller `+0x704` at runtime `0x801AF940` and deliberately returns the final forward/back classification in `a0`; it also returns movement state `0x0305` in `v0`. `s2`, used by the subsequent locomotion setup, is loaded once at `0x80028F78` and is not rewritten anywhere else in the main player process. Therefore `0x800293A8` is a valid internal re-entry target on the accepted v06 composition.
-
-The **v08 hook location at `0x800296E8` is still not accepted**, for a different reason: it replaces the active-Run call to `0x8002B1F8`. When AUTO+physical Run is held, the helper jumps to walk before invoking that classifier, which can suppress the accepted JUMP:BUTTON running-jump path. The cleaner candidate is the stock Run-loop back-edge at `0x80029778` / ROM `0x0002A378` (`j 0x800296B8; nop`). That point is reached only after the jump classifier and the stock run-loop direction/viability checks. A future proof can interpose there: AUTO+physical Run held -> `0x800293A8`; otherwise -> original `0x800296B8`. This preserves jump priority and stock release/stop behavior.
-
-The v08 physical-Run snapshot seam itself is statically sound: player remapping writes fresh semantics to `0x800BF2EE` before `0x80015B4C`, while the later `0x80015B70..0x80015B80` path can synthesize semantic Run. Capturing bit `0x0004` at `0x80015B4C` therefore separates the configured physical/remapped Run button from the later merged Run state and refreshes on each invocation of the input-update path.
-
-**Current boundary:** v06 remains the accepted Runtime-confirmed gameplay baseline. RUN:HOLD/AUTO is still Pending. The next ROM should remain frontend-only; after that passes, a separate RUN gameplay proof should retain the physical-Run snapshot and four wrapped stock Run-predicate calls but move the active Run->Walk decision away from `0x800296E8` to the post-classifier Run-loop back-edge.
 
 ## Host action primitives
 
