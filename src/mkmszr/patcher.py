@@ -32,6 +32,7 @@ from .patches.inventory_boxes import (
     JUMP_BUTTON_STATE_MASK,
     RUN_AUTO_STATE_MASK,
     SPECIALS_MODERN_STATE_MASK,
+    TURN_LOCK_STATE_MASK,
 )
 from .patches.toasty_codegen import pack_toasty_module
 from .rom import RomImage
@@ -54,6 +55,8 @@ def build_pipeline(
     toasty_probability_per_thousand: int = 80,
 ) -> PatchPipeline:
     settings_state = 0
+    if config.game_settings.turn_lock:
+        settings_state |= TURN_LOCK_STATE_MASK
     if config.game_settings.attack_modern:
         settings_state |= COMBOS_ASSIST_STATE_MASK
     if config.game_settings.specials_modern:
