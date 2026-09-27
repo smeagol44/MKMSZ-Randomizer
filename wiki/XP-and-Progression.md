@@ -59,10 +59,11 @@ Temple Herbs labels in the stage catalog are **ROM/storage order, not stage-trav
 
 **Production direction, user-approved:** expose power-order randomization as an optional setting. When disabled, preserve the vanilla nine-slot order exactly. When enabled, seed the nine power-tier slots independently and deterministically while leaving the native XP threshold sequence itself unchanged. The same generated slot order must drive both gameplay eligibility and the native Power Ups icon/help presentation.
 
-The shuffled order has exactly two semantic constraints and no additional hidden ordering rules:
+The shuffled order has exactly one semantic constraint and no additional hidden ordering rules:
 
 - **Ice Shatter** must appear after at least one freezing-enabling Power Up: **Ice Blast**, **Directional Ice** (the native slot that includes Directional Ice Up/Down), or **Air Ice Blast**.
-- **Super Slide** must appear after **Slide**.
+
+**Slide and Super Slide are independent for shuffle ordering.** Either may be awarded first; production must not impose a Slide-before-Super-Slide dependency.
 
 The power-order generator must use its own deterministic namespace and bounded explicit retry/validation so rejected constrained permutations cannot perturb other RNG domains. The first-two swap is Runtime-confirmed; full constrained nine-slot permutation remains a bounded runtime/integration validation task.
 
