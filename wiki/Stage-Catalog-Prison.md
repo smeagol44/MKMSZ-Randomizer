@@ -157,6 +157,7 @@
 - The Proof D/F/H and five-import constructions expand a **relocated proof copy** of the stage resource file. They do not convert any ROM range, appended selector word, or appended payload region into a production allocation.
 - Occupied stock slots with zero ordinary-pickup users remain protected. Prison-specific proof success does not establish those selectors as repurposable for production or prove that another stage can use the same resource layout.
 - Current limits remain bounded to the documented routes: the six-Herbs proof observed two of six modified pickups; the single-import proofs observed their chosen location plus a stock control; the composed proof observed five imported visuals plus a stock control. These results do not constitute exhaustive runtime validation of all Prison pickup/resource combinations.
+- **Checkpoint diagnostics, proof-only:** v04 and v05 deliberately move the Prison L1-key identity onto the first easy Herbs location at ROM `0x000CA0F0` after the normal stage-local shuffle so the key-trigger side effect can be tested immediately. v04 Runtime-confirmed that suppressing only the L1 `0x802C18F8=7` write does **not** suppress the visible `CHECK POINT` banner. v05 instead suppresses only the generic acquired-bit store to `0x802C0D54`; runtime Pending. These location swaps are diagnostic conveniences, not production layout semantics.
 
 ## Related owners
 
