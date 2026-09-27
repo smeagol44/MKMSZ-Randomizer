@@ -120,7 +120,19 @@ Two explanations remain materially plausible and must be distinguished before an
 - **Location-bound progression state (strong hypothesis):** the stock L1 record at ROM `0xCA030` / RDRAM `0x802F21F0` has collected flag `0x802F221C`. The randomizer moves the seven-word identity slice but deliberately leaves `+0x2C` collected state attached to the destination location. A Prison script/door that reads the stock record or a derivative location state would therefore still see the native L1 location as uncollected.
 - **Respawn room/state mismatch (hypothesis):** if the door was tested only after death, spawning at selector-0 coordinates while the global stage selector remains `7` may reconstruct an inconsistent room/script context even though key progression variables remain set.
 
-The next justified step is a static trace of the Prison L1 door/open progression predicate, starting from the door interaction/script and tracing every dependency on inventory `0x1A`, `0x802C18F8`, `0x802C0D54`, the stock L1 record collected flag `0x802F221C`, and any overlay-local actor/room state. Do not build another checkpoint ROM until that predicate is closed.
+### Prison L1 door backward trace
+
+**Static-confirmed limits:** the first-door predicate is still not closed, but several candidate interpretations are rejected or narrowed:
+
+- Inventory item `0x1A` is awarded through `0x80075448`; its inventory-use dispatch entry at ROM `0xA6ED0` points to `0x80071F50`, which returns zero without an opening action. This rules out **using the inventory item** as the door-open action, while leaving an indirect possession check elsewhere possible.
+- L1 writes selector `7` to `0x802C18F8`. Prison setup reads that selector, including at overlay VA `0x802EE010` / ROM `0xC5E50`, but the located reads do not establish a direct selector-7 door comparison.
+- The generic key callback sets bit 0 in `0x802C0D54`. Prison reads this word at `0x802EE648` / ROM `0xC6488`, but the configured index-zero actor takes a special branch at `0x802EE690..0x802EE6A0` / ROM `0xC64D0..0xC64E0` **before** the bit test. Therefore this reader is a key-related actor-state mechanism, not proof that bit 0 directly opens the L1 door.
+- Stock L1 collected flag `0x802F221C` is cleared by the Prison overlay reset loop at `0x802ED544` / ROM `0xC5384`. No direct Prison-overlay read of this exact address was found. Generic indexed pickup-manager use remains possible, but a direct door predicate is unproven.
+- Prison actor routine `0x802EE320` manipulates scene actors/positions and later changes animation/geometry at `0x802EE9F0..0x802EECF0` / ROM `0xC6830..0xC6B30`. Stage trigger dispatcher `0x802F1E44` / ROM `0xC9C84` selects callbacks from scene-record flags and player position. The first L1 door's scene-record index has not yet been mapped to either path.
+
+One static false lead is explicitly rejected: calls to `0x8001C2B4(0x1B,0x1A)` at ROM `0xC5D2C..0xC5D68` allocate geometry/collision entries; those constants are coordinates/dimensions in that helper, **not** an inventory-`0x1A` test.
+
+**Remaining exact task:** resolve the first Prison L1 door's scene-record index in the data addressed through `0x80111FF8`, then follow that record's collision/animation callback to its final branch condition. Only after that branch is identified should another randomized-key progression proof be built.
 
 The next justified runtime diagnostic is instrumentation, not another blind suppression patch: use a bounded in-ROM write-only ring buffer at specific candidate request sites, then poll that buffer from ordinary per-frame Lua RAM reads (Ares64 execute callbacks are not required). Compare exactly three cases through the first banner frame: relocated Prison L1 key at the easy Herbs location, untouched Herbs, and one ordinary checkpoint. Record site ID, stage, current pickup identity, `0x802C18F8`, and `0x802C0D54`; then perform one death/re-entry comparison for relocation separately.
 
