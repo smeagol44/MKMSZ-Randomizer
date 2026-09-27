@@ -49,7 +49,7 @@ The stock ten-slot inventory remains the live gameplay window. Four ten-word bac
 
 ## Presentation layer
 
-Static outfit modes transform only Sub-Zero clothing palette indices `0x21..0x3F` in the guarded source TLUT. The `rainbow` product mode instead uses the Runtime-confirmed frame-setup boundary: file `0x87` is relocated intact to high ROM with 64 appended BGR555 palettes, and a bounded helper at runtime offset `+0x2E0` cycles the actor through those palettes using the native allocation/release path. The production output for seed `RAINBOW64` is byte-identical to the manually validated proof v01.
+Static outfit modes transform only Sub-Zero clothing palette indices `0x21..0x3F` in the guarded source TLUT. The `rainbow` product mode uses the Runtime-confirmed frame-setup boundary and compact-tail resource path: retail file `0x87` stays in place, all 15 stock Sub-Zero loads allocate an extra `0x2000` bytes, and raw file `0x92` loads the 64-palette BGR555 bank into that tail. A bounded helper at runtime offset `+0x2E0` cycles the actor through those palettes using the native allocation/release path. Compact-tail v01 was Runtime-confirmed across all eight safe stages.
 
 The box indicator hooks an existing HUD submission, executes the displaced call, rewrites the digit in `BOX 1 OF 4`, and sends native text through `0x80073E74`. Boot branding rewrites only guarded legal-screen string storage and pointers; the following two fixed logo presentations are skipped with a separate branch.
 
