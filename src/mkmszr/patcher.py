@@ -83,9 +83,7 @@ def build_pipeline(
         TitleBrandingPatch(config.edition_name),
     ]
     outfit_mode = config.outfit.mode.lower()
-    if outfit_mode == "rainbow":
-        patches.append(RainbowPalettePatch())
-    elif outfit_mode != "vanilla":
+    if outfit_mode != "rainbow" and outfit_mode != "vanilla":
         patches.append(
             SubZeroPalettePatch(
                 outfit_mode,
@@ -108,6 +106,10 @@ def build_pipeline(
             ),
         )
     )
+    # Compact rainbow owns an optional wrapper in the guarded controls->Toasty
+    # expansion gap, so it must compose after ControlsProductionPatch.
+    if outfit_mode == "rainbow":
+        patches.append(RainbowPalettePatch())
     # Controls production deliberately verifies the stock Slide/Super Slide
     # gates before installing helpers that call those recognizers. Apply the
     # optional order remap afterwards so both safety guards and shuffled tiers
