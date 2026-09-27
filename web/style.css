@@ -147,3 +147,99 @@ footer p { margin: 0; }
   .feature-note strong { display: block; margin-bottom: .2rem; }
   dl div { grid-template-columns: 1fr; gap: .2rem; }
 }
+
+
+.settings-defaults {
+  margin-top: 1.1rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid #2a3040;
+}
+.settings-defaults-copy h3 {
+  margin: 0;
+  font-size: .98rem;
+}
+.settings-defaults-copy p {
+  margin: .3rem 0 .85rem;
+  color: #838da0;
+  font-size: .82rem;
+  line-height: 1.45;
+}
+.toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+.setting-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "copy switch";
+  align-items: center;
+  gap: .8rem;
+  min-height: 4.2rem;
+  margin: 0;
+  padding: .8rem .9rem;
+  border: 1px solid #2a3040;
+  border-radius: .8rem;
+  background: rgba(10, 13, 19, .64);
+  cursor: pointer;
+}
+.setting-toggle > span:first-child {
+  grid-area: copy;
+  display: grid;
+  gap: .18rem;
+}
+.setting-toggle strong {
+  font-size: .88rem;
+}
+.setting-toggle small {
+  color: #7f889a;
+  font-size: .75rem;
+  line-height: 1.35;
+  font-weight: 400;
+}
+.setting-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.toggle-switch {
+  grid-area: switch;
+  position: relative;
+  width: 2.55rem;
+  height: 1.45rem;
+  border: 1px solid #3b4354;
+  border-radius: 999px;
+  background: #171c26;
+  transition: background .16s ease, border-color .16s ease;
+}
+.toggle-switch::after {
+  content: "";
+  position: absolute;
+  top: .17rem;
+  left: .18rem;
+  width: .98rem;
+  height: .98rem;
+  border-radius: 50%;
+  background: #aab2c1;
+  transition: transform .16s ease, background .16s ease;
+}
+.setting-toggle input:checked + .toggle-switch {
+  background: #25396f;
+  border-color: #667bd0;
+}
+.setting-toggle input:checked + .toggle-switch::after {
+  transform: translateX(1.05rem);
+  background: #f0f3ff;
+}
+.setting-toggle:has(input:focus-visible) {
+  outline: 2px solid #8fa6ff;
+  outline-offset: 2px;
+}
+.setting-toggle:has(input:disabled) {
+  opacity: .48;
+  cursor: not-allowed;
+}
+@media (max-width: 700px) {
+  .toggle-grid { grid-template-columns: 1fr; }
+}

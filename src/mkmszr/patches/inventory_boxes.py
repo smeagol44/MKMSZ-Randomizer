@@ -155,12 +155,14 @@ TURN_LOCK_STATE_MASK = 0x0200
 COMBOS_ASSIST_STATE_MASK = 0x0400
 SPECIALS_MODERN_STATE_MASK = 0x0800
 JUMP_BUTTON_STATE_MASK = 0x1000
+RUN_AUTO_STATE_MASK = 0x2000
 USER_SETTINGS_STATE_MASK = (
     TURN_LOCK_STATE_MASK
     | COMBOS_ASSIST_STATE_MASK
     | SPECIALS_MODERN_STATE_MASK
     | JUMP_BUTTON_STATE_MASK
 )
+INITIAL_SETTINGS_STATE_MASK = USER_SETTINGS_STATE_MASK | RUN_AUTO_STATE_MASK
 
 # Reuse only regions that already have inventory/stage-selector research behind
 # them. The old 412-byte inventory cave is now occupied by MKMSZR bootstrap and
@@ -443,13 +445,15 @@ if len(EXPECTED_PERSISTENCE_RESUME) != len(PERSISTENCE_RESUME_PATCH):
     raise AssertionError("persistence resume patch changed scanner size")
 
 
-def initial_box_data() -> bytes:
+def initial_box_data(settings_state: int = 0) -> bytes:
     """ROM-initialized backing state for the four-box inventory."""
 
+    if settings_state & ~INITIAL_SETTINGS_STATE_MASK:
+        raise ValueError(f"unsupported initial GAME SETTINGS bits: 0x{settings_state:08X}")
     return (
         DEFAULT_INV
         + words_blob([0xFFFFFFFF] * 30)
-        + (0).to_bytes(4, "big")
+        + settings_state.to_bytes(4, "big")
         + MAGIC.to_bytes(4, "big")
     )
 
@@ -463,6 +467,9 @@ class FourBoxInventoryPatch:
     """Install the runtime-confirmed four-box inventory."""
 
     name = "four-box-inventory"
+
+    def __init__(self, *, initial_settings_state: int = 0):
+        self.initial_settings_state = initial_settings_state
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
         del context
@@ -509,7 +516,7 @@ class FourBoxInventoryPatch:
         # Seed box 1 with stock inventory and boxes 2-4 empty. LIVE starts from
         # the same stock image. The now-dead stock template becomes the compact
         # item-ID -> originating-stage table used by the mask routine.
-        rom.write_bytes(BOX_DATA_ROM, INITIAL_BOX_DATA)
+        rom.write_bytes(BOX_DATA_ROM, initial_box_data(self.initial_settings_state))
         rom.write_bytes(LIVE_INV_ROM, DEFAULT_INV)
         rom.write_bytes(DEFAULT_INV_ROM, KEY_STAGE_TABLE)
 
