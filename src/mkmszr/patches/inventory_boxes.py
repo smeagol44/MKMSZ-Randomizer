@@ -161,8 +161,8 @@ USER_SETTINGS_STATE_MASK = (
     | COMBOS_ASSIST_STATE_MASK
     | SPECIALS_MODERN_STATE_MASK
     | JUMP_BUTTON_STATE_MASK
-    | RUN_AUTO_STATE_MASK
 )
+INITIAL_SETTINGS_STATE_MASK = USER_SETTINGS_STATE_MASK | RUN_AUTO_STATE_MASK
 
 # Reuse only regions that already have inventory/stage-selector research behind
 # them. The old 412-byte inventory cave is now occupied by MKMSZR bootstrap and
@@ -448,7 +448,7 @@ if len(EXPECTED_PERSISTENCE_RESUME) != len(PERSISTENCE_RESUME_PATCH):
 def initial_box_data(settings_state: int = 0) -> bytes:
     """ROM-initialized backing state for the four-box inventory."""
 
-    if settings_state & ~USER_SETTINGS_STATE_MASK:
+    if settings_state & ~INITIAL_SETTINGS_STATE_MASK:
         raise ValueError(f"unsupported initial GAME SETTINGS bits: 0x{settings_state:08X}")
     return (
         DEFAULT_INV
