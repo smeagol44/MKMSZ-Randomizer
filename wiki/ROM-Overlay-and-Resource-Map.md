@@ -126,6 +126,7 @@ One concrete source mapping is now **Static-confirmed** for the supported N64 RO
 | Stage / overlay | Global file ID | ROM source | Runtime base | Evidence / limit |
 |---|---:|---:|---:|---|
 | Earth | `0x9C` | `[0x000D8B90,0x000E1B80)` | `0x802ECE30` | File-table entry is raw flag `0`; the mapping independently resolves the known Earth key callback `0x802F52B0` to its matching ROM body and Earth boss routine `0x802EDF50` into the same overlay. This does not infer mappings for other stages. |
+| Prison | `0x9F` | `[0x000C4C70,0x000CA510)` | `0x802ECE30` | Static-confirmed from file-table entry ROM `0xA5784` and permanent loader call `0x80065D64(0x9F,0x802ECE30)` at VA `0x800100CC` / ROM `0x10CCC`. The ordinary Prison records at `0xCA030/60/90` lie inside this raw file. This mapping rejects file `0xA2` as Prison evidence. |
 
 Any overlay finding must include at least:
 
