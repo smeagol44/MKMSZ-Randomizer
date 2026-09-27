@@ -45,12 +45,14 @@ from ..mips import (
 )
 from ..rom import RomImage
 from .base import PatchContext
-from .controls_production import CONTROLS_RUNTIME_END, FILE_ROM as EXPANSION_FILE_ROM
+from .controls_production import CONTROLS_RUNTIME_END
+from .controls_production import FILE_ROM as EXPANSION_FILE_ROM
 from .game_settings_turn import EXPANSION_FILE_ENTRY_ROM
 from .native_payload import kseg1_alias
 from .palette import make_hue
 from .runtime_v2 import CODE_CACHED_BASE, CODE_SIZE, STATE_UNCACHED_BASE
-from .toasty_constants import MODULE_K0 as TOASTY_RUNTIME_BASE, MODULE_ROM as TOASTY_ROM
+from .toasty_constants import MODULE_K0 as TOASTY_RUNTIME_BASE
+from .toasty_constants import MODULE_ROM as TOASTY_ROM
 
 NOP = 0
 
