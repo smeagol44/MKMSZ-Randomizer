@@ -16,6 +16,7 @@ from .patches import (
     NativePayloadSpec,
     PickupPersistencePatch,
     PickupRandomizationPatch,
+    PowerOrderPatch,
     RainbowPalettePatch,
     SafeStageSelectorPatch,
     SafeStageSelectSkipAutoSavePatch,
