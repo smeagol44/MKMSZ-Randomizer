@@ -7,6 +7,7 @@
 Current project maturity and priorities are owned by [Project status](Project-Status). Release requirements and final acceptance gates are owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap).
 
 | Key-checkpoint self-trace v06 | **Runtime-confirmed bounded diagnostic** | Prison first easy pickup carries full L1 identity. Native trace reported `KA`, live `G4 S7 B1`; visible `CHECK POINT` banner was absent with the three direct generic-key `0x80062D60` spawns suppressed. User death-tested afterward and confirmed checkpoint relocation still occurred. Establishes separate banner vs respawn effects; not yet a production/global fix. |
+| Key-checkpoint banner+respawn v07 | **Partial Runtime-confirmed / progression regression** | Keeps v06 banner suppression and applies player-only Prison selector `7 -> 0` at spawn lookup. After death trace became `KAR`, proving the respawn override fired while live state remained `G4 S7 B1`. Level-1 door did not open, so the combined proof is not production-safe and key/door progression has an unresolved dependency beyond the currently preserved award/selector/bit state. |
 
 ## Evidence matrix
 
