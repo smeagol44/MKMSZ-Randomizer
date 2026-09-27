@@ -46,7 +46,7 @@ The current product feature configures the normal player outfit. It does not cla
 
 ## Rainbow runtime mode
 
-**Production / Runtime-confirmed.** The browser and CLI expose `rainbow` as a normal outfit mode. The integrated patcher reproduces the manually validated v01 artifact byte-for-byte for seed `RAINBOW64`.
+**Production / Runtime-confirmed.** The browser and CLI expose `rainbow` as a normal outfit mode. The original full-composition v01 established the 64-phase palette mechanism; the 2026-09-27 compact-tail all-stage proof then Runtime-confirmed the storage optimization across all eight safe stages, including inventory use, movement, enemy kills, and door interaction.
 
 Disposable full-composition proof:
 
@@ -63,12 +63,15 @@ Unlike the production static recolor, the proof is a runtime palette feature. It
 
 Production composition details:
 
-- the established first 1 KiB MKMSZR Runtime V2 layout remains `0x801AF420..0x801AF81F` inside the current 16 KiB reservation, partitioned as `0x3B0` bytes of code plus `0x50` bytes of state; the later 15 KiB expansion pool begins at `0x801AF820` and is not used by the rainbow feature;
+- the established first 1 KiB MKMSZR Runtime V2 layout remains `0x801AF420..0x801AF81F` inside the current 16 KiB reservation;
 - rainbow phase state uses production state offset `+0x48`;
-- the rainbow helper occupies cached `0x801AF700` / uncached `0xA01AF700`, size `0xCC`;
-- clean Sub-Zero file `0x87` is relocated byte-for-byte to ROM `0xF20000..0xF679DF`, then extended with the 64-palette bank; final file size is `0x479E0`.
+- the frame-time rainbow helper occupies the optional Runtime V2 tail `0x801AF700..0x801AF7CF`;
+- stock Sub-Zero file `0x87` remains at retail ROM `0x748920..0x78E2FF` and its file-table entry is not repointed;
+- all 15 stock `0x87` load paths allocate exactly `+0x2000` bytes and route through an 88-byte wrapper in the already-reserved controls→Toasty gap beginning at `0x801B0880`;
+- dedicated raw file `0x92` carries only the 64-palette bank at ROM `0xF20000..0xF21FFF`, loaded to `fighter_base + 0x459E0`;
+- the effective runtime fighter allocation remains `0x479E0`, identical to the prior rainbow runtime footprint, while high-ROM rainbow data falls from `0x479E0` to `0x2000`, reclaiming `0x459E0` = 285,152 bytes.
 
-The normal patch pipeline now owns this guarded composition. The proof identity remains the runtime evidence anchor: SHA-256 `4f9aff72c3f81d20e7f3d8f3e59f07cff8f7c6e5a1c0ce81d1a1bbb91ab92060`, CRC1/CRC2 `E0AD24EF / 4993529C`. Other seeds change seeded randomizer content as usual; the rainbow mechanism itself is not seed-randomized.
+The compact-tail proof ROM `MKMSZR_rainbow-compact-tail_all-stage-proof_v01.z64` (SHA-256 `10095f87a85dd89113817ef33eced68c8b9216fa5360ba80107329f6bd9adabb`) was manually validated across all eight safe stages. Other seeds change seeded randomizer content as usual; the rainbow mechanism itself is not seed-randomized.
 
 ## Related pages
 
