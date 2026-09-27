@@ -206,7 +206,7 @@ The production integration must preserve v04 semantics exactly; it is not an opp
 5. **Implementation/CI gate:** add exact hook guards, helper/classic-fallback tests, state-bit/UI tests, deterministic module packing, expansion-pool bounds, shared file-`0x1A` end checks, and explicit no-overlap assertions against Toasty. Build both ordinary and Toasty-enabled compositions statically.
 6. **Disposable production-composition proof:** the Toasty-enabled check v01 has a positive user runtime report, and the ordinary no-donor composition has passed static checks. The report does not itemize each suggested manual route; retain that limit when citing it. Carry the accepted composition into the patch core with guarded tests before calling it production.
 
-The v04 semantics and check-v01 composition are accepted **runtime proof baselines**. ATTACK: MODERN is still absent from the normal browser/CLI patch core; production source, integration tests, and product validation are Pending.
+The v04 semantics and check-v01 composition are accepted **runtime proof baselines**. The complete ATTACK: MODERN behavior is now in the shared browser/CLI patch core; the later v02 controls/CI4 composition is the bounded full-product runtime baseline.
 
 ## SPECIALS: MODERN + JUMP: BUTTON control-suite proof line (2026-09-26)
 
@@ -270,7 +270,9 @@ Proof v06 extends the accepted behavior to the ledge-hanging state `0x030F`: LK 
 - **Controls v09 — Runtime-confirmed frontend baseline.** `MKMSZR_controls-run-frontend_common-proof_v09.z64`, SHA-256 `430c16973e247da5d8fd56b4ec9410c160642eed653a59cbd106efed80fa12dd`, CRC1/CRC2 `DAE24212 / 236EC8FA`. The clean one-line `TURN / ATTACK / SPECIALS / JUMP / RUN / EXIT` frontend, six cursor positions, edits, persistence and existing gameplay were manually validated; RUN gameplay was intentionally absent.
 - **Controls v10 — Runtime-confirmed accepted complete proof baseline.** `MKMSZR_controls-run-gameplay_common-proof_v10.z64`, SHA-256 `7081c1f9c4629fd88eab78d3c04d72342960ed404d7494421aa8b1f14ba8b325`, CRC1/CRC2 `A9978A81 / CF350A67`. Adds corrected Block-startup cancellation and the final RUN:HOLD/AUTO runtime path on top of v09. The user reported: **“It works perfectly!”** This supersedes v06 as the accepted complete control-suite proof baseline.
 
-The SPECIALS/JUMP research builders temporarily forced current XP to **20,000** while SPECIALS: MODERN was active so all native power tiers were immediately testable. That is strictly a proof-only diagnostic convenience and **must not be integrated into the browser/CLI product**. Production controls must use the player's real progression state and native tier checks.
+The SPECIALS/JUMP research builders temporarily forced current XP to **20,000** while SPECIALS: MODERN was active so all native power tiers were immediately testable. That is strictly a proof-only diagnostic convenience and is absent from the browser/CLI product. Production uses the player's real progression state and native tier checks.
+
+**Runtime-confirmed progression regression (2026-09-26):** the first 16-KiB/CI4 full-product candidate removed the XP-force helper, exposing that MODERN Slide and Super Slide still bypassed their stock progression recognizers and called their action callbacks directly. Static reconciliation confirms these are the only two MODERN progression-sensitive routes that did not already use native condition functions. The corrected v02 production composition routes Slide through stock direct recognizer `0x8003C9F8` (native tier >=2 plus contextual gates) and Super Slide through `0x8003CAF4` (native tier >=7, resource >=`0x60`, plus contextual gates). The user reported the corrected replacement v02 full-product ROM **“Works perfectly!”** It is Runtime-confirmed for the tested progression routes. Shared builder parity is byte for byte for seed `CONTROLSV10CI4` with MKT Rev. 2 donor: SHA-256 `b12ed90201ab754aac542b7b89458735b5a756f480fffca89c129c0ed3173147`.
 
 ## RUN: HOLD / AUTO — Runtime-confirmed proof semantics
 
@@ -291,7 +293,7 @@ The accepted behavior is now Runtime-confirmed in control-suite v10:
 
 **v10 — Runtime-confirmed gameplay.** The final runtime design leaves stock predicate `0x8002EAFC` byte-for-byte intact. At `0x80015B4C`, after remapping but before the later analog-generated Run merge, it snapshots semantic Run bit `0x0004` as the configured physical/remapped Run-button state. The four stock locomotion Run-predicate call sites are wrapped locally: HOLD returns the stock predicate result; AUTO for the actual player returns Run when the physical button is released and Walk when it is held. Active AUTO Run->Walk is interposed at the post-classifier back-edge `0x80029778` / ROM `0x0002A378`, after `0x800296E8 -> 0x8002B1F8`, preserving running JUMP:BUTTON priority. Walk re-entry uses `0x800293A8`, whose accepted TURN decision path reconstructs the needed direction classification.
 
-The Runtime-confirmed v10 proof file uses a disposable no-Toasty file-`0x1A` layout through runtime `0x801B0DC0`. That address range overlaps current production Toasty ownership beginning at `0x801B0000`; therefore **the proof allocation must not be copied into production**. Browser/CLI integration requires a new guarded composed allocation and runtime validation. This is an allocation/composition gate, not an unresolved control-semantic question.
+The v10 standalone no-Toasty proof originally overlapped the earlier CI8 Toasty base. The accepted v02 composition repacks Toasty to CI4 at `0x801B1000`, keeps the controls below `0x801B0880`, and preserves the 16 KiB arena reservation. The normal shared builder now emits that confirmed composition.
 
 
 ## Host action primitives
