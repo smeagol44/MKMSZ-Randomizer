@@ -1,6 +1,7 @@
 from mkmszr.config import OutfitConfig, RandomizerConfig
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.arena import ArenaReservationPatch
+from mkmszr.patches.controls_production import ControlsProductionPatch
 from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
 from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
 from mkmszr.patches.native_payload import NativePayloadPatch
@@ -41,6 +42,7 @@ def test_rainbow_outfit_uses_runtime_palette_patch() -> None:
     )
     types = [type(patch) for patch in pipeline.patches]
     assert RainbowPalettePatch in types
+    assert types.index(ControlsProductionPatch) < types.index(RainbowPalettePatch)
 
 
 def test_power_order_shuffle_is_optional_and_runs_after_controls() -> None:
