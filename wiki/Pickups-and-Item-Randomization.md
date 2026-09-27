@@ -4,7 +4,7 @@
 
 ## Current conclusion
 
-MKMSZR currently randomizes the 84 ordinary pickup records **within each stage**. The production mode is deterministic, preserves each destination location and collected flag, moves the complete ordinary-item identity slice, and rejects stage-local layouts that violate the current modeled access requirements.
+MKMSZR currently randomizes the 84 ordinary pickup records **within each stage**. The production mode is deterministic, preserves each destination location and collected flag, moves the complete ordinary-item identity slice, and rejects stage-local layouts that violate the current modeled access requirements. Consequently, a production proof can still keep all three Fire keys inside Fire; that is expected `STAGE-LOCAL:V1` behavior and must not be mistaken for the pending 1.0 global shuffle.
 
 This is a real production system, but it is intentionally an **interim 1.0 mode**. The final 1.0 design requires one cross-stage logical pool plus a destination resource materializer and whole-run solvability verifier. Those are separate systems because a resource selector that is valid in one stage is not automatically meaningful in another.
 
@@ -89,10 +89,14 @@ This confirms one generated stage-local location on that build; it does **not** 
 | `0x80038A1C` | Extra life | non-inventory lifecycle effect |
 | `0x80038A58` | Mana | native mana behavior |
 | `0x80038A90` | Strength urn | `0x0B` |
-| `0x80038770` | Key/crystal | stage and parameter dependent |
+| `0x80038770` | Key/crystal stock award | stage and parameter dependent; key-triggered checkpoint side effect still Pending trace |
 | `0x800490CC` | Shinnok Amulet | `0x23`; separate special path |
 
 This table is a pickup-domain convenience summary, not a replacement for the canonical function registry or item/key structure tables.
+
+## Fortress boss-reward caveat
+
+The three Fortress crystal records correspond to rewards produced after defeating Kia, Jataaka, and Sareena. Their stock records/catalog entries describe the spawned reward, not a requirement that the global randomizer permanently bind each boss to its crystal. The 1.0 model treats the boss defeat as the reward-location trigger and the crystal as the stock logical reward; generalized spawn/materialization belongs to [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
 
 ## Current exclusions
 
