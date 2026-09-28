@@ -96,6 +96,18 @@ These are stream records, not a count of simultaneously live enemies. Quotas, ac
 
 Singleton entries (`0x12` in Temple; `0x0D/0x13/0x1C` in Fortress; `0x11` in Prison) must receive an encounter-role audit before they are admitted to a general ordinary pool. Their presence in an ordinary-branch stream is resource-residency evidence, not proof that they are semantically interchangeable with repeated grunts.
 
+All five singleton records use the gated opcode-`6` form, each with quota `1`:
+
+| Stage | Type | Stream ROM record | Gate mask | Raw XYZ | Activation |
+|---|---:|---:|---:|---|---:|
+| Temple | `0x12` | `0xB3A94` | `0x08` | `0x1B7F, -0x783, 0` | `1` |
+| Fortress | `0x0D` | `0xB3FBC` | `0x01` | `0x97, 0x540, 0` | `0` |
+| Fortress | `0x13` | `0xB3FE8` | `0x02` | `-0x145C, 0xA80, 0` | `0` |
+| Fortress | `0x1C` | `0xB4014` | `0x04` | `-0x463B, 0xFC0, 0` | `0` |
+| Prison | `0x11` | `0xB436C` | `0x20` | `-0x4B00, -0xC0, 0` | `0` |
+
+This does **not** prove these are bosses or minibosses. It does prove that each is a one-shot gated encounter record rather than one of the repeated ordinary-grunt entries, so the first conservative pool should exclude them until the gate/encounter ownership is traced.
+
 ### Constructor resource bundles
 
 The constructor's type-indexed slot and descriptor tables, combined with the normal/test-character load records, resolve the following bundles. Type `0x00`, which is outside that debug record block, is independently resolved by the Earth load path: file `0x88` is loaded into slot `0x801AE470`.
