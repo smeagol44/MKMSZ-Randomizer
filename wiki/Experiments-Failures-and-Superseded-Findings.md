@@ -119,6 +119,7 @@ The earlier blanket statement that textured-image rendering was unproven is supe
 | Attempt / scope | Observed failure / rejection | What it established | Detailed owner |
 |---|---|---|---|
 | Start-button selector shortcut | Intermittent | Production selector uses the A-button route | [Stage flow and selector](Stage-Flow-and-Selector) |
+| Retail `FIRE GOD ROOM` / native stage 7 direct entry | Does not finish loading | **Static root cause resolved:** stage-7 initializer builds the real Fire boss-arena shell but never loads Fire overlay `0x9D`; `0x80065668` nevertheless schedules overlay callbacks `0x802EE34C` and `0x802EDCE0`. Normal Fire loads `0x9D` before scheduling the same callbacks. A fixed-destination `0x9D` load in stage 7 is the smallest repair candidate; runtime proof Pending. | [Stage flow and selector](Stage-Flow-and-Selector), [Resource and overlay system](ROM-Overlay-and-Resource-Map) |
 | Broad boot-routine deletion | Rejected | Fade/title normalization still has to run | [Stage flow and selector](Stage-Flow-and-Selector) |
 | Disable saving globally | Rejected | Selector-only suppression uses the native one-shot flag; normal post-stage saving remains | [Stage flow and selector](Stage-Flow-and-Selector) |
 | Tablet `0x24` as foreign-key placeholder | Consumable | Use inert Glass `0x08` for LIVE masking instead | [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle) |
