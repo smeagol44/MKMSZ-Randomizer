@@ -324,3 +324,51 @@ The raw-overlay direct `sh +0x6B2` census adds 22 sites outside Water: Earth fil
 The six consecutive records total `0xAA0`, the seventh `0x184`, and the script `0x20`. The decoder consumed 1,165 distinct six-byte model-0 patterns (`0x1B4E` referenced bytes) scattered across the stock model-0 dictionary, with index span `0..9925`; those references cannot be dropped merely because frame bytes are retained. `0x8001BDA0` uses the actor's already acquired palette selector `+0x9E → +0x80`; this root has no separate palette-acquisition token. Constructor palette ownership, especially after a GRUNT2 morph, remains a separate existing resource requirement. The stock extents are certified live, not a proposed packed size or a certificate that unused dictionary entries can be deleted.
 
 **Remaining `0x800328FC` edge.** A Slide hit can start `0x8004E2D4` and produce a hittable nonzero victim interval (`+0x6AA=0x50B`, actor `+0x64:0x100` clear). A subsequent eligible type-`4` strike slot `0` would install `0x8004E530`; that callback has sleeps but no flag clear before `0x8004E68C → 0x800328FC`, which would take `0x80053D28` if the inherited victim flag remained nonzero. Static code does not yet establish an ordinary Water schedule that overlaps slot `0` with the Slide-produced interval: the same player's Slide callback continues to use slot `0x10`, and normal `0x800321D0` completion clears the flag. An independent ordinary-GRUNT AI/action writer of `+0x6B2` concurrent with a player slot-`0` hit is the other specific candidate; its type-`0x0E/0x0F` dispatch and hit window remain unproved. Therefore the `0x800328FC → 0x80053D28` handoff is **Pending**, while root `0x1E` itself is **Static-confirmed live** via Slide. No further range is certified dead. The raw pair `0x41DA0` is a source-payload upper bound (and exceeds the ceiling by `0xD880`); `0x1210` sharing would *conditionally* lower that to `0x40B90`, still `0xC670` (50,800 bytes) above the Water observed-route ceiling `0x34520`, before rebasing/metadata. No tighter byte-saving bound is certified: the new seven-frame/model-0 set is live, and other roots, computed readers and safe repacking are unclosed. There is no exact minimum compact footprint. The smallest next static check is to trace ordinary type-`0x0E/0x0F` AI dispatch into one concrete nonzero `+0x6B2` writer (or bound Slide recovery against its victim loop), then prove whether a player slot-`0` collision can be scheduled before that victim clears the flag. A guarded runtime proof is premature. No ROM build or emulator was run.
+
+## Native Prison/Bridge armed-grunt phase loading (2026-09-28, static only)
+
+This pass compares the stock enemy-resource lifetimes in Prison and Bridge with the already-traced Fortress and Water arrangements. It is **Static-confirmed** from the clean N64 USA Rev. 0 ROM unless an item is explicitly marked as route-correlated interpretation. No ROM was built and no emulator was run.
+
+### PRIS GRUNT family and disarm relationship
+
+The ordinary-pool family is not four independent full fighters. Type `0x14 PRIS GRUNT1` is the common base/disarmed form in file `0x8E`; armed variants carry their own primary file and also depend on file `0x8E`:
+
+| Type | Static name | Native ordinary stage | Primary file | Required base file | Raw resident bundle |
+|---:|---|---|---:|---:|---:|
+| `0x14` | PRIS GRUNT1 | Prison, Bridge | `0x8E` | — | `0x1FC10` |
+| `0x15` | PRIS GRUNT2 | Prison | `0x8F` | `0x8E` | `0x3B520` |
+| `0x16` | PRIS GRUNT3 | Prison | `0x90` | `0x8E` | `0x3C160` |
+| `0x17` | PRIS GRUNT4 | Bridge | `0x91` | `0x8E` | `0x32DB0` |
+
+Shared helper `0x80057478` statically exposes the disarm transaction. For types `0x15`, `0x16`, and `0x17`, it rebinds actor `+0x98` to file `0x8E` through slot `0x80111528`, changes actor type to `0x14`, and selects root 0. It also starts class `0x207` callback `0x8005E1FC` while retaining the original armed variant resource/descriptor: file `0x8F` / `+0x1B7DC`, file `0x90` / `+0x1C418`, or file `0x91` / `+0x1306C`. The callback constructs and publishes a separate resource-backed actor, giving a Static-confirmed detached-weapon/auxiliary-resource mechanism; the exact higher-level name of every presentation state remains bounded.
+
+The stage stream order plus the documented retail route gives a **strong route-correlated identity**, not a standalone visual runtime proof: Prison type `0x15` is the early armed guard family encountered while the long-range staff/laser guards are active, and type `0x16` is the later post-capture armed family encountered with the large cannon guards. Bridge's only armed ordinary variant is type `0x17`, paired with base type `0x14`, matching that stage's ordinary projectile/cannon guards. The exact projectile child/action callback for each type remains Pending and must be closed before claiming a portable projectile dependency set.
+
+### Prison phase-local fighter residency
+
+Prison does **not** keep file `0x22`, files `0x8E+0x8F`, and files `0x8E+0x90` resident together. Its overlay rewinds the main arena tail with `0x80066478` and swaps the active fighter family:
+
+- ROM `0xC4DF0` / VA `0x802ECFB0`: rewind, then load file `0x8F` into slot `0x80112008` and file `0x8E` into `0x80111528`. Active ordinary bundle: `0x3B520`.
+- ROM `0xC4EE4` / VA `0x802ED0A4`: rewind the prior pair, then load file `0x22` into `0x802E7DC4`. Active ordinary bundle: `0x255E0`.
+- ROM `0xC4F64` / VA `0x802ED124`: rewind again, then load file `0x90` into `0x802C0FA0` and file `0x8E` into `0x80111528`. Active ordinary bundle: `0x3C160`.
+
+This is a native example of encounter/phase-local resource residency rather than a whole-stage fighter superset.
+
+### Bridge phase-local fighter residency
+
+Bridge likewise treats its ordinary armed-grunt pair as a replaceable arena tail. The ordinary phase loads file `0x8E` into `0x80111528` and file `0x91` into `0x80111ED0`, yielding raw bundle `0x32DB0`. At ROM `0xBEA7C` / VA `0x802F094C`, the overlay rewinds the file-`0x8E` tail and loads file `0x2D` for a separate encounter/resource phase. At ROM `0xBED90` / VA `0x802F0C60`, it rewinds that replacement and reloads files `0x8E` and `0x91`, then resumes the ordinary-enemy path. File `0x2D`'s exact higher-level encounter identity is not assigned by this trace.
+
+### Water sizing consequence
+
+Using the user-supplied Water observed-route replacement ceiling `0x34520`:
+
+| Imported PRIS GRUNT bundle | Raw size | Versus Water `0x34520` ceiling |
+|---|---:|---:|
+| `0x14 + 0x15` = files `0x8E+0x8F` | `0x3B520` | `0x7000` (28,672 B) over |
+| `0x14 + 0x16` = files `0x8E+0x90` | `0x3C160` | `0x7C40` (31,808 B) over |
+| `0x14 + 0x17` = files `0x8E+0x91` | `0x32DB0` | **`0x1770` (6,000 B) below** |
+
+The Bridge `0x14/0x17` pair is therefore the first ranged PRIS-GRUNT family that fits the existing bounded Water pair budget **at raw fighter-file size alone**. This is not yet a safe import certificate: detached-weapon/projectile resources, terminal presentation, dynamic allocations, and later Water allocations must still be closed against that small `0x1770` margin.
+
+The architectural consequence is stronger than a single pair result: Fortress, Prison, and Bridge all demonstrate native arena-tail replacement for enemy/encounter resources. A future cross-stage enemy planner should model **phase-local fighter residency and explicit rewind/reload ownership**, rather than assuming every enemy family selected for a stage must be resident simultaneously. Water currently lacks a direct stage-overlay `0x80066478` rewind path, so importing that policy there would require its own guarded lifecycle proof.
+
