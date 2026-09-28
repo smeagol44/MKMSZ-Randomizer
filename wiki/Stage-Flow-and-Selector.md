@@ -47,7 +47,28 @@ The common stage loader `0x80016080` dispatches native stage IDs through a 12-en
 - `0x80011070` explicitly restores native stage ID `7`, sets the broader stage selector to `1`, constructs the normal Sub-Zero player, loads the ordinary gameplay HUD, and calls test-character loader `0x80065668`. Its resolved direct file-load set is `0x40, 0x5D, 0x3F, 0x87, 0x3D, 0x3E, 0x41, 0x3B`, all of which are also loaded by the normal Fire-stage entry path. It does **not** load one of the eight normal gameplay overlays at `0x802ECE30`.
 - When no test-character selection exists, `0x80065668` takes a fallback path that loads global file `0x3C` into the current stage-resource pointer `0x802F82B8`. File `0x3C` is Fire's stage resource file. With a valid test-character selection, the same helper instead consumes the 25×`0x1C` test-character record table and loads/spawns the selected fighter resources.
 
-**Interpretation:** stage 7 is a strong candidate for a future MKMSZR test laboratory because the player, scene/resource, HUD, and debug-opponent scaffolding already exist. The stock direct `FIRE GOD ROOM` selector route still does not finish loading at runtime, so this is **Static-confirmed architecture plus a Pending repair task**, not a usable arena yet. Stage 6 is materially less promising unless MKMSZR deliberately supplies a new stage-entry implementation.
+#### Stage 7 identity versus the normal Fire boss room
+
+A second static pass resolves the room identity much more strongly.
+
+The normal Fire initializer `0x800108FC` has a dedicated branch when `0x802C18F8 == 5`. On the natural Fire path, Fire-overlay code at `0x802EE75C..0x802EE764` (ROM `0xE34AC..0xE34B4`) writes selector **5** before the special-area transition. That selector-5 reload uses the secondary Fire resource set:
+
+`0x40, 0x5D, 0x3F, 0x87, 0x3D, 0x3E, 0x41, 0x3B`.
+
+Native stage 7 / `FIRE GOD ROOM` initializer `0x80011070` loads **the exact same eight global files**.
+
+More decisively, both routes call scene parser `0x80002588` with the same scene/collision inputs: file-`0x3D` allocation as the primary scene input, file-`0x41` allocation as the paired input, publication through `0x80111FF8`, auxiliary table `0x800BF28C`, and state block `0x802C1B60`. Therefore stage 7 and normal Fire selector 5 construct the same secondary Fire scene/collision package.
+
+The spawn data independently agrees on the room's X coordinate. Normal Fire selector 5 resolves to spawn record `0x800A00CC`, whose X is `0xFFFD3DEB`; native stage 7's selector-1 default row at `0x800A02D8` uses the same X. Its Y/orientation fields differ, so the debug entry point is not byte-for-byte the normal boss spawn.
+
+The encounter setup then deliberately diverges:
+
+- **Normal Fire selector 5:** after player construction, `0x800108FC` calls `0x80065428`. That helper loads global file `0x21` into resource-pointer slot `0x800C25B4`; the fighter-type table maps type `0x0C` to that exact slot. The selector-5 enemy stream is `0x800B3A54`, the dedicated one-spawn type-`0x0C` encounter.
+- **Native stage 7 / Test Characters:** after player construction, `0x80011070` calls `0x80065668` instead. That helper either loads/spawns the selected Test Characters fighter or, with no selection, takes its fallback resource path.
+
+**Static conclusion:** `FIRE GOD ROOM` is the **same secondary Fire/boss-arena scene shell used by normal Fire selector 5**, entered through a separate debug initializer. It is not a distinct hidden Fire-themed room. It is also not literally the normal boss fight: the direct/debug route substitutes the Test Characters/debug-opponent setup for normal Fire's type-`0x0C` boss setup and uses a different spawn-state row.
+
+This makes stage 7 a strong future MKMSZR laboratory candidate if its direct-entry failure can be repaired. The room geometry/collision already exists and is shared with the real Fire boss area; the main repair target is the debug entry/lifecycle composition rather than inventing arena geometry. Stage 6 remains materially less promising unless MKMSZR supplies a new stage-entry implementation.
 
 ## Compact-to-native selection mapping
 
