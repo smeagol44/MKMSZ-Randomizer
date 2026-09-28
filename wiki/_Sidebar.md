@@ -7,6 +7,7 @@
 - [Runtime validation status](Runtime-Validation-Status)
 - [Architecture overview](Architecture-Overview)
 - [Research methodology and evidence](Research-Workflow)
+- [Glossary](Glossary)
 
 **Core Technical Reference**
 
