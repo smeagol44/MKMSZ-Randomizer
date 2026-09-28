@@ -198,6 +198,14 @@
 | 26 | 2 | `0x944` | external-resource-id | `0x291` | `` | `0x000F0011` / `0x00060009` |
 | 26 | 3 | `0x958` | external-resource-id | `0x292` | `` | `0x00100011` / `0x00070009` |
 
+## Empty slot 10 and foreign-enemy death presentation
+
+**Static-confirmed (2026-09-27).** Fire outer selector **10** (file offset `+0x28`) is zero. This is safe for stock Fire enemies because permanent terminal continuation `0x80056D50` explicitly excludes Fire-native types `0x09` and `0x0A` from the generic `0x80053DA8` stage-slot presentation path.
+
+The Runtime-confirmed imported MONK2/type-`0x01` proof changes that lifecycle assumption. Type `0x01` is not excluded, so after normal death bookkeeping `0x80053DA8` switches the actor to the current Fire stage-resource base and reads selector 10. The zero entry explains the observed missing death/despawn presentation.
+
+For a bounded proof, selector 10 is valid **logical capacity**, but Fire has no physical payload for it. The smallest candidate is to relocate/expand file `0x3C`, append the rebased Temple slot-10 bundle (`0x2098` bytes), and point Fire selector 10 at that appended descriptor. This remains Pending runtime validation and must not be treated as free stock storage.
+
 ## Fire-specific notes, constraints, and proof-local evidence
 
 - Stock Fire has **15 empty logical outer slots**, selectors `5..19`, in the 27-word table. This is **Static-confirmed selector-table capacity only**. It is not evidence of 15 free physical payload regions, unused RDRAM, or production-safe allocation space, and the foreign-key proof below runtime-tested only one of those logical slots.
