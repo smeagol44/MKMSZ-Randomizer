@@ -43,9 +43,9 @@ Changing a type is safe only when the expected resource slot is resident and its
 
 The first ordinary Fire type halfword is RAM `0x800B38AA` / ROM `0xB44AA`. Guarded `0x000A -> 0x0009` succeeded: the replacement spawned and normal Fire continued.
 
-The same record changed to type `0x01` originally froze because Fire left slot `0x801AE46C` null. A bounded import proof loaded Temple file `0x89`, populated that slot, and replaced Fire's native type-`0x0A` allocation/file-`0x20` path rather than adding past the arena limit. The imported monk rendered, moved, fought, and was killable. Its normal death/despawn presentation was missing.
+The same record changed to type `0x01` originally froze because Fire left slot `0x801AE46C` null. A bounded import proof loaded Temple file `0x89`, populated that slot, and replaced Fire's native type-`0x0A` allocation/file-`0x20` path rather than adding past the arena limit. The imported monk rendered, moved, fought, and was killable. The fighter-only proof lacked normal death/despawn presentation. In a later bounded proof, Temple current-stage resource selector `10` was also materialized in Fire; the user confirmed correct death animation and despawn on the tested route.
 
-This establishes cross-stage fighter resource residency and construction, not arbitrary roster compatibility.
+This establishes cross-stage fighter residency, construction, and one tested terminal route, not arbitrary roster compatibility.
 
 ## Boss and special exclusions
 
@@ -179,7 +179,7 @@ The secondary dependencies explain the stock paired families already visible in 
 Legend:
 
 - **N** — native in the destination ordinary branch; exact constructor resource slot(s) are stock-resident there.
-- **P** — cross-stage import is Runtime-confirmed for construction/combat but still has a known lifecycle/presentation defect.
+- **P** — cross-stage import is Runtime-confirmed for construction/combat and, after separate selector-`10` materialization, normal death/despawn on the tested route. Other routes remain untested.
 - **I** — at least one required resource/slot is absent from the destination's native ordinary bundle; explicit import/materialization is required and compatibility is still Pending.
 
 | Stage | `00` | `01` | `02` | `03` | `05` | `09` | `0A` | `0D` | `0E` | `0F` | `11` | `12` | `13` | `14` | `15` | `16` | `17` | `1A` | `1C` |
@@ -193,7 +193,7 @@ Legend:
 | Fire | I | **P** | I | I | I | N | N | I | I | I | I | I | I | I | I | I | I | I | I |
 | Bridge | I | I | I | I | I | I | I | I | I | I | I | I | I | N | I | I | N | I | I |
 
-There are **no non-native N cells** in this first pass: every foreign type is missing at least one exact resource-file/slot pair in the destination's native ordinary bundle. The only cross-stage exception with runtime evidence is Fire × `0x01`, where the explicit file-`0x89` import proved construction, rendering, AI, movement, collision, combat and killability, while normal death/despawn presentation remained missing.
+There are **no non-native N cells** in this first pass: every foreign type is missing at least one exact resource-file/slot pair in the destination's native ordinary bundle. The only cross-stage exception with runtime evidence is Fire × `0x01`: file `0x89` at `0x801AE46C` proved construction/combat, and a subsequent proof also materializing Temple stage-resource selector `10` proved normal death/despawn on the tested route.
 
 ### Immediate planner consequence
 
@@ -228,4 +228,33 @@ This is the smallest conservative **same-stage** roster because every listed typ
 
 ### Next matrix pass
 
-The highest-value unresolved compatibility item is now the imported type-`0x01` death/despawn defect. Trace the native Temple MONK2 death/despawn path against the Fire-import proof to identify the missing auxiliary presentation/resource/callback dependency. In parallel, a future disposable all-stage proof can exercise the conservative same-stage pools above without introducing foreign fighter allocations.
+The next gate is a per-type terminal-presentation and callback trace, followed by bounded composition proofs. Do not generalize the Fire × MONK2 result to other types or assume the stage-local selector number itself is portable.
+
+## Auxiliary presentation pass — bounded evidence (2026-09-27)
+
+The user reports **Runtime-confirmed, bounded** Fire × MONK2 normal death animation/despawn after materializing Temple current-stage selector `10` alongside fighter file `0x89` in slot `0x801AE46C`. The earlier fighter-only proof is its negative control. The exact new proof file, selector repointing, and route hash were not supplied with this report.
+
+The clean-ROM stage files establish an asset relationship. Temple resource file (ROM `0x513710`, relative `0xADF4..0xCD5F`) and Water resource file (ROM `0x611780`, relative `0x4508..0x6473`) each have a six-record selector-`10` list. Their six contiguous compressed image payloads (`0x1ED8` bytes) are **byte-identical**; the preceding `0x94` bytes of list/record pointers differ and must be rebased. The full embedded closure spans `0x1F6C` bytes before destination placement. Wind selector `10` has six external IDs `0x37A..0x37F` with matching dimensions/anchors; pixel identity and destination cache availability remain unproved. Earth selector `10` aliases other selectors, Prison selector `10` is a different eight-frame bundle, and Fire/Bridge selector `10` are empty. Thus **selector number 10 is not a globally portable death resource**. Temple/Water payloads can be deduplicated byte for byte if both are needed in one destination and their relative pointers are rebuilt. Identical data alone does not prove a fighter's terminal callback consumes it.
+
+The table records confirmed dependencies and distinguishes candidate assets from traced callbacks. A dash means **unresolved**, not no auxiliary dependency. Constructor slots, descriptor offsets, and full file sizes remain in the matrix above.
+
+| Fighter type | Native ordinary stage | Fighter bundle | Terminal-presentation dependency | Shared/family/stage-specific | Evidence |
+|---|---|---|---|---|---|
+| `00` MONK1 | Earth | `88` | —; Earth selector `10` differs | unresolved | Static stage table; callback pending |
+| `01` MONK2 | Temple | `89` | Temple selector `10` six-frame closure in tested Fire import | monk-family candidate, stage-local selector | Runtime-confirmed bounded Fire route; static Temple/Water payload |
+| `02` MONK3 | Temple | `8A` + `89` | —; Temple selector `10` native | monk-family candidate | Static residency; callback pending |
+| `03` MONK4 | Wind | `8B` | —; Wind selector `10` six external records | monk-family candidate, cache-dependent | Static form/geometry; callback/pixels pending |
+| `05` MONK6 | Water | `8D` + `8C` | —; Water selector `10` Temple-identical payload | monk-family candidate | Static payload; callback pending |
+| `09` HULK MONK | Fire | `25` | —; Fire selector `10` empty | Fire native route | Static stage table; callback pending |
+| `0A` FAST MONK | Fire | `20` | —; Fire selector `10` empty | Fire native route | Static stage table; callback pending |
+| `0E` GRUNT1 | Fortress, Prison | `22` | —; native selector-`10` entries differ | family/stage-specific unresolved | Static dual-stage residency; callback pending |
+| `0F` GRUNT2 | Fortress | `23` + `22` | — | grunt-family candidate | Static bundle; callback pending |
+| `14` PRIS GRUNT1 | Prison, Bridge | `8E` | —; Bridge selector `10` empty | family/stage-specific unresolved | Static dual-stage residency; callback pending |
+| `15` PRIS GRUNT2 | Prison | `8F` + `8E` | — | prison-grunt family candidate | Static bundle; callback pending |
+| `16` PRIS GRUNT3 | Prison | `90` + `8E` | — | prison-grunt family candidate | Static bundle; callback pending |
+| `17` PRIS GRUNT4 | Bridge | `91` + `8E` | —; Bridge selector `10` empty | prison-grunt family candidate | Static bundle; callback pending |
+| `1A` MONK5 | Water | `8C` | —; Water selector `10` Temple-identical payload | monk-family candidate | Static payload; callback pending |
+
+**Water MONK5/MONK6 → GRUNT1/GRUNT2 sizing.** Native Water files `8C` (`0x1E160`) and `8D` (`0xA370`) total `0x284D0`. Replacement files `22` (`0x255E0`) and `23` (`0x1C7C0`) total `0x41DA0`: net `0x198D0` (104,656 bytes) after removing *both* native fighters, before auxiliary presentation and allocator overhead. The Water overlay loader at ROM `0xB58B4..0xB58F8` normally allocates/loads `8C` into `0x801114C0`, then `8D` into `0x802E7268`; the grunt constructor expects `22` at `0x802E7DC4` and `23` at `0x802E83E4`. Both new files and slots must be composed together. The `0x75A8` (30,120-byte) global bounded headroom observation is **not a Water-specific allowance**; even granting all of it optimistically caps the combined replacement payload at `0x2FA78` and leaves `0x12328` (74,536 bytes) to save or relocate, with auxiliary resource cost still uncounted. The complete raw-pair replacement is unsupported by the available arena bound.
+
+A candidate compact composition replaces the two Water fighter allocations as a pair, repacks/rebases the reachable `22`/`23` content and all terminal frames, and materializes any auxiliary closure found by callback tracing. A scan of the clean files found no byte-identical Type-5 image chunks within or across `22` and `23` under their frame boundaries; simple image interning cannot deliver the required saving. No *safe minimum* compact size is established yet. Resolve reachable animation/AI/death roots, base-file references, other readers of the Water native slots, exact Water peak cursor, and relocation closure before choosing a packed footprint or preparing a ROM.

@@ -57,7 +57,7 @@
 | 7 | Non-pickup/unknown resource | `0x74BC` | zero-terminated-record-list | 5 | 0 |
 | 8 | Non-pickup/unknown resource | `0x8C7C` | embedded-data-bundle-loop-selector | 18 | 0 |
 | 9 | Non-pickup/unknown resource | `0x8CD0` | zero-terminated-record-list | 5 | 0 |
-| 10 | Non-pickup/unknown resource | `0xADF4` | zero-terminated-record-list | 6 | 0 |
+| 10 | MONK2 terminal presentation in bounded Fire import | `0xADF4` | zero-terminated-record-list | 6 | 0 |
 | 11 | Unused logical slot | `0` | empty | — | 0 |
 | 12 | Unused logical slot | `0` | empty | — | 0 |
 | 13 | Unused logical slot | `0` | empty | — | 0 |
