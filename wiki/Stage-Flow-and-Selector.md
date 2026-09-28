@@ -38,6 +38,17 @@ The selector wrap/count sites at ROM `0xDD60` and `0xDD64` are bounded to eight 
 
 Stock entries excluded from production are **Unused**, **Fire God Room**, and **Test Characters**. The original eleven-label order was Temple, Wind, Water, Earth, Prison, Fire, Unused, Fire God Room, Bridge, Fortress, Test Characters.
 
+### Hidden native stages 6 and 7 — static first pass
+
+The common stage loader `0x80016080` dispatches native stage IDs through a 12-entry jump table at VA `0x800AA330` / ROM `0xAAF30`.
+
+- **Native stage 6 / UNUSED:** its jump-table entry is `0x800162D8`, which is the loader's common cleanup/return tail. Unlike the normal stages, it schedules **no per-stage entry callback at all**. The generic >=2 spawn-pointer table also has a null stage-6 entry. A small default spawn row still exists in the selector<2 table, so some data survived, but there is no stock initialization path that reaches normal stage construction. This matches the historical softlock/freeze and makes stage 6 an abandoned placeholder rather than a ready-made hidden arena.
+- **Native stage 7 / FIRE GOD ROOM:** its jump-table entry schedules `0x80011070`. Native mode 10 / TEST CHARACTERS converges on this exact same routine after a character selection; before selection, mode 10 schedules the 25-entry character selector instead. Thus stage 7 is not an empty placeholder: it owns substantial debug-arena/gameplay initialization and is the arena reused by Test Characters.
+- `0x80011070` explicitly restores native stage ID `7`, sets the broader stage selector to `1`, constructs the normal Sub-Zero player, loads the ordinary gameplay HUD, and calls test-character loader `0x80065668`. Its resolved direct file-load set is `0x40, 0x5D, 0x3F, 0x87, 0x3D, 0x3E, 0x41, 0x3B`, all of which are also loaded by the normal Fire-stage entry path. It does **not** load one of the eight normal gameplay overlays at `0x802ECE30`.
+- When no test-character selection exists, `0x80065668` takes a fallback path that loads global file `0x3C` into the current stage-resource pointer `0x802F82B8`. File `0x3C` is Fire's stage resource file. With a valid test-character selection, the same helper instead consumes the 25×`0x1C` test-character record table and loads/spawns the selected fighter resources.
+
+**Interpretation:** stage 7 is a strong candidate for a future MKMSZR test laboratory because the player, scene/resource, HUD, and debug-opponent scaffolding already exist. The stock direct `FIRE GOD ROOM` selector route still does not finish loading at runtime, so this is **Static-confirmed architecture plus a Pending repair task**, not a usable arena yet. Stage 6 is materially less promising unless MKMSZR deliberately supplies a new stage-entry implementation.
+
 ## Compact-to-native selection mapping
 
 The debug menu writes its compact selection at `0x800C11E0`. The transition path at `0x80015088` ultimately stores the native stage at `0x8009A910`.
