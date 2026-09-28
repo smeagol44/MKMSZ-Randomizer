@@ -217,6 +217,19 @@ The canonical coordinate in this table is the **physical** interval. <code>displ
 
 | <code>rdram.stock.pickup_context_pointer</code> | <code>[0x2ECE20,0x2ECE24)</code> | KSEG0 <code>0x802ECE20</code>; KSEG1 <code>0xA02ECE20</code> | <code>stock-known</code> | Live pickup-manager process/context pointer slot | Stage runtime | Stage manager construction/gameplay | Static-confirmed; runtime use confirmed by persistence | conditional | <code>addresses.py</code>, <code>pickup_persistence.py</code> | Corrects superseded <code>0x802FCE20</code>; surrounding overlay/runtime space is not inferred from this word. |
 
+### Display slices within the modern-controls extension
+
+These four contiguous slices partition the existing <code>rdram.production.controls_extension</code> owner for the Atlas RDRAM capacity view. Their boundaries follow the emission order in <code>controls_production.py</code>; they are **views, not additional or independent allocations**. Alignment bytes within each slice remain reserved by the parent. The parent ROM owner <code>rom.production.controls_extension</code> and its bounds also remain unchanged.
+
+| View | Physical RDRAM half-open interval | KSEG0 half-open interval | ROM half-open interval | Size | Contents at the boundaries |
+|---|---|---|---|---:|---|
+| ATTACK | <code>[0x1AFC30,0x1AFE90)</code> | <code>[0x801AFC30,0x801AFE90)</code> | <code>[0x00F68410,0x00F68670)</code> | 608 B | Event, attack wrapper, combo, steady-block helpers; the event helper is shared. |
+| SPECIALS | <code>[0x1AFE90,0x1B0310)</code> | <code>[0x801AFE90,0x801B0310)</code> | <code>[0x00F68670,0x00F68AF0)</code> | 1,152 B | Specials helper and following alignment. |
+| JUMP | <code>[0x1B0310,0x1B0690)</code> | <code>[0x801B0310,0x801B0690)</code> | <code>[0x00F68AF0,0x00F68E70)</code> | 896 B | Standing and moving Jump, block-start and ledge helpers; block-start also serves Attack. |
+| RUN | <code>[0x1B0690,0x1B0880)</code> | <code>[0x801B0690,0x801B0880)</code> | <code>[0x00F68E70,0x00F69060)</code> | 496 B | Run decision/capture/loop, Run state and dispatcher, then shared capture/event dispatch. |
+
+The sizes sum to <code>0xC50</code> = 3,152 bytes, exactly the combined controls owner. The labels indicate where the builder emits code, **not exclusive feature ownership**: in particular, the shared event helper appears in ATTACK's view and shared capture/event dispatch in RUN's view. TURN remains its separate <code>rdram.production.turn_module</code> allocation.
+
 ### The 16 KiB reservation and arena boundary
 
 The production reservation is exactly physical <code>[0x1AF420,0x1B3420)</code>, KSEG0 <code>[0x801AF420,0x801B3420)</code>, KSEG1 <code>[0xA01AF420,0xA01B3420)</code>. The established first 1 KiB <code>[0x1AF420,0x1AF820)</code> remains fully accounted for by the Runtime V2 code/state sub-owners above. The additional <code>[0x1AF820,0x1B3420)</code> 15 KiB is the production expansion-pool owner and is deliberately unassigned to features until a build-time allocation is made.
