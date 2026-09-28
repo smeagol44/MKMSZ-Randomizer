@@ -91,6 +91,18 @@ The selected Test Characters route is not a clean counterexample: although its p
 
 This makes stage 7 a strong future MKMSZR laboratory candidate: the room geometry/collision already exists and is shared with the real Fire boss area, and the first structural repair is narrowly identified. Stage 6 remains materially less promising unless MKMSZR supplies a new stage-entry implementation.
 
+#### TEST LAB v01 runtime result and control-gate follow-up
+
+Disposable proof `MKMSZR_test-lab_firegod-proof_v01.z64` (SHA-256 `3a824917e334ec526553a820e435771f4b81bbaa33b3934efb120d5c27260ec8`) added the missing file-`0x9D` load, exposed native stage 7 as **TEST LAB**, and preserved the compact selector/logo-skip test harness.
+
+**Runtime-confirmed:** the arena now loads far enough to render the Fire boss-room scene and Sub-Zero and remain interactive rather than hanging. The user observed that the room was extremely dark; initial movement was delayed for several seconds; ordinary turning did not change facing unless blocking; Pause/Inventory and HP/LP/HK/LK were inert. Therefore the overlay-owner repair fixes the original hard entry failure but does not make the retail debug composition a normal gameplay stage.
+
+Static follow-up isolates a strong control-state cause. `0x80011070` sets `0x800EEC1C = 1`. In `0x80065668`, the **selected Test Characters** branch clears that word back to zero, while the **negative-selection** branch used by direct TEST LAB does not. Generic fighter semantic-event dispatcher `0x800155C0` checks `0x800EEC1C` and returns early from normal event dispatch while it is nonzero. This matches the dead attack/ordinary-turn symptom family; block-facing can use a different live-action path.
+
+Normal Fire additionally schedules `0x80017024`, which eventually clears `0x800EEC1C` after its intro/process conditions. Stage 7 does not schedule that process. For a laboratory route, copying the entire normal Fire boss-intro process would add unrelated behavior, so the smallest diagnostic is to mirror Test Characters' explicit control unlock instead.
+
+Disposable v02 therefore preserves v01 and changes only the stage-7 call to `0x80065668`: a proof helper calls the stock function, clears `0x800EEC1C`, then resumes at `0x80011688`. Lighting is deliberately unchanged. Runtime validation is Pending.
+
 ## Compact-to-native selection mapping
 
 The debug menu writes its compact selection at `0x800C11E0`. The transition path at `0x80015088` ultimately stores the native stage at `0x8009A910`.
