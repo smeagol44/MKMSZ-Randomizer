@@ -12,6 +12,7 @@ This Wiki is the current technical and product knowledge base for the project. U
 - [Contributor start here](Contributor-Start-Here) — repository workflow, build/test entry points, and contribution routing.
 - [Architecture overview](Architecture-Overview) — high-level system boundaries and patch/runtime architecture.
 - [Research methodology and evidence](Research-Workflow) — evidence labels, bounded-experiment method, and research provenance.
+- [Glossary](Glossary) — project shorthand, technical vocabulary, acronyms, evidence terms, and donor/importer terminology.
 
 ## Evidence labels
 
