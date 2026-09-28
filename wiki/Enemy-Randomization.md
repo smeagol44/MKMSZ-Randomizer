@@ -45,7 +45,65 @@ The first ordinary Fire type halfword is RAM `0x800B38AA` / ROM `0xB44AA`. Guard
 
 The same record changed to type `0x01` originally froze because Fire left slot `0x801AE46C` null. A bounded import proof loaded Temple file `0x89`, populated that slot, and replaced Fire's native type-`0x0A` allocation/file-`0x20` path rather than adding past the arena limit. The imported monk rendered, moved, fought, and was killable. Its normal death/despawn presentation was missing.
 
-This establishes cross-stage fighter resource residency and construction, not arbitrary roster compatibility.
+A 2026-09-27 static follow-up resolves that missing presentation. The generic death continuation does **not** remain inside fighter file `0x89`: for type `0x01`, it switches the dying actor to current-stage presentation **slot 10** through `0x80053DA8`. Temple's current-stage resource file `0x60` supplies a six-frame embedded bundle at slot 10; Fire's current-stage resource file `0x3C` leaves slot 10 exactly zero because Fire's native types `0x09/0x0A` are explicitly excluded from this generic terminal-presentation path. The imported MONK2 therefore reaches a valid generic death chain but binds an absent Fire stage-local presentation resource.
+
+This establishes cross-stage fighter resource residency and construction and statically identifies the first auxiliary lifecycle dependency. Arbitrary roster compatibility remains Pending until such stage-local dependencies are planned/materialized and runtime-tested.
+
+## MONK2 death/despawn presentation trace — static closure (2026-09-27)
+
+**Static-confirmed.** The imported Fire type-`0x01` proof reaches the normal generic enemy terminal chain. The missing visuals are not caused by fighter file `0x89`, a separate MONK2 constructor file, or a special MONK2-only death callback.
+
+The relevant permanent-code chain is:
+
+```text
+terminal/reaction path
+  -> 0x800328FC
+       health +0x654 == 0
+  -> 0x80057098
+       common terminal bookkeeping / type-family transforms
+       schedules 0x80056D50
+  -> 0x80056D50
+       type/stage exclusions
+       type 0x01 is NOT excluded
+  -> 0x80053DA8
+       sleep 60
+       actor +0x98 = current stage resource base 0x802E82B8
+       animation/resource pointer = base + *(base + 0x28)
+       ; +0x28 is outer selector 10
+       run terminal presentation
+       decrement active accounting / remove actor
+```
+
+### Why stock Temple works and imported Fire does not
+
+The current-stage presentation base at `0x802E82B8` is populated independently from the fighter resource:
+
+| Stage | Current-stage file | Size | Outer slot 10 |
+|---|---:|---:|---:|
+| Temple | `0x60` | `0xFC60` | `0xADF4`, six-frame embedded bundle |
+| Fire | `0x3C` | `0x2530` | **`0x00000000`** |
+
+Temple slot 10 occupies a self-contained file-relative presentation region `0xADF4..0xCE8C` (size `0x2098`). Its six records begin at `0xAE10, 0xAE24, 0xAE38, 0xAE4C, 0xAE60, 0xAE74`. Water and Wind also expose six-record slot-10 bundles with the same presentation dimensions, independently supporting a shared stage-local terminal/death semantic.
+
+Fire can leave this selector empty in stock gameplay because `0x80056D50` explicitly excludes native Fire types `0x09` and `0x0A` from `0x80053DA8`. Importing type `0x01` changes that assumption: MONK2 is not excluded, so its death path reads Fire slot 10 and obtains zero.
+
+This matches the prior Runtime-confirmed observation: the fighter can be fought and killed, while its normal death/despawn presentation is absent.
+
+### Correction: `0x8005E1FC`
+
+Earlier notes described `0x8005E1FC` as a special type-`0x01` sound dispatch. The deeper trace corrects that interpretation. `0x800572C4` transforms particular source fighter families such as type `0x02` onto their secondary type-`0x01`/file-`0x89` resource before spawning `0x8005E1FC`; a parallel transform exists for another paired family. Therefore `0x8005E1FC` belongs to transformed secondary-resource-family behavior and is **not** evidence that native MONK2 requires another constructor/death resource.
+
+### Smallest bounded proof
+
+The next proof should retain the already-working Fire MONK2 fighter import and materialize **only Temple slot 10** into Fire:
+
+1. relocate/expand Fire current-stage resource file `0x3C` in a disposable proof;
+2. append a pointer-rebased copy of Temple's `0xADF4..0xCE8C` slot-10 bundle;
+3. write Fire outer selector 10 (`file +0x28`) to the appended descriptor;
+4. leave fighter file `0x89`, enemy stream records, and all other Fire resources unchanged;
+5. manually kill imported MONK2s and verify the six-frame terminal presentation and clean actor disappearance.
+
+This is approximately `0x2098` (8.15 KiB) of auxiliary stage-resource data rather than importing the whole Temple stage resource. Fire's selector 10 is logically empty, but that does **not** make physical storage free; the proof must use explicit relocated/expanded file ownership.
 
 ## Boss and special exclusions
 
@@ -228,4 +286,4 @@ This is the smallest conservative **same-stage** roster because every listed typ
 
 ### Next matrix pass
 
-The highest-value unresolved compatibility item is now the imported type-`0x01` death/despawn defect. Trace the native Temple MONK2 death/despawn path against the Fire-import proof to identify the missing auxiliary presentation/resource/callback dependency. In parallel, a future disposable all-stage proof can exercise the conservative same-stage pools above without introducing foreign fighter allocations.
+The imported type-`0x01` death/despawn defect is now Static-confirmed as a missing destination stage-local slot-10 presentation bundle. The next bounded runtime gate is a Fire proof that materializes only Temple slot 10 while preserving the already-working fighter import. In parallel, a future disposable all-stage proof can exercise the conservative same-stage pools above without introducing foreign fighter allocations.
