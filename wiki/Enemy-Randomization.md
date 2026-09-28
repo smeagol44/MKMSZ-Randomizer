@@ -106,7 +106,45 @@ All five singleton records use the gated opcode-`6` form, each with quota `1`:
 | Fortress | `0x1C` | `0xB4014` | `0x04` | `-0x463B, 0xFC0, 0` | `0` |
 | Prison | `0x11` | `0xB436C` | `0x20` | `-0x4B00, -0xC0, 0` | `0` |
 
-This does **not** prove these are bosses or minibosses. It does prove that each is a one-shot gated encounter record rather than one of the repeated ordinary-grunt entries, so the first conservative pool should exclude them until the gate/encounter ownership is traced.
+The follow-up static trace resolves the encounter ownership far enough to remove these five records from the general ordinary pool:
+
+- The clean Test Characters table/name table maps type `0x12` to **SCORPION**, type `0x11` to **UNDEAD SCORP**, and Fortress types `0x0D/0x1C/0x13` to **ASSASSIN1/ASSASSIN2/ASSASSIN3** respectively. The same table also confirms the ordinary grunt family names used below.
+- Temple overlay file `0xA0` owns a dedicated progression path that ORs `0x08` into `0x802C1140` at VA `0x802ED01C..24` / ROM `0xCA6FC..704`. That bit exactly matches the singleton SCORPION record's opcode-6 mask `0x08`. This is a dedicated gated Scorpion encounter, not a generic monk slot.
+- Prison overlay file `0x9F` has a selector-`5` path that conditionally writes `0x20` to `0x802C1140` at VA `0x802EDEA4` / ROM `0xC5CE4` (otherwise it clears the word). That bit exactly matches the singleton UNDEAD SCORP record's mask `0x20`. The condition comes from save-backed state `0x8009A8CC`; its higher-level gameplay label remains unresolved, but the gate ownership is stage-specific and special.
+- Fortress overlay file `0x9E` resolves the three singleton assassins completely. Its three-entry encounter table at VA `0x802F15C4` / ROM `0xC4AC4` selects, by encounter index `s4=0,1,2`, files/slots for type `0x0D` ASSASSIN1, type `0x13` ASSASSIN3, and type `0x1C` ASSASSIN2. The manager seeds `s5=1` and writes `1 << s4` to `0x802C1140` at VA `0x802F03B4..BC`, producing exactly masks `1,2,4`.
+- The same Fortress manager computes `s4 * 0x30` and directly updates the first three Fortress pickup records at `0x802F1334 + s4*0x30`: it copies the defeated actor's X coordinate into record `+0x00` and clears bit `0x8000` from record `+0x14` at VA `0x802F043C..046C` / ROM `0xC393C..C396C`. Those records are the already-established Kia, Jataaka, and Sareena defeat-reward locations. Therefore the exact static association is **ASSASSIN1 / type 0x0D -> Kia**, **ASSASSIN3 / type 0x13 -> Jataaka**, and **ASSASSIN2 / type 0x1C -> Sareena**.
+
+These five stream records are mechanically dispatched by the ordinary interpreter, but they are **special encounter records embedded in the ordinary-branch streams**, not general grunt-pool members. They are excluded from the first enemy-randomization pool.
+
+### Static fighter-type names relevant to the ordinary pool
+
+The clean N64 Test Characters records at VA `0x8009AC28` and their adjacent name table provide a direct type/name mapping. Type `0x00` MONK1 is the separately handled Earth entry; the 24 table records then align with names MONK2 through SHINNOK.
+
+For the 19 ordinary-branch types in this matrix:
+
+| Type | Static name | Pool classification |
+|---:|---|---|
+| `0x00` | MONK1 | repeated ordinary candidate (Earth) |
+| `0x01` | MONK2 | repeated ordinary candidate (Temple) |
+| `0x02` | MONK3 | repeated ordinary candidate (Temple) |
+| `0x03` | MONK4 | repeated ordinary candidate (Wind) |
+| `0x05` | MONK6 | repeated ordinary candidate (Water) |
+| `0x09` | HULK MONK | repeated ordinary candidate (Fire) |
+| `0x0A` | FAST MONK | repeated ordinary candidate (Fire) |
+| `0x0D` | ASSASSIN1 / Kia | **special singleton — excluded** |
+| `0x0E` | GRUNT1 | repeated ordinary candidate (Fortress/Prison) |
+| `0x0F` | GRUNT2 | repeated ordinary candidate (Fortress) |
+| `0x11` | UNDEAD SCORP | **special singleton — excluded** |
+| `0x12` | SCORPION | **special singleton — excluded** |
+| `0x13` | ASSASSIN3 / Jataaka | **special singleton — excluded** |
+| `0x14` | PRIS GRUNT1 | repeated ordinary candidate (Prison/Bridge) |
+| `0x15` | PRIS GRUNT2 | repeated ordinary candidate (Prison) |
+| `0x16` | PRIS GRUNT3 | repeated ordinary candidate (Prison) |
+| `0x17` | PRIS GRUNT4 | repeated ordinary candidate (Bridge) |
+| `0x1A` | MONK5 | repeated ordinary candidate (Water) |
+| `0x1C` | ASSASSIN2 / Sareena | **special singleton — excluded** |
+
+“Repeated ordinary candidate” is a **static pool-candidate classification**, not pairwise runtime approval. Resource residency is native in the listed stage(s), but encounter behavior, death/despawn presentation and every destination-type pairing have not been exhaustively runtime-tested.
 
 ### Constructor resource bundles
 
@@ -173,6 +211,21 @@ The recently reclaimed high-ROM space from compact Rainbow helps ROM packaging, 
 
 This matrix intentionally excludes the existing special/boss paths: auxiliary hardcoded type `0x07`, Wind boss type `0x08`, Water boss type `0x0B`, Fire state-5 type `0x0C`, Earth custom boss type `0x19`, and Fortress alternate types `0x1B/0x1D`. Those remain per-encounter work and are not ordinary-pool candidates.
 
+### Conservative first ordinary pool
+
+With the singleton trace resolved, the static first-pool candidates are:
+
+- Temple: `0x01 MONK2`, `0x02 MONK3`
+- Earth: `0x00 MONK1`
+- Water: `0x05 MONK6`, `0x1A MONK5`
+- Wind: `0x03 MONK4`
+- Fortress: `0x0E GRUNT1`, `0x0F GRUNT2`
+- Prison: `0x0E GRUNT1`, `0x14 PRIS GRUNT1`, `0x15 PRIS GRUNT2`, `0x16 PRIS GRUNT3`
+- Fire: `0x09 HULK MONK`, `0x0A FAST MONK`
+- Bridge: `0x14 PRIS GRUNT1`, `0x17 PRIS GRUNT4`
+
+This is the smallest conservative **same-stage** roster because every listed type is repeated in its native ordinary branch and its complete constructor resource bundle is already resident there. It does not yet authorize arbitrary pairwise substitution; Fire `0x0A -> 0x09` remains the only direct type-swap Runtime confirmation.
+
 ### Next matrix pass
 
-Before building a mixed-roster proof, the next static pass should classify the **singleton ordinary-branch records** and trace the imported type-`0x01` death/despawn dependency. In parallel, repeated native types can form the conservative first same-stage substitution pool for a later bounded all-stage proof. Pairwise runtime safety is still Pending outside the already-confirmed Fire `0x0A -> 0x09` substitution.
+The highest-value unresolved compatibility item is now the imported type-`0x01` death/despawn defect. Trace the native Temple MONK2 death/despawn path against the Fire-import proof to identify the missing auxiliary presentation/resource/callback dependency. In parallel, a future disposable all-stage proof can exercise the conservative same-stage pools above without introducing foreign fighter allocations.
