@@ -60,7 +60,7 @@ Keep an entry here when the negative result establishes a safety constraint, rul
 |---|---|---|---|
 | Fire enemy type `0x0A -> 0x01` without Temple resource | Freeze at spawn | Constructor dereferences a type-specific resource slot; type substitution alone is insufficient | [Enemy randomization](Enemy-Randomization) |
 | Add Temple file after all stock Fire allocations | Would exceed the observed arena by `0x3098` | Foreign-enemy residency needs bounded replacement/reallocation, not append-after-stock | [Enemy randomization](Enemy-Randomization) |
-| Imported monk proof | Fighter functioned, but normal death/despawn presentation was absent | Residency + constructor success is not complete enemy compatibility | [Enemy randomization](Enemy-Randomization) |
+| Fighter-only Fire × MONK2 import | Fighter functioned, but normal death/despawn presentation was absent; a later bounded proof additionally materializing Temple selector `10` confirmed correct death/despawn on the tested route | Fighter residency + constructor success alone is insufficient; retain the first proof as the negative control, not as a current unresolved Fire × MONK2 defect | [Enemy randomization](Enemy-Randomization) |
 | Apply ordinary-enemy policy to bosses/minibosses | Rejected | Boss/state branches carry custom resources, process IDs, scripts, and transitions | [Enemy randomization](Enemy-Randomization) |
 
 ## UI and Toasty diagnostic failures

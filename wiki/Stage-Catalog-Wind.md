@@ -61,7 +61,7 @@
 | 7 | Unused logical slot | `0` | empty | — | 0 |
 | 8 | Unused logical slot | `0` | empty | — | 0 |
 | 9 | Unused logical slot | `0` | empty | — | 0 |
-| 10 | Animated resource bundle | `0x56C` | zero-terminated-external-list | 6 | 0 |
+| 10 | Six-frame external sequence matching Temple/Water selector-10 geometry; pixels/callback pending | `0x56C` | zero-terminated-external-list | 6 | 0 |
 | 11 | Animated resource bundle | `0x600` | external-resource-id-bundle | 10 | 0 |
 
 ## Recognized bundle records
