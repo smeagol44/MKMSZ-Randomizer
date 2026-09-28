@@ -143,6 +143,22 @@ Observed runtime state after pickup was `TRACE KA`, `G4 S2 B1`: the key awarded,
 This closes the Prison-L1-specific checkpoint problem with a cleaner two-seam model than v07: **suppress the key-only presentation request and the key-only checkpoint-selector write; preserve the logical door/progression bit.**
 
 Production/global scope remains Pending. Other stage keys/crystals may use different selector writes, acquired bits, boss-spawn semantics, or door consumers; do not generalize the exact Prison L1 bytes without tracing their corresponding progression owner.
+### Fortress boss-defeat reward trigger ownership — static closure (2026-09-27)
+
+**Static-confirmed:** Fortress overlay file `0x9E` directly couples the three assassin encounters to the first three ordinary pickup records. The encounter manager uses index `s4 = 0,1,2`; its table at VA `0x802F15C4` / ROM `0xC4AC4` resolves those indices to **ASSASSIN1 / type `0x0D`**, **ASSASSIN3 / type `0x13`**, and **ASSASSIN2 / type `0x1C`**. It writes `1 << s4` to the shared gated-enemy state `0x802C1140`, matching the three singleton ordinary-stream masks `1,2,4`.
+
+After the corresponding encounter actor reaches the manager's completion path, the code computes `s4 * 0x30` and updates ordinary pickup record `0x802F1334 + s4*0x30`. At VA `0x802F043C` it copies the defeated actor's X coordinate into record `+0x00`; at `0x802F0454..046C` it reads record `+0x14`, clears bit `0x8000`, and writes it back. The three target records are:
+
+| Encounter index | Fighter | Reward record | Stock reward |
+|---:|---|---:|---|
+| 0 | ASSASSIN1 / type `0x0D` = **Kia** | ROM `0xC4834` / RDRAM `0x802F1334` | Crystal Kia |
+| 1 | ASSASSIN3 / type `0x13` = **Jataaka** | ROM `0xC4864` / RDRAM `0x802F1364` | Crystal Jataaka |
+| 2 | ASSASSIN2 / type `0x1C` = **Sareena** | ROM `0xC4894` / RDRAM `0x802F1394` | Crystal Sareena |
+
+This closes the previously Pending trigger-ownership question: **the boss/assassin encounter index owns when and where the reward record is activated; the crystal identity is merely the stock contents of that record.** A global assignment must preserve the indexed encounter-to-record activation and may replace the seven-word reward identity with whatever logical item is assigned to that location. The crystal IDs remain independently movable rewards.
+
+This is a static closure of trigger ownership, not runtime validation of arbitrary replacement rewards at those three locations. Destination-safe award semantics and the composed Fortress materializer runtime gate remain Pending.
+
 ### Disposable Proof D — extension selector, Runtime-confirmed
 
 Prison's stock resource file was relocated/expanded by four bytes. An appended selector word at file offset `0x48F0` pointed to the existing Herbs descriptor `0x255C`, and all six Prison Herbs ordinary records were changed from selector `8` to selector `0x123C` (`0x48F0 / 4`).
