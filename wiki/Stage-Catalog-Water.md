@@ -215,6 +215,8 @@
 
 ## Water-specific notes, constraints, and pending questions
 
+- **Enemy-pair sizing (2026-09-28):** the user-supplied Water profiler peak `0x80284940` yields `0xC050` observed headroom and a `0x34520` two-fighter replacement ceiling for that route under unchanged later allocations. Files `0x22+0x23` conditionally sharing the `0x1210` duplicate still total `0x40B90`, leaving `0xC670` to prove removable. Player-controller action indices `0xE/0xF` do not make ordinary GRUNT assets live; shared reaction callback and script/frame reachability remain unresolved. See [Enemy randomization](Enemy-Randomization) for the static trace and caveats.
+
 - The complete `0x64E0`-byte ROM resource file matches RDRAM at `0x802504A8` byte-for-byte in live Water gameplay.
 - All nine standard `0x30`-byte pickup records are contiguous and mapped: three Water icons, two Health urns, and one each of Extra-life urn, Herbs, mana, and Potion.
 - The supplied Lua comments identify slot `26` as mana and substitute Herbs in the virtual item pool; the native callback `0x80038A58` and presentation pointer `0x800B1C14` remain distinct from Herbs.
