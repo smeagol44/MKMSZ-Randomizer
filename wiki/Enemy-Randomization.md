@@ -43,9 +43,11 @@ Changing a type is safe only when the expected resource slot is resident and its
 
 The first ordinary Fire type halfword is RAM `0x800B38AA` / ROM `0xB44AA`. Guarded `0x000A -> 0x0009` succeeded: the replacement spawned and normal Fire continued.
 
-The same record changed to type `0x01` originally froze because Fire left slot `0x801AE46C` null. A bounded import proof loaded Temple file `0x89`, populated that slot, and replaced Fire's native type-`0x0A` allocation/file-`0x20` path rather than adding past the arena limit. The imported monk rendered, moved, fought, and was killable. Its normal death/despawn presentation was missing.
+The same record changed to type `0x01` originally froze because Fire left slot `0x801AE46C` null. A bounded import proof loaded Temple file `0x89`, populated that slot, and replaced Fire's native type-`0x0A` allocation/file-`0x20` path rather than adding past the arena limit. The imported monk rendered, moved, fought, and was killable, but its normal death/despawn presentation was initially missing.
 
-This establishes cross-stage fighter resource residency and construction, not arbitrary roster compatibility.
+A follow-up bounded proof, `MKMSZR_monk2-death_fire-proof_v01.z64` (SHA-256 `806bd8b1b0b2d11fa125090a2624e1509632074bdc827ac94ceda716e434b924`, CRC1/CRC2 `4EB7E197 / 8D2D4B9E`), kept that Runtime-confirmed file-`0x89` import and all seven ordinary Fire `0x0A -> 0x01` substitutions, then supplied the missing Temple current-stage selector-`10` terminal presentation to Fire. The proof copies/rebases Temple current-stage resource file `0x60` selector-`10` bytes `[0xADF4,0xCE8C)` into Fire current-stage resource file `0x3C` slot `10` in a proof-only relocated copy. The user reported that the proof works perfectly and that the imported monks now have the death animation. This promotes normal death/despawn presentation to **Runtime-confirmed on the tested Fire × MONK2 route**.
+
+The result establishes that fighter-file residency alone was insufficient for this import: Fire × type `0x01` also needs the donor terminal-presentation resource. It does **not** prove that selector `10` is a universal dependency for every ordinary fighter or that arbitrary cross-stage rosters are compatible.
 
 ## Boss and special exclusions
 
@@ -179,7 +181,7 @@ The secondary dependencies explain the stock paired families already visible in 
 Legend:
 
 - **N** — native in the destination ordinary branch; exact constructor resource slot(s) are stock-resident there.
-- **P** — cross-stage import is Runtime-confirmed for construction/combat but still has a known lifecycle/presentation defect.
+- **R** — bounded cross-stage import is Runtime-confirmed through construction/combat and the tested terminal death/despawn presentation; this is not a general/product-safe approval.
 - **I** — at least one required resource/slot is absent from the destination's native ordinary bundle; explicit import/materialization is required and compatibility is still Pending.
 
 | Stage | `00` | `01` | `02` | `03` | `05` | `09` | `0A` | `0D` | `0E` | `0F` | `11` | `12` | `13` | `14` | `15` | `16` | `17` | `1A` | `1C` |
@@ -190,10 +192,10 @@ Legend:
 | Wind | I | I | I | N | I | I | I | I | I | I | I | I | I | I | I | I | I | I | I |
 | Fortress | I | I | I | I | I | I | I | N | N | N | I | I | N | I | I | I | I | I | N |
 | Prison | I | I | I | I | I | I | I | I | N | I | N | I | I | N | N | N | I | I | I |
-| Fire | I | **P** | I | I | I | N | N | I | I | I | I | I | I | I | I | I | I | I | I |
+| Fire | I | **R** | I | I | I | N | N | I | I | I | I | I | I | I | I | I | I | I | I |
 | Bridge | I | I | I | I | I | I | I | I | I | I | I | I | I | N | I | I | N | I | I |
 
-There are **no non-native N cells** in this first pass: every foreign type is missing at least one exact resource-file/slot pair in the destination's native ordinary bundle. The only cross-stage exception with runtime evidence is Fire × `0x01`, where the explicit file-`0x89` import proved construction, rendering, AI, movement, collision, combat and killability, while normal death/despawn presentation remained missing.
+There are **no non-native N cells** in this first pass: every foreign type is missing at least one exact resource-file/slot pair in the destination's native ordinary bundle. The only cross-stage exception with runtime evidence is Fire × `0x01`. The explicit file-`0x89` import proved construction, rendering, AI, movement, collision, combat and killability; the follow-up death proof then restored the missing terminal presentation by materializing Temple selector `10` in Fire's current-stage resource file. This remains a bounded Fire × MONK2 result, not evidence that other foreign types share the same auxiliary dependency.
 
 ### Immediate planner consequence
 
@@ -203,7 +205,7 @@ Therefore the production compatibility problem splits cleanly into:
 
 1. **same-stage/native-resource substitutions** — no new fighter-file allocation;
 2. **cross-stage imports** — require replacement, compact/rebased storage, deduplicated composition, or an independently proven load/unload policy; simple additive full-file loading is not a production-safe general strategy;
-3. **lifecycle compatibility** — death/despawn and auxiliary presentation must still be proven even after construction/resource residency succeeds.
+3. **lifecycle compatibility** — Fire × MONK2 is now proven on the tested route when its missing selector-`10` terminal presentation is materialized, but equivalent auxiliary dependencies still have to be mapped and proven for other imported types.
 
 The recently reclaimed high-ROM space from compact Rainbow helps ROM packaging, but it does not change this RDRAM arena constraint.
 
@@ -228,4 +230,6 @@ This is the smallest conservative **same-stage** roster because every listed typ
 
 ### Next matrix pass
 
-The highest-value unresolved compatibility item is now the imported type-`0x01` death/despawn defect. Trace the native Temple MONK2 death/despawn path against the Fire-import proof to identify the missing auxiliary presentation/resource/callback dependency. In parallel, a future disposable all-stage proof can exercise the conservative same-stage pools above without introducing foreign fighter allocations.
+The imported type-`0x01` death/despawn defect is resolved on the tested Fire route. The next high-value matrix task is to **generalize the auxiliary-presentation dependency map**: determine which current-stage presentation selector/resource each repeated ordinary type needs for terminal death/despawn behavior, and whether any of those dependencies are shared or stage-specific. That prevents future cross-stage imports from repeating the MONK2 failure one fighter at a time.
+
+In parallel, a disposable all-stage proof can exercise the conservative same-stage pools above without introducing foreign fighter allocations. The requested Water MONK5/MONK6 -> GRUNT1/GRUNT2 experiment remains a separate cross-stage allocation problem rather than a simple type swap; its Fortress fighter pair is materially larger than Water's native pair, so it needs a bounded compact/rebased or load-policy design before a ROM proof.
