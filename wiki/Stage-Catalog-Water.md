@@ -69,7 +69,7 @@
 | 7 | Animated resource bundle | `0x10C` | embedded-data-bundle | 8 | 0 |
 | 8 | Unused logical slot | `0` | empty | — | 0 |
 | 9 | Unused logical slot | `0` | empty | — | 0 |
-| 10 | Six-frame Temple selector-10 payload match; native terminal callback pending | `0x4508` | zero-terminated-record-list | 6 | 0 |
+| 10 | Shared normal terminal resource for native MONK5/MONK6 and imported GRUNT2 on Water stage ID `2`; Temple payload byte match | `0x4508` | zero-terminated-record-list | 6 | 0 |
 | 11 | Unused logical slot | `0` | empty | — | 0 |
 | 12 | Unused logical slot | `0` | empty | — | 0 |
 | 13 | Unused logical slot | `0` | empty | — | 0 |
