@@ -44,15 +44,25 @@ The current stage resource-file base used by the ordinary-pickup path is held at
 
 ### Native stage 7 / Fire God Room debug-arena resources
 
-A static first pass shows that native stage 7 does not use one of the eight normal gameplay overlay files. Common stage dispatcher `0x80016080` schedules permanent-code initializer `0x80011070`, which is also the post-selection arena initializer used by native mode 10 / Test Characters.
+Native stage 7 does not load one of the eight ordinary gameplay overlays. Dispatcher `0x80016080` schedules permanent-code initializer `0x80011070`, which is also the post-selection arena initializer used by Test Characters.
 
-The resolved direct global-file loads in `0x80011070` are:
+A direct comparison with normal Fire now resolves the arena identity:
 
-`0x40, 0x5D, 0x3F, 0x87, 0x3D, 0x3E, 0x41, 0x3B`.
+| Path | Secondary-area global files |
+|---|---|
+| Normal Fire with `0x802C18F8 == 5` | `0x40, 0x5D, 0x3F, 0x87, 0x3D, 0x3E, 0x41, 0x3B` |
+| Native stage 7 / `0x80011070` | `0x40, 0x5D, 0x3F, 0x87, 0x3D, 0x3E, 0x41, 0x3B` |
 
-This set is a strict subset of resources loaded by the normal Fire-stage initializer `0x800108FC`; stage 7 omits Fire's normal overlay `0x9D` and several other Fire-only files. When no test-character selection is active, helper `0x80065668` additionally loads **file `0x3C`**, the normal Fire stage resource file, and stores its allocated base in `0x802F82B8`.
+Both routes also call parser `0x80002588` with the same scene/collision inputs and publication addresses: file-`0x3D` allocation, file-`0x41` allocation, `0x80111FF8`, `0x800BF28C`, and `0x802C1B60`. This is stronger than a file-family resemblance: **stage 7 constructs the same secondary Fire scene/collision package as the normal Fire selector-5 boss area.**
 
-This makes stage 7 a Fire-derived permanent-code/debug-arena composition rather than a ninth ordinary overlay stage. It is promising for a future disposable item/test laboratory, but ordinary-pickup-manager ownership and the exact reason direct FIRE GOD ROOM entry fails to finish remain Pending.
+Normal Fire reaches selector 5 through Fire-overlay state code; one confirmed write is at overlay VA `0x802EE75C..0x802EE764` / ROM `0xE34AC..0xE34B4`. The normal selector-5 player spawn record at `0x800A00CC` and stage-7 default row `0x800A02D8` share X `0xFFFD3DEB`, while their Y/orientation fields differ.
+
+The two routes diverge after constructing the arena shell:
+
+- normal Fire selector 5 calls `0x80065428`, loads file `0x21` into type-`0x0C` resource slot `0x800C25B4`, and selects dedicated one-spawn stream `0x800B3A54`;
+- stage 7 calls `0x80065668`, whose selected-character path uses the Test Characters table and whose negative-selection fallback additionally loads file `0x3C` into current stage-resource base `0x802F82B8`.
+
+Therefore `FIRE GOD ROOM` is best described as a **debug/direct entry to the real Fire boss-arena scene shell**, not a separate hidden room and not a ninth ordinary overlay stage. Its direct selector route still fails to finish at runtime, so repair/lifecycle analysis remains Pending before treating it as an MKMSZR laboratory.
 
 Native stage 6 has no corresponding per-stage loader/resource composition in `0x80016080`: its dispatch entry goes directly to loader cleanup.
 
