@@ -170,6 +170,12 @@
 - Occupied slot `3` is a 14-record zero-terminated list with no user among the ten ordinary pickup records. It remains protected from reuse until non-pickup actor/script references are resolved.
 - Current Bridge-specific open points are therefore bounded: the icon/callback high-bit semantics remain unresolved, slot `3` reuse is unproven, and the static matching-payload result does not establish Bridge as a runtime-validated foreign-item destination.
 
+### Enemy-resource phase loading — static only
+
+- Bridge's ordinary enemy pair is files `0x8E+0x91`: type `0x14 PRIS GRUNT1` plus armed type `0x17 PRIS GRUNT4`. The pair's raw fighter footprint is `0x32DB0`.
+- The Bridge overlay treats that pair as a replaceable arena tail. It rewinds the ordinary pair around ROM `0xBEA7C` / VA `0x802F094C`, loads file `0x2D` for a separate encounter/resource phase, then rewinds that replacement at ROM `0xBED90` / VA `0x802F0C60` and reloads files `0x8E+0x91` before resuming the ordinary-enemy path.
+- Shared helper `0x80057478` disarms type `0x17` into type `0x14` / file `0x8E` while a class-`0x207` auxiliary actor retains the original file-`0x91` resource. Stage-route evidence associates `0x17` with Bridge's armed projectile/cannon guard family, but the exact projectile-launch callback and any additional dynamic presentation requirement remain Pending. No emulator was run for this classification.
+
 ## Related owners
 
 - [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, catalog lineage, and eight-stage index.
