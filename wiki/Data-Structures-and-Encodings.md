@@ -92,6 +92,7 @@ Empty stock slots use `0xFFFFFFFF`. Foreign-stage keys appear in the live window
 | controller `+0x638` | Pointer to semantic input; player construction stores `0x800BF2EE` here |
 | controller `+0x68C` | Active horizontal semantic direction: `0x8000` Left or `0x2000` Right |
 | controller `+0x680` | During normal walk setup, shadows the temporary `1`/`2` locomotion selector before `+0x6E4` becomes the animation cursor |
+| fighter process `+0x6B2` | Signed halfword action/physics-in-progress state. Ordinary enemy `0x80071B20` zero-fills `+0x638..+0x6D7` before actor construction; `0x800321D0` clears it at entry, increments it before each sleep/animation iteration, then clears it at exit. `0x80032580`, `0x80033BB4`, `0x800341AC`, and other shared callbacks can set it to `1` for bounded loops. `0x8002B690` maps nonzero to `0x8000`, zero to `0x4000`; reaction transfer `0x8002E078/0x80032CD4` leaves this halfword intact. Its value is process-owned, not actor `+0x98` animation-root data. |
 | controller `+0x6BC` bit `0x0200` | Shared fighter face-policy flag used by several host routines to conditionally face a nearest opponent; **not a universal boss bit** |
 | controller `+0x6E0` | Current actor pointer |
 | controller `+0x6E4` | Animation cursor; temporarily receives the forward/back selector immediately before animation selection |
