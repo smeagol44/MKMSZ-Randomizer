@@ -161,6 +161,11 @@
 - **Key-checkpoint diagnostic:** v04/v05 relocate the full seven-word L1 identity slice `+0x10..+0x2B` onto first Herbs record `0xCA0F0`, not merely the callback. The visible `CHECK POINT` event follows that relocated identity. v04 suppressing the L1 selector write and v05 suppressing the acquired-bit store both leave the banner intact; no key-only banner seam is yet proven.
 - **v06-v08 checkpoint closure:** v06 Runtime-confirms that suppressing the three direct generic-key `0x80062D60` spawns removes the visible checkpoint banner on the relocated L1 route while key state still commits. v07's late player-only respawn substitution executes (`TRACE KAR`) but regresses the door. Static scene-record tracing then resolves the first configured door group to indices `0xFB/0xFC` and proves bit 0 of `0x802C0D54` is the enable credential. v08 preserves that bit and inventory award, suppresses the banner spawns, and NOPs only the L1 selector-7 store at ROM `0x39454`: Runtime shows `TRACE KA`, `G4 S2 B1`, the Level-1 door opens, and death returns to the natural stage-start/no-checkpoint spawn. This is the accepted bounded Prison-L1 proof; generalization to other keys/crystals remains Pending.
 
+### Enemy-resource phase loading — static only
+
+- Prison's ordinary enemy resources are **phase-local**, not a simultaneous whole-stage superset. Overlay file `0x9F` rewinds the arena tail through `0x80066478` and cycles among files `0x8F+0x8E` (PRIS GRUNT2 + base PRIS GRUNT1), file `0x22` (GRUNT1), and files `0x90+0x8E` (PRIS GRUNT3 + base PRIS GRUNT1). Exact rewind/load seams are documented in [Enemy randomization](Enemy-Randomization).
+- Shared helper `0x80057478` disarms types `0x15` and `0x16` by morphing them to type `0x14` / file `0x8E` and spawning a class-`0x207` auxiliary actor from the original armed resource. The stream/route ordering strongly associates type `0x15` with the early staff/laser-guard family and type `0x16` with the later post-capture cannon-guard family. Exact projectile callback/asset closure is still Pending; no emulator was run for this classification.
+
 ## Related owners
 
 - [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, and eight-stage index.
