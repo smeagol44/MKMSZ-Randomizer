@@ -68,7 +68,28 @@ The encounter setup then deliberately diverges:
 
 **Static conclusion:** `FIRE GOD ROOM` is the **same secondary Fire/boss-arena scene shell used by normal Fire selector 5**, entered through a separate debug initializer. It is not a distinct hidden Fire-themed room. It is also not literally the normal boss fight: the direct/debug route substitutes the Test Characters/debug-opponent setup for normal Fire's type-`0x0C` boss setup and uses a different spawn-state row.
 
-This makes stage 7 a strong future MKMSZR laboratory candidate if its direct-entry failure can be repaired. The room geometry/collision already exists and is shared with the real Fire boss area; the main repair target is the debug entry/lifecycle composition rather than inventing arena geometry. Stage 6 remains materially less promising unless MKMSZR supplies a new stage-entry implementation.
+#### Why direct FIRE GOD ROOM does not finish loading
+
+The direct-entry failure now has a concrete static owner.
+
+The native debug stage-select routine resets Test Characters selection state `0x800C1F64` to `-1` before a stage is chosen. Therefore selecting native stage 7 reaches `0x80011070 -> 0x80065668` with a negative test-character index and necessarily takes `0x80065668`'s fallback branch.
+
+That fallback constructs the Fire-derived scene/resource state, but it also schedules two callbacks whose addresses are **inside the Fire gameplay overlay**:
+
+- `0x802EE34C` — scheduled by the negative-selection branch;
+- `0x802EDCE0` — scheduled by the common tail.
+
+Fire overlay file `0x9D` is raw ROM `[0xE1B80,0xE6610)` and normally owns runtime `0x802ECE30..`. Thus those two callback addresses correspond to Fire-overlay ROM `0xE309C` and `0xE2A30` respectively. `0x80011070` never loads file `0x9D` into `0x802ECE30`.
+
+The normal Fire selector-5 boss route proves this dependency rather than merely suggesting it. Normal Fire loads file `0x9D` to `0x802ECE30` before branching on selector 5. Its boss helper `0x80065428` then schedules the **same** `0x802EE34C` and `0x802EDCE0` overlay callbacks. In normal Fire their code owner is resident; in direct stage 7 it is not.
+
+**Static-confirmed structural failure:** FIRE GOD ROOM reuses Fire-overlay callbacks without loading the Fire overlay that contains them. The shared overlay region can therefore contain stale/unrelated bytes when those processes run. This is sufficient to explain why the retail direct-entry route cannot complete reliably.
+
+The selected Test Characters route is not a clean counterexample: although its positive-index branch differs, `0x80065668` still reaches the common tail and schedules `0x802EDCE0`, while `0x80011070` still has not loaded file `0x9D`. This is consistent with native Test Characters also being unsafe in the retail build.
+
+**Minimal repair candidate — Static-confirmed design / Runtime Pending:** load raw Fire overlay file `0x9D` to its stock fixed destination `0x802ECE30` early in `0x80011070`, before `0x80065668` can publish either overlay callback. This is a fixed overlay load, not a new stage-arena bump allocation. The scene/resource shell is already constructed by the existing stage-7 initializer. A disposable proof still needs guarded integration and manual runtime validation before the room can be called usable.
+
+This makes stage 7 a strong future MKMSZR laboratory candidate: the room geometry/collision already exists and is shared with the real Fire boss area, and the first structural repair is narrowly identified. Stage 6 remains materially less promising unless MKMSZR supplies a new stage-entry implementation.
 
 ## Compact-to-native selection mapping
 
