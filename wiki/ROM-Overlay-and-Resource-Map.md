@@ -42,6 +42,20 @@ This page intentionally does **not** duplicate the former eight-stage range/slot
 
 The current stage resource-file base used by the ordinary-pickup path is held at `0x802F82B8`. Stage-loading code writes the current loader/allocator result there before ordinary resource lookup consumes it. The pointed-to address and extent are dynamic and stage-dependent; their allocation classification belongs to the Memory Map.
 
+### Native stage 7 / Fire God Room debug-arena resources
+
+A static first pass shows that native stage 7 does not use one of the eight normal gameplay overlay files. Common stage dispatcher `0x80016080` schedules permanent-code initializer `0x80011070`, which is also the post-selection arena initializer used by native mode 10 / Test Characters.
+
+The resolved direct global-file loads in `0x80011070` are:
+
+`0x40, 0x5D, 0x3F, 0x87, 0x3D, 0x3E, 0x41, 0x3B`.
+
+This set is a strict subset of resources loaded by the normal Fire-stage initializer `0x800108FC`; stage 7 omits Fire's normal overlay `0x9D` and several other Fire-only files. When no test-character selection is active, helper `0x80065668` additionally loads **file `0x3C`**, the normal Fire stage resource file, and stores its allocated base in `0x802F82B8`.
+
+This makes stage 7 a Fire-derived permanent-code/debug-arena composition rather than a ninth ordinary overlay stage. It is promising for a future disposable item/test laboratory, but ordinary-pickup-manager ownership and the exact reason direct FIRE GOD ROOM entry fails to finish remain Pending.
+
+Native stage 6 has no corresponding per-stage loader/resource composition in `0x80016080`: its dispatch entry goes directly to loader cleanup.
+
 ## Outer selector table grammar
 
 The first words of a stage resource file form a stage-local outer selector table. Occupied entries resolve to file-relative descriptors/structures. Depending on the resource, those structures may lead to:
