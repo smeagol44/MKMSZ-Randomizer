@@ -62,7 +62,20 @@ The two routes diverge after constructing the arena shell:
 - normal Fire selector 5 calls `0x80065428`, loads file `0x21` into type-`0x0C` resource slot `0x800C25B4`, and selects dedicated one-spawn stream `0x800B3A54`;
 - stage 7 calls `0x80065668`, whose selected-character path uses the Test Characters table and whose negative-selection fallback additionally loads file `0x3C` into current stage-resource base `0x802F82B8`.
 
-Therefore `FIRE GOD ROOM` is best described as a **debug/direct entry to the real Fire boss-arena scene shell**, not a separate hidden room and not a ninth ordinary overlay stage. Its direct selector route still fails to finish at runtime, so repair/lifecycle analysis remains Pending before treating it as an MKMSZR laboratory.
+Therefore `FIRE GOD ROOM` is best described as a **debug/direct entry to the real Fire boss-arena scene shell**, not a separate hidden room and not a ninth ordinary overlay stage.
+
+#### Missing overlay code owner
+
+The retail stage-7 composition is structurally incomplete. `0x80011070` does not load Fire overlay file `0x9D`, but helper `0x80065668` publishes callbacks inside that overlay:
+
+- negative Test Characters selection: `0x802EE34C` and then common-tail `0x802EDCE0`;
+- positive Test Characters selection: common-tail `0x802EDCE0`.
+
+File `0x9D` is raw ROM `[0xE1B80,0xE6610)` and normally loads at fixed runtime base `0x802ECE30`. Accordingly, callback `0x802EE34C` is file-relative `+0x151C` / ROM `0xE309C`, and `0x802EDCE0` is file-relative `+0x0EB0` / ROM `0xE2A30`.
+
+Normal Fire proves ownership: `0x800108FC` loads file `0x9D` to `0x802ECE30` before its selector-5 branch, and `0x80065428` then schedules those same two callbacks. Stage 7 copied/reused the callback-driven arena machinery without copying the overlay load.
+
+**Static repair candidate:** load `0x9D` to stock fixed destination `0x802ECE30` early in `0x80011070`, before `0x80065668`. Because this is the stock raw overlay destination rather than a stage-arena allocation, it does not by itself consume new bump-arena space. Additional callback-state prerequisites and runtime behavior remain Pending until a disposable guarded proof is manually validated.
 
 Native stage 6 has no corresponding per-stage loader/resource composition in `0x80016080`: its dispatch entry goes directly to loader cleanup.
 
