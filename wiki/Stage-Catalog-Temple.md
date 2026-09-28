@@ -57,7 +57,7 @@
 | 7 | Non-pickup/unknown resource | `0x74BC` | zero-terminated-record-list | 5 | 0 |
 | 8 | Non-pickup/unknown resource | `0x8C7C` | embedded-data-bundle-loop-selector | 18 | 0 |
 | 9 | Non-pickup/unknown resource | `0x8CD0` | zero-terminated-record-list | 5 | 0 |
-| 10 | Non-pickup/unknown resource | `0xADF4` | zero-terminated-record-list | 6 | 0 |
+| 10 | Generic fighter terminal/death presentation | `0xADF4` | zero-terminated-record-list | 6 | 0 |
 | 11 | Unused logical slot | `0` | empty | — | 0 |
 | 12 | Unused logical slot | `0` | empty | — | 0 |
 | 13 | Unused logical slot | `0` | empty | — | 0 |
@@ -183,6 +183,14 @@
 | 16 | 7 | `0xCE1C` | external-resource-id | `0x264` | `` | `0x000A0018` / `0x0005000B` |
 | 16 | 8 | `0xCE30` | external-resource-id | `0x265` | `` | `0x000E0017` / `0x0006000B` |
 | 16 | 9 | `0xCE44` | external-resource-id | `0x266` | `` | `0x000F0017` / `0x0007000B` |
+
+## Slot 10 terminal/death presentation ownership
+
+**Static-confirmed (2026-09-27).** Permanent generic enemy terminal continuation `0x80053DA8` writes the current stage-resource base `0x802E82B8` into the dying actor and resolves the presentation pointer from outer table word `base + 0x28`, i.e. selector **10**. Type `0x01` MONK2 reaches this path.
+
+Temple selector 10 points to `0xADF4`, a six-record embedded list. The self-contained source region needed for a relocated copy is `0xADF4..0xCE8C` (size `0x2098`), with record headers at `0xAE10, 0xAE24, 0xAE38, 0xAE4C, 0xAE60, 0xAE74`. Any cross-stage copy must rebase the file-relative links/data offsets rather than copying raw pointers blindly.
+
+The prior “non-pickup/unknown” label is therefore superseded for slot 10. This identifies its generic terminal/death presentation role; it does not imply every fighter type uses it because `0x80056D50` has explicit type/stage exclusions.
 
 ## Temple-specific notes and boundaries
 
