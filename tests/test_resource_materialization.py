@@ -2,6 +2,7 @@ from mkmszr.errors import PatchError
 from mkmszr.global_items import build_stock_logical_pool
 from mkmszr.resource_materialization import (
     CANONICAL_VISUAL_DONORS,
+    STAGE_RESOURCES,
     VisualBundle,
     VisualFrame,
     build_extended_resource_file,
@@ -15,6 +16,16 @@ def test_canonical_visual_registry_covers_every_stock_logical_key() -> None:
     keys = {item.key for item in build_stock_logical_pool()}
     assert keys == set(CANONICAL_VISUAL_DONORS)
 
+
+
+def test_earth_pickup_resource_mapping_uses_file_30() -> None:
+    earth = STAGE_RESOURCES[3]
+    assert earth.file_table_entry_rom == 0x000A5250
+    assert earth.rom_start == 0x00305A30
+    assert earth.rom_end == 0x0030AA00
+
+    for key in ("earth-square", "earth-four-square", "earth-triangle"):
+        assert CANONICAL_VISUAL_DONORS[key].frame_count == 8
 
 def test_literal_type4_encoder_round_trips_without_ring_history() -> None:
     raw = bytes(range(64)) + b"\x00" * 17 + bytes(reversed(range(32)))
