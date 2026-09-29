@@ -253,6 +253,26 @@ These facts are important to allocation safety but are not promoted into bounded
 | Toasty dynamic texture proof | <code>proof-only</code> / <code>dynamic</code> | The proven CI8 path requested a dynamic 78x85 texture with 96-byte stride, <code>0x1FE0</code> image bytes. | Returned backing address and production lifetime are not a fixed reusable allocation; final feature integration remains pending. |
 | Direction-facing v02 expansion slice | <code>proof-only</code> / reserved-pool suballocation | Build-time allocator assigns <code>[0x801AF820,0x801AFA88)</code>, 616 bytes, inside <code>rdram.production.expansion_pool</code>. File <code>0x1A</code> raw-loads the module there and control hooks enter its KSEG1 alias. | Runtime-confirmed only for the tested v02 control route. This is a proof suballocation, not a current production feature owner; the parent 15 KiB expansion pool remains the production owner until product integration is separately approved/validated. |
 
+### TEST LAB cross-stage materialization stress evidence
+
+The 2026-09-28 TEST LAB line provides bounded **runtime composition** evidence, not new production allocations. Detailed chronology belongs to [TEST LAB proof history](Test-Lab-Proof-History).
+
+Proof-local high-ROM resource relocation used `0x00F00000` as disposable backing in the successful Fire-resource experiments. This address remains **proof-only**; the clean `0xFF` contents used by those builders do not establish production ownership.
+
+Important runtime observations:
+
+- v27's ten-key native-Fire-file composition entered successfully;
+- v28's all-21 composition with resource size about `0x8F0C` progressed to an emulator-core SI/PIF DMA error and is Rejected as memory-unsafe;
+- v29's all-21 low-RAM resource was only `0x4634`, yet still hung at Mission Objective and later exhibited music-speed corruption;
+- v31 kept the same low-RAM resource family with 15 live non-Earth actors and entered successfully;
+- v33's recognizable 15-live non-Earth proof used a resource size of `0x4BE4`.
+
+These observations reject a simple rule of the form **resource bytes < historical arena headroom => safe**. The loaded stage resource, live pickup actors/processes, dynamic textures, render allocations, stage-entry temporaries, and other arena consumers compose at runtime.
+
+No universal safe pickup-count threshold follows from the current data. Ten and fifteen have successful bounded routes; the rejected 21-item routes differ in more than count, and Earth remained a confound in v30.
+
+Production materialization must therefore use explicit composition budgets and failure bounds rather than promoting any disposable TEST LAB size/count as a global limit.
+
 ## Confirmed-free status
 
 **Reusable <code>confirmed-free</code> intervals currently exposed by this map: none.**
