@@ -138,7 +138,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 
 | Address | Scope | Meaning |
 |---:|---|---|
-| `0x802F0EBC` | Fire | Three stage-icon awards, parameter `0..2` |
+| `0x802F0EBC` | Fire | Three stage-icon awards, parameter `0..2`; v01 Runtime-confirms bounded checkpoint-free composition when only its direct `0x80062D60` presentation request and `0x802C18F8=s0+2` respawn-selector store are suppressed |
 | `0x802F2CB4` | Wind | Circle/Triangle/Three Bars award callback |
 | `0x802F2448` | Water | Triangle/Three Bars/Moon award callback |
 | `0x802F52B0` | Earth | Square/Four Squares/Triangle award callback |
