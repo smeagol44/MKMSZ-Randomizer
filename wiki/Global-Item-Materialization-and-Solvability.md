@@ -172,7 +172,36 @@ One initial v01 run developed a crunchy/noisy audio symptom near the second-key 
 
 Therefore the audio symptom is retained only as an unresolved/non-reproducible observation, not as a confirmed regression and not as evidence against v01.
 
-**Current generalization boundary:** Prison L1 and Fire now both Runtime-confirm the same high-level policy — preserve the logical award/progression owner while suppressing pickup-created presentation and respawn relocation — but their exact patch sites differ. Wind, Water, Earth, Bridge, and Fortress/crystals still require their own owner-specific closure before a reusable production callback/policy is accepted.
+### Native key-use dispatch and checkpoint/progression split — static comparison (2026-09-29)
+
+**Static-confirmed:** the permanent item-use dispatch table at ROM `0x000A6E68` maps the native key/crystal inventory IDs to progression handlers that are separate from the ordinary pickup callbacks:
+
+- Wind IDs `0x0E..0x10` -> `0x800721D4 / 0x8007226C / 0x80072220`;
+- Earth IDs `0x11..0x13` -> `0x800720F0 / 0x8007213C / 0x80072188`;
+- Water IDs `0x14..0x16` -> `0x800722B8 / 0x80072304 / 0x80072350`;
+- Fire IDs `0x17..0x19` -> shared all-three-present handler `0x8007206C`;
+- Prison IDs `0x1A..0x1C` -> inert/no-consume handler `0x80071F50`; Prison progression remains owned by the separately traced acquired-bit/door path;
+- Bridge IDs `0x1D..0x1F` -> shared all-three-present handler `0x80071FE8`;
+- Fortress crystal IDs `0x20..0x22` -> position-gated handlers `0x8007239C / 0x80072400 / 0x80072464`.
+
+Wind/Earth/Water per-key use handlers test the corresponding low gate bit in `0x800C2406`, OR that bit into `0x802C0D54`, and call `0x8007EF30`. Fire and Bridge instead require all three native IDs in the ten-slot LIVE inventory before committing completion state. Fortress crystal use handlers commit their own `0x08/0x10/0x20` progression bits. These paths establish a native **use-time progression owner** independent of pickup-time checkpoint presentation/respawn state.
+
+The remaining ordinary-key pickup callbacks split as follows:
+
+| Stage | Pickup-time checkpoint behavior | Progression state preserved by the candidate | Static conclusion |
+|---|---|---|---|
+| Wind | Parameters 0/1 request `0x80062D60` at ROM `0xD500C` and increment/store `0x802C18F8` at `0xD5024`; parameter 2 does neither | Keep explicit awards, generic callback/sound, and live parameter-2 flag `0x802F60A0` | Two-NOP checkpoint candidate is Static-confirmed; runtime Pending |
+| Water | All three increment/store `0x802C18F8` at `0xBA60C` and request `0x80062D60` at `0xBA610` | Keep award, sound, and parameter-1 live state `0x802F2980` | Two-NOP checkpoint candidate is Static-confirmed; runtime Pending |
+| Earth | Only parameter 0 (Square) requests `0x80062D60` at `0xE1034` and writes selector 2 at `0xE1044`; parameters 1/2 do not create that checkpoint | Keep awards/sound and live local states `0x802F5520` / `0x802F5E22` | Square-only two-NOP candidate is Static-confirmed; runtime Pending |
+| Bridge | Overlay callback `0x802EF178` only awards `parameter+0x1D` and plays sound | Native all-three use handler remains stock | Stock pickup path is already checkpoint-free; no suppression patch is indicated |
+| Fortress | Stock crystal records use generic callback `0x80038770`; stage-9 branch awards `0x20..0x22` / acquired bits while skipping direct presentation and pickup-created selector writes | Boss-defeat activation and crystal use handlers remain stock | Stock crystal award is already checkpoint-free; remaining problem is arbitrary logical reward materialization at boss-trigger locations |
+
+The local Wind/Water/Earth fields above are not dead checkpoint bookkeeping: each has independent overlay readers. The bounded proof candidates therefore deliberately leave them untouched.
+
+**Water ID correction:** Water callback `0x802F2448` awards `callback_parameter + 0x14`. The cataloged Triangle / Three Bars / Moon records use parameters `0/1/2`, so the native inventory mapping is Triangle=`0x14`, Three Bars=`0x15`, Moon=`0x16`. The earlier future-global logical catalog had Triangle and Three Bars inverted; the implementation mapping is corrected alongside this static closure.
+
+**Current generalization boundary:** Prison L1 and Fire remain Runtime-confirmed checkpoint-free families. Wind, Water, and Earth now have minimal Static-confirmed checkpoint-suppression candidates with separate native use-time progression owners, but each still needs a bounded manual runtime closure before promotion. Bridge and stock Fortress crystal awards are Static-confirmed checkpoint-free already and do not need equivalent suppression patches. Fortress still needs a destination-safe arbitrary-reward path that preserves the boss-defeat trigger, and the final reusable production callback/materializer composition remains Pending.
+
 ### Fortress boss-defeat reward trigger ownership — static closure (2026-09-27)
 
 **Static-confirmed:** Fortress overlay file `0x9E` directly couples the three assassin encounters to the first three ordinary pickup records. The encounter manager uses index `s4 = 0,1,2`; its table at VA `0x802F15C4` / ROM `0xC4AC4` resolves those indices to **ASSASSIN1 / type `0x0D`**, **ASSASSIN3 / type `0x13`**, and **ASSASSIN2 / type `0x1C`**. It writes `1 << s4` to the shared gated-enemy state `0x802C1140`, matching the three singleton ordinary-stream masks `1,2,4`.
