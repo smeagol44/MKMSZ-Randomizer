@@ -28,7 +28,6 @@ from .patches import (
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
 from .patches.controls_production import ControlsProductionPatch
-from .patches.required_powers import RequiredPowersPatch, resolve_required_powers
 from .patches.inventory_boxes import (
     COMBOS_ASSIST_STATE_MASK,
     JUMP_BUTTON_STATE_MASK,
@@ -36,6 +35,7 @@ from .patches.inventory_boxes import (
     SPECIALS_MODERN_STATE_MASK,
     TURN_LOCK_STATE_MASK,
 )
+from .patches.required_powers import RequiredPowersPatch, resolve_required_powers
 from .patches.toasty_codegen import pack_toasty_module
 from .rom import RomImage
 
