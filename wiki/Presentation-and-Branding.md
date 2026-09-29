@@ -113,7 +113,13 @@ The art is mapped directly to the existing 16-color CI8 palette, without Floyd-S
 | New typeset `SEKTOR` | `0x2D461` | `0x1F7F` |
 | New typeset 12-character `WWWWWWWWWWWW` | `0x2D672` | `0x1D6E` |
 
-Thus the approved default is `0x10E0` (4,320) bytes smaller than the previous implementation, while remaining native CI8. Its LZW package is written at ROM `0x4E3060`, with file-table start and flag unchanged and the end pointer set to the actual compressed length. The bytes beyond that endpoint in the stock slot are preserved, **not** declared free. The former `[0xF90000,0xFC1000)` title reservation is no longer owned by title branding; other allocation claims require their own proof. The exact in-game appearance and full-product route are runtime Pending.
+Thus the approved default is `0x10E0` (4,320) bytes smaller than the previous implementation, while remaining native CI8. Its LZW package is written at ROM `0x4E3060`, with file-table start and flag unchanged and the end pointer set to the actual compressed length. The bytes beyond that endpoint in the stock slot are preserved, **not** declared free. The former `[0xF90000,0xFC1000)` title reservation is no longer owned by title branding; other allocation claims require their own proof. The user subsequently confirmed the default title looks very good through the production webapp route on 2026-09-29.
+
+### Title color follows non-vanilla outfit selection (2026-09-29)
+
+The title's 15 icy-blue BGR555 entries now follow the configured Sub-Zero outfit color while the near-black background stays stock. Vanilla leaves the accepted title and package byte-identical. Purple, orange, yellow, cyan, pink, explicit hue, RGB tint, and seed-based modes use the outfit color transform and seed; red and green use the corresponding target hues (0°/120°) to avoid a bronze/teal cast from swapping the title's brighter cyan source channels. The same 15 entries also color the configurable `<NAME> EDITION` line. This is a palette-only change for non-rainbow modes, so their compressed file-`0x5E` size is unchanged for the same edition name.
+
+Rainbow mode receives a **fixed** five-hue title treatment across `RANDOMIZER` and the edition line, with two luminance levels per hue. The plaque keeps five restrained blue shades. It uses only the original 16 CI8 indices (including the background), adds no title-menu hook or animation, and does not synchronize to the 64-phase outfit cycle during gameplay. Static clean-ROM encoding gives `0x2CD78` compressed bytes for `SUB-ZERO` and `0x2CF75` for a 12-character `WWWWWWWWWWWW` edition, within the original `0x2F3E0` slot. All color variants are Static/implementation-confirmed; exact in-game color acceptance remains Pending.
 
 ### Edition text
 

@@ -19,9 +19,11 @@ import struct
 import zlib
 from importlib.resources import files
 
+from ..config import OutfitConfig
 from ..errors import PatchError
 from ..rom import RomImage
 from .base import PatchContext
+from .palette import SubZeroPalettePatch, make_hue
 
 TITLE_FILE_ID = 0x5E
 FILE_TABLE_ROM = 0x000A5010
@@ -63,6 +65,15 @@ EDITION_PALETTE_WORDS = (
 )
 TITLE_16COLOR_INDICES = (TITLE_BACKGROUND_INDEX,) + EDITION_PALETTE_INDICES
 
+# Five preserved blue shades for the plaque; five fixed hue bands with a
+# shadow/highlight pair for RANDOMIZER and the configurable edition line.
+# Rainbow clothing itself continues to cycle independently during gameplay.
+RAINBOW_PALETTE_WORDS = (
+    0x0821, 0x2CE2, 0x5E28, 0x7B75, 0x7BDB,
+    0x18D4, 0x319E, 0x1A54, 0x339E, 0x1E86,
+    0x37CC, 0x5206, 0x7B0C, 0x50D1, 0x799A,
+)
+
 TITLE_TILES = (
     (0x3B780, 120, 120, 0, 0),
     (0x3EFCC, 100, 120, 120, 0),
@@ -103,6 +114,50 @@ def _title_pixels() -> bytes:
     if not set(pixels) <= set(TITLE_16COLOR_INDICES):
         raise AssertionError("embedded title art exceeds shared 16-color palette")
     return pixels
+
+
+def _fixed_rainbow_pixels(pixels: bytearray) -> None:
+    """Reindex the approved art into the fixed five-band rainbow palette."""
+
+    levels = {index: level for level, index in enumerate(EDITION_PALETTE_INDICES)}
+    for y in range(39, 140):
+        row = y * TITLE_CANVAS_WIDTH
+        for x in range(TITLE_CANVAS_WIDTH):
+            offset = row + x
+            index = pixels[offset]
+            if index == TITLE_BACKGROUND_INDEX:
+                continue
+            level = levels[index]
+            if y < 72:
+                # Keep the plaque's restrained blue bevel and its lettering.
+                pixels[offset] = EDITION_PALETTE_INDICES[round(level * 4 / 14)]
+            elif y < 113 and level <= 4:
+                # Retain the darkest letter outline instead of painting it vivid.
+                pixels[offset] = EDITION_PALETTE_INDICES[round(level * 2 / 4)]
+            else:
+                band = min(4, max(0, (x - 10) * 5 // 300))
+                highlight = level >= (9 if y >= 113 else 11)
+                pixels[offset] = EDITION_PALETTE_INDICES[5 + 2 * band + highlight]
+
+
+def _palette_words_for_outfit(
+    outfit: OutfitConfig, context: PatchContext
+) -> tuple[int, ...]:
+    mode = outfit.mode.lower()
+    if mode == "vanilla":
+        return EDITION_PALETTE_WORDS
+    if mode == "rainbow":
+        return RAINBOW_PALETTE_WORDS
+    if mode in ("red", "green"):
+        # Clothing swaps channels in its darker blue source. On the title's
+        # brighter cyan source the same swap looks bronze/teal; target the
+        # corresponding outfit hue while retaining the title's luminance.
+        hue = 0.0 if mode == "red" else 120.0
+        return tuple(make_hue(word, hue) for word in EDITION_PALETTE_WORDS)
+    recolor = SubZeroPalettePatch(
+        mode, hue_degrees=outfit.hue_degrees, rgb=outfit.rgb
+    )
+    return tuple(recolor._transform(word, context) for word in EDITION_PALETTE_WORDS)
 
 
 def _edition_font() -> dict[str, tuple[int, int, int, int, int, bytes]]:
@@ -319,6 +374,8 @@ def _lzw_compress(raw: bytes) -> bytes:
 def _build_title_package(
     stock_comp: bytes,
     name: str | None,
+    *,
+    fixed_rainbow: bool = False,
 ) -> bytes:
     decoded = bytearray(_lzw_decompress(stock_comp))
     if len(decoded) != TITLE_DECODED_SIZE:
@@ -328,6 +385,8 @@ def _build_title_package(
 
     pixels = bytearray(_title_pixels())
     _render_edition(pixels, name)
+    if fixed_rainbow:
+        _fixed_rainbow_pixels(pixels)
     for record, width, height, x, y in TITLE_TILES:
         tile = bytearray()
         for row in range(height):
@@ -351,11 +410,17 @@ class TitleBrandingPatch:
 
     name = "title-branding"
 
-    def __init__(self, edition_name: str | None = DEFAULT_EDITION_NAME):
+    def __init__(
+        self,
+        edition_name: str | None = DEFAULT_EDITION_NAME,
+        outfit: OutfitConfig | None = None,
+    ):
         self.edition_name = normalize_edition_name(edition_name)
+        self.outfit = outfit or OutfitConfig()
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
-        del context
+        mode = self.outfit.mode.lower()
+        palette_words = _palette_words_for_outfit(self.outfit, context)
 
         expected_entry = (
             TITLE_STOCK_ROM_START.to_bytes(4, "big")
@@ -374,6 +439,7 @@ class TitleBrandingPatch:
         compressed = _build_title_package(
             stock_comp,
             self.edition_name,
+            fixed_rainbow=mode == "rainbow",
         )
         title_end = TITLE_STOCK_ROM_START + len(compressed)
 
@@ -381,12 +447,12 @@ class TitleBrandingPatch:
         rom.write_u32(TITLE_FILE_ENTRY_ROM + 4, title_end)
         rom.write_u32(TITLE_FILE_ENTRY_ROM + 8, TITLE_STOCK_FLAG)
         for index, replacement in zip(
-            EDITION_PALETTE_INDICES, EDITION_PALETTE_WORDS, strict=True
+            EDITION_PALETTE_INDICES, palette_words, strict=True
         ):
             rom.write_u16(TITLE_PALETTE_ROM + index * 2, replacement)
 
         return (
-            "installs the approved 16-color typeset title art",
+            f"installs the approved 16-color typeset title art ({mode} outfit palette)",
             (
                 f"bakes {edition_text(self.edition_name)} into the shared "
                 "16-color CI8 title palette at y~114"
