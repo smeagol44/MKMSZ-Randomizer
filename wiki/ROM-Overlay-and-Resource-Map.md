@@ -102,16 +102,16 @@ Global file ID `0x5E` is the normal title-screen image package. Its clean-ROM fi
 
 The package uses the game's **MSB-first LZW-style stream**. A matching encoder/decoder pair is **Static-confirmed** by byte-exact stock decode/re-encode: decoding the stock package and re-encoding it yields the original compressed size `0x2F3E0` and round-trips to the same `0x61494` decoded bytes.
 
-The accepted Candidate-B artwork recompresses to `0x2FD95` bytes, which is `0x9B5` larger than the stock slot. It therefore cannot safely remain in the original stock storage extent and requires relocation. The literal stock extent, production destination allocation, capacity, and build-dependent compressed endpoints remain canonical in [Memory and allocation map](Memory-and-Allocation-Map); this page records the package/codec mechanics only.
+The earlier high-color Candidate-B artwork recompressed to `0x2FD95` bytes, `0x9B5` larger than the stock slot, and required relocation. The 2026-09-29 approved typeset artwork uses the same 16-color CI8 palette shared with configurable edition text. Its default `SUB-ZERO` compressed package is `0x2D52E` bytes, within the `0x2F3E0` stock slot by `0x1EB2` bytes. These are Static/implementation results; this exact new title composition remains runtime Pending. Literal allocation ownership is canonical in [Memory and allocation map](Memory-and-Allocation-Map).
 The accepted MKMSZR title path is **data-only**:
 
 1. decode the existing `0x5E` package;
 2. modify the six CI8 tile pixel regions used by the title art;
 3. rasterize the configurable uppercase edition line into that same decoded image;
 4. recompress the package losslessly;
-5. repoint the global file-table entry to the generated `0x5E` package.
+5. write the package into the original file-`0x5E` ROM slot and update its end pointer; the start pointer and compression flag remain stock.
 
-No title executable cave is required by the accepted path. The production high-ROM allocation, generated-file capacity, and build-dependent compressed endpoints are allocation facts owned by [Memory and allocation map](Memory-and-Allocation-Map).
+No title executable cave or high-ROM title allocation is required by the new implementation. Its stock-slot bound and build-dependent compressed endpoints are allocation facts owned by [Memory and allocation map](Memory-and-Allocation-Map).
 
 The title palette descriptor is at ROM `0x000B3360`; the count word is followed by the 256-entry palette at `0x000B3364`. Offline reconstruction uses the verified BGR555 interpretation.
 
