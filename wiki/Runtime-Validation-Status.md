@@ -33,6 +33,10 @@ Current project maturity and priorities are owned by [Project status](Project-St
 | Browser / CLI patch core | No separate gameplay-runtime claim is inferred from the product surfaces themselves. | Browser and CLI use the shared patch core; supported-ROM validation, guarded writes, deterministic build logic, and CI composition checks are established. See [Web patcher and product](Web-Patcher-and-Product) and [Testing and CI](Testing-and-CI). | CI/static success does not establish final gameplay behavior; final 1.0 runtime validation must exercise the normal production composition. |
 | PS1 research | No new PS1 runtime claim is established by the current N64 consolidation. | Executable/resource/save/pickup/enemy mappings and bounded donor/reference findings are static research. See [PS1 research](PS1-Research) and [N64–PS1 comparison](N64-PS1-Comparison). | PS1 Fire substitution, UI hook, playable Scorpion moves, and any N64 transfer not separately demonstrated remain unestablished. |
 
+### TEST LAB / cross-stage materialization addendum
+
+**Runtime-confirmed bounded evidence:** v10 stable empty TEST LAB; v21 three correctly rendered Herbs all collectible; v26 imported Prison L1 key renders in TEST LAB; v27 ten distinct key/crystal visuals enter successfully; v31 fifteen non-Earth pickups enter without Mission Objective corruption; v33 makes that 15-live set recognizable with coherent selected native static frames. v28-v30 are rejected corruption controls. Earth direct cross-stage rendering remains Pending. See [TEST LAB proof history](Test-Lab-Proof-History).
+
 ## Runtime environment lineage
 
 Historical N64 proof runs used BizHawk `2.11.1`, Ares64, CPU emulation `1`, and P1 controller `2` where explicitly recorded.
