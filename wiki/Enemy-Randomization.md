@@ -383,3 +383,40 @@ v04 returns to the mechanically successful v01 compact files and keeps their exa
 
 **Accepted v04 baseline.** `MKMSZR_pris-grunt-ci4_water-bridge-proof_v04.z64`, SHA-256 `db85dcb8cdbcb8da3c2955f5f22b9ef00b056329e91278278f39222199c0a7b7`, is the accepted compact visual proof baseline. It includes Safe Stage Select; Water uses compact `0x8E+0x8F` with all ordinary Water spawns changed to staff PRIS GRUNT2/type `0x15`; Bridge keeps its native ordinary `0x14/0x17` roster with compact `0x8E+0x91`. The accepted result supersedes v01/v02 as the preferred visual palette and explicitly rejects v03. Residual 16-color texture noise is accepted as a bounded tradeoff for the proven resident-file reduction.
 
+## Compatibility matrix v02 — resource-planning pass (2026-09-29)
+
+This planner-facing pass keeps the existing 19-type v01 roster but adds resource-family lifetime, terminal closure, compaction status, and destination-fit consequences. **Fit is not compatibility:** the Water figures below compare resident fighter payload only against the user-measured replacement ceiling `0x34520`; they do not certify transient projectile/effect pressure or a runtime route. Native Prison/Bridge/Fortress rewinds are evidence for section-scoped paging only in their proven lifetimes and do not authorize rewinds in another destination.
+
+| Type | Primary bundle | Native lifetime / auxiliary closure | Compaction / Water planning status |
+|---:|---|---|---|
+| `00` MONK1 | `88 = 0x225B0` | Earth resident; ordinary terminal uses current-stage selector 10 | Raw fits Water; foreign selector-10 presentation unresolved |
+| `01` MONK2 | `89 = 0x22BF0` | Temple resident; selector-10 terminal; Fire import Runtime-confirmed through death/despawn when Temple selector 10 is materialized | Raw fits Water; Temple/Water terminal payload relation known |
+| `02` MONK3 | `8A+89 = 0x2E100` | Temple resident; selector-10 terminal; base `89` required | Raw fits Water; cross-stage two-file/terminal composition Pending |
+| `03` MONK4 | `8B = 0x14EE0` | Wind resident; selector 10 is external IDs `0x37A..0x37F` | Raw easily fits Water, but external terminal/cache closure is Pending |
+| `05` MONK6 | `8D+8C = 0x284D0` | Water stage-resident; audited Water overlay has 0 direct rewinds; selector-10 terminal | Native Water family |
+| `09` HULK MONK | `25 = 0x2C210` | Fire resident; fighter-file terminal path | Raw fits Water; later compact proof not required for size |
+| `0A` FAST MONK | `20 = 0x21160` | Fire resident; fighter-file terminal path | Raw fits Water; Fire `0A -> 09` remains Runtime-confirmed direct substitution |
+| `0D` Kia | `1F = 0x34030` | Fortress phase/encounter singleton | **Excluded** from ordinary pool |
+| `0E` GRUNT1 | `22 = 0x255E0` | Prison/Fortress phase-paged; file-internal terminal root `0x32` | Raw fits Water, but ordinary action/reaction closure remains incomplete |
+| `0F` GRUNT2 | `23+22 = 0x41DA0` | Fortress phase-paged; Water normal terminal can use selector 10; morph requires `22` | Raw exceeds Water; conditional `0x40B90` still `0xC670` too large; separate unresolved problem |
+| `11` Undead Scorp | `95 = 0x3FB10` | Prison singleton | **Excluded** |
+| `12` Scorpion | `87 = 0x459E0` | Temple singleton | **Excluded** |
+| `13` Jataaka | `1D = 0x3AFD0` | Fortress phase/encounter singleton | **Excluded** |
+| `14` PRIS GRUNT1 | `8E = 0x1FC10` | Prison/Bridge phase-paged; base/disarmed family; file-internal terminal | Raw fits Water; compact `8E` is Runtime-confirmed within accepted v04 family compositions |
+| `15` PRIS GRUNT2 | `8F+8E = 0x3B520` | Prison phase-paged; permanent-code ranged path; disarm -> `14/8E` | Raw exceeds Water; accepted compact pair `0x32ABC` fits by `0x1A64`; bounded Water Runtime-confirmed |
+| `16` PRIS GRUNT3 | `90+8E = 0x3C160` | Prison phase-paged; cannon/launcher projectile in `90`; disarm -> `14/8E` | Raw exceeds Water by `0x7C40`; compact `90` not yet derived/proven |
+| `17` PRIS GRUNT4 | `91+8E = 0x32DB0` | Bridge phase-paged; projectile/weapon in `91`; disarm -> `14/8E` | **Raw fits Water by `0x1770` (5.86 KiB); accepted compact pair `0x2B8C4` would fit by `0x8C5C` (35.09 KiB)** |
+| `1A` MONK5 | `8C = 0x1E160` | Water stage-resident; selector-10 terminal | Native Water family |
+| `1C` Sareena | `1C = 0x37400` | Fortress phase/encounter singleton | **Excluded** |
+
+### PRIS armed-family terminal closure
+
+The normal terminal dispatcher `0x80056F80..0x80057060` sends types `0x15/0x16/0x17` to `0x80053E8C`. While still armed they take its direct cleanup/despawn branch. If they are disarmed first, `0x80057478` rebinds the actor to base file `0x8E`, changes the type to `0x14`, and starts detached-weapon presenter `0x8005E1FC` with the original armed file. Type `0x14` then uses file-`0x8E` palette source `+0x1FB84` and root `0x32` at `+0x134`, a six-frame file-internal terminal list followed by zero. **Static-confirmed:** the armed family therefore does not require a destination selector-10 bundle for this normal terminal path.
+
+### Selected next proof: Water × type `0x17`
+
+Type `0x17 PRIS GRUNT4` is the smallest high-value next family proof because it adds a distinct ranged variant without repeating the already-proven staff-grunt case, while its full combat-resource closure is known: stock `0x8E + 0x91 = 0x32DB0`, permanent-code aim/projectile/collision/reaction helpers, file-`0x91` projectile secondary slot 6, file-`0x91` detached weapon slot 0, and base `0x8E` for disarm. Raw residency is only `0x1770` (6,000 B / 5.86 KiB) below the observed Water replacement ceiling, so this is deliberately a narrow bounded proof. If that margin is insufficient at runtime, the accepted compact `0x8E+0x91 = 0x2B8C4` composition is the next storage control before any animation deletion.
+
+**Implementation/CI-confirmed; runtime Pending:** disposable `MKMSZR_pris-grunt4_water-proof_v01.z64`, SHA-256 `0548808d417bbd006d54a8bd028926e0c3dd490a6c32cfa821c82be134ea1b34`. It starts from the clean USA Rev. 0 ROM, includes current Safe Stage Select, replaces Water's two native fighter loads with stock files `0x8E` and `0x91` in their exact constructor slots, changes all nine Water ordinary spawn type fields to `0x17`, leaves the Water boss path stock, and updates CRC1/CRC2 to `0x4D27726B / 0x989FF0C9`. No emulator was run.
+
+Manual validation target: `spawn -> normal AI -> ranged/special behavior -> projectile hit reaction -> disarm/detached weapon if triggered -> kill -> death/despawn -> stage continues`. A success is bounded evidence for Water × `0x17` only, not arbitrary mixed rosters or worst-case projectile concurrency.
