@@ -143,6 +143,7 @@
 
 - The six ordinary records are two Herbs, one Extra-life urn, and the three Wind icons.
 - The progression metadata remains stage-local: Wind Triangle requires `wind-circle`; Wind Three Bars requires `wind-triangle`.
+- **Checkpoint/progression static split (2026-09-29):** native pickup callback `0x802F2CB4` requests `0x80062D60` and increments/stores `0x802C18F8` only for parameters `0/1`; parameter `2` instead sets live overlay flag `0x802F60A0`. The permanent item-use table maps Wind IDs `0x0E/0x0F/0x10` to separate handlers `0x800721D4 / 0x8007226C / 0x80072220`, which commit progression bits through `0x802C0D54` and `0x8007EF30`. Minimal checkpoint-suppression candidate therefore NOPs only ROM `0xD500C` and `0xD5024`, preserving awards, generic sound/callback behavior, and `0x802F60A0`. Static-confirmed; runtime Pending.
 - Occupied slot `3` has no user among the six ordinary pickup records. Its non-pickup gameplay owner remains unresolved; the slot stays protected rather than being treated as available.
 - No outer slot is currently classified `unknown/nonstandard`; empty stock slots are `6, 7, 8, 9`. Per the shared schema, those zeros are logical selector capacity only and do not establish free physical storage.
 

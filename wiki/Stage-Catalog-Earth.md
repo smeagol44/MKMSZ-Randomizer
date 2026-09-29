@@ -147,6 +147,7 @@ All 24 key images have native image type `4`. The v34-v37 Type-5/monk interpreta
 
 - All 20 ordinary `0x30`-byte pickup records remain correct and contiguous at the existing overlay addresses.
 - Earth progression metadata remains stage-local: Four Squares requires Square; Triangle requires Four Squares; later location requirements remain as listed in the ordinary-pickup table.
+- **Checkpoint/progression static split (2026-09-29):** native callback `0x802F52B0` creates pickup-time checkpoint state only for parameter `0` / Earth Square: direct `0x80062D60` request at ROM `0xE1034` and selector-2 store at `0xE1044`. Parameters `1/2` instead update live overlay state `0x802F5520` / `0x802F5E22`, both independently read elsewhere and therefore preserved. Permanent item-use handlers `0x800720F0 / 0x8007213C / 0x80072188` commit progression bits separately. Minimal Square-only checkpoint candidate NOPs `0xE1034` and `0xE1044`. Static-confirmed; runtime Pending.
 - The ordinary pickup visual selector is resolved against file `0x30` through the current-stage resource pointer at `0x802F82B8`.
 - File `0x88` remains valid Earth-stage evidence for MONK1/enemy work only; it is **not** the pickup visual catalog.
 - v34-v36 Mission Objective hangs and v37 monk/glitched imagery are now explained by the wrong donor file. They are retained as negative controls, not as evidence that Earth keys use an exotic pickup format.
