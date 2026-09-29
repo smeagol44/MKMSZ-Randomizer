@@ -134,9 +134,17 @@
       <div class="settings-defaults">
         <div class="settings-defaults-copy">
           <h3>Randomizer Features</h3>
-          <p>Choose optional seed-driven randomizer behavior for this build.</p>
+          <p>Choose power rewards, order, and the final Fortress requirement for this build.</p>
         </div>
         <div class="toggle-grid">
+          <label class="setting-toggle" for="powersAsPickups">
+            <span>
+              <strong>Powers as pickups</strong>
+              <small>Replace nine generated Herbs with Power Upgrades. Off: earn powers through normal XP.</small>
+            </span>
+            <input id="powersAsPickups" type="checkbox" checked>
+            <span class="toggle-switch" aria-hidden="true"></span>
+          </label>
           <label class="setting-toggle" for="shufflePowerProgression">
             <span>
               <strong>Shuffle Power Progression</strong>
@@ -145,6 +153,21 @@
             <input id="shufflePowerProgression" type="checkbox">
             <span class="toggle-switch" aria-hidden="true"></span>
           </label>
+        </div>
+        <div class="grid requirement-grid">
+          <div class="field">
+            <label for="requiredPowersMode">Required powers for Fortress</label>
+            <select id="requiredPowersMode">
+              <option value="vanilla">Vanilla (stock XP gate)</option>
+              <option value="custom">Custom (0–9)</option>
+              <option value="seed">Seed (0–9)</option>
+            </select>
+            <p class="hint">Controls the XP gate before the final Fortress fight in either progression mode. Seed chooses a repeatable count for this seed.</p>
+          </div>
+          <div class="field" id="customRequiredPowersField" hidden>
+            <label for="customRequiredPowers">Custom required powers</label>
+            <input id="customRequiredPowers" type="number" min="0" max="9" step="1" value="8">
+          </div>
         </div>
       </div>
 
@@ -214,6 +237,7 @@
         <dl>
           <div><dt>Target</dt><dd>Nintendo 64</dd></div>
           <div><dt>Seed</dt><dd id="resultSeed"></dd></div>
+          <div><dt>Required powers</dt><dd id="resultRequiredPowers"></dd></div>
           <div><dt>Output SHA-256</dt><dd id="outputSha"></dd></div>
           <div><dt>CRC1 / CRC2</dt><dd id="outputCrc"></dd></div>
         </dl>

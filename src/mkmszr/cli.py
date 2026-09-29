@@ -49,6 +49,23 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="shuffle the nine Power Up unlock tiers with the accepted Ice Shatter constraint",
     )
+    parser.add_argument(
+        "--no-powers-as-pickups",
+        action="store_true",
+        help="earn powers through stock XP instead of nine generated pickup rewards",
+    )
+    parser.add_argument(
+        "--required-powers",
+        choices=("vanilla", "custom", "seed"),
+        default="vanilla",
+        help="Fortress final XP requirement (default: stock threshold)",
+    )
+    parser.add_argument(
+        "--custom-required-powers",
+        type=int,
+        metavar="0..9",
+        help="number of powers required when --required-powers custom",
+    )
     return parser
 
 
@@ -60,6 +77,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--outfit hue requires --hue")
     if args.outfit == "rgb" and args.rgb is None:
         parser.error("--outfit rgb requires --rgb")
+    if args.required_powers == "custom" and args.custom_required_powers is None:
+        parser.error("--required-powers custom requires --custom-required-powers 0..9")
+    if args.required_powers != "custom" and args.custom_required_powers is not None:
+        parser.error("--custom-required-powers requires --required-powers custom")
+    if args.custom_required_powers is not None and not 0 <= args.custom_required_powers <= 9:
+        parser.error("--custom-required-powers must be from 0 to 9")
 
     effective_seed = args.seed.strip() if args.seed and args.seed.strip() else generate_seed()
     config = RandomizerConfig(
@@ -67,6 +90,9 @@ def main(argv: list[str] | None = None) -> int:
         outfit=OutfitConfig(mode=args.outfit, hue_degrees=args.hue, rgb=args.rgb),
         edition_name=args.edition_name,
         shuffle_power_progression=args.shuffle_power_progression,
+        powers_as_pickups=not args.no_powers_as_pickups,
+        required_powers_mode=args.required_powers,
+        custom_required_powers=args.custom_required_powers,
     )
 
     try:
@@ -86,6 +112,13 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"wrote: {args.output}")
     print(f"seed: {effective_seed}")
+    if result.required_powers_count is None:
+        print(f"required powers: vanilla (stock XP threshold {result.required_powers_xp})")
+    else:
+        print(
+            f"required powers: {result.required_powers_count} "
+            f"(XP threshold {result.required_powers_xp}; {args.required_powers})"
+        )
     for patch in result.patches:
         print(f"patch: {patch.name}")
         for note in patch.notes:

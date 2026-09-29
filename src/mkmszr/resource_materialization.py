@@ -39,7 +39,7 @@ STAGE_RESOURCES: dict[int, StageResourceSpec] = {
     0: StageResourceSpec(0, 0x000A5490, 0x00513710, 0x00523370),
     1: StageResourceSpec(1, 0x000A561C, 0x00698680, 0x0069A820),
     2: StageResourceSpec(2, 0x000A558C, 0x00611780, 0x00617C60),
-    3: StageResourceSpec(3, 0x000A5670, 0x006BAEC0, 0x006DD470),
+    3: StageResourceSpec(3, 0x000A5250, 0x00305A30, 0x0030AA00),
     4: StageResourceSpec(4, 0x000A537C, 0x0041C680, 0x00420F70),
     5: StageResourceSpec(5, 0x000A52E0, 0x00388260, 0x0038A790),
     8: StageResourceSpec(8, 0x000A51E4, 0x00296140, 0x0029A470),
@@ -55,8 +55,9 @@ class VisualDonorSpec:
     package_file_id: int | None = None
 
 
-# Canonical sources deliberately avoid Earth zero-terminated pickup formats.
-# Fire's Formula/Eye/Shield and Water's Health urn are normal external-ID
+# Canonical sources use the ordinary-pickup stage resource files. Earth is
+# file 0x30; file 0x88 is MONK1 fighter data and must not be used for pickup
+# visuals. Fire's Formula/Eye/Shield and Water's Health urn are normal external-ID
 # bundles; they are converted to self-contained type-4 blocks by this module.
 CANONICAL_VISUAL_DONORS: dict[str, VisualDonorSpec] = {
     "potion": VisualDonorSpec(2, 4, 8),
@@ -71,9 +72,9 @@ CANONICAL_VISUAL_DONORS: dict[str, VisualDonorSpec] = {
     "wind-circle": VisualDonorSpec(1, 3, 8),
     "wind-three-bars": VisualDonorSpec(1, 5, 8),
     "wind-triangle": VisualDonorSpec(1, 4, 8),
-    "earth-square": VisualDonorSpec(3, 0, 12),
-    "earth-four-square": VisualDonorSpec(3, 1, 9),
-    "earth-triangle": VisualDonorSpec(3, 2, 9),
+    "earth-square": VisualDonorSpec(3, 0, 8),
+    "earth-four-square": VisualDonorSpec(3, 1, 8),
+    "earth-triangle": VisualDonorSpec(3, 2, 8),
     "water-three-bars": VisualDonorSpec(2, 7, 8),
     "water-triangle": VisualDonorSpec(2, 6, 8),
     "water-moon": VisualDonorSpec(2, 8, 8),

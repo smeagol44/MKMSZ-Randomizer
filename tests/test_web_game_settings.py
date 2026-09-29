@@ -12,6 +12,9 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
         "jumpButton",
         "runAuto",
         "shufflePowerProgression",
+        "powersAsPickups",
+        "requiredPowersMode",
+        "customRequiredPowers",
     ):
         assert f'id="{control_id}"' in html
         assert f'querySelector("#{control_id}")' in app
@@ -24,6 +27,11 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
     assert "web_run_auto" in app
     assert "web_shuffle_power_progression" in app
     assert "shuffle_power_progression=bool(web_shuffle_power_progression)" in app
+    assert 'id="powersAsPickups" type="checkbox" checked' in html
+    assert "powers_as_pickups=bool(web_powers_as_pickups)" in app
+    assert "required_powers_mode=str(web_required_powers_mode)" in app
+    assert "custom_required_powers=int(web_custom_required_powers)" in app
+    assert "resultRequiredPowers.textContent" in app
 
 
 def test_web_jump_button_dependency_is_enforced_in_ui() -> None:

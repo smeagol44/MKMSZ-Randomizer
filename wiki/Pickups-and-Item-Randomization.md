@@ -56,7 +56,7 @@ These rules are **Implementation/CI-confirmed** as the current stage-local model
 
 ## Progression-reward overlay in the current product
 
-After the ordinary stage-local layout is accepted, production derives Herbs candidates from that accepted assignment and selects exactly nine using a separate SHA-256 Fisher-Yates domain:
+When Powers as pickups is ON, after the ordinary stage-local layout is accepted, production derives Herbs candidates from that accepted assignment and selects exactly nine using a separate SHA-256 Fisher-Yates domain. When OFF, no callbacks are converted:
 
 ```text
 MKMSZR:PROGRESSION:HERBS:V1\0
@@ -68,7 +68,7 @@ The progression callback advances to the next native XP threshold, evaluates the
 
 Diagnostic A Runtime-confirmed the generated Temple pattern for seed `BCBDBF`: the first and third Herbs were progression rewards, the second Herbs remained normal, XP reached 85 then 258, combat XP stayed disabled, and all three shared ordinary Herbs graphics.
 
-The complete progression mechanism and lifecycle evidence belong to [XP and progression](XP-and-Progression). The future seed-specific **required** Power-Upgrades target and its solver role belong to [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
+The complete progression mechanism and lifecycle evidence, including the build-time Powers-as-pickups choice, belong to [XP and progression](XP-and-Progression). The future mode-aware **required** Power-Upgrades target and its solver role belong to [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
 
 ## Runtime evidence for the current shuffle
 

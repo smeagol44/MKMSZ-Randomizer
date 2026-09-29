@@ -73,9 +73,15 @@ The same proof started Temple at 85 XP with its first power already awarded. Sta
 
 The shared product implementation now reuses the production XP lifecycle and adds the power-order remap as a separate final patch stage. Runtime mechanism is confirmed; repository CI and normal-product deployment remain the integration gates.
 
+## Build-time progression choices
+
+**Implementation/static-confirmed candidate; runtime Pending for the new choices.** The shared builder now exposes **Powers as pickups**, default ON. ON retains the established nine generated Herbs callback replacements, disables normal combat XP, suppresses the combo EXPERIENCE display, raises main-stage caps, and restores persistent pickup-awarded XP at stage entry without calling the unsafe tier evaluator there. OFF omits that entire patch stage: generated Herbs keep their normal callback and stock combat XP stores, combo display, stage caps, and four-box manager resume remain in place. This is a ROM-build setting, not an in-game switch. The independent **Shuffle Power Progression** option can remap gameplay/UI power order in either mode; normal-XP plus shuffled order has not been runtime-tested.
+
+The Fortress final-fight gate is separate from the source of XP. Raw stage overlay file `0x9E` has stock `slti v1,v1,0x13EC` at VA `0x802EF49C` / ROM `0xC299C`, comparing current XP to **5100**. That falls between native tier thresholds 7 (`4503`) and 8 (`5911`): pickup mode needs its eighth reward, but normal XP can pass at 5100 before tier 8. **Vanilla** preserves the exact stock XP requirement and does not claim an exact tier count. **Custom** accepts an integer `0..9`, and **Seed** deterministically selects `0..9` from independent `MKMSZR:REQUIRED-POWERS:V1\0`; both change only that guarded comparison immediate. Count `0` compares against XP `0`; counts `1..9` compare against the matching native tier thresholds. The selected setting and threshold are reported after the build. Static patch composition does not yet establish final-fight runtime behavior for every count, especially `0` or normal-XP mode.
+
 ## Production semantics
 
-The production mode has exactly nine rewards and uses a dedicated RNG namespace. Each reward advances to the next native threshold rather than adding an arbitrary fixed amount. A custom award callback avoids inventory insertion, evaluates/clamps the native tier, and caps at the ninth value. A separate stage-init helper restores persistent XP without evaluating tiers at that boundary.
+With Powers as pickups ON, the production mode has exactly nine rewards and uses a dedicated RNG namespace. Each reward advances to the next native threshold rather than adding an arbitrary fixed amount. A custom award callback avoids inventory insertion, evaluates/clamps the native tier, and caps at the ninth value. A separate stage-init helper restores persistent XP without evaluating tiers at that boundary.
 
 Normal ordinary-pickup randomization remains independent of progression selection and count/XP state. Acquisition still marks the physical ordinary location as collected; progression count/XP use separate words and progression selection uses its own RNG namespace.
 
@@ -163,12 +169,12 @@ Diagnostic B behavior is the production design.
 
 ## Required-Power-Upgrades implementation implications
 
-The canonical 1.0 solvability requirement, including the seed-specific required number of Power Upgrades, is R3 in [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). This page owns the native XP/progression behavior and the implementation constraints that requirement must preserve.
+The canonical 1.0 solvability requirement, including the selected Vanilla / Custom / Seed Power Upgrades gate, is R3 in [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). This page owns the native XP/progression behavior and the implementation constraints that requirement must preserve.
 
 Implementation implications for the progression subsystem:
 
-- the required-count generator must use its own deterministic namespace and remain independent of rejected global-layout attempts;
+- Seed mode's required-count generator must use its own deterministic namespace and remain independent of rejected global-layout attempts;
 - the whole-run solver and native randomizer HUD consume the required-count result, but their normative product behavior remains owned by the Roadmap and their respective implementation pages;
 - each collected progression reward must preserve the current Runtime-confirmed native threshold behavior.
 
-The exact allowed minimum/maximum required-count policy remains Pending with the global solver, as tracked by the Roadmap and [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
+The build-time Custom/Seed range is now `0..9`; the global solver and HUD must still consume this mode-specific requirement. Their completion rules and normal-XP reachability remain Pending, as tracked by the Roadmap and [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).

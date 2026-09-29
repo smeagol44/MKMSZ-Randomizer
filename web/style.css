@@ -107,7 +107,7 @@ code { color: #dbe2ff; background: #171b25; padding: .08rem .3rem; border-radius
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .field { min-width: 0; }
 label { display: block; margin-bottom: .45rem; font-weight: 650; }
-input[type="file"], input[type="text"], select {
+input[type="file"], input[type="text"], input[type="number"], select {
   width: 100%;
   min-height: 2.8rem;
   border: 1px solid #343b4a;
@@ -154,6 +154,7 @@ footer p { margin: 0; }
   padding-top: 1.1rem;
   border-top: 1px solid #2a3040;
 }
+.requirement-grid { margin-top: 1rem; }
 .settings-defaults-copy h3 {
   margin: 0;
   font-size: .98rem;
