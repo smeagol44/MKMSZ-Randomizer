@@ -57,17 +57,19 @@ These results are important feasibility evidence but are **not** normal browser/
 
 ## Current priority order
 
-Current user-directed work temporarily advances the logical 1.0 model before the remaining materializer runtime gate:
+Current user direction is to close the remaining **materialization safety gates before starting the global shuffle/solver implementation**:
 
-1. Replace stage-local generation with deterministic global shuffle plus whole-run solver, including explicit deterministic retry attempts, a deterministic per-seed required-Power-Upgrades target, and the approved optional deterministic constrained nine-slot power-order shuffle.
-2. Trace and remove the unwanted key-item checkpoint/death-respawn side effect without breaking reward, progression, persistence, or boss-reward behavior.
-3. Return to the cross-stage resource/materialization production gate: complete the pending Fortress composed stress validation, destination-safe key/crystal/boss-reward handling, then build and manually validate the smallest guarded integration proof.
-4. Build the native randomizer HUD around the finalized global-run state.
-5. Resolve Temple Map behavior, then HP/lives/continues lifecycle, Game Over/new-run reset, and the Very Hard invariant.
-6. Run the final representative full-seed 1.0 validation.
-7. Post-1.0: ordinary-enemy randomization/resource compatibility, imported-enemy death/despawn work, and donor-move/Sektor expansion.
+1. Runtime-close the three Earth keys as a cross-stage donor family in TEST LAB using the proven destination-native Fire resource-file architecture and the cataloged Earth frame/image bounds. No deeper Ghidra trace is required unless this bounded proof fails.
+2. Generalize the Prison-L1 checkpoint-safe model across key/crystal families: preserve the logical award and required progression/door state while suppressing pickup-created checkpoint/respawn relocation and checkpoint presentation.
+3. Compose one cross-stage foreign-key inventory-mask round trip: acquire a foreign key, retain the true ID in authoritative backing inventory, expose inert Glass outside its native stage, expose the real key in its native stage, and mask it again on leaving.
+4. Complete the remaining destination-stage materializer stress/capacity gates, especially Fortress, then build the smallest guarded disposable production-composition integration proof with current allocation ownership.
+5. Only after those gates are green, replace the interim stage-local generation with the deterministic global shuffle plus whole-run solver, explicit deterministic retries, seed-specific required-Power-Upgrades target, and the approved optional deterministic constrained nine-slot power-order shuffle.
+6. Build the native randomizer HUD around the finalized global-run state.
+7. Resolve Temple Map behavior, then HP/lives/continues lifecycle, Game Over/new-run reset, and the Very Hard invariant.
+8. Run the final representative full-seed 1.0 validation.
+9. Post-1.0: ordinary-enemy randomization/resource compatibility, imported-enemy death/despawn work, and donor-move/Sektor expansion.
 
-This order mirrors the current release dependency chain; it is not permission to treat later proof work as production before its own validation gate.
+This order follows the current user direction and the materializer dependency chain; it does not promote proof-only TEST LAB allocations or presentation compromises into production behavior.
 
 ## Current evidence notes
 
