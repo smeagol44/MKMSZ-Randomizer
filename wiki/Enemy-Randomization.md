@@ -349,3 +349,21 @@ The `0x15` staff identification is therefore Static-confirmed from the decoded n
 
 **Portability conclusion.** The shooting mechanics for `0x15/0x16/0x17` are **Static-confirmed portable at the combat-resource level**: common permanent AI/aim/projectile/collision/reaction code + the fighter's primary file + shared base file `0x8E`; no Prison/Bridge overlay-owned projectile callback or stage-resource selector was found in the traced chain. This is not yet a full cross-stage runtime approval. A destination proof must still budget the full fighter bundle plus transient projectile/effect allocations, keep `0x8E` resident for disarm, and validate death/despawn/encounter accounting in the destination. The smallest justified runtime proof is one armed PRIS GRUNT in a destination whose native fighter allocation can be replaced rather than appended, with projectile firing, hit reaction, disarm-to-`0x14`, kill/despawn, and stage continuation all exercised.
 
+### PRIS GRUNT 16-color dry-repack sizing (2026-09-29, static/offline only)
+
+The clean `0x8E` base fighter uses two 6-bpp Type-5 models. File `0x8F` uses a 6-bpp body model plus a 4-bpp secondary model; the staff/projectile art already lives in the 4-bpp model and was kept exact. Files `0x8E` and `0x8F` share the same 64-color body palette, so the dry conversion quantized their body art jointly to 15 visible colors plus transparent index 0 while preserving the armed-to-disarmed palette relationship.
+
+The dry pack preserved all animation/model assignments, kept `0x8F` model-1 pixels exact, rebuilt only used per-model dictionaries, and re-encoded the Type-5 streams with the established encoder-v2 class geometry. All **141** Type-5 frames in `0x8E` and all **112** in `0x8F` independently decode back to the selected target buffers with **zero mismatches**. No ROM was built and no runtime claim follows from this codec round-trip.
+
+| Resource | Stock size | 16-color compact dry pack | Saving |
+|---|---:|---:|---:|
+| file `0x8E` | `0x1FC10` = 130,064 B | `0x1AAD8` = 109,272 B | `0x5138` = 20,792 B |
+| file `0x8F` | `0x1B910` = 112,912 B | `0x17724` = 96,036 B | `0x41EC` = 16,876 B |
+| **`0x15` family pair `0x8E+0x8F`** | **`0x3B520` = 242,976 B** | **`0x321FC` = 205,308 B** | **`0x9324` = 37,668 B (36.79 KiB, 15.50%)** |
+
+For comparison, merely changing the 6-bpp dictionary storage to 4-bpp while retaining the existing pattern-index population would save `0x85E6` = 34,278 B and yield pair size `0x32F3A`. The compact used-pattern rebuild therefore contributes an additional 3,390 B beyond the direct bit-depth saving.
+
+Against the user-supplied Water observed-route replacement ceiling `0x34520`, the compact pair fits by **`0x2324` = 8,996 B (8.79 KiB)**. This is a positive static sizing result, not a runtime-safe margin: Type-5 decode backing remains dimension-based (`align4(width) * align2(height)`) rather than shrinking with source bpp, and projectile/effect actors add transient pressure. A Water proof should therefore still measure the live cursor while firing/disarming/killing rather than treating the 8.79-KiB residual as certified free space.
+
+The same method was applied separately to Bridge's native ordinary family `0x8E+0x91`, using a joint 16-color body quantization while preserving `0x91`'s already-4-bpp secondary art. The pair falls from `0x32DB0` = 208,304 B to **`0x2B14C` = 176,460 B**, saving **`0x7C64` = 31,844 B (31.10 KiB, 15.29%)**, with zero dry-pack decode mismatches. This would reduce resident arena payload pressure if implemented, but it is **not evidence of a Bridge frame-rate improvement**: decoded image buffers retain their dimensions and the render/AI/projectile workload is unchanged. Any Bridge-lag claim requires a separate runtime performance/profile investigation.
+
