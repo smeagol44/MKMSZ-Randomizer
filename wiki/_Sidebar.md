@@ -63,4 +63,5 @@
 
 - [Experiments, failures and superseded findings](Experiments-Failures-and-Superseded-Findings)
 - [Milestone timeline](Milestone-Timeline)
+- [TEST LAB proof history](Test-Lab-Proof-History)
 - [Library artifact index](Library-Artifact-Index)
