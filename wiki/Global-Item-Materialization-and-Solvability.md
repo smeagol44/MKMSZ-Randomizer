@@ -143,6 +143,36 @@ Observed runtime state after pickup was `TRACE KA`, `G4 S2 B1`: the key awarded,
 This closes the Prison-L1-specific checkpoint problem with a cleaner two-seam model than v07: **suppress the key-only presentation request and the key-only checkpoint-selector write; preserve the logical door/progression bit.**
 
 Production/global scope remains Pending. Other stage keys/crystals may use different selector writes, acquired bits, boss-spawn semantics, or door consumers; do not generalize the exact Prison L1 bytes without tracing their corresponding progression owner.
+
+
+### Fire key checkpoint suppression v01 — Runtime-confirmed bounded family proof (2026-09-29)
+
+Fire provides the first successful non-Prison generalization of the two-seam model.
+
+The stock Fire stage-icon callback is overlay VA `0x802F0EBC` / ROM `0x000E5C0C`. All three native Fire keys call this function with parameter `0..2`. The callback separates:
+
+- the direct `0x8002830C(0x15, 0x80062D60)` checkpoint-presentation request at ROM `0x000E5C28`;
+- the normal inventory award through `0x80075448(s0 + 0x17)` at ROM `0x000E5C30`;
+- the pickup-created respawn-selector store `0x802C18F8 = s0 + 2` at ROM `0x000E5C50`;
+- the remaining post-award helper path, which v01 leaves stock.
+
+Disposable v01 NOPs only the presentation JAL at `0xE5C28` and the selector store at `0xE5C50`. It leaves the award, pickup sound/helper path, ordinary manager collected-state write, Fire overlay logic, and native inventory-USE progression path unchanged.
+
+**Runtime-confirmed, bounded v01 route:** no key-created `CHECK POINT` event was observed; after death the player returned to Fire's natural stage-start spawn; the stage remained completable through the Fire God arena and boss; and transition to the next stage completed without reported gameplay issues. This establishes that, for Fire, pickup-created checkpoint presentation and pickup-created respawn relocation can both be removed while preserving the tested stage-completion path.
+
+v01 disposable ROM SHA-256: `438f3d7f314bba3b7336b53239aa2cdbc026c800da36a5f930de42a05a19acff`.
+
+#### Audio observation and bounded controls
+
+One initial v01 run developed a crunchy/noisy audio symptom near the second-key area. It is **not reproducible at present** and is not attributed to the checkpoint edits:
+
+- a same-selector control with the Fire callback completely stock (v02) was played through almost the entire stage without reproducing the symptom;
+- split controls v03a (presentation suppression only) and v03b (selector-store suppression only) also did not reproduce it;
+- a later cold v01 retest did not reproduce it either.
+
+Therefore the audio symptom is retained only as an unresolved/non-reproducible observation, not as a confirmed regression and not as evidence against v01.
+
+**Current generalization boundary:** Prison L1 and Fire now both Runtime-confirm the same high-level policy — preserve the logical award/progression owner while suppressing pickup-created presentation and respawn relocation — but their exact patch sites differ. Wind, Water, Earth, Bridge, and Fortress/crystals still require their own owner-specific closure before a reusable production callback/policy is accepted.
 ### Fortress boss-defeat reward trigger ownership — static closure (2026-09-27)
 
 **Static-confirmed:** Fortress overlay file `0x9E` directly couples the three assassin encounters to the first three ordinary pickup records. The encounter manager uses index `s4 = 0,1,2`; its table at VA `0x802F15C4` / ROM `0xC4AC4` resolves those indices to **ASSASSIN1 / type `0x0D`**, **ASSASSIN3 / type `0x13`**, and **ASSASSIN2 / type `0x1C`**. It writes `1 << s4` to the shared gated-enemy state `0x802C1140`, matching the three singleton ordinary-stream masks `1,2,4`.
