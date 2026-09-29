@@ -9,6 +9,7 @@ from mkmszr.patches.pickup_persistence import PickupPersistencePatch
 from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
 from mkmszr.patches.power_order import PowerOrderPatch
 from mkmszr.patches.rainbow_palette import RainbowPalettePatch
+from mkmszr.patches.required_powers import RequiredPowersPatch
 from mkmszr.patches.stage_selector import SafeStageSelectorPatch
 from mkmszr.patches.xp_progression import XPProgressionPatch
 
@@ -54,3 +55,23 @@ def test_power_order_shuffle_is_optional_and_runs_after_controls() -> None:
     )
     types = [type(patch) for patch in enabled.patches]
     assert types[-1] is PowerOrderPatch
+
+
+def test_powers_as_pickups_and_required_count_are_independent() -> None:
+    for shuffle in (False, True):
+        pipeline = build_pipeline(
+            RandomizerConfig(
+                seed="POWER", powers_as_pickups=False,
+                shuffle_power_progression=shuffle,
+                required_powers_mode="custom", custom_required_powers=0,
+            )
+        )
+        types = [type(patch) for patch in pipeline.patches]
+        assert XPProgressionPatch not in types
+        assert FourBoxInventoryPatch in types
+        assert (PowerOrderPatch in types) is shuffle
+        assert types[-1] is RequiredPowersPatch
+
+    assert RequiredPowersPatch not in [
+        type(patch) for patch in build_pipeline(RandomizerConfig(seed="POWER")).patches
+    ]

@@ -40,6 +40,9 @@ These are implementation infrastructure for the randomizer, not user-facing opti
 - purple / orange / yellow / cyan / pink named colors;
 - seed-derived outfit color;
 - custom RGB tint;
+- Powers as pickups (on by default; off retains stock XP awards and ordinary Herbs);
+- required powers: Vanilla (stock Fortress XP 5100), Custom (0–9), or Seed (deterministic 0–9), with the effective requirement shown after patching;
+- Shuffle Power Progression, independently of the XP source;
 
 All currently exposed recolor modes have been visually validated in BizHawk through
 ROMs produced by the browser patcher. Custom RGB mode has been validated as a mode;

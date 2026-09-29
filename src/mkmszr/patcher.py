@@ -35,6 +35,7 @@ from .patches.inventory_boxes import (
     SPECIALS_MODERN_STATE_MASK,
     TURN_LOCK_STATE_MASK,
 )
+from .patches.required_powers import RequiredPowersPatch, resolve_required_powers
 from .patches.toasty_codegen import pack_toasty_module
 from .rom import RomImage
 
@@ -47,6 +48,8 @@ class BuildResult:
     output_sha256: str
     changed_spans: tuple[tuple[int, int], ...]
     patches: tuple[PatchResult, ...]
+    required_powers_count: int | None
+    required_powers_xp: int
 
 
 def build_pipeline(
@@ -74,14 +77,21 @@ def build_pipeline(
         PickupPersistencePatch(),
         PickupRandomizationPatch(),
         FourBoxInventoryPatch(initial_settings_state=settings_state),
-        XPProgressionPatch(),
-        GameSettingsTurnPatch(),
-        SafeStageSelectSkipAutoSavePatch(),
-        BoxIndicatorPatch(),
-        BootBrandingPatch(config.edition_name),
-        BootLogoBypassPatch(),
-        TitleBrandingPatch(config.edition_name),
     ]
+    if config.powers_as_pickups:
+        # Only pickup mode replaces the four-box resume tail. The other mode
+        # keeps stock XP stores/caps and ordinary Herbs callbacks.
+        patches.append(XPProgressionPatch())
+    patches.extend(
+        [
+            GameSettingsTurnPatch(),
+            SafeStageSelectSkipAutoSavePatch(),
+            BoxIndicatorPatch(),
+            BootBrandingPatch(config.edition_name),
+            BootLogoBypassPatch(),
+            TitleBrandingPatch(config.edition_name),
+        ]
+    )
     outfit_mode = config.outfit.mode.lower()
     if outfit_mode != "rainbow" and outfit_mode != "vanilla":
         patches.append(
@@ -116,6 +126,12 @@ def build_pipeline(
     # remain authoritative.
     if config.shuffle_power_progression:
         patches.append(PowerOrderPatch())
+    if config.required_powers_mode != "vanilla":
+        patches.append(
+            RequiredPowersPatch(
+                config.required_powers_mode, config.custom_required_powers
+            )
+        )
     return PatchPipeline(patches)
 
 
@@ -132,6 +148,9 @@ def patch_bytes(
         toasty_assets=toasty_assets,
         toasty_probability_per_thousand=toasty_probability_per_thousand,
     ).apply(rom, PatchContext(seed=config.seed))
+    required_count, required_xp = resolve_required_powers(
+        config.required_powers_mode, config.custom_required_powers, config.seed
+    )
     crc1, crc2 = rom.update_header_crc()
     return BuildResult(
         data=rom.to_bytes(),
@@ -140,6 +159,8 @@ def patch_bytes(
         output_sha256=rom.output_sha256,
         changed_spans=rom.changed_spans(),
         patches=results,
+        required_powers_count=required_count,
+        required_powers_xp=required_xp,
     )
 
 
