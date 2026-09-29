@@ -34,7 +34,7 @@ Donor-fighter work has established additional palette-binding rules for imported
 
 Palette RNG is isolated from pickup and boot-phrase namespaces. Changing presentation/recolor options must not change item placement.
 
-The current product feature configures the normal player outfit. It does not claim a general per-actor palette allocator, automatic conversion of arbitrary donor palettes, or coverage of every alternate/enemy palette route. Those are separate compatibility problems.
+The current product feature configures the normal player outfit. The title's own 15-color art/edition ramp also follows non-vanilla outfit selections as a separate build-time presentation change; rainbow is a fixed title treatment while the clothing continues its gameplay cycle. Exact title design and acceptance status belong to [Presentation and branding](Presentation-and-Branding). This does not claim a general per-actor palette allocator, automatic conversion of arbitrary donor palettes, or coverage of every alternate/enemy palette route. Those are separate compatibility problems.
 
 ## Safety constraints
 

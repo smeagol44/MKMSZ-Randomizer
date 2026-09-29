@@ -2,8 +2,10 @@ import hashlib
 
 import pytest
 
+from mkmszr.config import OutfitConfig
 from mkmszr.patches import title_branding as title
 from mkmszr.patches.base import PatchContext
+from mkmszr.patches.palette import SubZeroPalettePatch, make_hue
 from mkmszr.rom import RomImage
 
 
@@ -47,6 +49,51 @@ def test_16color_title_palette_contract_is_shared_with_edition_text() -> None:
         0x0821, 0x0C41, 0x1881, 0x2CE2, 0x3D41,
         0x3D44, 0x45A6, 0x5E28, 0x628F, 0x6ED1,
         0x7732, 0x7B75, 0x7778, 0x7FB8, 0x7BDB,
+    )
+
+
+@pytest.mark.parametrize(
+    "outfit",
+    [
+        OutfitConfig(mode="purple"),
+        OutfitConfig(mode="hue", hue_degrees=123.0),
+        OutfitConfig(mode="rgb", rgb=(192, 90, 25)),
+        OutfitConfig(mode="seeded"),
+    ],
+)
+def test_title_palette_matches_clothing_transform(outfit: OutfitConfig) -> None:
+    context = PatchContext(seed="TITLE-COLOR-SEED")
+    recolor = SubZeroPalettePatch(
+        outfit.mode, hue_degrees=outfit.hue_degrees, rgb=outfit.rgb
+    )
+    assert title._palette_words_for_outfit(outfit, context) == tuple(
+        recolor._transform(word, context) for word in title.EDITION_PALETTE_WORDS
+    )
+    assert title._palette_words_for_outfit(OutfitConfig(), context) == (
+        title.EDITION_PALETTE_WORDS
+    )
+
+
+@pytest.mark.parametrize("mode,hue", [("red", 0.0), ("green", 120.0)])
+def test_red_green_title_hue_matches_outfit_target(mode: str, hue: float) -> None:
+    assert title._palette_words_for_outfit(OutfitConfig(mode=mode), PatchContext()) == (
+        tuple(make_hue(word, hue) for word in title.EDITION_PALETTE_WORDS)
+    )
+
+
+def test_fixed_rainbow_keeps_native_index_budget_and_blue_plaque() -> None:
+    pixels = bytearray(title._title_pixels())
+    title._render_edition(pixels, "SEKTOR")
+    original = pixels[:]
+    title._fixed_rainbow_pixels(pixels)
+    assert len(title.RAINBOW_PALETTE_WORDS) == 15
+    assert set(pixels) <= set(title.TITLE_16COLOR_INDICES)
+    assert pixels[:39 * 320] == original[:39 * 320]
+    assert pixels[140 * 320:] == original[140 * 320:]
+    assert pixels[80 * 320:100 * 320] != original[80 * 320:100 * 320]
+    assert pixels[115 * 320:128 * 320] != original[115 * 320:128 * 320]
+    assert set(pixels[40 * 320:70 * 320]) <= (
+        {title.TITLE_BACKGROUND_INDEX} | set(title.EDITION_PALETTE_INDICES[:5])
     )
 
 
@@ -121,7 +168,7 @@ def test_title_patch_replaces_stock_package_without_code_hook(
     monkeypatch.setattr(
         title,
         "_build_title_package",
-        lambda _stock, _name: fake_package,
+        lambda _stock, _name, *, fixed_rainbow: fake_package,
     )
 
     title.TitleBrandingPatch("sektor").apply(rom, PatchContext())

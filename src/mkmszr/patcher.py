@@ -89,7 +89,7 @@ def build_pipeline(
             BoxIndicatorPatch(),
             BootBrandingPatch(config.edition_name),
             BootLogoBypassPatch(),
-            TitleBrandingPatch(config.edition_name),
+            TitleBrandingPatch(config.edition_name, config.outfit),
         ]
     )
     outfit_mode = config.outfit.mode.lower()

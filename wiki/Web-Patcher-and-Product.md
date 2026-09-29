@@ -31,13 +31,13 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 | Option | Behavior |
 |---|---|
 | Seed | Drives stage-local pickup layouts, boot phrase, and seeded palette through isolated namespaces |
-| Outfit `vanilla` | Leaves source TLUT untouched |
+| Outfit `vanilla` | Leaves source clothing TLUT and the accepted icy-blue title palette unchanged |
 | Presets / red / green | Applies fixed hue behavior |
-| `rainbow` | Runtime-confirmed 64-phase clothing hue cycle; preserves non-clothing palette entries |
+| `rainbow` | Runtime-confirmed 64-phase clothing hue cycle; fixed five-hue title word/edition treatment (the title itself does not animate) |
 | `seeded` | Deterministic seed-derived clothing color |
 | `hue` | Requires explicit degrees |
 | `rgb` | Requires `RRGGBB` or `#RRGGBB` |
-| Title character | Temporary freeform uppercase name, default `SUB-ZERO`, max 12 characters; patcher appends ` EDITION` and rasterizes it into the generated title image. The shared web/CLI core now constrains Candidate B and the edition text to one 16-color visual palette while retaining the native CI8 renderer/resource path. |
+| Title character | Temporary freeform uppercase name, default `SUB-ZERO`, max 12 characters; patcher appends ` EDITION` and rasterizes it into the typeset CI8 title. Its 16-color palette follows every non-vanilla outfit color option, including the same seed-derived hue for `seeded`; `rainbow` uses a fixed multicolor title. See [Presentation and branding](Presentation-and-Branding). |
 | Shuffle Power Progression | Default **off**. When enabled, deterministically shuffles the nine native Power Up slots while preserving the single Ice Shatter prerequisite rule; Slide and Super Slide are independent. The same generated order drives gameplay gates and native Power Ups icon/help presentation. |
 
 Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.
