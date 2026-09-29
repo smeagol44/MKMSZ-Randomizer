@@ -56,6 +56,21 @@ Keep an entry here when the negative result establishes a safety constraint, rul
 | Build the global pickup pool before the import/materialization planner | Deferred as an unsafe ordering | Stage-local production was the bounded safe scope until destination resources could be materialized | [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) |
 | Destination-shell visual with logical award only | Rejected before runtime promotion | 1.0 requires the pickup visual/resource identity to match the randomized item | [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) |
 
+### TEST LAB / cross-stage materialization failures (2026-09-28)
+
+| Attempt / scope | Observed failure | What it established | Detailed owner |
+|---|---|---|---|
+| v11 parent-field overwrite during TEST LAB pickup-manager setup | Mission Objective hang after music | Parent controller `+0x6F4/+0x6F8` must be saved/restored around the isolated manager child | [TEST LAB proof history](Test-Lab-Proof-History) |
+| v12-v14 placement/manager attempts without the selector-5 resource/manager composition | No pickups appeared | Normal Fire selector 5 skips ordinary overlay entry `0x802ECE30`; placement edits alone cannot create ordinary pickups | [TEST LAB proof history](Test-Lab-Proof-History) |
+| v15 Fire external-ID Potion/Formula/Extra-Life visuals | Pickup actors appeared as corrupted vertical strips | External-resource IDs are not portable merely because the pickup manager and selector resolve | [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) |
+| v17/v19 guessed floor-coordinate conversions | Pickups disappeared or moved higher | Do not infer TEST LAB pickup placement from unrelated actor coordinates without bounded calibration | [TEST LAB proof history](Test-Lab-Proof-History) |
+| v22-v25 custom standalone gallery | All variants hung at Mission Objective, including compact, post-intro, and ten-item forms | Preserve the destination stage's native resource-file/table architecture; the custom top-level gallery path is rejected | [TEST LAB proof history](Test-Lab-Proof-History) |
+| v28 21-key native-Fire-file stress proof | Emulator-core `Unknown SI DMA PIF address: 00000000` | Treat as severe runtime corruption; historical allocator-headroom comparison was not a sufficient safety bound | [TEST LAB proof history](Test-Lab-Proof-History) |
+| v29 low-RAM 21-key proof | Mission Objective hang followed by music-speed corruption | Resource bytes alone do not explain safety; dynamic runtime composition matters | [TEST LAB proof history](Test-Lab-Proof-History) |
+| v30 15-live threshold attempt | Mission Objective hang | Inconclusive as an actor-count threshold because the first 15 included all three Earth keys | [TEST LAB proof history](Test-Lab-Proof-History) |
+| v31 image-only frame reuse | Room entered, but several imported pickups rendered as striped/glitched graphics | Image deduplication cannot mix one payload with incompatible metadata from other native frames | [TEST LAB proof history](Test-Lab-Proof-History) |
+| v32 freeze on native frame 0 | Coherent but most imported spinning icons appeared edge-on / nearly identical | A complete native frame is coherent, but frame 0 is a poor static presentation choice for these items; v33 supersedes it with a wider native poster frame | [TEST LAB proof history](Test-Lab-Proof-History) |
+
 ## Enemy-randomization failures
 
 | Attempt / scope | Observed failure | What it established | Detailed owner |

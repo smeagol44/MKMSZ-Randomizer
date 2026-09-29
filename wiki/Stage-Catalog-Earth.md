@@ -374,6 +374,20 @@
 - Empty stock selectors `41, 44..64` are logical selector capacity only. Per the shared schema, they are not evidence of free physical file bytes or production-safe allocation space.
 - No Earth-specific cross-stage resource-import proof is promoted by this catalog; materialization feasibility in another destination must remain bounded to the proof and destination actually tested.
 
+### Cross-stage Earth-key materialization boundary (2026-09-28)
+
+Earth's three keys are ordinary pickup records and use the normal key presentation `0x800B1D18`, but their native visual payload framing is a distinct donor-extraction case:
+
+- Earth Square: selector 0, 12-frame embedded-data bundle;
+- Earth Four Squares: selector 1, 9-frame embedded-data bundle;
+- Earth Triangle: selector 2, 9-frame embedded-data bundle.
+
+Their native frame/image bounds are cataloged on this page and must be used explicitly. The generic non-Earth extractor's convenient embedded-image size-header rule is not sufficient for these blocks.
+
+The later TEST LAB low-RAM resources could include Earth asset data without preventing the successful v31/v33 non-Earth route, but Earth actors themselves were deliberately not instantiated in the accepted 15-live proofs. Therefore **cross-stage Earth-key rendering/award remains Pending**.
+
+The next bounded gate is a three-Earth-key TEST LAB proof using the proven destination-native Fire resource-file architecture and the exact cataloged Earth image bounds. No deeper Ghidra trace is currently required unless that proof fails.
+
 ## Related owners
 
 - [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, and eight-stage index.

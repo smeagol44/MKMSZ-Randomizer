@@ -212,6 +212,53 @@ Manual testing confirmed a clean Urn of Vitality model and correct award, plus a
 
 The scope remains bounded: one converted Health urn in Prison plus the vanilla control does not by itself prove every external ordinary-item family or every destination stage.
 
+## TEST LAB cross-stage stress line (2026-09-28)
+
+The proof-only TEST LAB materially strengthens the destination-materializer evidence while also rejecting one tempting implementation direction. Detailed vNN chronology is on [TEST LAB proof history](Test-Lab-Proof-History).
+
+### Runtime-confirmed positive controls
+
+- **v21:** three native Fire Herbs rendered and were all collectible through an explicitly loaded Fire resource file and isolated ordinary pickup manager.
+- **v26:** the previously proven Fire -> Prison Level-1-key import also works inside TEST LAB beside native Herbs controls. This confirms that the hidden-room harness and relocated/expanded Fire resource-file path are compatible.
+- **v27:** ten distinct key/crystal visuals coexisted in TEST LAB when Fire's **native resource-file/table architecture** was preserved and stock-empty Fire selectors were populated with full foreign bundles. The room entered normally. Fortress crystals required their crystal-specific presentation rather than the generic Fire-icon shell.
+- **v31:** fifteen simultaneous **non-Earth** key actors entered without the Mission Objective corruption. This rejects a blanket claim that 15 live pickups alone are unsafe.
+- **v33:** the same 15-live non-Earth composition rendered recognizably with a coherent low-RAM static native poster frame per imported item. Native Fire keys remained animated because their stock selectors/resources were untouched.
+
+These are bounded proof results, not a production-safe universal capacity declaration.
+
+### Rejected standalone-gallery path
+
+v22-v25 replaced or bypassed too much of the destination-native resource representation. Twenty-one, compact-deduplicated, post-intro, and ten-item variants all hung at Mission Objective. Reducing bytes and delaying setup did not rescue the route. For this workstream, the custom standalone-gallery representation/path is **Rejected / failed**.
+
+The accepted design direction is therefore to **preserve the destination stage's native resource-file/table grammar and extend it**, rather than synthesize a different top-level resource-file shape.
+
+### Runtime-memory limits exposed by the stress proofs
+
+The all-21 line is not accepted:
+
+- v28 loaded an approximately `0x8F0C` Fire resource and produced an emulator-core `Unknown SI DMA PIF address: 00000000` failure;
+- v29 reduced the resource to `0x4634`, avoided the core crash, but hung at Mission Objective and later produced the project's known music-speed corruption symptom;
+- v30 instantiated only 15 records but still included Earth and still hung, so it did not isolate actor count cleanly;
+- v31 kept 15 live actors but excluded Earth and entered successfully.
+
+Accordingly, **resource-file byte size is not a standalone safety metric**, and no universal simultaneous-pickup ceiling is established. Production planning must budget the resource allocation together with actor/process, dynamic-texture, render-node, stage-entry, and other arena users.
+
+### Frame-coherence rule for deduplication
+
+v31 also exposed a concrete deduplication hazard: reusing one image payload while retaining metadata from different native frames produced striped/corrupted pickup art.
+
+v32 fixed corruption by repeating one **complete native frame** — metadata plus image — across the descriptor's frame count. v33 improved recognizability by choosing a wider native frame per imported item before repetition.
+
+Therefore, any production resource deduplication must preserve descriptor/frame/data coherence. Sharing image data is valid only when every consumer frame's metadata is compatible with that shared payload.
+
+The v33 static-poster technique is proof evidence and a possible capacity fallback, not an approved 1.0 presentation change. Full native animation remains preferable where the destination budget permits it.
+
+### Earth donor-family boundary
+
+Earth Square / Four Squares / Triangle remain the next focused donor-family gate. They are ordinary key records, but their native embedded image-block framing does not use the convenient generic size-header rule used by the current non-Earth extractor. The Earth catalog owns explicit native frame/image bounds.
+
+Later TEST LAB resources could carry Earth asset data without hanging, but no accepted proof has directly instantiated all three Earth keys outside Earth. A three-Earth-key TEST LAB proof using the proven native Fire-file architecture is still **Pending**.
+
 ## Materialization deduplication and capacity
 
 Logical selector capacity and physical storage capacity are different concerns.
@@ -374,9 +421,11 @@ These findings remain part of the canonical design history because they prevent 
 
 The following remain unresolved before global item materialization/solvability can become normal product behavior:
 
-- complete the pending Fortress half of the composed five-import stress proof;
-- implement and runtime-validate a generic destination-safe key/crystal award path;
-- compose the materializer with production ROM allocation/file-table ownership and runtime arena bounds;
+- runtime-close the three Earth-key cross-stage donor family using the proven destination-native file architecture;
+- complete the pending Fortress destination-stage composed stress proof;
+- implement and runtime-validate a generic destination-safe key/crystal award path that preserves required progression/door state while suppressing pickup-created checkpoint/respawn relocation;
+- compose the materializer with production ROM allocation/file-table ownership and runtime arena bounds, including actor/texture/render allocations rather than treating resource-file bytes as the whole budget;
+- compose a cross-stage foreign-key inventory-mask round trip: backing inventory retains the true key, LIVE inventory masks it as inert Glass outside its native stage, and the real key becomes visible/useable in its native stage;
 - finalize the logical materializer schema and deterministic deduplication/capacity rules across the complete item pool;
 - implement the deterministic global shuffle and explicit retry sequence;
 - finalize the whole-run progression graph and completion predicate;

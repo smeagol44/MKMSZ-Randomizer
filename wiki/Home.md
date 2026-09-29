@@ -47,7 +47,7 @@ Start with [Enemy randomization](Enemy-Randomization) or [Player actions and spe
 
 ### History, failures, and provenance
 
-Use [Experiments, failures and superseded findings](Experiments-Failures-and-Superseded-Findings) for the cross-domain rejected/superseded index, [Milestone timeline](Milestone-Timeline) for major chronology, and [Library artifact index](Library-Artifact-Index) for preserved research/archive provenance.
+Use [Experiments, failures and superseded findings](Experiments-Failures-and-Superseded-Findings) for the cross-domain rejected/superseded index, [Milestone timeline](Milestone-Timeline) for major chronology, [TEST LAB proof history](Test-Lab-Proof-History) for the hidden-room and cross-stage materialization proof line, and [Library artifact index](Library-Artifact-Index) for preserved research/archive provenance.
 
 ## Canonical ownership
 

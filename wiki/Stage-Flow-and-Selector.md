@@ -98,6 +98,23 @@ Effective addresses below resolve sign-extended `addiu` offsets: `lui 0x8003; ad
 
 **Next bounded proof design (proposed, unbuilt).** A one-site composition *positive control* changes Stage-7 entry at `0x80011070` to set selector `0x802C18F8=5` and tail-jump to normal Fire entry `0x800108FC`; its exact clean-ROM guard and five replacement words are in the [Address and patch-site registry](Address-and-Patch-Site-Registry). The normal Fire entry sets native stage `5` at `0x80010994` and on its fresh-load branch loads overlay file `0x9D` at `0x800109E4..F4`. Build this as a separate clean-ROM v06 positive control rather than layering v01–v05 writes; no such ROM has been built. Success would localize the missing *composition* but would **not** retain Stage-7's debug opponent, identify the darkness cause, or prove a native Stage-7 repair. Before a native Stage-7 repair is specified, resolve the runtime values at the Pause and Inventory gates, the lighting consumer, and preconstruction `0x800EED78`. No emulator was run for this analysis.
 
+## Functional TEST LAB proof harness (Runtime-confirmed, 2026-09-28)
+
+The hidden Fire God Room research was extended into a **proof-only TEST LAB**. This does **not** add native Stage 7 to the production safe selector. The accepted disposable composition uses the healthy normal Fire selector-5 shell plus selected-Test-Characters helper behavior, suppresses the selected fighter allocation, and preserves the normal Fire lifecycle that restores controls/HUD/Pause/Inventory.
+
+Current bounded state:
+
+- v10 is the stable empty-room baseline: normal lighting, HUD, movement, attacks, Pause/Inventory, and no opponent allocation;
+- selector 5 skips ordinary overlay entry `0x802ECE30`, so ordinary pickup/resource setup must be installed explicitly for TEST LAB;
+- v15 established explicit Fire file-`0x3C` loading plus an isolated class-`0x19` pickup manager with safe parent `+0x6F4/+0x6F8` save/restore;
+- v21 Runtime-confirmed three correctly rendered Herbs at 96-world-unit spacing, all three collectible;
+- later proofs reused the room as a bounded cross-stage item-materialization stress harness;
+- v33 Runtime-confirmed a stable, recognizable 15-live non-Earth key composition using the native Fire resource-file architecture.
+
+The detailed v01-v33 chronology, including rejected custom-gallery builds and corruption controls, is owned by [TEST LAB proof history](Test-Lab-Proof-History).
+
+The harness remains disposable proof infrastructure. Its proof caves, high-ROM resource relocation, selector changes, and item-manager setup are not production allocations and must not be copied into the browser/CLI pipeline without normal allocation/composition gates.
+
 ## Rejected or superseded flow approaches
 
 - **Start-button selector shortcut — Rejected / failed.** The attempted shortcut behaved intermittently. Start is not a supported alternate selector entry; the production route is the A-button title path.
