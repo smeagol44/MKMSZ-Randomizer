@@ -35,7 +35,7 @@ Current project maturity and priorities are owned by [Project status](Project-St
 
 ### TEST LAB / cross-stage materialization addendum
 
-**Runtime-confirmed bounded evidence:** v10 stable empty TEST LAB; v21 three correctly rendered Herbs all collectible; v26 imported Prison L1 key renders in TEST LAB; v27 ten distinct key/crystal visuals enter successfully; v31 fifteen non-Earth pickups enter without Mission Objective corruption; v33 makes that 15-live set recognizable with coherent selected native static frames. v28-v30 are rejected corruption controls. Earth direct cross-stage rendering remains Pending. See [TEST LAB proof history](Test-Lab-Proof-History).
+**Runtime-confirmed bounded evidence:** v10 stable empty TEST LAB; v21 three correctly rendered Herbs all collectible; v26 imported Prison L1 key renders in TEST LAB; v27 ten distinct key/crystal visuals enter successfully; v31 fifteen non-Earth pickups enter without Mission Objective corruption; v33 makes that 15-live set recognizable with coherent selected native static frames. v28-v30 are rejected corruption controls. Earth direct cross-stage rendering is now Runtime-confirmed in TEST LAB v38 using the corrected file-0x30 donor mapping; all three Earth visuals render correctly and the tested Earth key awards correctly. See [TEST LAB proof history](Test-Lab-Proof-History).
 
 ## Runtime environment lineage
 
