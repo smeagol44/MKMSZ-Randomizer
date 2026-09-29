@@ -1,11 +1,10 @@
 """Non-optional MKMSZR title-screen branding.
 
-The accepted Candidate-B art remains on the native 320x240 CI8 storage/render
-path, but production constrains the generated image to a 16-color budget:
+The approved typeset art uses the native 320x240 CI8 storage/render path and
 the stock background plus 15 shared BGR555 art/edition entries. File 0x5E is
 decoded, its six title-tile pixel regions are replaced, and a build-selected
 uppercase <NAME> EDITION line is rasterized into the same shared palette before
-the package is re-encoded.
+the package is re-encoded into the original file slot.
 
 The edition line is deliberately data-only: it does not claim an executable
 code cave or title-menu hook, so it composes with the permanent native
@@ -15,6 +14,7 @@ bootstrap/pickup-persistence cave.
 from __future__ import annotations
 
 import base64
+import hashlib
 import struct
 import zlib
 from importlib.resources import files
@@ -30,10 +30,9 @@ TITLE_FILE_ENTRY_ROM = FILE_TABLE_ROM + TITLE_FILE_ID * FILE_TABLE_ENTRY_SIZE
 TITLE_STOCK_ROM_START = 0x004E3060
 TITLE_STOCK_ROM_END = 0x00512440
 TITLE_STOCK_FLAG = 1
+TITLE_STOCK_SHA256 = "98638b038e14cba3c1003f9997d629f59b072914728a703557fd4f710eefba83"
 TITLE_DECODED_SIZE = 0x61494
-TITLE_RELOCATED_ROM = 0x00F90000
-TITLE_RELOCATED_CAPACITY = 0x31000
-TITLE_RELOCATED_LIMIT = TITLE_RELOCATED_ROM + TITLE_RELOCATED_CAPACITY
+TITLE_STOCK_CAPACITY = TITLE_STOCK_ROM_END - TITLE_STOCK_ROM_START
 
 TITLE_PALETTE_ROM = 0x000B3364
 TITLE_BACKGROUND_INDEX = 255
@@ -45,21 +44,18 @@ DEFAULT_EDITION_NAME = "SUB-ZERO"
 EDITION_NAME_MAX_LENGTH = 12
 EDITION_SUFFIX = " EDITION"
 EDITION_ALLOWED = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -")
-CANDIDATE_PIXELS_RESOURCE = "title_candidate_b_ci8.b64"
+TITLE_PIXELS_RESOURCE = "title_typeset_ci8.b64"
 EDITION_FONT_RESOURCE = "title_edition_font.b64"
 
-# The original high-color Candidate B source does not use these CI8 indices.
-# Production repurposes them as the 15 non-background entries of one shared
-# title-art/edition palette. Keeping the edition ramp on the same 15 entries
-# means configurable <NAME> EDITION text does not increase the 16-color budget.
+# These 15 stock-unused CI8 entries provide a shared title-art/edition ramp.
 EDITION_PALETTE_INDICES = (8, 29, 39, 50, 56, 61, 64, 68, 71, 80, 100, 106, 115, 116, 132)
 EDITION_PALETTE_EXPECTED = (
     0x77BC, 0x7EEA, 0x6270, 0x7AA7, 0x624D,
     0x564C, 0x5A2D, 0x5E2C, 0x7666, 0x460E,
     0x49E9, 0x3DCB, 0x51E6, 0x41C9, 0x3DA8,
 )
-# Dark -> light 15-entry icy-blue BGR555 ramp from the accepted 16-color
-# title proof. Index 0xFF remains the stock near-black background (0x0001).
+# Dark -> light 15-entry icy-blue BGR555 ramp. Index 0xFF remains
+# the stock near-black background (0x0001).
 EDITION_PALETTE_WORDS = (
     0x0821, 0x0C41, 0x1881, 0x2CE2, 0x3D41,
     0x3D44, 0x45A6, 0x5E28, 0x628F, 0x6ED1,
@@ -99,76 +95,14 @@ def edition_text(value: str | None) -> str:
     return normalize_edition_name(value) + EDITION_SUFFIX
 
 
-def _candidate_pixels() -> bytes:
-    resource = files("mkmszr.data").joinpath(CANDIDATE_PIXELS_RESOURCE)
+def _title_pixels() -> bytes:
+    resource = files("mkmszr.data").joinpath(TITLE_PIXELS_RESOURCE)
     pixels = zlib.decompress(base64.b64decode(resource.read_bytes(), validate=True))
     if len(pixels) != TITLE_CANVAS_WIDTH * TITLE_CANVAS_HEIGHT:
         raise AssertionError("embedded title pixel count drifted")
+    if not set(pixels) <= set(TITLE_16COLOR_INDICES):
+        raise AssertionError("embedded title art exceeds shared 16-color palette")
     return pixels
-
-
-def _bgr555_to_rgb(word: int) -> tuple[int, int, int]:
-    """Convert the title palette's BGR555 word to 8-bit RGB."""
-
-    blue = (word >> 10) & 0x1F
-    green = (word >> 5) & 0x1F
-    red = word & 0x1F
-    return (
-        (red << 3) | (red >> 2),
-        (green << 3) | (green >> 2),
-        (blue << 3) | (blue >> 2),
-    )
-
-
-def _quantize_candidate_16color(palette_words: tuple[int, ...]) -> bytes:
-    """Floyd-Steinberg quantize Candidate B into the accepted shared 16-color budget."""
-
-    if len(palette_words) != 256:
-        raise AssertionError("title palette must contain exactly 256 words")
-
-    source_pixels = _candidate_pixels()
-    source_rgb = tuple(_bgr555_to_rgb(word) for word in palette_words)
-    target_words = (palette_words[TITLE_BACKGROUND_INDEX],) + EDITION_PALETTE_WORDS
-    target_rgb = tuple(_bgr555_to_rgb(word) for word in target_words)
-    target_scaled = tuple(tuple(channel * 16 for channel in color) for color in target_rgb)
-
-    width = TITLE_CANVAS_WIDTH
-    current_error = [[0, 0, 0] for _ in range(width + 2)]
-    next_error = [[0, 0, 0] for _ in range(width + 2)]
-    output = bytearray(len(source_pixels))
-
-    for y in range(TITLE_CANVAS_HEIGHT):
-        row = y * width
-        for x in range(width):
-            source = source_rgb[source_pixels[row + x]]
-            value = [
-                max(0, min(255 * 16, source[channel] * 16 + current_error[x + 1][channel]))
-                for channel in range(3)
-            ]
-
-            best = 0
-            best_distance: int | None = None
-            for candidate, color in enumerate(target_scaled):
-                distance = sum(
-                    (value[channel] - color[channel]) ** 2 for channel in range(3)
-                )
-                if best_distance is None or distance < best_distance:
-                    best = candidate
-                    best_distance = distance
-
-            output[row + x] = TITLE_16COLOR_INDICES[best]
-            quantized = target_scaled[best]
-            error = [value[channel] - quantized[channel] for channel in range(3)]
-            for channel in range(3):
-                current_error[x + 2][channel] += (error[channel] * 7) // 16
-                next_error[x][channel] += (error[channel] * 3) // 16
-                next_error[x + 1][channel] += (error[channel] * 5) // 16
-                next_error[x + 2][channel] += error[channel] // 16
-
-        current_error = next_error
-        next_error = [[0, 0, 0] for _ in range(width + 2)]
-
-    return bytes(output)
 
 
 def _edition_font() -> dict[str, tuple[int, int, int, int, int, bytes]]:
@@ -385,7 +319,6 @@ def _lzw_compress(raw: bytes) -> bytes:
 def _build_title_package(
     stock_comp: bytes,
     name: str | None,
-    palette_words: tuple[int, ...],
 ) -> bytes:
     decoded = bytearray(_lzw_decompress(stock_comp))
     if len(decoded) != TITLE_DECODED_SIZE:
@@ -393,7 +326,7 @@ def _build_title_package(
             f"unexpected decoded title size 0x{len(decoded):X}; expected 0x{TITLE_DECODED_SIZE:X}"
         )
 
-    pixels = bytearray(_quantize_candidate_16color(palette_words))
+    pixels = bytearray(_title_pixels())
     _render_edition(pixels, name)
     for record, width, height, x, y in TITLE_TILES:
         tile = bytearray()
@@ -403,10 +336,10 @@ def _build_title_package(
         decoded[record + 12 : record + 12 + width * height] = tile
 
     compressed = _lzw_compress(bytes(decoded))
-    if len(compressed) > TITLE_RELOCATED_CAPACITY:
+    if len(compressed) > TITLE_STOCK_CAPACITY:
         raise PatchError(
-            f"title package 0x{len(compressed):X} exceeds reserved "
-            f"0x{TITLE_RELOCATED_CAPACITY:X}-byte allocation"
+            f"title package 0x{len(compressed):X} exceeds stock "
+            f"0x{TITLE_STOCK_CAPACITY:X}-byte file slot"
         )
     if _lzw_decompress(compressed) != bytes(decoded):
         raise PatchError("title package failed LZW round-trip verification")
@@ -414,7 +347,7 @@ def _build_title_package(
 
 
 class TitleBrandingPatch:
-    """Install Candidate-B art and a configurable baked uppercase edition line."""
+    """Install typeset title art and a configurable uppercase edition line."""
 
     name = "title-branding"
 
@@ -430,26 +363,22 @@ class TitleBrandingPatch:
             + TITLE_STOCK_FLAG.to_bytes(4, "big")
         )
         rom.expect_bytes(TITLE_FILE_ENTRY_ROM, expected_entry)
-        rom.expect_bytes(TITLE_RELOCATED_ROM, b"\xFF" * TITLE_RELOCATED_CAPACITY)
         for index, expected in zip(
             EDITION_PALETTE_INDICES, EDITION_PALETTE_EXPECTED, strict=True
         ):
             rom.expect_u16(TITLE_PALETTE_ROM + index * 2, expected)
 
         stock_comp = bytes(rom.data[TITLE_STOCK_ROM_START:TITLE_STOCK_ROM_END])
-        palette_words = tuple(
-            rom.read_u16(TITLE_PALETTE_ROM + index * 2) for index in range(256)
-        )
+        if hashlib.sha256(stock_comp).hexdigest() != TITLE_STOCK_SHA256:
+            raise PatchError("stock title file 0x5E no longer matches the clean ROM")
         compressed = _build_title_package(
             stock_comp,
             self.edition_name,
-            palette_words,
         )
-        relocated_end = TITLE_RELOCATED_ROM + len(compressed)
+        title_end = TITLE_STOCK_ROM_START + len(compressed)
 
-        rom.write_bytes(TITLE_RELOCATED_ROM, compressed)
-        rom.write_u32(TITLE_FILE_ENTRY_ROM + 0, TITLE_RELOCATED_ROM)
-        rom.write_u32(TITLE_FILE_ENTRY_ROM + 4, relocated_end)
+        rom.write_bytes(TITLE_STOCK_ROM_START, compressed)
+        rom.write_u32(TITLE_FILE_ENTRY_ROM + 4, title_end)
         rom.write_u32(TITLE_FILE_ENTRY_ROM + 8, TITLE_STOCK_FLAG)
         for index, replacement in zip(
             EDITION_PALETTE_INDICES, EDITION_PALETTE_WORDS, strict=True
@@ -457,14 +386,14 @@ class TitleBrandingPatch:
             rom.write_u16(TITLE_PALETTE_ROM + index * 2, replacement)
 
         return (
-            "installs the accepted 16-color Candidate-B RANDOMIZER title art",
+            "installs the approved 16-color typeset title art",
             (
                 f"bakes {edition_text(self.edition_name)} into the shared "
                 "16-color CI8 title palette at y~114"
             ),
             (
-                f"relocates compressed title file 0x5E to ROM "
-                f"0x{TITLE_RELOCATED_ROM:08X}..0x{relocated_end - 1:08X}"
+                f"writes compressed title file 0x5E in its stock ROM slot "
+                f"0x{TITLE_STOCK_ROM_START:08X}..0x{title_end - 1:08X}"
             ),
             "no title executable cave or title-menu code hook is used",
         )

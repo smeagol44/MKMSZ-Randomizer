@@ -34,8 +34,8 @@ class ToastyProductionCompositionPatch:
         module=self.module.data
         audio_rom=_align(MODULE_ROM+len(module),16)
         audio_end=audio_rom+len(self.assets.audio_sample)
-        if audio_end>TITLE_ROM_START:
-            raise PatchError("Toasty high-ROM allocation reaches title reservation")
+        if audio_end>TOASTY_ROM_LIMIT:
+            raise PatchError("Toasty high-ROM allocation exceeds audited bound")
 
         rom.expect_bytes(REACTION_HOOK_ROM,EXPECTED_REACTION_HOOK)
         rom.expect_bytes(HUD_HOOK_ROM,EXPECTED_HUD_HOOK)

@@ -6,9 +6,9 @@
 
 ## Current conclusion
 
-The redesigned legal/boot screen and the data-only Candidate-B title composition are **Runtime-confirmed** on their documented production routes. On 2026-09-27 the user also visually accepted a bounded 16-color title proof. The shared browser/CLI implementation now constrains Candidate B to that same 16-color visual budget while preserving the native CI8 storage/render path and configurable uppercase edition text.
+The redesigned legal/boot screen and the earlier data-only Candidate-B title composition are **Runtime-confirmed** on their documented production routes. On 2026-09-29 the user visually accepted a precise vector/typeset revision of `RANDOMIZER` and a cleaner `MORTAL KOMBAT MYTHOLOGIES` plaque at 320x240, and requested production integration. The shared browser/CLI patch core now embeds the revised art in the native 16-color CI8 title path and retains configurable uppercase edition text. This exact new composition is **Static/implementation-confirmed; runtime Pending**.
 
-The accepted title implementation is data-only: no title executable wrapper or title-menu code hook is required. The earlier executable-wrapper composition is **Rejected / failed** because it overlapped production pickup-persistence ownership.
+The title implementation is data-only: no title executable wrapper or title-menu code hook is required. The new compressed image fits in the original file-`0x5E` slot. The earlier executable-wrapper composition is **Rejected / failed** because it overlapped production pickup-persistence ownership.
 
 ## Legal / boot branding
 
@@ -98,7 +98,22 @@ The production implementation keeps that conservative renderer contract:
 - no title code hook, renderer change, or CI4 record-format assumption is introduced;
 - the default `SUB-ZERO` generated file-`0x5E` package is about `0x2E5D4` bytes with the shared implementation, versus `0x3017F` for the earlier high-color production title: approximately `0x1BAB` = 7,083 bytes smaller.
 
-The full `0x31000` high-ROM title allocation remains reserved for now. The smaller generated package therefore creates reclaimable headroom but does not silently transfer ownership of the tail to another feature.
+The earlier 16-color production path still reserved a full `0x31000` high-ROM title allocation despite its smaller package. The 2026-09-29 typeset update below replaces that allocation with an in-place package.
+
+### Approved vector/typeset title update (2026-09-29)
+
+The 320x240 preview was user-accepted before integration. `RANDOMIZER` uses controlled glyph widths and literally reuses the same vector R for its first and last letters. The `MORTAL KOMBAT MYTHOLOGIES` text and simplified icy-blue plaque are also vector/typeset. The configurable `SUB-ZERO EDITION` preview line was left unchanged. The production pixel asset leaves the edition region blank so the existing build-selected `<NAME> EDITION` renderer can fill it for any configured name.
+
+The art is mapped directly to the existing 16-color CI8 palette, without Floyd-Steinberg texture/dither. The static package comparison on the clean USA Rev. 0 ROM is:
+
+| Title configuration | Compressed file `0x5E` | Free bytes within the `0x2F3E0` stock slot |
+|---|---:|---:|
+| Previous 16-color Candidate-B `SUB-ZERO` implementation | `0x2E60E` | `0xDD2` if stored in place (previously relocated) |
+| New typeset `SUB-ZERO` | `0x2D52E` | `0x1EB2` |
+| New typeset `SEKTOR` | `0x2D461` | `0x1F7F` |
+| New typeset 12-character `WWWWWWWWWWWW` | `0x2D672` | `0x1D6E` |
+
+Thus the approved default is `0x10E0` (4,320) bytes smaller than the previous implementation, while remaining native CI8. Its LZW package is written at ROM `0x4E3060`, with file-table start and flag unchanged and the end pointer set to the actual compressed length. The bytes beyond that endpoint in the stock slot are preserved, **not** declared free. The former `[0xF90000,0xFC1000)` title reservation is no longer owned by title branding; other allocation claims require their own proof. The exact in-game appearance and full-product route are runtime Pending.
 
 ### Edition text
 
@@ -108,9 +123,9 @@ Runtime testing corrected one earlier static assumption: mixed/lowercase text is
 
 The hyphen byte in `SUB-ZERO` renders more like a colon with this title-font configuration. That presentation quirk is accepted for the current temporary freeform edition field.
 
-### Production integration
+### Earlier Candidate-B production integration (historical)
 
-The Candidate-B image, final visual spacing, and configurable edition-name path are **Runtime-confirmed** on the tested production route.
+The Candidate-B image, final visual spacing, and configurable edition-name path were **Runtime-confirmed** on the tested earlier production route. The following relocation facts describe that historical implementation, not the current typeset in-place title.
 
 The accepted production implementation is data-only:
 

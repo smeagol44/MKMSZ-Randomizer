@@ -28,13 +28,14 @@ def test_title_character_name_is_bounded_and_ascii_safe() -> None:
         title.normalize_edition_name("SCORPION!")
 
 
-def test_candidate_b_asset_is_exact_native_pixel_image() -> None:
-    pixels = title._candidate_pixels()
+def test_typeset_asset_is_exact_native_16color_pixel_image() -> None:
+    pixels = title._title_pixels()
     assert len(pixels) == 320 * 240
     assert hashlib.sha256(pixels).hexdigest() == (
-        "480bd0b816068feb82075747b0b2abb4e5c790c5970b156915fd363efd14d80b"
+        "280b9d838be6df2c65cb09fd2404d6b37ced89a29b879494c76ebe8cf1de4fd7"
     )
-    assert not set(pixels).intersection(title.EDITION_PALETTE_INDICES)
+    assert set(pixels) <= set(title.TITLE_16COLOR_INDICES)
+    assert set(pixels[113 * 320 : 140 * 320]) == {title.TITLE_BACKGROUND_INDEX}
 
 
 def test_16color_title_palette_contract_is_shared_with_edition_text() -> None:
@@ -49,15 +50,6 @@ def test_16color_title_palette_contract_is_shared_with_edition_text() -> None:
     )
 
 
-def test_candidate_quantizer_is_bounded_to_shared_16color_indices() -> None:
-    # A synthetic palette is sufficient to verify the quantizer's index budget
-    # without requiring copyrighted ROM bytes in CI.
-    palette = tuple(range(256))
-    quantized = title._quantize_candidate_16color(palette)
-    assert len(quantized) == 320 * 240
-    assert set(quantized) <= set(title.TITLE_16COLOR_INDICES)
-
-
 def test_embedded_edition_font_covers_all_allowed_input() -> None:
     glyphs = title._edition_font()
     required = set(title.EDITION_ALLOWED).union(title.EDITION_SUFFIX)
@@ -65,7 +57,7 @@ def test_embedded_edition_font_covers_all_allowed_input() -> None:
 
 
 def test_baked_edition_uses_only_reserved_indices() -> None:
-    before = title._candidate_pixels()
+    before = title._title_pixels()
     after = bytearray(before)
 
     title._render_edition(after, "sektor")
@@ -77,7 +69,7 @@ def test_baked_edition_uses_only_reserved_indices() -> None:
 
 
 def test_worst_width_temporary_name_fits_canvas() -> None:
-    pixels = bytearray(title._candidate_pixels())
+    pixels = bytearray(title._title_pixels())
     title._render_edition(pixels, "W" * title.EDITION_NAME_MAX_LENGTH)
 
 
@@ -88,15 +80,13 @@ def test_title_lzw_round_trip() -> None:
     assert title._lzw_decompress(encoded) == raw
 
 
-def test_title_allocation_is_bounded_high_rom_data_only() -> None:
-    assert title.TITLE_RELOCATED_ROM == 0x00F90000
-    assert title.TITLE_RELOCATED_CAPACITY == 0x31000
-    assert title.TITLE_RELOCATED_LIMIT <= 0x01000000
+def test_title_allocation_is_bounded_to_stock_file_slot() -> None:
+    assert title.TITLE_STOCK_CAPACITY == 0x2F3E0
     assert not hasattr(title, "TITLE_WRAPPER_ROM")
     assert not hasattr(title, "TITLE_HOOK_ROM")
 
 
-def test_title_patch_relocates_data_without_code_hook(
+def test_title_patch_replaces_stock_package_without_code_hook(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     data = bytearray(16 * 1024 * 1024)
@@ -105,9 +95,9 @@ def test_title_patch_relocates_data_without_code_hook(
         + title.TITLE_STOCK_ROM_END.to_bytes(4, "big")
         + title.TITLE_STOCK_FLAG.to_bytes(4, "big")
     )
-    data[
-        title.TITLE_RELOCATED_ROM : title.TITLE_RELOCATED_LIMIT
-    ] = b"\xFF" * title.TITLE_RELOCATED_CAPACITY
+    data[title.TITLE_STOCK_ROM_START : title.TITLE_STOCK_ROM_END] = (
+        b"\xA6" * title.TITLE_STOCK_CAPACITY
+    )
     for index, expected in zip(
         title.EDITION_PALETTE_INDICES,
         title.EDITION_PALETTE_EXPECTED,
@@ -125,17 +115,25 @@ def test_title_patch_relocates_data_without_code_hook(
     fake_package = bytes([0xA5]) * 0x80
     monkeypatch.setattr(
         title,
+        "TITLE_STOCK_SHA256",
+        hashlib.sha256(b"\xA6" * title.TITLE_STOCK_CAPACITY).hexdigest(),
+    )
+    monkeypatch.setattr(
+        title,
         "_build_title_package",
-        lambda _stock, _name, _palette: fake_package,
+        lambda _stock, _name: fake_package,
     )
 
     title.TitleBrandingPatch("sektor").apply(rom, PatchContext())
 
     assert rom.data[hook_rom : hook_rom + 8] == stock_hook
-    assert rom.read_u32(title.TITLE_FILE_ENTRY_ROM) == title.TITLE_RELOCATED_ROM
+    assert rom.read_u32(title.TITLE_FILE_ENTRY_ROM) == title.TITLE_STOCK_ROM_START
     assert rom.read_u32(title.TITLE_FILE_ENTRY_ROM + 4) == (
-        title.TITLE_RELOCATED_ROM + len(fake_package)
+        title.TITLE_STOCK_ROM_START + len(fake_package)
     )
     assert rom.data[
-        title.TITLE_RELOCATED_ROM : title.TITLE_RELOCATED_ROM + len(fake_package)
+        title.TITLE_STOCK_ROM_START : title.TITLE_STOCK_ROM_START + len(fake_package)
     ] == fake_package
+    assert rom.data[
+        title.TITLE_STOCK_ROM_START + len(fake_package) : title.TITLE_STOCK_ROM_END
+    ] == b"\xA6" * (title.TITLE_STOCK_CAPACITY - len(fake_package))
