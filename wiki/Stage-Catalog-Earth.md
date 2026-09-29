@@ -4,8 +4,9 @@
 
 ## Stage identity and evidence
 
-- **Static-confirmed:** all 20 ordinary pickup records, all 65 stock outer slots, and the recognized resource records below are decoded from the clean USA N64 ROM.
-- **Runtime-confirmed:** the complete `0x225B0`-byte stage resource file was matched byte-for-byte at RDRAM `0x802434B8` during live Earth gameplay.
+- **Static-confirmed:** all 20 ordinary pickup records are decoded from the clean USA N64 ROM.
+- **Static-confirmed:** Earth ordinary-pickup visuals resolve through global file `0x30`, whose 21-entry selector table and pickup-used bundles are cataloged below. The previous file-`0x88` pickup-resource mapping is Rejected / superseded.
+- **Runtime-confirmed, v38:** all three Earth key visuals from file `0x30` render correctly when imported into TEST LAB through the Fire destination-resource architecture; the tested Earth key awards correctly in inventory.
 - **Runtime-confirmed:** the all-eight-stage persistence validation collected/restored a representative Earth ordinary pickup. The 20 Earth records have not been individually exhausted one by one in runtime testing.
 - Earth's three stage key pickups use stage-qualified overlay callback VA `0x802F52B0`; this address is Earth-overlay evidence, not a globally resident callback identity.
 
