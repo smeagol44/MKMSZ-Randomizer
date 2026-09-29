@@ -119,6 +119,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80071500` | Ordinary-enemy command interpreter | Static-confirmed | Stream pointer from `0x800C11E4` |
 | `0x800719F0` | Enemy spawn-parameter helper | Static-confirmed | Receives spawn index and type |
 | `0x80071B20` | Shared enemy/fighter constructor | Static/runtime-confirmed | Uses resource slot table `0x800B14C0` |
+| `0x8007206C` | Fire native key-use progression check | Static-confirmed | On the relevant stage-state gate, scans the ten-slot LIVE inventory for all three Fire key IDs `0x17..0x19`; when all three are present it calls `0x8007EF30(0x801AF414)` and sets `0x802C0D54 = 7`. This is separate from pickup callback `0x802F0EBC` and supports the bounded v01 result that pickup-created checkpoint state can be suppressed without removing the tested Fire completion path. |
 | `0x80073CEC` | Alternate renderer-family entry | Static-confirmed | Calls `0x8001E578`; not universal HUD path |
 | `0x80073E74` | Native text draw | Runtime-confirmed | Arbitrary custom RDRAM strings work |
 | `0x80074084` | Text-width helper | Static/runtime-confirmed | Native font at `0x800B1E20` |
