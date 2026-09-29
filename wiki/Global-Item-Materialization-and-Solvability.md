@@ -257,7 +257,7 @@ The v33 static-poster technique is proof evidence and a possible capacity fallba
 
 **Runtime-confirmed, v38.** Earth Square / Four Squares / Triangle are ordinary 8-frame Type-4 pickup visuals in Earth ordinary-pickup resource file **0x30**. The earlier file-0x88 mapping was wrong: file 0x88 is MONK1 fighter data.
 
-The v34-v36 Mission Objective hangs and v37 monk-like corrupted pickup are retained as negative controls for that mapping error. After tracing Earth stage setup, the materializer was corrected to use file-table entry `0x000A5250`, ROM `0x00305A30..0x0030A9FF`. v38 imported all three real Earth key bundles into TEST LAB through the destination-native Fire-file architecture; the visuals were correct, native animation was preserved, and the tested Earth key awarded correctly in inventory.
+The v34-v36 Mission Objective hangs and v37 monk-like corrupted pickup are retained as negative controls for that mapping error. After tracing Earth stage setup, the materializer was corrected to use file-table entry `0x000A5250`, ROM `0x00305A30..0x0030A9FF`. v38 imported all three real Earth key bundles into TEST LAB through the destination-native Fire-file architecture; all three visuals were correct and the tested Earth key awarded correctly in inventory. The proof uses each key's native eight-frame descriptor; animation cadence was not separately instrumented.
 
 Earth is therefore **closed as a bounded cross-stage visual donor family**. Remaining production gates are checkpoint-safe progression award semantics, composed foreign-key masking, Fortress destination stress/capacity, and production allocation/composition.
 
