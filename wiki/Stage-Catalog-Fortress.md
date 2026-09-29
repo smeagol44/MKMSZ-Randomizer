@@ -131,6 +131,7 @@
 
 ## Fortress-specific notes, constraints, and proof-local evidence
 
+- **Checkpoint/progression static closure (2026-09-29):** the stock Fortress crystal records use generic callback `0x80038770`, but its stage-9 branch awards IDs `0x20..0x22` and acquired bits without taking the generic direct `0x80062D60` presentation request or pickup-created `0x802C18F8` selector-write branches. Crystal USE dispatch entries map to position-gated progression handlers `0x8007239C / 0x80072400 / 0x80072464`, which commit bits `0x08/0x10/0x20` in `0x802C0D54`. The stock crystal award path is therefore Static-confirmed checkpoint-free. The remaining Fortress blocker is different: each boss-defeat reward location must materialize/award whichever logical item the global layout assigns while preserving the boss trigger.
 - The stock resource file has exactly **7 occupied outer slots**. Its outer table occupies file-relative `0x0000..0x001B`; the first descriptor starts immediately at `0x1C`. There is no empty stock logical selector.
 - Adding an eighth stock-table word in place would overwrite that first descriptor. This is a **Static-confirmed stock-layout fact**, not a claim that Fortress lacks all ordinary-pickup selector expansion paths.
 - Slot `5` aliases the Herbs descriptor `0x1338` used by slot `3`. Slots `4` and `6` have no ordinary-pickup users, but all three remain protected until other Fortress actor/script references are resolved.

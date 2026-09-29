@@ -29,6 +29,14 @@ def test_every_progression_token_has_a_unique_native_inventory_id() -> None:
     assert set(ids) == set(range(0x0E, 0x23))
 
 
+def test_water_progression_tokens_match_native_callback_awards() -> None:
+    # Water overlay callback 0x802F2448 awards callback_parameter + 0x14.
+    # The cataloged Triangle / Three Bars / Moon records use parameters 0/1/2.
+    assert TOKEN_ITEMS["water-triangle"][1] == 0x14
+    assert TOKEN_ITEMS["water-three-bars"][1] == 0x15
+    assert TOKEN_ITEMS["water-moon"][1] == 0x16
+
+
 def test_logical_items_retain_source_location_for_exact_visual_materialization() -> None:
     pool = build_stock_logical_pool()
     assert all(item.source_stage_id >= 0 for item in pool)
