@@ -63,10 +63,20 @@
 - `Complete-Research-Synthesis.md` was retired in place as a historical/supersession index rather than remaining an alternate current knowledge base.
 - The history/provenance layer was reduced to major chronology, archive routing, and bounded supersession context while preserving stable old URLs.
 
+## 2026-09-28
+
+- Hidden Fire God Room research matured into a functional proof-only **TEST LAB**: v10 established a stable empty room with normal controls/HUD/Pause/Inventory; v21 then confirmed three correctly rendered, collectible Herbs with controlled placement.
+- The TEST LAB materialization line rejected the custom standalone-gallery architecture (v22-v25), then v26/v27 confirmed that preserving and extending the native Fire resource-file architecture supports foreign key materialization and ten simultaneous distinct key/crystal visuals.
+- The 21-item stress line exposed real composition limits: v28 reached an emulator-core SI/PIF DMA failure; v29/v30 reproduced Mission Objective corruption. v31 showed that 15 live non-Earth pickups can enter stably, so neither resource bytes nor actor count alone explains the failed 21-item compositions.
+- v31/v32 isolated a frame-coherence rule for resource deduplication: an image payload cannot safely be paired with incompatible metadata from another frame. v33 selected coherent wide native static poster frames and produced recognizable imported keys while native Fire keys retained stock animation.
+- Earth keys were isolated as the next donor-family gate: their ordinary pickup records are known, but their image-block framing requires cataloged explicit bounds rather than the generic non-Earth size-header extraction path.
+- These findings refine the 1.0 materializer direction: preserve destination-native file grammar, distinguish selector capacity from payload storage, budget dynamic runtime allocations together, and close Earth/checkpoint/masking composition before global shuffle integration.
+
 ## Related history owners
 
 - [Sektor takeover proof history](Sektor-Takeover-Proof-History) — detailed vNN chronology, identities, allocations, routes, and supersession.
 - [Toasty audio research](Toasty-Audio-Research) and [Toasty visual research](Toasty-Visual-Research) — detailed Toasty proof chronologies.
 - [Experiments, failures and superseded findings](Experiments-Failures-and-Superseded-Findings) — durable cross-domain rejected/superseded index.
+- [TEST LAB proof history](Test-Lab-Proof-History) — detailed hidden-room and cross-stage materialization vNN chronology.
 - [Historical artifact index](Library-Artifact-Index) — preserved Library/archive provenance.
 - [Project status](Project-Status) — current maturity and priorities, not chronology.
