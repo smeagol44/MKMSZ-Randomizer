@@ -46,9 +46,9 @@ Exactly how that logical schema is serialized is still Pending. The current stag
 
 ### Progression rewards in the global model
 
-The 1.0 design retains **exactly nine progression rewards** in the world. In the current stage-local product these are derived as a callback overlay on generated Herbs identities rather than additional ordinary records. The global design must preserve the gameplay semantics without silently changing the 84 ordinary-location accounting.
+With Powers as pickups ON, the 1.0 design retains **exactly nine progression rewards** in the world. In the current stage-local product these are derived as a callback overlay on generated Herbs identities rather than additional ordinary records. With it OFF, these nine callbacks are not replaced. The global design must preserve both mode-specific semantics without silently changing the 84 ordinary-location accounting.
 
-The seed also determines how many of those nine rewards are required for completion; that target is separate from the physical count of nine rewards and is discussed below.
+The required-power setting is separate from that physical count and is discussed below. Seed mode derives a count; Vanilla and Custom do not.
 
 ## Destination-stage materializer
 
@@ -311,7 +311,7 @@ The legacy Lua prototype already had the high-level shape of a global shuffle:
 
 1. flatten locations across all eight stages;
 2. flatten the logical item multiset;
-3. place nine progression rewards into the run model;
+3. place nine progression rewards only when Powers as pickups is ON; otherwise model earnable XP;
 4. shuffle globally;
 5. assign back to locations;
 6. simulate reachable checks to a fixed point;
@@ -366,23 +366,23 @@ The final graph still needs to resolve any access rules that are incomplete or o
 
 ### Completion predicate
 
-The final 1.0 completion predicate is still **Pending**. At minimum it must include the seed-specific required-Power-Ups target described below and all finalized progression conditions needed to complete the run.
+The final 1.0 completion predicate is still **Pending**. At minimum it must include the selected Vanilla / Custom / Seed required-power condition described below and all finalized progression conditions needed to complete the run.
 
 The legacy Lua predicate required its chosen Power-Upgrades count plus the three Fortress crystals. That is historical design evidence only; it must not be copied as the authoritative native predicate without reconciling the current stage graph and completion route.
 
 ## Required Power Upgrades
 
-1.0 retains the concept of exactly **nine progression rewards existing in the world**, while each seed independently determines how many of those nine are required for completion.
+With **Powers as pickups** ON (the default), exactly **nine progression rewards exist in the world**. With it OFF, those nine generated Herbs retain their ordinary award and powers are earned from stock XP instead. The required number of powers remains an independent build setting in either mode; the whole-run solver must model the correct reward/XP source for the chosen mode.
 
 The required count must:
 
-- be generated deterministically from its own RNG namespace;
+- use Vanilla (stock Fortress XP gate `5100`, not an exact normal-XP tier count), Custom (`0..9`), or Seed (`0..9` from an independent deterministic RNG namespace);
 - be independent of how many global layout candidates were rejected;
 - be part of the whole-run solver's completion predicate;
 - be displayed by the randomizer HUD;
-- preserve the current native threshold behavior for each collected progression reward.
+- preserve native thresholds for pickup-driven rewards and use earnable XP/tier state when pickups are OFF.
 
-The exact allowed minimum/maximum policy is **Pending** and must be finalized with the global solver. The current evidence does not justify inventing a range.
+The build-time range for Custom/Seed is `0..9`. Global mode-aware solver reachability and the final HUD remain Pending; an OFF-mode seed cannot be declared beatable merely because the Fortress gate patch is valid.
 
 Native progression mechanics and current runtime evidence through XP 85/258 belong to [XP and progression](XP-and-Progression).
 
@@ -429,7 +429,7 @@ The following remain unresolved before global item materialization/solvability c
 - finalize the logical materializer schema and deterministic deduplication/capacity rules across the complete item pool;
 - implement the deterministic global shuffle and explicit retry sequence;
 - finalize the whole-run progression graph and completion predicate;
-- finalize the seed-specific required-Power-Ups range/policy;
+- integrate the selected required-power mode and both XP sources into the final solver/HUD;
 - resolve the Temple Map 85th-check / trigger-reward / persistence policy;
 - build a guarded disposable production-composition proof before enabling the new path in browser/CLI;
 - perform representative full-seed runtime validation after integration.

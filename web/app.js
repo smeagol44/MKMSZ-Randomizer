@@ -14,9 +14,14 @@ const specialsModern = document.querySelector("#specialsModern");
 const jumpButton = document.querySelector("#jumpButton");
 const runAuto = document.querySelector("#runAuto");
 const shufflePowerProgression = document.querySelector("#shufflePowerProgression");
+const powersAsPickups = document.querySelector("#powersAsPickups");
+const requiredPowersMode = document.querySelector("#requiredPowersMode");
+const customRequiredPowersField = document.querySelector("#customRequiredPowersField");
+const customRequiredPowers = document.querySelector("#customRequiredPowers");
 const patchButton = document.querySelector("#patchButton");
 const resultPanel = document.querySelector("#result");
 const resultSeed = document.querySelector("#resultSeed");
+const resultRequiredPowers = document.querySelector("#resultRequiredPowers");
 const outputSha = document.querySelector("#outputSha");
 const outputCrc = document.querySelector("#outputCrc");
 const downloadButton = document.querySelector("#downloadButton");
@@ -45,6 +50,12 @@ function updateGameSettingsUi() {
   const jumpAvailable = attackModern.checked && specialsModern.checked;
   if (!jumpAvailable) jumpButton.checked = false;
   jumpButton.disabled = !jumpAvailable;
+}
+
+function updateRequiredPowersUi() {
+  const isCustom = requiredPowersMode.value === "custom";
+  customRequiredPowersField.hidden = !isCustom;
+  customRequiredPowers.disabled = !isCustom;
 }
 
 function normalizeEditionName(value) {
@@ -112,6 +123,14 @@ async function patchRom() {
     return;
   }
 
+  const customPowerText = customRequiredPowers.value.trim();
+  const customPowerCount = Number(customPowerText);
+  if (requiredPowersMode.value === "custom" &&
+      (!customPowerText || !Number.isInteger(customPowerCount) || customPowerCount < 0 || customPowerCount > 9)) {
+    setLog("Custom required powers must be a whole number from 0 to 9.", true);
+    return;
+  }
+
   const mode = outfitMode.value;
   let editionValue = normalizeEditionName(editionName.value).trim().replace(/\s+/g, " ");
   if (!editionValue) editionValue = "SUB-ZERO";
@@ -149,6 +168,9 @@ async function patchRom() {
     pyodide.globals.set("web_jump_button", jumpButton.checked);
     pyodide.globals.set("web_run_auto", runAuto.checked);
     pyodide.globals.set("web_shuffle_power_progression", shufflePowerProgression.checked);
+    pyodide.globals.set("web_powers_as_pickups", powersAsPickups.checked);
+    pyodide.globals.set("web_required_powers_mode", requiredPowersMode.value);
+    pyodide.globals.set("web_custom_required_powers", requiredPowersMode.value === "custom" ? customPowerCount : 0);
 
     setLog("Validating game files and applying patches…");
 
@@ -168,6 +190,9 @@ _config = RandomizerConfig(
     outfit=OutfitConfig(mode=_mode, rgb=_rgb if _mode == "rgb" else None),
     edition_name=_edition_name,
     shuffle_power_progression=bool(web_shuffle_power_progression),
+    powers_as_pickups=bool(web_powers_as_pickups),
+    required_powers_mode=str(web_required_powers_mode),
+    custom_required_powers=int(web_custom_required_powers) if str(web_required_powers_mode) == "custom" else None,
     game_settings=GameSettingsConfig(
         turn_lock=bool(web_turn_lock),
         attack_modern=bool(web_attack_modern),
@@ -192,6 +217,8 @@ web_patch_result = {
     "crc1": f"{_result.crc1:08X}",
     "crc2": f"{_result.crc2:08X}",
     "sha256": _result.output_sha256,
+    "required_powers": _result.required_powers_count,
+    "required_xp": _result.required_powers_xp,
 }
 `);
 
@@ -203,6 +230,9 @@ web_patch_result = {
     outputName = outputFilename(targetFile.name, mode, metadata.seed);
 
     resultSeed.textContent = metadata.seed;
+    resultRequiredPowers.textContent = metadata.required_powers === null
+      ? `Vanilla (stock XP ${metadata.required_xp})`
+      : `${metadata.required_powers} (XP ${metadata.required_xp}; ${requiredPowersMode.value})`;
     outputSha.textContent = metadata.sha256;
     outputCrc.textContent = `${metadata.crc1} / ${metadata.crc2}`;
     resultPanel.hidden = false;
@@ -235,6 +265,7 @@ function downloadOutput() {
 outfitMode.addEventListener("change", updateModeUi);
 attackModern.addEventListener("change", updateGameSettingsUi);
 specialsModern.addEventListener("change", updateGameSettingsUi);
+requiredPowersMode.addEventListener("change", updateRequiredPowersUi);
 customColor.addEventListener("input", () => { colorValue.value = customColor.value.toUpperCase(); });
 editionName.addEventListener("input", () => {
   const normalized = normalizeEditionName(editionName.value);
@@ -245,4 +276,5 @@ downloadButton.addEventListener("click", downloadOutput);
 
 updateModeUi();
 updateGameSettingsUi();
+updateRequiredPowersUi();
 bootRuntime();
