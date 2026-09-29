@@ -161,7 +161,7 @@ The first Earth-key TEST LAB attempt exposed a catalog/source error rather than 
 - The v37 visual was the decisive clue: file `0x88` is the Earth MONK1 fighter resource, not the ordinary-pickup resource.
 - Static stage-setup tracing then resolved the real ordinary-pickup resource as **global file `0x30`**, file-table entry `0x000A5250`, ROM `0x00305A30..0x0030A9FF`. Earth setup publishes the allocated file-`0x30` base through `0x802F82B8` before the ordinary pickup manager consumes selectors.
 - File `0x30` selectors `0,1,2` are the real Earth Square / Four Squares / Triangle visuals: **8 native Type-4 embedded frames each**.
-- **v38 — Runtime-confirmed Earth donor closure:** imported all three real file-`0x30` Earth key bundles into Fire selectors `5,6,7`, with one untouched native Herbs control. The user reported the result “Perfect. Just perfect.” The screenshot shows all three recognizable Earth symbols plus Herbs, and inventory shows the Earth key awarded correctly. The three Earth visuals retain their native animation in this proof.
+- **v38 — Runtime-confirmed Earth donor closure:** imported all three real file-`0x30` Earth key bundles into Fire selectors `5,6,7`, with one untouched native Herbs control. The user reported the result “Perfect. Just perfect.” The screenshot shows all three recognizable Earth symbols plus Herbs, and inventory shows the tested Earth key awarded correctly. The proof uses the native eight-frame Earth descriptors; animation cadence itself was not separately instrumented.
 
 v38 disposable ROM SHA-256: `db7431256a7ff7fdb95c71ce386db35ce102f32f5488df0113665f2b11757fb4`.
 
