@@ -210,6 +210,19 @@
 - Fire ordinary-enemy stream/resource-loading research is canonically owned by [Enemy randomization](Enemy-Randomization). This catalog does not duplicate the global constructor/resource-table mechanics or turn the enemy-import proof's arena arithmetic into Fire resource-file allocation claims.
 - Current limits remain bounded: the foreign-key proof establishes one imported key/resource/callback composition in Fire, not arbitrary foreign item families, generic destination-safe key/crystal awards, or production-safe reuse of the proof ROM placement. The 15 stock empty selectors remain logical-capacity facts only.
 
+### TEST LAB proof-local selector/resource evidence (2026-09-28)
+
+The TEST LAB line reused Fire's native resource-file architecture as a destination materialization harness. These are proof-local runtime findings; they do not change stock Fire ownership.
+
+- v26 Runtime-confirmed the existing stock-empty selector-5 Prison Level-1-key import inside TEST LAB beside native Herbs controls.
+- v27 Runtime-confirmed a ten-distinct-item composition while preserving native Fire selectors and filling multiple stock-empty Fire selector entries with complete foreign embedded bundles.
+- v31/v33 loaded a larger Fire resource containing the broader imported bundle set and successfully instantiated 15 non-Earth pickups; Earth actors remained deferred.
+- native Fire key selectors/resources were intentionally left untouched in the successful low-RAM static-poster proofs, which is why the three Fire keys continued to animate while imported keys were static.
+- Fortress crystal records require their crystal-specific presentation pointer `0x800B1BD0`; the generic Fire-key presentation shell used in v27 made those crystals look wrong even when their imported image data was present.
+- stock-empty selector entries are **logical selector capacity only**. The successful proofs relocated/expanded the file for payload storage; they do not establish free bytes behind a zero selector.
+
+The detailed chronology belongs to [TEST LAB proof history](Test-Lab-Proof-History), and production materializer semantics belong to [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
+
 ## Related owners
 
 - [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, and eight-stage index.
