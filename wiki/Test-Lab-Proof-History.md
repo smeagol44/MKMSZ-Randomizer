@@ -149,6 +149,24 @@ The stage catalog already owns exact Earth frame/image bounds. Some later TEST L
 
 No new deep Ghidra trace is required unless that bounded proof fails.
 
+
+## Earth-key closure — v34-v38
+
+The first Earth-key TEST LAB attempt exposed a catalog/source error rather than a special pickup format.
+
+- **v34 — Rejected / failed:** imported all three apparent Earth bundles from file `0x88`; hung at Mission Objective.
+- **v35 — Rejected / failed:** corrected pickup record `+0x0C` from Earth value `6` to Fire destination value `4`; still hung. This correctly preserved destination-attached location metadata but did not address the actual visual-source error.
+- **v36 — Rejected / failed:** kept all three apparent bundles resident but instantiated only Earth Square + Herbs; still hung. This ruled out live actor count and the other two Earth keys as the primary cause.
+- **v37 — Runtime-confirmed award / Rejected visual source:** converted the apparent Earth Square Type-5 frame to a self-contained raw Type-0 image. TEST LAB entered, Earth Square and Herbs were both collectible, and Earth Square awarded correctly in inventory. The rendered pickup was corrupted and visibly contained MONK1 imagery.
+- The v37 visual was the decisive clue: file `0x88` is the Earth MONK1 fighter resource, not the ordinary-pickup resource.
+- Static stage-setup tracing then resolved the real ordinary-pickup resource as **global file `0x30`**, file-table entry `0x000A5250`, ROM `0x00305A30..0x0030A9FF`. Earth setup publishes the allocated file-`0x30` base through `0x802F82B8` before the ordinary pickup manager consumes selectors.
+- File `0x30` selectors `0,1,2` are the real Earth Square / Four Squares / Triangle visuals: **8 native Type-4 embedded frames each**.
+- **v38 — Runtime-confirmed Earth donor closure:** imported all three real file-`0x30` Earth key bundles into Fire selectors `5,6,7`, with one untouched native Herbs control. The user reported the result “Perfect. Just perfect.” The screenshot shows all three recognizable Earth symbols plus Herbs, and inventory shows the Earth key awarded correctly. The three Earth visuals retain their native animation in this proof.
+
+v38 disposable ROM SHA-256: `db7431256a7ff7fdb95c71ce386db35ce102f32f5488df0113665f2b11757fb4`.
+
+**Conclusion:** Earth is not a special Type-5 pickup family. The v34-v37 failures came from using the wrong global file. Earth is now Runtime-confirmed as a normal cross-stage ordinary-item visual donor family at the bounded v38 scope.
+
 ## Production implications
 
 The TEST LAB line changes the implementation guidance for the global materializer:
