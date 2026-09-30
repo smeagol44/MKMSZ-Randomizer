@@ -74,13 +74,13 @@ The early Fire foreign-key proof used a dedicated native callback at VA `0x8008E
 
 A reusable destination-safe path for the full key/crystal set remains **Pending** and is a gate before the global materializer can enter the normal browser/CLI pipeline.
 
-### Foreign-key inventory-mask round trip v01 — Runtime-confirmed with acquisition-boundary gap (2026-09-30)
+### Foreign-key inventory-mask round trip v01/v02 — Runtime-confirmed closure (2026-09-30)
 
-A bounded Fire -> Wind Circle composition used the established Fire destination materialization route together with production pickup persistence and four-box stage-local key masking. The foreign Wind Circle kept true inventory ID `0x0E` in authoritative backing storage. Outside Wind, a box switch or stage reconstruction exposed it as inert Glass `0x08`; entering Wind exposed the real Circle again; leaving Wind re-applied Glass. This confirms the backing-ID / stage-local LIVE-mask round trip on the tested route.
+A bounded Fire -> Wind Circle composition used the established Fire destination materialization route together with production pickup persistence and four-box stage-local key masking. v01 confirmed that the foreign Wind Circle retains true inventory ID `0x0E` in authoritative backing storage, appears as inert Glass `0x08` outside Wind after a box/stage reconstruction, appears as the real Circle in Wind, and re-masks after leaving. v01 also isolated one acquisition-time defect: immediately after pickup in Fire, LIVE still exposed real `0x0E` until the next reconstruction boundary.
 
-One defect is isolated: **immediately after acquiring the foreign Circle in Fire, before any box switch or stage reconstruction, LIVE still displayed the real Circle rather than Glass.** The next reconstruction boundary corrected it. Therefore the current masker is correct at reconstruction boundaries but does not yet run at the ordinary-pickup acquisition boundary.
+Disposable v02 closed that gap by composing the existing four-box paths immediately after the ordinary pickup callback: filtered LIVE -> active backing save, then active backing -> stage-masked LIVE reconstruction. Runtime validation confirmed the foreign Circle is Glass immediately in Fire with no intervening box/stage transition, restores to the real Circle in Wind, and can be used through the native Wind interaction while remaining in inventory.
 
-The next bounded proof should reuse the existing four-box contract immediately after an ordinary pickup award: filtered LIVE -> active backing box, then active backing box -> stage-masked LIVE. This must preserve placeholder slots and the true backing ID while making a newly acquired foreign key appear as Glass in the same pickup lifecycle.
+This establishes the tested masking contract across **acquisition, box reconstruction, stage transition, native-stage reveal/use, and re-masking**. The bounded v02 hook/allocation remains proof-only until integrated through current production ownership and CI/runtime composition.
 
 Key lifecycle correction: native key items are **used, not consumed**. Ordinary key use does not remove the key from inventory. Stage-completion cleanup/removal is a separate lifecycle concern and remains Pending.
 
@@ -521,7 +521,7 @@ The following remain unresolved before global item materialization/solvability c
 - complete the pending Fortress destination-stage composed stress proof;
 - implement and runtime-validate a generic destination-safe key/crystal award path that preserves required progression/door state while suppressing pickup-created checkpoint/respawn relocation;
 - compose the materializer with production ROM allocation/file-table ownership and runtime arena bounds, including actor/texture/render allocations rather than treating resource-file bytes as the whole budget;
-- compose a cross-stage foreign-key inventory-mask round trip: backing inventory retains the true key, LIVE inventory masks it as inert Glass outside its native stage, and the real key becomes visible/useable in its native stage;
+- integrate the Runtime-confirmed foreign-key acquisition/reconstruction mask contract through guarded production ownership; the Fire -> Wind Circle v02 proof is green, but its proof-local hook is not yet normal browser/CLI composition;
 - finalize the logical materializer schema and deterministic deduplication/capacity rules across the complete item pool;
 - implement the deterministic global shuffle and explicit retry sequence;
 - finalize the whole-run progression graph and completion predicate;
