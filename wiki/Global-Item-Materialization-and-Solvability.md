@@ -74,6 +74,16 @@ The early Fire foreign-key proof used a dedicated native callback at VA `0x8008E
 
 A reusable destination-safe path for the full key/crystal set remains **Pending** and is a gate before the global materializer can enter the normal browser/CLI pipeline.
 
+### Foreign-key inventory-mask round trip v01/v02 — Runtime-confirmed closure (2026-09-30)
+
+A bounded Fire -> Wind Circle composition used the established Fire destination materialization route together with production pickup persistence and four-box stage-local key masking. v01 confirmed that the foreign Wind Circle retains true inventory ID `0x0E` in authoritative backing storage, appears as inert Glass `0x08` outside Wind after a box/stage reconstruction, appears as the real Circle in Wind, and re-masks after leaving. v01 also isolated one acquisition-time defect: immediately after pickup in Fire, LIVE still exposed real `0x0E` until the next reconstruction boundary.
+
+Disposable v02 closed that gap by composing the existing four-box paths immediately after the ordinary pickup callback: filtered LIVE -> active backing save, then active backing -> stage-masked LIVE reconstruction. Runtime validation confirmed the foreign Circle is Glass immediately in Fire with no intervening box/stage transition, restores to the real Circle in Wind, and can be used through the native Wind interaction while remaining in inventory.
+
+This establishes the tested masking contract across **acquisition, box reconstruction, stage transition, native-stage reveal/use, and re-masking**. The bounded v02 hook/allocation remains proof-only until integrated through current production ownership and CI/runtime composition.
+
+Key lifecycle correction: native key items are **used, not consumed**. Ordinary key use does not remove the key from inventory. Stage-completion cleanup/removal is a separate lifecycle concern and remains Pending.
+
 #### Key-triggered respawn relocation: static trace (2026-09-27)
 
 The clean USA Rev. 0 ROM (SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`) separates inventory award from a stage-state write in generic pickup callback `0x80038770` (ROM `0x39370`). On `a0=0`, its stage-4 branch calls `0x80075448(s0+0x1A)` and writes `0x802C18F8=7` for `s0=0` or `8` for `s0=1` at VA `0x80038854` / ROM `0x39454` and VA `0x80038878` / ROM `0x39478`. Its stage-3 `s0=0` branch writes `0x802C18F8=2` at VA `0x800387F8` / ROM `0x393F8`. Other stage mappings award `s0+0x11` or `s0+0x20` through `0x80075448`; callback sound is `0x80064C18(0x3B,0,0x40)`. The three `0x8002830C(0x15,0x80062D60)` spawns are separate. Checkpoint-suppression v01/v02 NOPed those spawns and still relocated respawn at runtime: **Rejected / failed** as a suppression seam. Do not patch `0x80062D60` globally.
@@ -200,7 +210,33 @@ The local Wind/Water/Earth fields above are not dead checkpoint bookkeeping: eac
 
 **Water ID correction:** Water callback `0x802F2448` awards `callback_parameter + 0x14`. The cataloged Triangle / Three Bars / Moon records use parameters `0/1/2`, so the native inventory mapping is Triangle=`0x14`, Three Bars=`0x15`, Moon=`0x16`. The earlier future-global logical catalog had Triangle and Three Bars inverted; the implementation mapping is corrected alongside this static closure.
 
-**Current generalization boundary:** Prison L1 and Fire remain Runtime-confirmed checkpoint-free families. Wind, Water, and Earth now have minimal Static-confirmed checkpoint-suppression candidates with separate native use-time progression owners, but each still needs a bounded manual runtime closure before promotion. Bridge and stock Fortress crystal awards are Static-confirmed checkpoint-free already and do not need equivalent suppression patches. Fortress still needs a destination-safe arbitrary-reward path that preserves the boss-defeat trigger, and the final reusable production callback/materializer composition remains Pending.
+**Current generalization boundary (revised after Wind v01 runtime failure):** Prison L1 and Fire remain Runtime-confirmed bounded successes, but Wind disproves the broader assumption that pickup-time selector stores can be removed merely because use-time progression has a separate owner. Wind `0x802C18F8` is both checkpoint/respawn state and live stage-segment state. Selector-assisted v01 skipped the stock key-created steps `3/5`; after death the player re-entered an earlier non-key world state while retaining later key/progression state, and a later upper-room fight produced an abrupt live drop/relocation to the lower bridge area with earlier bridge geometry present again. Wind v01 is **Rejected / failed** as a production model, and Water/Earth runtime proofs using the same assumption are paused.
+
+The corrected architectural question is now **reward ownership vs. location/state ownership**, not simply “key checkpoints on/off.” A global logical reward must not carry arbitrary destination-stage checkpoint/segment mutations with it. Conversely, stock stage-location/segment transitions may still be required even when that location's randomized reward changes.
+
+### Wind location/reward ownership trace — Static-confirmed (2026-09-30)
+
+The focused Wind trace resolves the central split far enough to constrain the materializer design:
+
+| Semantic responsibility | Wind owner | Evidence / implication |
+|---|---|---|
+| Physical checkpoint/segment transition | Destination Wind location/event | Circle/Triangle stock callback parameters inject selector steps `3/5`, whose spawn-table coordinates match those physical pickup locations; independent spatial triggers supply `2/4/6/7/8/9`. These selector values are consumed by live Wind scene/setup logic. |
+| Logical reward award | Logical item | Wind callback maps the key parameter to item ID and inserts it through `0x80075448`; that helper itself has no identified Wind selector effect. A foreign/randomized key therefore does not need to import the source stage's pickup callback merely to award its inventory identity. |
+| Key-use permission | Physical Wind interaction zone | Wind spatial events set the low gate bits in `0x800C2406`. |
+| Key progression commit | Logical key USE handler, conditioned by the physical gate | Permanent item-use handlers for IDs `0x0E..0x10` test those gate bits and OR matching progression bits into `0x802C0D54`. |
+| Wind Three-Bars pickup-local state | Destination Wind stage/location state | `0x802F60A0` is written only by stock callback parameter 2 in the identified code and has multiple independent Wind-overlay readers. It is therefore not safe to attach this write to a globally movable logical Three-Bars reward. Exact reader semantics remain Pending. |
+
+The ordinary manager's native callback ABI reinforces the need for an explicit destination-aware composition layer: at `0x800393BC..0x800393D0` it passes only record type and masked callback parameter, then calls the pointer at record `+0x18`; it does **not** pass destination ordinal. A production dispatcher will need a stable way to recover/encode destination identity if it is to run location-owned state effects independently of the randomized logical award.
+
+This also reveals a limitation in current stage-local-v1: shuffling all seven words `+0x10..+0x2B` moves Wind's mixed callback/parameter along with the reward. That is **Static-confirmed as an ownership mismatch**, but a specific seeded runtime regression is not claimed without a bounded test.
+
+**Wind v02 runtime refinement:** preserving the destination pickup callback unchanged is also insufficient. Wind key callback parameters 0/1 perform relative `selector += 1` transitions. In the bounded v02 route, tornado activation advanced the stage before the player backtracked to the stock Circle location; collecting that location then advanced into the future, unvisited Triangle checkpoint. The production candidate is therefore **destination-owned, order-guarded checkpoint semantics**: Circle checkpoint behavior only on predecessor selector `2` (commit `3`), Triangle only on predecessor selector `4` (commit `5`); otherwise skip both checkpoint presentation and selector write while still awarding the logical reward. This remains Pending runtime proof.
+**Wind v04 runtime update:** the guarded Circle transition passed the targeted late-backtrack route: after tornado activation, revisiting the old Circle location no longer advanced into an unvisited future checkpoint, and death reconstructed at the tornado checkpoint. Triangle's guarded pickup checkpoint also behaved coherently on the tested route. Triangle USE is independently confirmed as progression-only; the door remained open after death while respawn stayed at selector 5. Static trace places selector 6 at a later physical subtype-6 trigger gated by Three-Bars pickup flag `0x802F60A0`, not at Triangle USE. The architecture is therefore materially supported, but v04 is not a clean success because the proof split omitted pickup sound on both moved rewards. Audio restoration is the next bounded correction. Two candidate directions remain Pending and require explicit design/proof before product integration:
+
+1. **Location-owned stage/checkpoint semantics:** detach logical award identity from the stock location's stage-state effects, so randomized rewards award only their logical item while destination checkpoint/segment transitions remain attached to the appropriate physical stage locations/events.
+2. **No-checkpoint/full-stage-restart policy:** if checkpoints are intentionally disabled, death must restart/reinitialize the whole stage coherently rather than merely forcing spawn coordinates or freezing `0x802C18F8`; stage-local geometry/scripts and authoritative randomizer inventory/persistence would need a bounded lifecycle proof together.
+
+Do **not** implement “disable all checkpoints” by globally blocking `0x802C18F8` writes: Wind statically reads that selector in live stage logic, and v01 demonstrates that desynchronizing it from world progression is unsafe. Bridge and stock Fortress crystal awards remain Static-confirmed checkpoint-free; Fortress boss-reward materialization remains a separate problem.
 
 ### Fortress boss-defeat reward trigger ownership — static closure (2026-09-27)
 
@@ -485,7 +521,7 @@ The following remain unresolved before global item materialization/solvability c
 - complete the pending Fortress destination-stage composed stress proof;
 - implement and runtime-validate a generic destination-safe key/crystal award path that preserves required progression/door state while suppressing pickup-created checkpoint/respawn relocation;
 - compose the materializer with production ROM allocation/file-table ownership and runtime arena bounds, including actor/texture/render allocations rather than treating resource-file bytes as the whole budget;
-- compose a cross-stage foreign-key inventory-mask round trip: backing inventory retains the true key, LIVE inventory masks it as inert Glass outside its native stage, and the real key becomes visible/useable in its native stage;
+- integrate the Runtime-confirmed foreign-key acquisition/reconstruction mask contract through guarded production ownership; the Fire -> Wind Circle v02 proof is green, but its proof-local hook is not yet normal browser/CLI composition;
 - finalize the logical materializer schema and deterministic deduplication/capacity rules across the complete item pool;
 - implement the deterministic global shuffle and explicit retry sequence;
 - finalize the whole-run progression graph and completion predicate;
