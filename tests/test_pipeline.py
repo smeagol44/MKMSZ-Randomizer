@@ -2,6 +2,7 @@ from mkmszr.config import OutfitConfig, RandomizerConfig
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.arena import ArenaReservationPatch
 from mkmszr.patches.controls_production import ControlsProductionPatch
+from mkmszr.patches.enemy_randomization import EnemyRandomizationPatch
 from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
 from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
 from mkmszr.patches.native_payload import NativePayloadPatch
@@ -75,3 +76,15 @@ def test_powers_as_pickups_and_required_count_are_independent() -> None:
     assert RequiredPowersPatch not in [
         type(patch) for patch in build_pipeline(RandomizerConfig(seed="POWER")).patches
     ]
+
+
+def test_enemy_randomization_is_default_off_and_optional_in_shared_pipeline() -> None:
+    disabled = build_pipeline(RandomizerConfig(seed="ENEMIES"))
+    assert EnemyRandomizationPatch not in [type(patch) for patch in disabled.patches]
+
+    enabled = build_pipeline(
+        RandomizerConfig(seed="ENEMIES", enemy_randomization=True)
+    )
+    types = [type(patch) for patch in enabled.patches]
+    assert EnemyRandomizationPatch in types
+    assert types[-1] is EnemyRandomizationPatch
