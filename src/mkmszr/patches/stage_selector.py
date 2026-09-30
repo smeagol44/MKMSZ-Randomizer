@@ -8,10 +8,7 @@ from ..mips import (
     branch,
     jal,
     jr,
-    lui,
-    lw,
-    sltiu,
-    sw,
+    sltu,
     words_blob,
 )
 from ..rom import RomImage
@@ -78,13 +75,8 @@ EXPECTED_MOVE_SFX_HOOK = bytes.fromhex("24040050 24050014")
 MOVE_SFX_HELPER_ROM = 0x0000E27C
 MOVE_SFX_HELPER_VA = 0x8000D67C
 
-CONFIRM_SFX_HOOK_ROM = 0x00015CEC
-EXPECTED_CONFIRM_SFX_HOOK = bytes.fromhex("3C01800A AC23A910")
-CONFIRM_SFX_HELPER_ROM = 0x0000DE2C
-CONFIRM_SFX_HELPER_VA = 0x8000D22C
-
-# Both helper regions are compiler epilogues after unconditional debug-menu
-# loops. Static scan found no direct branch/jump/JAL targets into either span.
+# This helper region is a compiler epilogue after an unconditional debug-menu
+# loop. Static scan found no direct branch/jump/JAL targets into the span.
 DEAD_SELECTOR_EPILOGUE = words_blob(
     [
         0x8FBF0034,
@@ -122,24 +114,33 @@ def build_selection_mapper() -> bytes:
 
 
 def build_move_sfx_helper() -> bytes:
-    """Play title MOVE once for exactly one newly pressed Up/Down direction."""
+    """Play selector MOVE/CONFIRM sounds on their input edges.
+
+    v01 proved the blue cursor and MOVE sound at runtime, but its confirmation
+    call at the later stage-commit seam was inaudible. v02 instead observes the
+    A-button edge while the selector frontend loop is still live. The native
+    selector sleeps two ticks later in the same loop before commit handling.
+    """
 
     # At 0x8000D170:
     #   A0 = current-input XOR previous-input (changed bits)
     #   S6 = current input
+    #
+    # New A is semantic bit 0x0002. New Up/Down are 0x4000/0x1000.
+    # A has priority if pressed simultaneously with a direction:
+    #   descriptor = 0x1FC + bool(new A) => MOVE or CONFIRM.
+    #
     # S0 is dead until 0x8000D1AC and the native SFX wrapper preserves S0,
     # so S0 safely carries the hook return address across the nested JAL.
     return words_blob(
         [
             and_("t0", "a0", "s6"),
-            andi("t0", "t0", 0x5000),
-            # Values are 0, 0x1000, 0x4000, or 0x5000. This maps exactly
-            # one direction to true while rejecting none/both.
-            addiu("t0", "t0", -0x1000),
-            sltiu("t0", "t0", 0x4000),
+            andi("t1", "t0", 0x0002),
+            sltu("t1", "zero", "t1"),
+            andi("t0", "t0", 0x5002),
             branch(0x04, "t0", "zero", 5),
             addu("s0", "ra", "zero"),
-            addiu("a0", "zero", MOVE_SFX_DESCRIPTOR),
+            addiu("a0", "t1", MOVE_SFX_DESCRIPTOR),
             addiu("a2", "zero", 0x3F),
             jal(NATIVE_SFX_WRAPPER_VA),
             addu("a1", "zero", "zero"),
@@ -151,34 +152,9 @@ def build_move_sfx_helper() -> bytes:
     )
 
 
-def build_confirm_sfx_helper() -> bytes:
-    """Play title CONFIRM and restore the stock selector process-spawn args."""
-
-    return words_blob(
-        [
-            addiu("sp", "sp", -0x18),
-            sw("ra", 0x10, "sp"),
-            addiu("a0", "zero", CONFIRM_SFX_DESCRIPTOR),
-            addiu("a2", "zero", 0x3F),
-            jal(NATIVE_SFX_WRAPPER_VA),
-            addu("a1", "zero", "zero"),
-            lw("ra", 0x10, "sp"),
-            addiu("a0", "zero", 0x15),
-            lui("a1", 0x8001),
-            addiu("a1", "a1", 0x6080),
-            jr("ra"),
-            addiu("sp", "sp", 0x18),
-            NOP,
-        ]
-    )
-
-
 MOVE_SFX_HELPER = build_move_sfx_helper()
-CONFIRM_SFX_HELPER = build_confirm_sfx_helper()
 if len(MOVE_SFX_HELPER) != len(DEAD_SELECTOR_EPILOGUE):
-    raise AssertionError("selector movement-SFX helper must exactly fill its dead epilogue")
-if len(CONFIRM_SFX_HELPER) != len(DEAD_SELECTOR_EPILOGUE):
-    raise AssertionError("selector confirm-SFX helper must exactly fill its dead epilogue")
+    raise AssertionError("selector SFX helper must exactly fill its dead epilogue")
 
 
 class SafeStageSelectorPatch:
@@ -212,9 +188,7 @@ class SafeStageSelectorPatch:
             EXPECTED_TITLE_CURSOR_PALETTE,
         )
         rom.expect_bytes(MOVE_SFX_HOOK_ROM, EXPECTED_MOVE_SFX_HOOK)
-        rom.expect_bytes(CONFIRM_SFX_HOOK_ROM, EXPECTED_CONFIRM_SFX_HOOK)
         rom.expect_bytes(MOVE_SFX_HELPER_ROM, DEAD_SELECTOR_EPILOGUE)
-        rom.expect_bytes(CONFIRM_SFX_HELPER_ROM, DEAD_SELECTOR_EPILOGUE)
 
         mapper = build_selection_mapper()
 
@@ -233,14 +207,12 @@ class SafeStageSelectorPatch:
         )
         rom.write_bytes(MOVE_SFX_HELPER_ROM, MOVE_SFX_HELPER)
         rom.write_u32(MOVE_SFX_HOOK_ROM, jal(MOVE_SFX_HELPER_VA))
-        rom.write_bytes(CONFIRM_SFX_HELPER_ROM, CONFIRM_SFX_HELPER)
-        rom.write_u32(CONFIRM_SFX_HOOK_ROM, jal(CONFIRM_SFX_HELPER_VA))
 
         return (
             "compact selector: Temple, Wind, Water, Earth, Prison, Fire, Bridge, Fortress",
             "verified A-button title-menu route enabled",
             "selector 0x352..0x35A keeps file 0x5F/slot 0x1C2 and uses the title cursor blue palette",
-            "valid Up/Down edges use title MOVE descriptor 0x1FC; selector commit uses 0x1FD",
-            "cursor/audio enhancement is static/implementation-confirmed pending manual runtime validation",
+            "valid Up/Down edges use title MOVE descriptor 0x1FC; new A edges use title CONFIRM 0x1FD",
+            "blue cursor and MOVE are runtime-confirmed; v02 input-loop CONFIRM remains runtime pending",
             "normal stage-loader path left vanilla for cinematics and stage progression",
         )
