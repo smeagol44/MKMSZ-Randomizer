@@ -21,6 +21,7 @@ The test workflow uses Python 3.11 for pushes to `main`, `refactor/**`, and `fea
 | `test_native_payload.py` | File entry, loader stub, hook, capacity |
 | `test_pickup_persistence.py` / `test_manager_persistence.py` | State layout, hook code, stage/ordinal mapping |
 | `test_pickup_randomization.py` | 84-record catalog, deterministic shuffle, access constraints, 250-seed sweep |
+| `test_enemy_planner.py` | 104-record ordinary-enemy catalog, five fixed singleton exclusions, deterministic resource-family profiles, Water payload ceilings/shared-resource accounting, Prison phase paging/auxiliary dependencies, pending-family fail-closed rules |
 | `test_global_items.py` | 84-item global logical pool, progression-token IDs, and retained source-location identity |
 | `test_resource_materialization.py` | Canonical visual-donor coverage, type-4 encode/decode, deterministic extension selectors/deduplication, and fail-closed stage-bound token handling |
 | `test_inventory_boxes.py` | Four boxes, masking, input chord, cave relocation, lifecycle routines |
