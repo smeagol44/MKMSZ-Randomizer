@@ -10,7 +10,7 @@ from ..errors import PatchError
 from ..rom import RomImage
 from .base import PatchContext
 
-RNG_DOMAIN = b"MKMSZR:TEMPLE-INTRO-AUDIO:V1\\0"
+RNG_DOMAIN = b"MKMSZR:TEMPLE-INTRO-AUDIO:V1\0"
 
 AUDIO1_POOL = (
     "friendship",
@@ -105,11 +105,11 @@ def select_temple_intro_audio(seed: str) -> tuple[int, str]:
     if not seed:
         raise ValueError("Temple intro audio selection requires a non-empty seed")
     seed_bytes = seed.encode("utf-8")
-    slot_digest = hashlib.sha256(RNG_DOMAIN + b"SLOT\\0" + seed_bytes).digest()
+    slot_digest = hashlib.sha256(RNG_DOMAIN + b"SLOT\0" + seed_bytes).digest()
     slot = 1 + int.from_bytes(slot_digest[:8], "big") % 2
     pool = AUDIO1_POOL if slot == 1 else AUDIO2_POOL
     clip_digest = hashlib.sha256(
-        RNG_DOMAIN + f"AUDIO-{slot}\\0".encode("ascii") + seed_bytes
+        RNG_DOMAIN + f"AUDIO-{slot}\0".encode("ascii") + seed_bytes
     ).digest()
     key = pool[int.from_bytes(clip_digest[:8], "big") % len(pool)]
     return slot, key
@@ -150,7 +150,7 @@ class TempleIntroAudioPatch:
             raise PatchError("Temple intro donor sample exceeds production allocation")
         rom.expect_bytes(
             TEMPLE_SAMPLE_ROM,
-            b"\\xFF" * (TEMPLE_SAMPLE_LIMIT - TEMPLE_SAMPLE_ROM),
+            b"\xFF" * (TEMPLE_SAMPLE_LIMIT - TEMPLE_SAMPLE_ROM),
         )
         for file_id in range(0xAC):
             entry = FILE_TABLE_ROM + file_id * FILE_TABLE_ENTRY_SIZE
