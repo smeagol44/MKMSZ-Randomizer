@@ -44,6 +44,20 @@ Core features such as selector, persistence, pickup shuffle, pickup-driven XP pr
 
 The shared patch core includes donor-backed production features without embedding donor game data in the repository or deployed site. When the optional MKT USA Rev. 2 N64 donor is supplied, the browser derives the currently supported donor assets locally and passes them into the shared patch core. This enables both production Toasty and the seeded Temple-intro audio replacement. Temple audio uses its own deterministic namespace, replaces exactly one of the two intro audio positions, and materializes only the selected donor sample. The developer CLI exposes the same optional path through `--mkt-rom`; without a donor, both donor-backed paths are skipped and the normal MKMSZR build remains valid.
 
+## Enemy Randomization option
+
+The shared product configuration now exposes **Enemy Randomization** as a default-OFF seeded option in both browser and CLI.
+
+- Browser: `Randomizer Features -> Enemy Randomization`.
+- CLI: `--enemy-randomization`.
+- Both surfaces set the same `RandomizerConfig.enemy_randomization` field and therefore use the same shared patch pipeline.
+- Enabling the option invokes the guarded `EnemyRandomizationPatch`, which consumes the deterministic 104-record planner/materializer and remains fail-closed to registered materializable profiles.
+- Bosses and the five gated/special encounters remain excluded/fixed.
+- The normal build seed drives enemy planning through the isolated `MKMSZR:ENEMIES:RESOURCE-PLANNER:V1` domain.
+- Disabling the option leaves enemy-randomization patching absent from the shared pipeline.
+
+The underlying planner/materializer has bounded Runtime-confirmed representative all-stage evidence. The new product composition still requires repository CI plus one normal browser/CLI production-build runtime gate with the option enabled.
+
 ## Deployment
 
 `.github/workflows/pages.yml` runs on `main`, first compiles `src/mkmszr` with Python's `compileall`, then builds the wheel, copies the static frontend to `_site`, substitutes the run number into the displayed version, and deploys GitHub Pages. The compile gate was added after a 2026-09-22 title-branding packaging regression in which a malformed source header containing literal `\\n` escapes was packaged into a syntactically invalid wheel; Pyodide then failed before patching. A follow-up browser failure showed that reusing the same wheel URL could still serve the stale malformed package from cache even after the source was fixed. Pages now rewrites the wheel to a unique PEP 440 dev version per deployment (for example `mkmszr-0.1.0.dev371-py3-none-any.whl`) and cache-busts `app.js` with the same run number. The deployment artifact was manually inspected and `mkmszr.patcher` imported successfully from the unique wheel. `.github/workflows/wiki.yml` independently mirrors `wiki/` to the GitHub Wiki.
