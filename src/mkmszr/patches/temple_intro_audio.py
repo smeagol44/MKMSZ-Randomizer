@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
+from dataclasses import dataclass
 
 from ..data.addresses import FILE_TABLE_ENTRY_SIZE, FILE_TABLE_ROM
 from ..errors import PatchError
