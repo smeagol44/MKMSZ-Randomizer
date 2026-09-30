@@ -22,7 +22,7 @@ The codebase is built around a modular Python patching core. ROMs are never stor
 - choose a deterministic two-line boot joke/quote from a 100+ message pool;
 - deterministic Sub-Zero outfit recoloring, including seed-derived colors;
 - the accepted in-game `TURN / ATTACK / SPECIALS / JUMP / RUN` control suite;
-- optional MKT Rev. 2 donor-backed 16-color CI4 Toasty effect.
+- optional MKT Rev. 2 donor-backed 16-color CI4 Toasty effect;\n- optional MKT Rev. 2 donor-backed, seed-deterministic Temple intro audio replacement.
 
 ## Native pickup randomization milestone
 
