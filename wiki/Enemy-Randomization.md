@@ -500,3 +500,23 @@ Manual validation target:
 `spawn -> normal AI -> cannon/launcher fire -> projectile hit/reaction -> disarm/detached weapon -> kill -> death/despawn -> stage continues`
 
 **Runtime result (user manual validation, 2026-09-30):** the full intended route passed and worked perfectly: normal spawn/AI, cannon/launcher fire, projectile hit/reaction, armed-to-base disarm with detached weapon, kill, full death/despawn, and continued Water-stage progression. This completes bounded cross-stage runtime coverage for all three armed PRIS variants (`0x15`, `0x16`, `0x17`). It does not establish arbitrary mixed rosters or worst-case simultaneous projectile pressure.
+
+## Water × raw HULK MONK / type `0x09` proof v01 (2026-09-30)
+
+**Runtime-confirmed, bounded:** `MKMSZR_hulk-monk_water-proof_v01.z64`, SHA-256 `90e6ae1f97934d42ededeb0b861caa577bc86870f1df7b27be7dc49b5f6ed4c7`, CRC1/CRC2 `0x6CBFAD5E / 0x945B4B76`.
+
+Type `0x09 HULK MONK` uses untouched stock file `0x25` (`0x2C210`) in constructor slot `0x801AE578` with no secondary/base fighter-file dependency. The Water proof redirects the first native fighter transaction from file `0x8C` to file `0x25`, stores the allocation at the exact `0x09` constructor slot, and NOPs only the now-unused second `0x8D` fighter transaction at ROM `0xB58D8..0xB58F8`. All nine ordinary Water records become type `0x09`; the Water boss/special path remains stock.
+
+Resident fighter payload is `0x2C210`, leaving `0x8310` = 32.77 KiB below the user-measured Water replacement ceiling `0x34520`. No compaction or destination rewind is used.
+
+**Runtime result:** the user manually validated spawn, normal HULK MONK AI/movement, ordinary attacks, hit/reaction states, kill, full death/despawn, continued Water progression, and additional HULK MONK encounters; all worked as expected. This establishes bounded Water portability for raw stock type `0x09` under the tested homogeneous roster.
+
+## Mixed Water PRIS family proof — types `0x14 + 0x16` (2026-09-30)
+
+**Runtime-confirmed, bounded:** `MKMSZR_pris-mixed14-16_water-proof_v01.z64`, SHA-256 `57d92254e24e644f9f26b6a43d3410562081e3f66daa9db613bc25a3ece95d50`, CRC1/CRC2 `0x4D2AFA63 / 0x8A754699`.
+
+This proof is derived from the already validated compact Water × `0x16` composition. Resident resources, loader logic, constructor slots and palette rebasing remain unchanged: compact `0x8E + 0x90 = 0x30C08`. Only the nine ordinary Water type words change to `14,16,14,16,14,16,14,16,14`.
+
+The user manually validated the mixed route and reported it worked perfectly. The tested composition includes native-base `0x14 PRIS GRUNT1` actors coexisting with armed `0x16 PRIS GRUNT3` actors, cannon/projectile activity, armed-to-base disarm/morph into `0x14`, converted and originally spawned base grunts sharing the same resident base resource, normal kill/death/despawn, and continued Water progression.
+
+This is the first bounded Runtime-confirmed **mixed ordinary-enemy roster** in the current cross-stage proof line. It materially reduces the value of further homogeneous single-type Water proofs for already-closed resource families. It does not establish arbitrary cross-family coexistence, unresolved MONK1/MONK3/MONK4 terminal/cache paths, or the separate GRUNT1/GRUNT2 resource problem.
