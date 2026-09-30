@@ -38,6 +38,27 @@ The selector wrap/count sites at ROM `0xDD60` and `0xDD64` are bounded to eight 
 
 Stock entries excluded from production are **Unused**, **Fire God Room**, and **Test Characters**. The original eleven-label order was Temple, Wind, Water, Earth, Prison, Fire, Unused, Fire God Room, Bridge, Fortress, Test Characters.
 
+
+### Blue cursor + title-menu SFX candidate (Static/implementation-confirmed; runtime Pending)
+
+The clean USA Rev. 0 cursor comparison resolves the visual change without importing file `0x5E` into the selector lifecycle:
+
+- selector frames `0x352..0x35A` in global file `0x5F` and title frames `0x3CC..0x3D4` in global file `0x5E` have **byte-identical indexed pixel payloads** for all nine corresponding frames;
+- the corresponding records keep the same dimensions and record sizes; only their descriptor placement/IDs differ;
+- both cursor presentations use a 29-entry palette and the nine selector frames collectively reference **every index `0..28`**;
+- selector palette source ROM `0x000B21D8` and title cursor palette source ROM `0x000B32E8` differ in 27 of 29 entries.
+
+Therefore the candidate keeps selector file `0x5F`, sprite IDs `0x352..0x35A`, registration slot `0x1C2`, and the existing `0x8001D520` draw path unchanged. It copies only the title cursor's 58-byte palette into the selector-local 29-entry palette source. No compressed file rewrite or frame transplant is required; files `0x5E` and `0x5F` remain byte-for-byte unchanged, so their existing file-table bounds/capacity and lifetimes are preserved.
+
+For audio, the candidate uses the native title SFX wrapper `0x80064C18` with the established descriptors:
+
+- movement: descriptor `0x1FC` / sound `0x0230`, only when exactly one newly pressed Up/Down edge is present in the selector input state;
+- confirmation: descriptor `0x1FD` / sound `0x0231`, only inside the selector's one-time state-`0x18` stage-commit branch.
+
+The movement hook replaces the argument setup at ROM `0x0000DD70` and uses a guarded unreachable compiler-epilogue span at ROM `0x0000E27C..0x0000E2AF` for its frontend-resident helper. The confirmation hook replaces the first word at ROM `0x00015CEC`; its original stage-store remains in the JAL delay slot, and a guarded unreachable compiler-epilogue span at ROM `0x0000DE2C..0x0000DE5F` holds the confirmation helper. Neither helper depends on gameplay file `0x1A` or the runtime expansion pool, which are not valid title/frontend dependencies.
+
+**Test limit:** this enhancement is not Runtime-confirmed yet. The disposable proof must be manually checked for (1) blue nine-frame animation without corruption, (2) one movement sound per valid Up/Down press and no repeat while held, (3) one confirmation sound on stage commit, (4) all eight safe destinations still entering their intended stages, and (5) selector re-entry to exercise palette/resource lifetime. Until that manual check passes, the existing eight-stage selector functionality retains its prior Runtime-confirmed status, while only the new cursor/audio presentation remains Pending.
+
 ## Compact-to-native selection mapping
 
 The debug menu writes its compact selection at `0x800C11E0`. The transition path at `0x80015088` ultimately stores the native stage at `0x8009A910`.
