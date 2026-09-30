@@ -202,7 +202,23 @@ The local Wind/Water/Earth fields above are not dead checkpoint bookkeeping: eac
 
 **Current generalization boundary (revised after Wind v01 runtime failure):** Prison L1 and Fire remain Runtime-confirmed bounded successes, but Wind disproves the broader assumption that pickup-time selector stores can be removed merely because use-time progression has a separate owner. Wind `0x802C18F8` is both checkpoint/respawn state and live stage-segment state. Selector-assisted v01 skipped the stock key-created steps `3/5`; after death the player re-entered an earlier non-key world state while retaining later key/progression state, and a later upper-room fight produced an abrupt live drop/relocation to the lower bridge area with earlier bridge geometry present again. Wind v01 is **Rejected / failed** as a production model, and Water/Earth runtime proofs using the same assumption are paused.
 
-The corrected architectural question is now **reward ownership vs. location/state ownership**, not simply “key checkpoints on/off.” A global logical reward must not carry arbitrary destination-stage checkpoint/segment mutations with it. Conversely, stock stage-location/segment transitions may still be required even when that location's randomized reward changes. Two candidate directions remain Pending and require explicit design/proof before product integration:
+The corrected architectural question is now **reward ownership vs. location/state ownership**, not simply “key checkpoints on/off.” A global logical reward must not carry arbitrary destination-stage checkpoint/segment mutations with it. Conversely, stock stage-location/segment transitions may still be required even when that location's randomized reward changes.
+
+### Wind location/reward ownership trace — Static-confirmed (2026-09-30)
+
+The focused Wind trace resolves the central split far enough to constrain the materializer design:
+
+| Semantic responsibility | Wind owner | Evidence / implication |
+|---|---|---|
+| Physical checkpoint/segment transition | Destination Wind location/event | Circle/Triangle stock callback parameters inject selector steps `3/5`, whose spawn-table coordinates match those physical pickup locations; independent spatial triggers supply `2/4/6/7/8/9`. These selector values are consumed by live Wind scene/setup logic. |
+| Logical reward award | Logical item | Wind callback maps the key parameter to item ID and inserts it through `0x80075448`; that helper itself has no identified Wind selector effect. A foreign/randomized key therefore does not need to import the source stage's pickup callback merely to award its inventory identity. |
+| Key-use permission | Physical Wind interaction zone | Wind spatial events set the low gate bits in `0x800C2406`. |
+| Key progression commit | Logical key USE handler, conditioned by the physical gate | Permanent item-use handlers for IDs `0x0E..0x10` test those gate bits and OR matching progression bits into `0x802C0D54`. |
+| Wind Three-Bars pickup-local state | Destination Wind stage/location state | `0x802F60A0` is written only by stock callback parameter 2 in the identified code and has multiple independent Wind-overlay readers. It is therefore not safe to attach this write to a globally movable logical Three-Bars reward. Exact reader semantics remain Pending. |
+
+The ordinary manager's native callback ABI reinforces the need for an explicit destination-aware composition layer: at `0x800393BC..0x800393D0` it passes only record type and masked callback parameter, then calls the pointer at record `+0x18`; it does **not** pass destination ordinal. A production dispatcher will need a stable way to recover/encode destination identity if it is to run location-owned state effects independently of the randomized logical award.
+
+This also reveals a limitation in current stage-local-v1: shuffling all seven words `+0x10..+0x2B` moves Wind's mixed callback/parameter along with the reward. That is **Static-confirmed as an ownership mismatch**, but a specific seeded runtime regression is not claimed without a bounded test. Two candidate directions remain Pending and require explicit design/proof before product integration:
 
 1. **Location-owned stage/checkpoint semantics:** detach logical award identity from the stock location's stage-state effects, so randomized rewards award only their logical item while destination checkpoint/segment transitions remain attached to the appropriate physical stage locations/events.
 2. **No-checkpoint/full-stage-restart policy:** if checkpoints are intentionally disabled, death must restart/reinitialize the whole stage coherently rather than merely forcing spawn coordinates or freezing `0x802C18F8`; stage-local geometry/scripts and authoritative randomizer inventory/persistence would need a bounded lifecycle proof together.
