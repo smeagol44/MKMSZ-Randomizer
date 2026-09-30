@@ -462,12 +462,12 @@ The Water fighter loader consists of two back-to-back `size -> allocate -> store
 
 Resident fighter payload is therefore **`0x2C210`**, leaving **`0x8310` = 33,552 B = 32.77 KiB** below the observed Water replacement ceiling before transient pressure.
 
-**Implementation/static-confirmed; runtime Pending:** `MKMSZR_hulk-monk_water-proof_v01.z64`, SHA-256 `90e6ae1f97934d42ededeb0b861caa577bc86870f1df7b27be7dc49b5f6ed4c7`, CRC1/CRC2 `0x6CBFAD5E / 0x945B4B76`.
+**Runtime-confirmed, bounded:** `MKMSZR_hulk-monk_water-proof_v01.z64`, SHA-256 `90e6ae1f97934d42ededeb0b861caa577bc86870f1df7b27be7dc49b5f6ed4c7`, CRC1/CRC2 `0x6CBFAD5E / 0x945B4B76`.
 
 The proof starts from the clean USA Rev. 0 ROM, includes current Safe Stage Select, changes all nine ordinary Water spawn records to type `0x09`, leaves the Water boss/special path untouched, and leaves stock file `0x25` bytes/table entry unchanged. No compaction is used. No emulator automation or runtime execution was performed.
 
-Manual validation target:
+**Runtime result (user manual validation, 2026-09-30):** the intended route passed and worked perfectly: spawn, normal HULK MONK AI/movement, ordinary attacks, hit/reaction states, kill, full death/despawn, continued Water progression, and additional HULK MONK encounters.
 
-`spawn -> normal HULK MONK AI/movement -> ordinary attacks -> take/hit reactions -> kill -> full death/despawn -> continue through Water and encounter additional HULK MONKs`
+This establishes bounded Water portability for raw stock type `0x09 HULK MONK` under the tested homogeneous roster. It does not establish arbitrary mixed rosters or worst-case transient pressure.
 
 A success would establish bounded Water portability for the second self-contained Fire ordinary family and strengthen the planner case for a simple one-file resident family class. It would not establish arbitrary mixed rosters or worst-case transient pressure.
