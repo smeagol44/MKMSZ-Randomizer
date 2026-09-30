@@ -383,6 +383,25 @@ v04 returns to the mechanically successful v01 compact files and keeps their exa
 
 **Accepted v04 baseline.** `MKMSZR_pris-grunt-ci4_water-bridge-proof_v04.z64`, SHA-256 `db85dcb8cdbcb8da3c2955f5f22b9ef00b056329e91278278f39222199c0a7b7`, is the accepted compact visual proof baseline. It includes Safe Stage Select; Water uses compact `0x8E+0x8F` with all ordinary Water spawns changed to staff PRIS GRUNT2/type `0x15`; Bridge keeps its native ordinary `0x14/0x17` roster with compact `0x8E+0x91`. The accepted result supersedes v01/v02 as the preferred visual palette and explicitly rejects v03. Residual 16-color texture noise is accepted as a bounded tradeoff for the proven resident-file reduction.
 
+## Deterministic resource-family planner v1 (2026-09-30)
+
+**Implementation-confirmed; pipeline-disconnected.** The repository contains a pure planner in `src/mkmszr/enemy_planner.py` plus an exact 104-record physical stream catalog in `src/mkmszr/data/enemies.py`. This layer does not itself patch ROM bytes.
+
+Planner v1 is fail-closed against the current evidence base:
+
+- all **104** main ordinary-stream spawn records are cataloged by exact fighter-type ROM word;
+- the five gated singleton/special records stay fixed, leaving **99** randomizable records;
+- native profiles preserve researched type-count semantics;
+- foreign profiles are admitted only with bounded Runtime-confirmed evidence;
+- Water profiles enforce the observed-route fighter-payload ceiling `0x34520` and count shared PRIS resources once;
+- Prison is modeled as native paging groups rather than one stage-wide pool;
+- Prison's Runtime-confirmed `prison-fast-phase` profile separates randomizable combat resources from fixed scripted auxiliary resources: FAST MONK file `0x20` replaces ordinary combat ownership while stock file `0x8F` remains resident for the capture set-piece;
+- unresolved foreign MONK1/MONK3/MONK4 and GRUNT1/GRUNT2 paths remain excluded.
+
+The RNG domain is isolated as `MKMSZR:ENEMIES:RESOURCE-PLANNER:V1`. Deterministic retry is explicit so materialization can skip unsupported profiles without changing seed behavior.
+
+Tests cover exact 104/99/5 accounting, special-record immutability, deterministic plans, Water payload bounds, shared PRIS accounting, Prison phase boundaries/fixed auxiliaries, and fail-closed unresolved families.
+
 ## Compatibility matrix v02 — resource-planning pass (2026-09-29)
 
 This planner-facing pass keeps the existing 19-type v01 roster but adds resource-family lifetime, terminal closure, compaction status, and destination-fit consequences. **Fit is not compatibility:** the Water figures below compare resident fighter payload only against the user-measured replacement ceiling `0x34520`; they do not certify transient projectile/effect pressure or a runtime route. Native Prison/Bridge/Fortress rewinds are evidence for section-scoped paging only in their proven lifetimes and do not authorize rewinds in another destination.
