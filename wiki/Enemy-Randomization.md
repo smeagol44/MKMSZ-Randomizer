@@ -446,7 +446,7 @@ This establishes bounded Water portability for the self-contained Fire FAST MONK
 
 ## Compact PRIS GRUNT3 / Water proof v01 (2026-09-30)
 
-The `0x16 PRIS GRUNT3` Water gate is now **Implementation/static-confirmed and runtime Pending**. This pass applies the accepted v04 PRIS-family compaction methodology to stock files `0x8E` and `0x90`; it does not claim byte identity with the earlier accepted `0x8E/0x8F/0x91` v04 proof pack.
+The `0x16 PRIS GRUNT3` Water gate is now **Runtime-confirmed, bounded**. This pass applies the accepted v04 PRIS-family compaction methodology to stock files `0x8E` and `0x90`; it does not claim byte identity with the earlier accepted `0x8E/0x8F/0x91` v04 proof pack.
 
 ### Compact `0x8E+0x90` resource closure
 
@@ -478,7 +478,7 @@ Against the user-measured Water replacement ceiling `0x34520`, the aligned pair 
 
 ### Disposable Water × type `0x16` proof
 
-**Implementation/static-confirmed; runtime Pending:** `MKMSZR_pris-grunt3_water-proof_v01.z64`, SHA-256 `665bf98d6c457853a30f66de00680e6de761d3773ce7108598a3050c856c7bed`, CRC1/CRC2 `0x4D2AFA17 / 0x724DC8BD`.
+**Runtime-confirmed, bounded:** `MKMSZR_pris-grunt3_water-proof_v01.z64`, SHA-256 `665bf98d6c457853a30f66de00680e6de761d3773ce7108598a3050c856c7bed`, CRC1/CRC2 `0x4D2AFA17 / 0x724DC8BD`.
 
 The proof:
 
@@ -499,4 +499,4 @@ Manual validation target:
 
 `spawn -> normal AI -> cannon/launcher fire -> projectile hit/reaction -> disarm/detached weapon -> kill -> death/despawn -> stage continues`
 
-A success would Runtime-confirm this bounded Water/type-`0x16` composition and complete cross-stage runtime coverage of all three armed PRIS variants (`0x15`, `0x16`, `0x17`). It would not establish arbitrary mixed rosters or worst-case simultaneous projectile pressure.
+**Runtime result (user manual validation, 2026-09-30):** the full intended route passed and worked perfectly: normal spawn/AI, cannon/launcher fire, projectile hit/reaction, armed-to-base disarm with detached weapon, kill, full death/despawn, and continued Water-stage progression. This completes bounded cross-stage runtime coverage for all three armed PRIS variants (`0x15`, `0x16`, `0x17`). It does not establish arbitrary mixed rosters or worst-case simultaneous projectile pressure.
