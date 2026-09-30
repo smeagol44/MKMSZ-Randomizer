@@ -402,6 +402,24 @@ The RNG domain is isolated as `MKMSZR:ENEMIES:RESOURCE-PLANNER:V1`. Deterministi
 
 Tests cover exact 104/99/5 accounting, special-record immutability, deterministic plans, Water payload bounds, shared PRIS accounting, Prison phase boundaries/fixed auxiliaries, and fail-closed unresolved families.
 
+## Guarded enemy materializer v1 (2026-09-30)
+
+**Implementation-confirmed; bounded Runtime-confirmed; pipeline-disconnected.** The guarded ROM emitter in `src/mkmszr/patches/enemy_randomization.py` consumes planner output while preserving the planner's deterministic retry domain. It guards all 104 stock fighter-type words before changing any enemy type and preserves the five fixed gated singleton encounters.
+
+Materializer v1 supports all native profiles plus the repository-reproducible foreign profiles for Water HULK MONK, FAST MONK and raw PRIS GRUNT4, and the Runtime-confirmed Prison `prison-fast-phase` profile. Unsupported compact/auxiliary profiles remain fail-closed and are deterministically skipped rather than guessed.
+
+Generated seed `ENEMYPLAN05` v01 passed Temple, Water, Earth, Fire, Bridge and Fortress but **failed in Prison** because stage-wide Prison shuffling crossed native resource lifetimes. Corrected v02 (SHA-256 `15da86ec7fef4bce2617a3162239065531aaf5f34d2b4ffedb73f8bad2c2c238`) constrained Prison assignments to paging groups and the user confirmed Prison worked.
+
+### Prison phase-family closure
+
+A first family-replacement proof removed too much: replacing the native `0x8F+0x8E` family with FAST MONK caused a hard hang at the scripted capture after the second energy fence. Static tracing identified Prison overlay routine **VA `0x802F0754` / ROM `0xC8594`** as a direct consumer of file-`0x8F` through slot `0x80112008`, independent of the ordinary enemy stream.
+
+The corrected proof therefore models each paging phase as **randomizable combat resources + fixed scripted auxiliaries**. For `prison-fast-phase`, ordinary `0x15` combat becomes FAST MONK `0x0A` / file `0x20`, while stock file `0x8F` remains resident for the capture set-piece. The stock `0x0E` phase and final `0x14/0x16` phase remain unchanged.
+
+**Runtime-confirmed:** `MKMSZR_prison-fast-monk-phase-proof_v02.z64`, SHA-256 `90188adb7a66460f0662de18cbdf65d4b17d5ba839c405395613bd30012c5ebb`. The user completed the full FAST MONK → GRUNT1 → FAST MONK / energy fences → scripted capture → final PRIS route successfully.
+
+This Runtime-confirmed phase/auxiliary contract is encoded in both planner and materializer tests. Production browser/CLI integration remains Pending.
+
 ## Compatibility matrix v02 — resource-planning pass (2026-09-29)
 
 This planner-facing pass keeps the existing 19-type v01 roster but adds resource-family lifetime, terminal closure, compaction status, and destination-fit consequences. **Fit is not compatibility:** the Water figures below compare resident fighter payload only against the user-measured replacement ceiling `0x34520`; they do not certify transient projectile/effect pressure or a runtime route. Native Prison/Bridge/Fortress rewinds are evidence for section-scoped paging only in their proven lifetimes and do not authorize rewinds in another destination.
