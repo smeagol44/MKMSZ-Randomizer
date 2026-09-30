@@ -30,6 +30,16 @@ def _stock_rom() -> RomImage:
         0xB58CC: 0xAC2514C0,
         0xB58D4: 0x2404008C,
         **dict(WATER_SECOND_TRANSACTION),
+        0x1123C: 0x2404008E,
+        0x1124C: 0x3C018011,
+        0x11250: 0xAC251528,
+        0x11258: 0x2404008E,
+        0xC4E20: 0x2404008E,
+        0xC4E30: 0x3C018011,
+        0xC4E34: 0xAC251528,
+        0xC4E3C: 0x2404008E,
+        0xC4EDC: 0x3C048011,
+        0xC4EE0: 0x8C842008,
     }
     for offset, value in stock_words.items():
         encoded = value.to_bytes(4, "big")
@@ -128,14 +138,20 @@ def test_unfiltered_plan_with_unsupported_profile_fails_closed():
         apply_enemy_plan(rom, plan)
 
 
-def test_generated_seed_keeps_prison_within_native_paging_groups():
+def test_generated_seed_keeps_prison_within_registered_paging_groups():
     plan = build_materializable_enemy_plan("ENEMYPLAN05")
     prison = _stage(plan, "prison")
     types = prison.randomized_types
 
-    assert types[:6] == (0x15,) * 6
+    assert prison.profile_key in {"prison-native", "prison-fast-phase"}
+    if prison.profile_key == "prison-native":
+        assert types[:6] == (0x15,) * 6
+        assert types[8:10] == (0x15,) * 2
+    else:
+        assert types[:6] == (0x0A,) * 6
+        assert types[8:10] == (0x0A,) * 2
+
     assert types[6:8] == (0x0E,) * 2
-    assert types[8:10] == (0x15,) * 2
     assert Counter(types[10:]) == Counter({0x14: 3, 0x16: 6})
 
 
