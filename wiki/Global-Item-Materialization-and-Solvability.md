@@ -8,7 +8,7 @@
 
 MKMSZR 1.0 requires one deterministic logical ordinary-item pool across the eight main stages, followed by a destination-stage materialization pass and a whole-run solvability check. The logical assignment and the physical representation are deliberately separate concerns.
 
-Cross-stage feasibility is **Runtime-confirmed in bounded proofs**, including extension selectors, embedded foreign resources, external-to-embedded conversion, and five simultaneous imported visuals in Prison. The generalized pure resource planner exists but remains disconnected from the normal browser/CLI patch pipeline. Fortress five-import composed stress validation is now Runtime-confirmed on a bounded route. Destination-safe arbitrary boss-defeat reward handling remains Pending, as do the final global shuffle/solver and production integration gate.
+Cross-stage feasibility is **Runtime-confirmed in bounded proofs**, including extension selectors, embedded foreign resources, external-to-embedded conversion, and five simultaneous imported visuals in Prison. The generalized pure resource planner exists but remains disconnected from the normal browser/CLI patch pipeline. Fortress five-import composed stress validation is Runtime-confirmed on a bounded route, and Kia -> Potion now Runtime-confirms that a Fortress boss-defeat trigger can retain ownership of activation while the spawned reward identity/resource changes to a non-crystal item. The remaining materializer gate is guarded production integration/allocation and generalization of that proven trigger/reward split across the three assassin reward records.
 
 The normative 1.0 acceptance requirements remain owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). This page owns the technical mechanism, evidence, limits, and unresolved design questions.
 
@@ -395,6 +395,12 @@ Manual testing confirmed all five imported models and expected awards, plus the 
 The Fortress five-import stress construction is now manually Runtime-confirmed on the bounded 2026-09-30 route. The first five stock Herbs locations were materialized as Potion, Urn of Vitality, Formula, Eye, and Shield, while a sixth Herbs record remained untouched as a vanilla control. Fortress loaded normally; all five imported visuals rendered correctly and awarded the expected items; the control Herbs remained normal; and no rendering, audio, stability, or stage-progression regression was observed on the tested route.
 
 This closes the pending Fortress destination-resource stress/capacity check for this five-import composition. It does **not** yet close arbitrary boss-defeat reward materialization, production allocation ownership, or exhaustive Fortress capacity.
+
+### Fortress boss-defeat reward substitution — Runtime-confirmed bounded proof
+
+A disposable Kia -> Potion proof retained Kia reward record `0xC4834` as the encounter-owned physical reward location and preserved the high `0x8000` activation bit in `+0x14`. Only the logical reward identity/resource path was changed to Potion. Runtime validation confirmed the replacement reward was absent before Kia's defeat, appeared only after Kia died, rendered as Potion, awarded Potion rather than Crystal Kia, and did not disrupt the tested encounter/stage continuation.
+
+This is direct bounded evidence for the required architecture: **boss trigger/location semantics stay with the Fortress destination check while logical reward identity is independently materialized**. Jataaka/Sareena were not separately runtime-tested, but the static trigger manager uses the same indexed-record activation pattern for all three. Production still needs guarded allocation/ownership and generalized emission rather than copying this proof-local construction verbatim.
 
 ## Early Fire foreign-key proof
 
