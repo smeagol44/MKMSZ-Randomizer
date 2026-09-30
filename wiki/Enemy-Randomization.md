@@ -420,6 +420,24 @@ The corrected proof therefore models each paging phase as **randomizable combat 
 
 This Runtime-confirmed phase/auxiliary contract is encoded in both planner and materializer tests. Production browser/CLI integration remains Pending.
 
+## Post-merge generated-seed runtime confirmation — v03 (2026-09-30)
+
+**Runtime-confirmed, bounded:** `MKMSZR_enemy-planner_all-stages-proof_v03.z64`, seed `ENEMYPLAN05`, SHA-256 `630a5302c30c216994df2ad265cadf374e2639257fb44357adeabbf9b49a586f`, CRC1/CRC2 `0x4D275D85 / 0xF89D9361`.
+
+This proof was built from the **merged planner + merged guarded materializer on current `main`**, not from an earlier standalone proof branch. It exercised the actual deterministic 104-record planner/materializer composition:
+
+- Temple native MONK2/MONK3 multiset, seed-permuted;
+- Water foreign `0x17 PRIS GRUNT4` with raw stock `0x8E+0x91`;
+- Prison Runtime-confirmed `prison-fast-phase`: ordinary `0x15` combat replaced by FAST MONK `0x0A`, stock `0x8F` retained for the scripted capture auxiliary, stock `0x0E` and final `0x14/0x16` phases preserved;
+- Fire native `0x09/0x0A` multiset, seed-permuted;
+- Bridge native `0x14/0x17` multiset, seed-permuted;
+- Fortress native repeated `0x0E/0x0F` grunt multiset, seed-permuted, with Kia/Jataaka/Sareena fixed;
+- Wind/Earth remained homogeneous native families.
+
+The user manually exercised all requested stage smoke routes and reported **everything worked**. This Runtime-confirms the merged planner→materializer composition for one representative all-stage seed, including both foreign resource-family paths and the fixed scripted Prison dependency.
+
+This does **not** establish every seed/profile combination, unresolved foreign MONK1/MONK3/MONK4 or GRUNT1/GRUNT2 families, or arbitrary cross-family phase substitutions. It does satisfy the current bounded runtime gate for moving the enemy feature out of proof-only orchestration and into the normal product pipeline.
+
 ## Compatibility matrix v02 — resource-planning pass (2026-09-29)
 
 This planner-facing pass keeps the existing 19-type v01 roster but adds resource-family lifetime, terminal closure, compaction status, and destination-fit consequences. **Fit is not compatibility:** the Water figures below compare resident fighter payload only against the user-measured replacement ceiling `0x34520`; they do not certify transient projectile/effect pressure or a runtime route. Native Prison/Bridge/Fortress rewinds are evidence for section-scoped paging only in their proven lifetimes and do not authorize rewinds in another destination.
