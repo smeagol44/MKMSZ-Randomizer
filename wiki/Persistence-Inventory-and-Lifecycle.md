@@ -47,11 +47,13 @@ Keys should be usable only in their origin stage. When backing data is copied to
 
 The stage mapping is Temple Map `0x0D`; Wind `0x0E..0x10`; Earth `0x11..0x13`; Water `0x14..0x16`; Fire `0x17..0x19`; Prison `0x1A..0x1C`; Bridge `0x1D..0x1F`; Fortress `0x20..0x22`.
 
-### Foreign-key acquisition masking boundary — Runtime-confirmed gap (2026-09-30)
+### Foreign-key acquisition masking boundary — Runtime-confirmed closure (2026-09-30)
 
-A bounded Fire -> Wind Circle proof confirms that the four-box backing/mask design works across reconstruction boundaries: the true Wind Circle ID `0x0E` survives in authoritative backing storage, appears as inert Glass outside Wind after a box/stage reconstruction, appears as the real Circle in Wind, and masks again after leaving.
+Fire -> Wind Circle v01 confirmed the existing reconstruction behavior but exposed an immediate-acquisition gap: directly after the foreign Circle was awarded in Fire, LIVE still showed real item ID `0x0E` until the next box/stage reconstruction. The authoritative backing identity itself was already correct.
 
-The same proof isolates one missing lifecycle hook. Immediately after the Circle is awarded in Fire, LIVE still contains the real `0x0E` until the next reconstruction boundary. The current implementation therefore needs an acquisition-boundary commit/remask step for globally movable foreign keys. The intended bounded composition is the already-established filtered LIVE -> active backing save followed by active backing -> masked LIVE reconstruction.
+Disposable v02 added one bounded ordinary-pickup post-callback composition: filtered LIVE -> active backing save, followed immediately by active backing -> stage-masked LIVE reconstruction. Runtime validation confirmed that the newly acquired Wind Circle appears as inert Glass `0x08` **immediately** in Fire, without requiring a box switch or stage transition. Entering Wind restores the real Circle, and normal Wind use succeeds while retaining the key.
+
+This Runtime-confirms the tested foreign-key masking round trip across both acquisition and reconstruction boundaries. Production integration still requires the normal guarded code/allocation path; the proof hook itself is not silently promoted to product ownership.
 
 Native key items are **not consumed by normal use**. They remain in inventory after use; any cleanup/removal associated with completing a stage is a separate lifecycle boundary and is not part of ordinary key-use semantics.
 
