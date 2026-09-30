@@ -444,3 +444,59 @@ This yields resident fighter payload `0x20 + 0x8D = 0x2B4D0`. Against the user-m
 
 This establishes bounded Water portability for the self-contained Fire FAST MONK family using raw stock file `0x20` in the tested all-`0x0A` ordinary roster. It does **not** establish arbitrary mixed rosters, HULK MONK `0x09`, all fighter families, or worst-case transient pressure.
 
+## Compact PRIS GRUNT3 / Water proof v01 (2026-09-30)
+
+The `0x16 PRIS GRUNT3` Water gate is now **Implementation/static-confirmed and runtime Pending**. This pass applies the accepted v04 PRIS-family compaction methodology to stock files `0x8E` and `0x90`; it does not claim byte identity with the earlier accepted `0x8E/0x8F/0x91` v04 proof pack.
+
+### Compact `0x8E+0x90` resource closure
+
+Stock file `0x90` contains 76 Type-5 frames: 59 use a 6-bpp body model and 17 use an already-4-bpp secondary model. The secondary model owns the cannon/launcher and projectile art. The two 64-color body palettes are the same source palettes used by the already studied `0x8E/0x8F/0x91` PRIS family, while projectile palette `0x90 +0x1C49C` is independently 16-color.
+
+The rebuild follows the v04 family rule:
+
+- source index `0` remains transparent;
+- the 6-bpp body source indices are kept within hue/material families and mapped into 15 opaque compact indices;
+- the same source-index representatives are used coherently across both stock 64-color body-palette variants;
+- `0x90`'s already-4-bpp secondary cannon/projectile pixels remain exact;
+- its 16-color projectile palette remains byte-exact and is only relocated;
+- all Type-5 model assignments are preserved and dictionaries/streams are rebuilt with the established encoder class geometry;
+- compact file-relative frame and palette references are rebased, and the base-file `0x8E` terminal palette path is retained.
+
+The selected body-palette representatives are source indices:
+
+`[2, 4, 8, 11, 13, 16, 20, 23, 26, 29, 34, 45, 49, 54, 58]`
+
+Offline validation decodes every rebuilt frame back to the selected target indexed buffer with zero mismatches: all **141** file-`0x8E` frames plus all **76** file-`0x90` frames. This includes exact indexed pixels for all 17 native 4-bpp `0x90` secondary frames.
+
+| Resource | Stock | Compact proof v01 | Saving |
+|---|---:|---:|---:|
+| file `0x8E` | `0x1FC10` | `0x1A148` (8-byte aligned) | `0x5AC8` |
+| file `0x90` | `0x1C550` | `0x16AC0` | `0x5A90` |
+| **pair** | **`0x3C160`** | **`0x30C08`** | **`0xB558` = 46,424 B (45.34 KiB)** |
+
+Against the user-measured Water replacement ceiling `0x34520`, the aligned pair leaves **`0x3918` = 14,616 B = 14.27 KiB** of resident-payload margin before transient projectile/effect pressure. This is materially larger than the accepted staff-grunt proof's residual margin, but remains a bounded sizing argument rather than certified worst-case free space.
+
+### Disposable Water × type `0x16` proof
+
+**Implementation/static-confirmed; runtime Pending:** `MKMSZR_pris-grunt3_water-proof_v01.z64`, SHA-256 `665bf98d6c457853a30f66de00680e6de761d3773ce7108598a3050c856c7bed`, CRC1/CRC2 `0x4D2AFA17 / 0x724DC8BD`.
+
+The proof:
+
+- starts from the clean USA Rev. 0 ROM;
+- includes current Safe Stage Select;
+- replaces Water's native `0x8C+0x8D` fighter residency with compact `0x8E+0x90`;
+- loads `0x8E` into constructor slot `0x80111528`;
+- loads `0x90` into constructor slot `0x802C0FA0`;
+- rebases the permanent body/projectile/terminal palette-offset tables to the compact file layouts;
+- changes all nine ordinary Water spawn records to type `0x16`;
+- leaves the Water boss/special path untouched;
+- zeroes the stale tails of the shortened stock `0x8E`/`0x90` ROM ranges, so a missed old file-relative reference cannot silently succeed by reading leftover stock bytes;
+- updates N64 CRC1/CRC2.
+
+A post-build audit re-decodes all 217 compact Type-5 frames from the **finished ROM**, confirms the `0x90` projectile palette is byte-exact at its relocated position, and classifies every changed ROM span into an intended guarded region. No emulator automation or runtime execution was performed.
+
+Manual validation target:
+
+`spawn -> normal AI -> cannon/launcher fire -> projectile hit/reaction -> disarm/detached weapon -> kill -> death/despawn -> stage continues`
+
+A success would Runtime-confirm this bounded Water/type-`0x16` composition and complete cross-stage runtime coverage of all three armed PRIS variants (`0x15`, `0x16`, `0x17`). It would not establish arbitrary mixed rosters or worst-case simultaneous projectile pressure.
