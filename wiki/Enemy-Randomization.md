@@ -471,3 +471,15 @@ The proof starts from the clean USA Rev. 0 ROM, includes current Safe Stage Sele
 This establishes bounded Water portability for raw stock type `0x09 HULK MONK` under the tested homogeneous roster. It does not establish arbitrary mixed rosters or worst-case transient pressure.
 
 A success would establish bounded Water portability for the second self-contained Fire ordinary family and strengthen the planner case for a simple one-file resident family class. It would not establish arbitrary mixed rosters or worst-case transient pressure.
+
+## Mixed Water PRIS family proof — types `0x14 + 0x16` (2026-09-30)
+
+**Runtime-confirmed, bounded:** `MKMSZR_pris-mixed14-16_water-proof_v01.z64`, SHA-256 `57d92254e24e644f9f26b6a43d3410562081e3f66daa9db613bc25a3ece95d50`, CRC1/CRC2 `0x4D2AFA63 / 0x8A754699`.
+
+This proof is deliberately derived from the already validated compact Water × `0x16` composition. Resident resources, loader logic, constructor slots and palette rebasing are unchanged: compact `0x8E + 0x90 = 0x30C08`. Only the nine ordinary Water type words change to:
+
+`14,16,14,16,14,16,14,16,14`
+
+The user manually validated the mixed route and reported it worked perfectly. The exercised composition includes native-base `0x14 PRIS GRUNT1` actors coexisting with armed `0x16 PRIS GRUNT3` actors, cannon/projectile activity, armed-to-base disarm/morph into `0x14`, converted and originally spawned base grunts sharing the same resident base resource, normal kill/death/despawn, and continued Water progression.
+
+This is the first bounded Runtime-confirmed **mixed ordinary-enemy roster** in the current cross-stage proof line. It materially reduces the value of further homogeneous single-type Water proofs for already-closed resource families. It does **not** establish arbitrary cross-family coexistence, unresolved MONK1/MONK3/MONK4 terminal/cache paths, or the separate GRUNT1/GRUNT2 resource problem.
