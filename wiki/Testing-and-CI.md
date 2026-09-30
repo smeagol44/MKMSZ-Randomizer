@@ -32,7 +32,7 @@ The test workflow uses Python 3.11 for pushes to `main`, `refactor/**`, and `fea
 | `test_palette.py` | BGR555 conversion, bounds, deterministic static modes |
 | `test_rainbow_palette.py` | Runtime V2 rainbow layout, proof-exact helper/hook bytes, XP-tail composition, and high-ROM bounds |
 | `test_xp_progression.py` | Native thresholds/state separation, deterministic nine-reward selection, RNG isolation, Runtime V2 extension bounds, safe stage restore, and guarded XP patch output |
-| `test_pipeline.py` | Patch order and composed output behavior |
+| `test_pipeline.py` | Patch order, default-OFF enemy randomization option, and composed output behavior |
 | `test_seed.py` | Seed generation and domain determinism |
 | `test_runtime_v1.py` | Historical/compatibility Runtime V1 layout, reference payload, and Fire persistence pipeline contract |
 | `test_runtime_v2.py` | Current Runtime V2 0x3B0-code/0x50-state repartition and versioned state-header contract |
@@ -53,3 +53,8 @@ Changes under `wiki/**` on `main` trigger a mirror job. It clones the `.wiki.git
 `tests/test_temple_intro_audio.py` pins the approved Audio-1 and Audio-2 pools, verifies the alternate Friendship take is excluded, exercises deterministic selection for representative seeds in both slots, checks that the shared pipeline omits the feature without donor-derived assets, and verifies that an Audio-1 selection preserves stock Audio-2 while an Audio-2 selection preserves the stock `0x41/0x42` alternation.
 
 `tests/test_mkt_donor.py` also pins the approved donor-profile key set. Runtime claims remain separate from these tests: CI establishes deterministic extraction/composition and byte guards. The `0x20A` production carrier was then manually closed by v06 with seed `TEMPLE-PROD-CARRIER`, which selected Friendship in Audio 1 and produced the expected Friendship-then-stock-laugh sequence. That runtime result is bounded and does not individually validate all 11 donor clips.
+
+
+## Enemy-randomization product wiring
+
+CI covers the default-OFF shared configuration, conditional `EnemyRandomizationPatch` insertion, CLI `--enemy-randomization`, and browser checkbox -> Pyodide -> `RandomizerConfig.enemy_randomization` wiring. Browser and CLI therefore select the same planner/materializer path for a given seed. Runtime evidence remains separately bounded to the documented representative seeds/routes.
