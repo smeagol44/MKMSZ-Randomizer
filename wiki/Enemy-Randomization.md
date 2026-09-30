@@ -420,3 +420,29 @@ Type `0x17 PRIS GRUNT4` is the smallest high-value next family proof because it 
 **Runtime-confirmed, bounded:** disposable `MKMSZR_pris-grunt4_water-proof_v01.z64`, SHA-256 `0548808d417bbd006d54a8bd028926e0c3dd490a6c32cfa821c82be134ea1b34`. It starts from the clean USA Rev. 0 ROM, includes current Safe Stage Select, replaces Water's two native fighter loads with stock files `0x8E` and `0x91` in their exact constructor slots, changes all nine Water ordinary spawn type fields to `0x17`, leaves the Water boss path stock, and updates CRC1/CRC2 to `0x4D27726B / 0x989FF0C9`. The user manually validated the intended route: normal spawn/AI, ranged projectile behavior and hit reaction, armed-to-base disarm with detached weapon, kill, normal death/despawn, and continued Water-stage progression all worked perfectly. This confirms the tested stock-resource Water × `0x17` composition; it does not establish arbitrary mixed rosters or worst-case projectile concurrency.
 
 **Runtime result:** the full intended validation chain was exercised successfully: `spawn -> normal AI -> ranged/special behavior -> projectile hit reaction -> disarm/detached weapon -> kill -> death/despawn -> stage continues`. This is bounded Runtime-confirmed evidence for Water × `0x17` using the raw stock pair only, not arbitrary mixed rosters or worst-case projectile concurrency.
+
+## Selected proof after matrix v02 — Water × raw FAST MONK / type `0x0A` (2026-09-30)
+
+The next family-expansion proof is **Water × `0x0A FAST MONK`**, chosen to move beyond the already Runtime-confirmed PRIS ranged family while keeping the resource transaction deliberately simple.
+
+**Static-confirmed dependency composition:**
+
+- type `0x0A` primary fighter file: stock global file `0x20`, size `0x21160`;
+- constructor resource slot: `0x800C2560`;
+- descriptor offset: `0x20FC8`;
+- type-indexed terminal palette source: file `0x20 +0x210D0`;
+- primary root `0x32` points to file-relative list `+0x108`, containing six frame-record offsets `+0x209A8,+0x20AD4,+0x20C08,+0x20D24,+0x20E38,+0x20F18` followed by zero;
+- the normal `0x0A` terminal route is therefore fighter-file-internal through `0x80053E8C`; no foreign destination selector-10 bundle is required for that normal path.
+
+The disposable proof intentionally preserves Water's second stock fighter load rather than deleting an allocation. Water's first native fighter load is changed from file `0x8C` into stock file `0x20` and stores the returned allocation in the exact `0x0A` constructor slot `0x800C2560`; the second stock file `0x8D` load remains unchanged but is unused by the patched ordinary roster. All nine ordinary Water records are changed to type `0x0A`; the Water boss/special path is untouched.
+
+This yields resident fighter payload `0x20 + 0x8D = 0x2B4D0`. Against the user-measured Water replacement ceiling `0x34520`, the bounded resident-payload margin is `0x9050` = **36.08 KiB**. This is intentionally more conservative in lifecycle shape than deleting Water's second allocation, while still remaining well below the observed ceiling.
+
+**Implementation/CI-confirmed; runtime Pending:** `MKMSZR_fast-monk_water-proof_v01.z64`, SHA-256 `e01e8ece94f642411afb9150b8a1ee9f74b7871945bcf029a469dcb9349c774f`, CRC1/CRC2 `0x4D274D15 / 0x9E933CC0`. Static diff audit confirms that, beyond current Safe Stage Select and header CRC, only the nine ordinary Water type words and the four first-fighter-loader words differ from retail. Stock file-table entries and bytes for `0x20` and retained `0x8D` are unchanged. No emulator was run.
+
+Manual validation target:
+
+`spawn -> normal FAST MONK AI/movement -> ordinary attacks -> take/hit reactions -> kill -> normal death/despawn -> continue through Water`
+
+A success would establish bounded Water portability for the self-contained Fire FAST MONK family only; it would not establish arbitrary mixed rosters, HULK MONK `0x09`, or all fighter families.
+
