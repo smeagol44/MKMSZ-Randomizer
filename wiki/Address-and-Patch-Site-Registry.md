@@ -6,6 +6,20 @@
 
 All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” means current browser/CLI pipeline ownership; proof-only sites are not written by the product. Multi-byte generated bodies may be validated by implementation/tests instead of reproducing every emitted word here, but their guarded write site and effect remain indexed here.
 
+## Safe-selector cursor/audio candidate — guarded, runtime Pending
+
+These edits are implemented on the dedicated safe-selector branch and in disposable proof v01, but are **not yet promoted to Runtime-confirmed production behavior**. The pre-existing compact selector remains Production/Runtime-confirmed; this table owns only the new presentation candidate.
+
+| ROM site | VA / context | Owner | Expected / guard | Replacement / effect |
+|---:|---:|---|---|---|
+| `0x000B21D8..0x000B2211` | palette source `0x800B15D8`, registered with selector slot `0x1C2` | Safe-selector blue cursor candidate | preceding count word at `0x000B21D4` is `0x1D`; exact 58-byte orange selector palette is guarded | Copy the 29-entry blue title-cursor palette values from clean source `0x000B32E8`; file `0x5F`, sprite IDs `0x352..0x35A`, and draw path remain unchanged |
+| `0x0000DD70..0x0000DD77` | selector draw loop at `0x8000D170` | Safe-selector movement SFX candidate | `24040050 24050014` | First word becomes JAL `0x8000D67C`; second stock word remains the delay slot. Helper plays descriptor `0x1FC` only for exactly one newly pressed Up/Down edge and recreates the displaced draw arguments |
+| `0x0000E27C..0x0000E2AF` | frontend-resident unreachable compiler epilogue at `0x8000D67C` | Safe-selector movement SFX candidate | exact 52-byte stock epilogue `8FBF0034 8FBE0030 8FB7002C 8FB60028 8FB50024 8FB40020 8FB3001C 8FB20018 8FB10014 27BD0038 03E00008 00000000` | Guarded movement-SFX helper; calls native SFX wrapper `0x80064C18` with descriptor `0x1FC`, `a1=0`, `a2=0x3F` |
+| `0x00015CEC..0x00015CF3` | selector one-time stage commit at `0x800150EC` | Safe-selector confirmation SFX candidate | `3C01800A AC23A910` | First word becomes JAL `0x8000D22C`; stock native-stage store remains in the delay slot before the helper executes |
+| `0x0000DE2C..0x0000DE5F` | frontend-resident unreachable compiler epilogue at `0x8000D22C` | Safe-selector confirmation SFX candidate | same exact 52-byte stock epilogue as above | Guarded confirmation helper; plays descriptor `0x1FD`, restores stock process-spawn arguments, then returns to `0x800150F4` |
+
+Static ownership checks found no literal pointer to `0x800B15D8`; the only adjacent `lui 0x800B` + `addiu 0x15D8` references in the clean ROM are at ROM `0x0000DF6C` / VA `0x8000D36C` and ROM `0x0000E3B4` / VA `0x8000D7B4`, both in the debug-selector frontend family. The title palette source `0x800B26E8` is read as a clean donor only and is not modified by this candidate.
+
 ## Production guarded edits
 
 | ROM site | VA / context | Owner | Expected / guard | Replacement / effect |
