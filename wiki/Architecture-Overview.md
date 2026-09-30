@@ -56,7 +56,7 @@ The box indicator hooks an existing HUD submission, executes the displaced call,
 ## Boundaries not yet crossed
 
 - No production global item pool or foreign-resource planner.
-- No production enemy randomizer; same-stage substitution and one bounded cross-stage resource import are proofs.
+- No production enemy randomizer yet. A pure deterministic resource-family planner now exists and is pipeline-disconnected; it consumes the exact 104-record ordinary-stream catalog and admits only native or bounded Runtime-confirmed foreign profiles. ROM materialization/integration remains the next gate.
 - XP progression is production beta: Diagnostic B is runtime-confirmed through XP 258, Temple -> Wind, and title -> Fire; a full nine-tier run remains pending.
 - No finished Reverse Elbow; v6 established a stable lifecycle, while v8 still has movement and interaction defects.
 - PS1 findings guide comparison but do not share N64 addresses or binaries.
