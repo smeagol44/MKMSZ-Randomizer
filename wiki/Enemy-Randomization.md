@@ -438,11 +438,9 @@ The disposable proof intentionally preserves Water's second stock fighter load r
 
 This yields resident fighter payload `0x20 + 0x8D = 0x2B4D0`. Against the user-measured Water replacement ceiling `0x34520`, the bounded resident-payload margin is `0x9050` = **36.08 KiB**. This is intentionally more conservative in lifecycle shape than deleting Water's second allocation, while still remaining well below the observed ceiling.
 
-**Implementation/CI-confirmed; runtime Pending:** `MKMSZR_fast-monk_water-proof_v01.z64`, SHA-256 `e01e8ece94f642411afb9150b8a1ee9f74b7871945bcf029a469dcb9349c774f`, CRC1/CRC2 `0x4D274D15 / 0x9E933CC0`. Static diff audit confirms that, beyond current Safe Stage Select and header CRC, only the nine ordinary Water type words and the four first-fighter-loader words differ from retail. Stock file-table entries and bytes for `0x20` and retained `0x8D` are unchanged. No emulator was run.
+**Runtime-confirmed, bounded:** `MKMSZR_fast-monk_water-proof_v01.z64`, SHA-256 `e01e8ece94f642411afb9150b8a1ee9f74b7871945bcf029a469dcb9349c774f`, CRC1/CRC2 `0x4D274D15 / 0x9E933CC0`. Static diff audit confirms that, beyond current Safe Stage Select and header CRC, only the nine ordinary Water type words and the four first-fighter-loader words differ from retail. Stock file-table entries and bytes for `0x20` and retained `0x8D` are unchanged. No emulator automation was run.
 
-Manual validation target:
+**Runtime result (user manual validation, 2026-09-30):** the intended route passed: `spawn -> normal FAST MONK AI/movement -> several ordinary attacks -> player/enemy hit-reaction states -> kill -> full normal death/despawn -> continued Water progression`, including encounters with additional FAST MONKs. All exercised behavior worked as expected.
 
-`spawn -> normal FAST MONK AI/movement -> ordinary attacks -> take/hit reactions -> kill -> normal death/despawn -> continue through Water`
-
-A success would establish bounded Water portability for the self-contained Fire FAST MONK family only; it would not establish arbitrary mixed rosters, HULK MONK `0x09`, or all fighter families.
+This establishes bounded Water portability for the self-contained Fire FAST MONK family using raw stock file `0x20` in the tested all-`0x0A` ordinary roster. It does **not** establish arbitrary mixed rosters, HULK MONK `0x09`, all fighter families, or worst-case transient pressure.
 
