@@ -159,3 +159,12 @@ The earlier blanket statement that textured-image rendering was unproven is supe
 Historical proof offsets are evidence, not reusable allocations. A proof-only cave, zero-filled region, or successful standalone footprint does not become production-safe without current ownership analysis and validation of the composed layout.
 
 Canonical allocation ownership is [Memory and allocation map](Memory-and-Allocation-Map). Feature-specific proof details remain on their owning pages.
+
+
+## Temple intro audio corrections
+
+| Rejected / superseded finding | Observation | Current conclusion | Owner |
+|---|---|---|---|
+| v01 treated file `0x9B` and descriptor candidates around `0x21D/0x21E/0x220` as Temple intro ownership | Runtime showed no Temple change; file `0x9B` is Bridge, while the real Temple overlay is file `0xA0` | The old Bridge patch sites and “Temple” ownership claims are rejected. Correct Temple intro sites are in file `0xA0` at ROM `0xCB274/0xCB280/0xCB2F8`. | [Audio system](Sounds-and-Music), [Temple catalog](Stage-Catalog-Temple) |
+| Proof carrier descriptor `0x220 -> event 0x1B8` promoted toward production | Whole-ROM audit found live stock `li a0,0x220` callers around ROM `0xBE744/0xBE750/0xBFACC`, including stock `0x80064C18` audio calls | The carrier remains valid for the bounded Temple proofs but is rejected for production reuse. Production uses the statically isolated `0x20A -> 0x1A6 -> 579 -> 422 -> 412` chain instead. | [Audio system](Sounds-and-Music), [Address and patch-site registry](Address-and-Patch-Site-Registry) |
+| Retail MKT `TS_SK_ITS_OFFICIAL` interpreted as usable standalone “You suck” | User audition of the extracted retail waveform produced a short hit/impact-like sound | Excluded from both pools. Older Midway source shows `skofficl` then `skyousuk` as separate material; recovery of the complete phrase is optional future work. | [Audio system](Sounds-and-Music) |
