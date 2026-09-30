@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 
 from .config import OutfitConfig, RandomizerConfig
-from .donors import extract_toasty_assets
+from .donors import extract_temple_intro_audio_assets, extract_toasty_assets
 from .errors import MKMSZRError
 from .patcher import patch_file
 from .patches.palette import PRESET_HUES
@@ -30,7 +30,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--mkt-rom",
         type=Path,
-        help="Mortal Kombat Trilogy (USA) Rev. 2 N64 donor .z64; enables production Toasty",
+        help=("Mortal Kombat Trilogy (USA) Rev. 2 N64 donor .z64; enables "
+              "donor-backed Toasty and seeded Temple intro audio"),
     )
     parser.add_argument(
         "--seed",
@@ -96,9 +97,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
-        toasty_assets = (
-            extract_toasty_assets(args.mkt_rom.read_bytes())
-            if args.mkt_rom is not None
+        donor_bytes = args.mkt_rom.read_bytes() if args.mkt_rom is not None else None
+        toasty_assets = extract_toasty_assets(donor_bytes) if donor_bytes is not None else None
+        temple_intro_audio_assets = (
+            extract_temple_intro_audio_assets(donor_bytes)
+            if donor_bytes is not None
             else None
         )
         result = patch_file(
@@ -106,6 +109,7 @@ def main(argv: list[str] | None = None) -> int:
             args.output,
             config,
             toasty_assets=toasty_assets,
+            temple_intro_audio_assets=temple_intro_audio_assets,
         )
     except (MKMSZRError, OSError, ValueError) as exc:
         parser.exit(2, f"error: {exc}\n")
