@@ -190,7 +190,7 @@ The Runtime-confirmed compact-tail v01 architecture edits all 15 stock Sub-Zero 
 | ROM `0x000CB274` / VA `0x802EDB94` | Temple Audio-1 stock descriptor-A immediate | Stock `24040041`; changed to `li a0,0x20A` only when seed selects Audio 1 |
 | ROM `0x000CB280` / VA `0x802EDBA0` | Temple Audio-1 stock descriptor-B immediate | Stock `24040042`; changed to `li a0,0x20A` only when seed selects Audio 1 |
 | ROM `0x000CB2F8` / VA `0x802EDC18` | Temple Audio-2 stock laugh descriptor immediate | Stock `24040043`; changed to `li a0,0x20A` only when seed selects Audio 2 |
-| ROM `0x000A3794` | Production donor-audio carrier descriptor `0x20A -> event 0x1A6` | Stock bytes `01A6007F000000000000`; descriptor itself remains unchanged |
+| ROM `0x000A3794` | Production donor-audio carrier descriptor `0x20A -> event 0x1A6` | Stock bytes `01A6007F000000000000`; descriptor itself remains unchanged. v06 Runtime-confirms the carrier on seed `TEMPLE-PROD-CARRIER` / Audio 1 / Friendship. |
 | ROM `0x0097C7D8` | Carrier event-`0x1A6` 32-byte track | Guarded stock track; donor timing/control track is copied here with initial patch ID rebased to patch 579 |
 | ROM `0x009485C4` | Carrier patch 579 | Stock `010001A6`; retained, uniquely owns subpatch 422 |
 | ROM `0x0094A860` | Carrier subpatch 422 | Guarded; selected donor subpatch copied with waveform ID rebased to 412 |
