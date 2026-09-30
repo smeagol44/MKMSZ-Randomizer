@@ -12,6 +12,7 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
         "jumpButton",
         "runAuto",
         "shufflePowerProgression",
+        "enemyRandomization",
         "powersAsPickups",
         "requiredPowersMode",
         "customRequiredPowers",
@@ -27,6 +28,9 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
     assert "web_run_auto" in app
     assert "web_shuffle_power_progression" in app
     assert "shuffle_power_progression=bool(web_shuffle_power_progression)" in app
+    assert "web_enemy_randomization" in app
+    assert "enemy_randomization=bool(web_enemy_randomization)" in app
+    assert 'id="enemyRandomization" type="checkbox"' in html
     assert 'id="powersAsPickups" type="checkbox" checked' in html
     assert "powers_as_pickups=bool(web_powers_as_pickups)" in app
     assert "required_powers_mode=str(web_required_powers_mode)" in app
