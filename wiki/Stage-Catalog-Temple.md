@@ -201,3 +201,20 @@
 - [Pickups and stage-local randomization](Pickups-and-Item-Randomization) — current production ordinary-pickup behavior.
 - [Global item materialization and solvability](Global-Item-Materialization-and-Solvability) — cross-stage materializer/solver and Map policy question.
 - [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle) — pickup persistence and Map lifecycle boundary.
+
+
+## Intro audio sequence
+
+**Static-confirmed host mapping; bounded replacement seams Runtime-confirmed.**
+
+Temple overlay file `0xA0` contains the intro process beginning at VA `0x802EDA3C`. At the spoken-line step it reads persistent halfword `0x800AA8A4`: value 0 selects descriptor `0x41` and value 1 selects `0x42`, then the value increments and wraps at 2. The stock behavior is therefore a persistent alternation, not gameplay RNG.
+
+Relevant overlay edit sites:
+
+| Purpose | VA / ROM | Stock |
+|---|---|---|
+| Audio-1 line A descriptor immediate | `0x802EDB94` / `0xCB274` | `li a0,0x41` |
+| Audio-1 line B descriptor immediate | `0x802EDBA0` / `0xCB280` | `li a0,0x42` |
+| Audio-2 Scorpion-laugh descriptor immediate | `0x802EDC18` / `0xCB2F8` | `li a0,0x43` |
+
+Audio-1 proof v05 Runtime-confirmed redirecting both first-line outcomes to one donor clip while retaining stock `0x43`. Audio-2 proof v02 Runtime-confirmed redirecting the later laugh while preserving the first-line position. Production seed selection replaces exactly one of these two positions when an MKT Rev. 2 donor is supplied; otherwise the sites remain stock. Generic audio ownership and the production carrier are canonical in [Audio system](Sounds-and-Music).
