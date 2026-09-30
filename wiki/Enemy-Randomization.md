@@ -438,6 +438,12 @@ The user manually exercised all requested stage smoke routes and reported **ever
 
 This does **not** establish every seed/profile combination, unresolved foreign MONK1/MONK3/MONK4 or GRUNT1/GRUNT2 families, or arbitrary cross-family phase substitutions. It does satisfy the current bounded runtime gate for moving the enemy feature out of proof-only orchestration and into the normal product pipeline.
 
+### Shared product integration
+
+**Implementation/CI-pending:** the shared product configuration now has `enemy_randomization: bool = False`. Browser and CLI expose the same option (web **Enemy Randomization** switch; CLI `--enemy-randomization`), and `build_pipeline()` appends the guarded `EnemyRandomizationPatch` only when enabled. The option uses the normal build seed and the same fail-closed materializable-profile retry contract validated by the proof line. Default-OFF builds omit this patch entirely.
+
+The remaining gate is repository CI for the composed product branch, followed by one representative build produced through the normal browser/CLI path with the option enabled.
+
 ## Compatibility matrix v02 — resource-planning pass (2026-09-29)
 
 This planner-facing pass keeps the existing 19-type v01 roster but adds resource-family lifetime, terminal closure, compaction status, and destination-fit consequences. **Fit is not compatibility:** the Water figures below compare resident fighter payload only against the user-measured replacement ceiling `0x34520`; they do not certify transient projectile/effect pressure or a runtime route. Native Prison/Bridge/Fortress rewinds are evidence for section-scoped paging only in their proven lifetimes and do not authorize rewinds in another destination.
