@@ -44,3 +44,10 @@ Game-state-dependent correctness therefore remains unresolved by CI alone. A rep
 ## Wiki publication
 
 Changes under `wiki/**` on `main` trigger a mirror job. It clones the `.wiki.git` repository, `rsync --delete`s this directory, commits only if changed, and pushes `master`. Broken internal links will still publish unless caught locally, so documentation validation includes a repository link scan in addition to code tests.
+
+
+## Seeded Temple intro audio coverage
+
+`tests/test_temple_intro_audio.py` pins the approved Audio-1 and Audio-2 pools, verifies the alternate Friendship take is excluded, exercises deterministic selection for representative seeds in both slots, checks that the shared pipeline omits the feature without donor-derived assets, and verifies that an Audio-1 selection preserves stock Audio-2 while an Audio-2 selection preserves the stock `0x41/0x42` alternation.
+
+`tests/test_mkt_donor.py` also pins the approved donor-profile key set. Runtime claims remain separate from these tests: CI establishes deterministic extraction/composition and byte guards. The `0x20A` production carrier was then manually closed by v06 with seed `TEMPLE-PROD-CARRIER`, which selected Friendship in Audio 1 and produced the expected Friendship-then-stock-laugh sequence. That runtime result is bounded and does not individually validate all 11 donor clips.

@@ -24,7 +24,7 @@ Music remains **Pending** as a general subsystem: the project has not mapped the
 | Main MKMSZ SN64 bank grammar | **Static-confirmed** | control bank and waveform-table structure are parsed; exact host counts and bases are recorded below |
 | Foreign MKT N64-ADPCM compatibility | **Runtime-confirmed proof** | Toasty v02 proves one-shot imported donor-sample playback; v03 proves the accepted Toasty voice and pitch metadata |
 | Music engine / complete sequence-control API | **Pending** | only the bounded SSEQ/event behavior needed by the audio proofs is mapped |
-| Production Toasty audio route | **Pending** | final trigger and production-safe allocation/composition are not integrated |
+| Production Toasty audio route | **Runtime-confirmed production composition** | Dedicated event `52 -> 68 -> 608 -> 533` is integrated; stock pickup audio remains untouched |
 
 ## Native gameplay SFX path
 
@@ -112,6 +112,47 @@ These are host-side architectural conclusions. Donor-specific selectors, MKT ban
 ## Function-semantics ownership
 
 The audio chain above names `0x80064C18`, `0x80080A88`, `0x8007EC4C`, and `0x80015FD8` because their composition matters to the audio explanation. Their canonical meanings, evidence labels, and future semantic corrections are maintained only in [Function registry](Function-Registry); this page intentionally does not maintain a competing function table.
+
+
+## Seeded Temple intro audio
+
+The Temple intro has two independently validated audio positions. The opening spoken position chooses stock descriptor `0x41` (“You will fail”) or `0x42` (“I will succeed”) through the stock persistent alternation at `0x800AA8A4`; the later position uses descriptor `0x43` for Scorpion's laugh. The relevant Temple-overlay immediates are ROM `0xCB274`, `0xCB280`, and `0xCB2F8`.
+
+Bounded manual proofs established both replacement seams:
+
+- **Audio 2:** v02 replaced only the Temple `0x43` call with an imported MKT Shao Kahn laugh while forcing a known stock first line; runtime playback was accepted. Later Raiden and robot-run donor clips were auditioned and the same Audio-2 route was accepted.
+- **Audio 1:** v05 redirected both stock first-line branches to an imported Raiden BBB clip while leaving `0x43` completely stock; runtime playback was accepted.
+
+The production contract is seed/build-time deterministic rather than runtime-random. When a valid MKT USA Rev. 2 N64 donor is supplied, the isolated domain `MKMSZR:TEMPLE-INTRO-AUDIO:V1\0` chooses exactly one position and then one clip from that position's pool. The other position stays stock. With no MKT donor, the Temple-audio patch is omitted entirely.
+
+Approved **Audio 1** pool:
+
+- Shao Kahn “Friendship!” (`TS_SK_FRIEND`; the alternate Friendship take is intentionally excluded)
+- Shao Kahn “Choose Your Destiny” (`TS_SK_CHOOSE`)
+- Shao Kahn “Excellent” (`TS_SK_EXCELLENT`)
+- Shao Kahn “Superb” (`TS_SK_SUBERB`)
+- Shao Kahn “Well Done” (`TS_SK_WELL_DONE`)
+- Liu Kang bicycle-kick vocal (`ST_LK_BIKE`)
+
+Approved **Audio 2** pool:
+
+- Raiden torpedo BBB / SSS / TTT (`ST_RD_BBB`, `ST_RD_SSS`, `ST_RD_TTT`)
+- robot run (`GS_RUN_ROBO`)
+- Shao Kahn laugh
+
+Only the selected encoded sample is materialized into the output ROM; the complete pool is never copied into one build.
+
+### Production carrier and proof-carrier correction
+
+The early Temple proofs used descriptor `0x220 -> event 0x1B8 -> patch 597 -> subpatch 440 -> wave 430`. That route is **proof-only**: a later whole-ROM audit found live stock callers loading descriptor `0x220` around ROM `0xBE744/0xBE750/0xBFACC`, including calls into `0x80064C18`. Reusing it in production could therefore alter unrelated stock audio.
+
+Production instead uses the statically isolated chain:
+
+`descriptor 0x20A -> event 0x1A6 -> patch 579 -> subpatch 422 -> wave 412`.
+
+Clean-ROM analysis found no direct descriptor/event immediates for `0x20A/0x1A6`, and the event -> patch -> subpatch -> waveform ownership is unique. The selected donor event/subpatch/wave/predictor metadata is rebased into that chain. The selected ADPCM sample owns conditional high-ROM reservation `[0xF6BDF0,0xF6D810)`, immediately after the production Toasty sample region. **v06 Runtime-confirms this production carrier/allocation composition:** seed `TEMPLE-PROD-CARRIER` selected Audio 1 / Friendship and the user observed the expected **“Friendship!” followed by the untouched stock Scorpion laugh**. Proof ROM SHA-256 is `9460d923b9c1cecf2d481e36719f7249231944eeecc7e2c300dd95a4809085c6`; builder SHA-256 is `d529e212f667ebd6f4724b03d7cb828e726b4f9c9d4ab897856db46ae5f6a102`. This is bounded confirmation of the production carrier and one Audio-1 pool member, not exhaustive runtime coverage of all 11 approved clips.
+
+The attempted MKT retail `TS_SK_ITS_OFFICIAL` / `skyousuk` lookup is excluded from the pool. User audition showed the retail waveform reached through that surviving identity is an unrelated short impact-like sound. Older Midway sources show the complete phrase was assembled from separate `skofficl` then `skyousuk` material; recovering that phrase remains optional future pool work.
 
 ## Music
 

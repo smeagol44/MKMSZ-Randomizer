@@ -181,3 +181,21 @@ It reads the compact index, adds 2 for indices `6` and `7`, and writes nonzero b
 ### Compact rainbow loader sites
 
 The Runtime-confirmed compact-tail v01 architecture edits all 15 stock Sub-Zero file-`0x87` allocation/load pairs. Each allocation delay changes from `addu a0,v0,zero` to `addiu a0,v0,0x2000`; each raw-loader JAL is redirected to the production rainbow wrapper. The paired allocation ROM sites are `0xDF40, 0xE384, 0xEF00, 0xF628, 0xFEB0, 0x105B0, 0x106B0, 0x10DBC, 0x116DC, 0x117DC, 0x11EA4, 0x125B4, 0x12F70, 0x13068, 0x24768`; paired loader JAL sites are `0xDF50, 0xE394, 0xEF10, 0xF638, 0xFEC0, 0x105C0, 0x106C0, 0x10DCC, 0x116EC, 0x117EC, 0x11EB4, 0x125C4, 0x12F80, 0x13078, 0x24778`. File-table entry `0x92` at ROM `0xA56E8` becomes the optional raw rainbow-bank transport; ROM `0xF20000..0xF21FFF` stores only the 8 KiB bank. The wrapper starts at runtime `0x801B0880` / ROM `0xF69060`, inside the guarded controls→Toasty gap.
+
+
+## Temple intro seeded audio
+
+| Address | Ownership / edit | Evidence / guard |
+|---|---|---|
+| ROM `0x000CB274` / VA `0x802EDB94` | Temple Audio-1 stock descriptor-A immediate | Stock `24040041`; changed to `li a0,0x20A` only when seed selects Audio 1 |
+| ROM `0x000CB280` / VA `0x802EDBA0` | Temple Audio-1 stock descriptor-B immediate | Stock `24040042`; changed to `li a0,0x20A` only when seed selects Audio 1 |
+| ROM `0x000CB2F8` / VA `0x802EDC18` | Temple Audio-2 stock laugh descriptor immediate | Stock `24040043`; changed to `li a0,0x20A` only when seed selects Audio 2 |
+| ROM `0x000A3794` | Production donor-audio carrier descriptor `0x20A -> event 0x1A6` | Stock bytes `01A6007F000000000000`; descriptor itself remains unchanged. v06 Runtime-confirms the carrier on seed `TEMPLE-PROD-CARRIER` / Audio 1 / Friendship. |
+| ROM `0x0097C7D8` | Carrier event-`0x1A6` 32-byte track | Guarded stock track; donor timing/control track is copied here with initial patch ID rebased to patch 579 |
+| ROM `0x009485C4` | Carrier patch 579 | Stock `010001A6`; retained, uniquely owns subpatch 422 |
+| ROM `0x0094A860` | Carrier subpatch 422 | Guarded; selected donor subpatch copied with waveform ID rebased to 412 |
+| ROM `0x0094E7D8` | Carrier waveform 412 | Guarded; selected donor waveform copied with TBL-relative sample pointer rebased to production Temple sample storage |
+| ROM `0x0096AD70..0x0096AE77` | Carrier predictor 412 | Guarded by stock SHA-256; replaced by selected donor predictor |
+| ROM `0x00F6BDF0..0x00F6D80F` | Conditional selected Temple donor sample | Production-owned only when valid MKT donor is supplied; clean region must be `FF` and stock file-table overlap is rejected |
+
+The earlier proof carrier descriptor `0x220` / event `0x1B8` is **not a production edit site**. Whole-ROM audit found live stock callers for descriptor `0x220`; it remains proof history only.

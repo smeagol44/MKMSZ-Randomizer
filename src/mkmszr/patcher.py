@@ -21,6 +21,8 @@ from .patches import (
     SafeStageSelectorPatch,
     SafeStageSelectSkipAutoSavePatch,
     SubZeroPalettePatch,
+    TempleIntroAudioAssets,
+    TempleIntroAudioPatch,
     TitleBrandingPatch,
     ToastyAssets,
     ToastyProductionCompositionPatch,
@@ -56,6 +58,7 @@ def build_pipeline(
     config: RandomizerConfig,
     *,
     toasty_assets: ToastyAssets | None = None,
+    temple_intro_audio_assets: TempleIntroAudioAssets | None = None,
     toasty_probability_per_thousand: int = 80,
 ) -> PatchPipeline:
     settings_state = 0
@@ -108,6 +111,8 @@ def build_pipeline(
                 probability_per_thousand=toasty_probability_per_thousand,
             )
         )
+    if temple_intro_audio_assets is not None:
+        patches.append(TempleIntroAudioPatch(temple_intro_audio_assets))
     patches.append(
         ControlsProductionPatch(
             toasty_size=(
@@ -140,12 +145,14 @@ def patch_bytes(
     config: RandomizerConfig,
     *,
     toasty_assets: ToastyAssets | None = None,
+    temple_intro_audio_assets: TempleIntroAudioAssets | None = None,
     toasty_probability_per_thousand: int = 80,
 ) -> BuildResult:
     rom = RomImage.from_bytes(source, require_clean=True)
     results = build_pipeline(
         config,
         toasty_assets=toasty_assets,
+        temple_intro_audio_assets=temple_intro_audio_assets,
         toasty_probability_per_thousand=toasty_probability_per_thousand,
     ).apply(rom, PatchContext(seed=config.seed))
     required_count, required_xp = resolve_required_powers(
@@ -170,6 +177,7 @@ def patch_file(
     config: RandomizerConfig,
     *,
     toasty_assets: ToastyAssets | None = None,
+    temple_intro_audio_assets: TempleIntroAudioAssets | None = None,
     toasty_probability_per_thousand: int = 80,
 ) -> BuildResult:
     if source.resolve() == output.resolve():
@@ -180,6 +188,7 @@ def patch_file(
         source.read_bytes(),
         config,
         toasty_assets=toasty_assets,
+        temple_intro_audio_assets=temple_intro_audio_assets,
         toasty_probability_per_thousand=toasty_probability_per_thousand,
     )
     output.write_bytes(result.data)

@@ -6,6 +6,7 @@ import hashlib
 import zlib
 
 from ..errors import RomValidationError
+from ..patches.temple_intro_audio import MktAudioClip, TempleIntroAudioAssets
 from ..patches.toasty_constants import ToastyAssets
 
 MKT_N64_REV2_SHA256 = "30efdbe266dda8b8b12652a8d0a71b3b4bfec88bdf11ed12c219f5c4e1eaf7bb"
@@ -29,6 +30,122 @@ DONOR_WAVE_77_OFF = 0x2F60
 DONOR_PRED_77_OFF = 0x9EB0
 DONOR_SAMPLE_ROM = 0x00B0FBFC
 DONOR_SAMPLE_LEN = 0x816
+
+MKT_SUBPATCH_BASE = 0x06E0
+MKT_WAVE_BASE = 0x2828
+MKT_PRED_BASE = 0x4F48
+MKT_TBL_BASE = 0x00AB4370
+MKT_SSEQ_DEF_COMP_ROM = 0x00AA7090
+MKT_SSEQ_DEF_COMP_SIZE = 0x07A6
+MKT_SSEQ_DEF_RAW_SIZE = 0x2730
+MKT_SSEQ_TRACK_BASE = 0x00AA7836
+EXPECTED_SSEQ_DEF_SHA256 = (
+    "6cdfcf946ba78f492aa731ee542aeca6faf34d9c61d51871565f23f87e59ef7e"
+)
+
+# key -> event, patch, subpatch, wave, event-track SHA, subpatch SHA,
+# wave SHA, predictor SHA, sample length, sample SHA.
+TEMPLE_AUDIO_PROFILES = {
+    "friendship": (
+        405, 225, 249, 251,
+        "3de5cfba024da0ddbb6e95c948eea0cd2d3920e148d7d3663ce9efffa09c6480",
+        "27906a1942204cef30361cc28c42b67e549d4c56364183b72eaaf8f3d1be5531",
+        "6f64339492d1fcf286ecd0495a8a6e1b41c6f6bd8acac7c662c9fc205abfd04f",
+        "992a9fd15fe392997db566f99a757d3defbe6bc2e422952fca3299c23e60cc37",
+        0x0D14,
+        "101e359820a2f06b3d6a317dc4806023ea1beaa404ecbab3721af21c53d7b8e3",
+    ),
+    "choose-your-destiny": (
+        427, 365, 379, 347,
+        "c8c466ffbb4ed610e6dcc0194cc9cb3345e977654392a2cef07112316e5685be",
+        "e699567f1a494661bd81da34c561022da9d3e81e1104289140ee62c296dcbe05",
+        "7a1b793f0e776d294a42c66f5cd768f718d6bde0c0ac1ebd597c0f02c7f38437",
+        "c112e57369c1fb98f887287d111e8d06d9588a8a81a82ee3c79bb6f8fa09d813",
+        0x1950,
+        "9c04944d86d207643ee3db1a77ba5538ab4f4c94f250b8236deecb12b514702c",
+    ),
+    "excellent": (
+        388, 255, 269, 264,
+        "c4285638a2a1004570e9099b86e960791f7f8518ca1e7f0c24ef30bd191f5c96",
+        "8a16a6fcd362caf67237f375981c1a72ed12808c639164483e3d59fb12ca73e4",
+        "74bc21a7612f13ce023bee18902124ecee443d58d43da600a512ac717191487f",
+        "6a28c578aef6e66f4ce4e5d55e787b50f284edd06f65d130ed32f506bb5a5307",
+        0x0F54,
+        "f20456f2345eae5d419c5762f4addf1f9a24c714042b5f103920a73fbc1f77f8",
+    ),
+    "superb": (
+        354, 231, 254, 255,
+        "9c6fabd4b085686821f614fb077a4eada91f3cc0b537a2b76424733c162ecdc0",
+        "8cbdc9591b1d8faead44a35560d3e2407fefebf2d3bdf0357e9a514f352e1504",
+        "ae29375017e9f255226382e3b5d9e997d58c4856ec79ed57cf7c274556338f79",
+        "c81fb461e50946207d5bd419e1f43e14660573980c7aa298d3d7700d3d4e4cd8",
+        0x0C72,
+        "9cad9660994441b5be12fda50a1a1aafa34cc9c85c921cd3f8003cbe3ed5b4f0",
+    ),
+    "well-done": (
+        355, 232, 255, 256,
+        "866faf2d2bfa02cd493bb751831d546ede3798ab24414756af7c58e92cdb2be5",
+        "330e7e7e15111a4a63d5a0e25aaf08a79448f2c2c6fe50f761b956fcd78d16c6",
+        "c591a881bb69c2ad32f3598675b3346b0f78f3ce462483d73b44bdd5865c4f5e",
+        "4853c7f52e719a9ef6e53da894ea8569e4c06334a422b354efcc0d250916473c",
+        0x0D92,
+        "ce11d623a1191c72f42c8ebc00cdaead57b423ebbae319b30c77c6aed36fc601",
+    ),
+    "liu-bike": (
+        330, 86, 132, 177,
+        "a5217b21ea12a31208320d6d7283abef8d5702b8287aed8046310c58d124db55",
+        "45cbe8b97881926b1a3b628cdf253d667792e47377614496b46782fb4c88499d",
+        "4fa0e32fbf6afb0d4da82c4e68cbf92a0f3cb279680b7c3ff26d0fb9b2b620b9",
+        "5ee6f1c2f8ebb06d8d459a63f0047c50d41c0e6979ed648305f31efffd8f8460",
+        0x1116,
+        "362237e15956202c35a318f05723c512406ada9ba1ef0e6b04722faabd181d38",
+    ),
+    "raiden-bbb": (
+        508, 416, 23, 391,
+        "9177e881c80322d2fd8967168d41f3a59ff4a0fb79aae18745ec08438803654e",
+        "f208d7aa26672b607300ffb80ef3a3c6ce02f3447a72d871f4f7f0c6897bd91b",
+        "3c8325251322630efa97257909bcc43fa900b70891e34f42ef7d099e1e1107b2",
+        "7c008693b7c469f666ef149a133fd059b1c753db4c1e6ddd950d3e3f627f3db3",
+        0x1104,
+        "c7d0caf60560505dc41f6f44cd727aa414a22ef840cf4c28f387f1307c8dddcc",
+    ),
+    "raiden-sss": (
+        509, 417, 24, 392,
+        "bb08d76054f07a17e4776a49119aa79d0f4cf151a175badde3325a1ad6ef48d9",
+        "98fd0b4a589ebae0c0921da90d8ff4337874edc40b8a27efd4dadfa028f6b222",
+        "5c5b7e8fec5b1034a4c0c4d6c30fc3aebaf4296d020e470aa163892b1b6ace65",
+        "679a9cbe0237822b48bf20b0983501f4a4a924f51bb87a00582a2782245c508b",
+        0x1248,
+        "50ba8bc5d9946c9bef274aa4cb621a113b1b23d8a614d3530a313cc88291656f",
+    ),
+    "raiden-ttt": (
+        510, 418, 25, 393,
+        "c24f385593e04821ee3d844d9826a968fa09156bec92b2639d3b3e54637a49bb",
+        "cb0ce1b2e378553f930e355d09f0bcd23c6ca09cd788708a193a3968d3e4f6ad",
+        "f59cd497e7921aea115560c3cf3df53b278d8dcd6dabd90d9bf36ba13c851942",
+        "7a17def7a4be8cf6ce8c689820347643fea8a92217a2137bedddfad31a41539a",
+        0x0EB2,
+        "c34d374e552047434438dfd850e4d9a652b7769efde58bdf098844808d1c0d21",
+    ),
+    "robot-run": (
+        35, 89, 134, 157,
+        "5b39ce3dac53f0f876c6c248336ed2af60f3135a730bbb799030fe401f894c11",
+        "e9652a0d1268c3d8594f1fb3e3c7b92d383dc84338753979ca1da6df01d6f80a",
+        "ae62a3052348ae42b36e8398521d08a40a4a37768146aba283ab59d0bed0184a",
+        "fe254fd13384082246f533f29013fc05076cb62af9f6908b3665cef483972030",
+        0x0BE2,
+        "2191325d4a58f987929ec2cdd83e95b1937ec07d42cea0bbb484fa03c15cec59",
+    ),
+    "shao-laugh": (
+        411, 250, 264, 263,
+        "82801af41efce754e7ec82e780311afb7c43a816758a2bb1d4a975c94791026c",
+        "36b5936f3f55c68f97167182b074d89f7c2ba5186edc74ba1fcbf8564bfe1458",
+        "ac076df27ec6ff894101ea6774feef2aee0828efafaaa4b9902bfd449b26c532",
+        "fbb9562b89e022549c3153543e762becde5530f27b1ab02c1167a158302a3c64",
+        0x1A16,
+        "477070e6cbcc7c37ae3a96496baf18c0cc556331f76e78f6bc0ce2a8b62af234",
+    ),
+}
 
 EXPECTED_DICT_SHA256 = "dd467f1b389d8f1e83761062638748e4aec0e1f856900b8a24a299c07ff59b59"
 EXPECTED_IMAGE_STREAM_SHA256 = "f78135df4dc0e8d7c1fe42cc3f3a921d162a3d6751a357390b64370e67736204"
@@ -233,3 +350,105 @@ def extract_toasty_assets(source: bytes) -> ToastyAssets:
         audio_predictor=predictor,
         audio_sample=sample,
     )
+
+
+def extract_temple_intro_audio_assets(source: bytes) -> TempleIntroAudioAssets:
+    """Extract only the approved seeded Temple-intro audio pool from MKT Rev. 2."""
+
+    validate_mkt_n64_rev2(source)
+    ctl = zlib.decompress(
+        source[MKT_CTL_COMP_ROM : MKT_CTL_COMP_ROM + MKT_CTL_COMP_SIZE],
+        -15,
+    )
+    if len(ctl) != MKT_CTL_RAW_SIZE or _sha256(ctl) != EXPECTED_CTL_SHA256:
+        raise RomValidationError("MKT Temple audio control-bank guard failed")
+
+    defs = zlib.decompress(
+        source[
+            MKT_SSEQ_DEF_COMP_ROM : MKT_SSEQ_DEF_COMP_ROM + MKT_SSEQ_DEF_COMP_SIZE
+        ],
+        -15,
+    )
+    if len(defs) != MKT_SSEQ_DEF_RAW_SIZE or _sha256(defs) != EXPECTED_SSEQ_DEF_SHA256:
+        raise RomValidationError("MKT Temple audio SSEQ-definition guard failed")
+
+    clips: list[MktAudioClip] = []
+    for key, profile in TEMPLE_AUDIO_PROFILES.items():
+        (
+            event_id,
+            expected_patch,
+            expected_subpatch,
+            expected_wave,
+            event_sha,
+            subpatch_sha,
+            wave_sha,
+            predictor_sha,
+            expected_sample_len,
+            sample_sha,
+        ) = profile
+
+        event_def = defs[event_id * 16 : (event_id + 1) * 16]
+        event_len = int.from_bytes(event_def[4:8], "big")
+        event_off = int.from_bytes(event_def[8:12], "big")
+        event_track = zlib.decompress(
+            source[MKT_SSEQ_TRACK_BASE + event_off :],
+            -15,
+        )[:event_len]
+        if _sha256(event_track) != event_sha:
+            raise RomValidationError(f"MKT Temple audio event guard failed: {key}")
+
+        patch_id = int.from_bytes(event_track[0:4], "big")
+        if patch_id != expected_patch:
+            raise RomValidationError(f"MKT Temple audio patch ID changed: {key}")
+        patch = ctl[patch_id * 4 : patch_id * 4 + 4]
+        subpatch_id = int.from_bytes(patch[2:4], "big")
+        if subpatch_id != expected_subpatch:
+            raise RomValidationError(f"MKT Temple audio subpatch ID changed: {key}")
+
+        subpatch = ctl[
+            MKT_SUBPATCH_BASE + subpatch_id * 20 :
+            MKT_SUBPATCH_BASE + (subpatch_id + 1) * 20
+        ]
+        if _sha256(subpatch) != subpatch_sha:
+            raise RomValidationError(f"MKT Temple audio subpatch guard failed: {key}")
+        wave_id = int.from_bytes(subpatch[10:12], "big")
+        if wave_id != expected_wave:
+            raise RomValidationError(f"MKT Temple audio waveform ID changed: {key}")
+
+        wave = ctl[
+            MKT_WAVE_BASE + wave_id * 24 :
+            MKT_WAVE_BASE + (wave_id + 1) * 24
+        ]
+        if _sha256(wave) != wave_sha:
+            raise RomValidationError(f"MKT Temple audio waveform guard failed: {key}")
+        predictor = ctl[
+            MKT_PRED_BASE + wave_id * 264 :
+            MKT_PRED_BASE + (wave_id + 1) * 264
+        ]
+        if _sha256(predictor) != predictor_sha:
+            raise RomValidationError(f"MKT Temple audio predictor guard failed: {key}")
+
+        sample_start = MKT_TBL_BASE + int.from_bytes(wave[0:4], "big")
+        sample_len = int.from_bytes(wave[4:8], "big")
+        if sample_len != expected_sample_len:
+            raise RomValidationError(f"MKT Temple audio sample length changed: {key}")
+        sample = source[sample_start : sample_start + sample_len]
+        if _sha256(sample) != sample_sha:
+            raise RomValidationError(f"MKT Temple audio sample guard failed: {key}")
+
+        clips.append(
+            MktAudioClip(
+                key=key,
+                event_id=event_id,
+                patch_id=patch_id,
+                subpatch_id=subpatch_id,
+                wave_id=wave_id,
+                event_track=event_track,
+                subpatch=subpatch,
+                wave=wave,
+                predictor=predictor,
+                sample=sample,
+            )
+        )
+
+    return TempleIntroAudioAssets(tuple(clips))

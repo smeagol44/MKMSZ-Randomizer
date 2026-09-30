@@ -30,7 +30,7 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 
 | Option | Behavior |
 |---|---|
-| Seed | Drives stage-local pickup layouts, boot phrase, and seeded palette through isolated namespaces |
+| Seed | Drives stage-local pickup layouts, boot phrase, seeded palette, and donor-backed Temple intro audio through isolated namespaces |
 | Outfit `vanilla` | Leaves source clothing TLUT and the accepted icy-blue title palette unchanged |
 | Presets / red / green | Applies fixed hue behavior |
 | `rainbow` | Runtime-confirmed 64-phase clothing hue cycle; fixed five-hue title word/edition treatment (the title itself does not animate) |
@@ -42,7 +42,7 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 
 Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.
 
-The shared patch core includes donor-backed production features without embedding donor game data in the repository or deployed site. When the optional MKT USA Rev. 2 N64 donor is supplied, the browser derives the currently supported donor assets locally and passes them into the shared patch core. The developer CLI exposes the same optional path through `--mkt-rom`; without a donor, the normal MKMSZR build remains valid.
+The shared patch core includes donor-backed production features without embedding donor game data in the repository or deployed site. When the optional MKT USA Rev. 2 N64 donor is supplied, the browser derives the currently supported donor assets locally and passes them into the shared patch core. This enables both production Toasty and the seeded Temple-intro audio replacement. Temple audio uses its own deterministic namespace, replaces exactly one of the two intro audio positions, and materializes only the selected donor sample. The developer CLI exposes the same optional path through `--mkt-rom`; without a donor, both donor-backed paths are skipped and the normal MKMSZR build remains valid.
 
 ## Deployment
 
