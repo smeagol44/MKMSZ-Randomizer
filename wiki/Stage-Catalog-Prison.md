@@ -161,6 +161,14 @@
 - **Key-checkpoint diagnostic:** v04/v05 relocate the full seven-word L1 identity slice `+0x10..+0x2B` onto first Herbs record `0xCA0F0`, not merely the callback. The visible `CHECK POINT` event follows that relocated identity. v04 suppressing the L1 selector write and v05 suppressing the acquired-bit store both leave the banner intact; no key-only banner seam is yet proven.
 - **v06-v08 checkpoint closure:** v06 Runtime-confirms that suppressing the three direct generic-key `0x80062D60` spawns removes the visible checkpoint banner on the relocated L1 route while key state still commits. v07's late player-only respawn substitution executes (`TRACE KAR`) but regresses the door. Static scene-record tracing then resolves the first configured door group to indices `0xFB/0xFC` and proves bit 0 of `0x802C0D54` is the enable credential. v08 preserves that bit and inventory award, suppresses the banner spawns, and NOPs only the L1 selector-7 store at ROM `0x39454`: Runtime shows `TRACE KA`, `G4 S2 B1`, the Level-1 door opens, and death returns to the natural stage-start/no-checkpoint spawn. This is the accepted bounded Prison-L1 proof; generalization to other keys/crystals remains Pending.
 
+### Enemy paging and capture set-piece dependency
+
+- **Runtime-confirmed negative control:** foreign phase-family proof v01 replaced both ordinary PRIS-GRUNT2 combat groups with FAST MONKs through the second energy fence, then hard-hung when entering the stock capture set-piece.
+- **Static-confirmed owner:** Prison overlay routine `0x802F0754` / ROM `0xC8594` directly consumes file-`0x8F` through slot `0x80112008` to construct the scripted staff-grunt presentation. The capture actors are not ordinary stream records.
+- The native `0x8F+0x8E` phase therefore has two dependency classes: ordinary `0x15` combat needs the fighter family; the capture script specifically still needs `0x8F`.
+- **Runtime-confirmed corrected proof v02:** keep `0x8F` resident and substitute only `0x8E -> 0x20 FAST MONK` for ordinary combat. The full FAST MONK → GRUNT1 → FAST MONK/fence → scripted capture → final PRIS route completed successfully.
+- Planner implication: Prison paging units must carry both **randomizable ordinary-family requirements** and **fixed scripted auxiliary requirements**.
+
 ## Related owners
 
 - [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, and eight-stage index.
