@@ -8,7 +8,7 @@
 
 MKMSZR 1.0 requires one deterministic logical ordinary-item pool across the eight main stages, followed by a destination-stage materialization pass and a whole-run solvability check. The logical assignment and the physical representation are deliberately separate concerns.
 
-Cross-stage feasibility is **Runtime-confirmed in bounded proofs**, including extension selectors, embedded foreign resources, external-to-embedded conversion, and five simultaneous imported visuals in Prison. The generalized pure resource planner exists but remains disconnected from the normal browser/CLI patch pipeline. Fortress composed stress validation and destination-safe key/crystal award handling remain Pending, as do the final global shuffle/solver and production integration gate.
+Cross-stage feasibility is **Runtime-confirmed in bounded proofs**, including extension selectors, embedded foreign resources, external-to-embedded conversion, and five simultaneous imported visuals in Prison. The generalized pure resource planner exists but remains disconnected from the normal browser/CLI patch pipeline. Fortress five-import composed stress validation is now Runtime-confirmed on a bounded route. Destination-safe arbitrary boss-defeat reward handling remains Pending, as do the final global shuffle/solver and production integration gate.
 
 The normative 1.0 acceptance requirements remain owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). This page owns the technical mechanism, evidence, limits, and unresolved design questions.
 
@@ -390,9 +390,11 @@ Prison's stock resource file expanded from `0x48F0` to `0x7CB4`. Five extension 
 
 Manual testing confirmed all five imported models and expected awards, plus the untouched Herbs control. This is strong bounded evidence that multiple deduplicated/imported resource families can coexist in one destination stage.
 
-### Fortress — Pending
+### Fortress — Runtime-confirmed bounded proof
 
-The same proof ROM contains the equivalent five-import Fortress construction, but that half has not been manually runtime-tested. Its static presence and planner construction must **not** be described as Runtime-confirmed.
+The Fortress five-import stress construction is now manually Runtime-confirmed on the bounded 2026-09-30 route. The first five stock Herbs locations were materialized as Potion, Urn of Vitality, Formula, Eye, and Shield, while a sixth Herbs record remained untouched as a vanilla control. Fortress loaded normally; all five imported visuals rendered correctly and awarded the expected items; the control Herbs remained normal; and no rendering, audio, stability, or stage-progression regression was observed on the tested route.
+
+This closes the pending Fortress destination-resource stress/capacity check for this five-import composition. It does **not** yet close arbitrary boss-defeat reward materialization, production allocation ownership, or exhaustive Fortress capacity.
 
 ## Early Fire foreign-key proof
 
