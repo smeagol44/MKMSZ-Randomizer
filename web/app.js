@@ -14,6 +14,7 @@ const specialsModern = document.querySelector("#specialsModern");
 const jumpButton = document.querySelector("#jumpButton");
 const runAuto = document.querySelector("#runAuto");
 const shufflePowerProgression = document.querySelector("#shufflePowerProgression");
+const enemyRandomization = document.querySelector("#enemyRandomization");
 const powersAsPickups = document.querySelector("#powersAsPickups");
 const requiredPowersMode = document.querySelector("#requiredPowersMode");
 const customRequiredPowersField = document.querySelector("#customRequiredPowersField");
@@ -168,6 +169,7 @@ async function patchRom() {
     pyodide.globals.set("web_jump_button", jumpButton.checked);
     pyodide.globals.set("web_run_auto", runAuto.checked);
     pyodide.globals.set("web_shuffle_power_progression", shufflePowerProgression.checked);
+    pyodide.globals.set("web_enemy_randomization", enemyRandomization.checked);
     pyodide.globals.set("web_powers_as_pickups", powersAsPickups.checked);
     pyodide.globals.set("web_required_powers_mode", requiredPowersMode.value);
     pyodide.globals.set("web_custom_required_powers", requiredPowersMode.value === "custom" ? customPowerCount : 0);
@@ -190,6 +192,7 @@ _config = RandomizerConfig(
     outfit=OutfitConfig(mode=_mode, rgb=_rgb if _mode == "rgb" else None),
     edition_name=_edition_name,
     shuffle_power_progression=bool(web_shuffle_power_progression),
+    enemy_randomization=bool(web_enemy_randomization),
     powers_as_pickups=bool(web_powers_as_pickups),
     required_powers_mode=str(web_required_powers_mode),
     custom_required_powers=int(web_custom_required_powers) if str(web_required_powers_mode) == "custom" else None,
@@ -220,6 +223,7 @@ web_patch_result = {
     "sha256": _result.output_sha256,
     "required_powers": _result.required_powers_count,
     "required_xp": _result.required_powers_xp,
+    "enemy_randomization": bool(web_enemy_randomization),
 }
 `);
 

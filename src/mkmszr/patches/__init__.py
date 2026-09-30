@@ -3,6 +3,7 @@
 from .arena import ArenaReservationPatch
 from .boot_branding import BootBrandingPatch
 from .box_indicator import BoxIndicatorPatch
+from .enemy_randomization import EnemyRandomizationPatch
 from .flow_bypass import BootLogoBypassPatch, SafeStageSelectSkipAutoSavePatch
 from .game_settings_turn import GameSettingsTurnPatch
 from .inventory_boxes import FourBoxInventoryPatch
@@ -37,6 +38,7 @@ __all__ = [
     "BootBrandingPatch",
     "BootLogoBypassPatch",
     "BoxIndicatorPatch",
+    "EnemyRandomizationPatch",
     "FourBoxInventoryPatch",
     "GameSettingsTurnPatch",
     "ManagerPersistenceFirePatch",

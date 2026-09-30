@@ -33,6 +33,7 @@ class RandomizerConfig:
     edition_name: str = "SUB-ZERO"
     game_settings: GameSettingsConfig = field(default_factory=GameSettingsConfig)
     shuffle_power_progression: bool = False
+    enemy_randomization: bool = False
     powers_as_pickups: bool = True
     required_powers_mode: Literal["vanilla", "custom", "seed"] = "vanilla"
     custom_required_powers: int | None = None

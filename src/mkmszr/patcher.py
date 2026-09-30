@@ -10,6 +10,7 @@ from .patches import (
     BootBrandingPatch,
     BootLogoBypassPatch,
     BoxIndicatorPatch,
+    EnemyRandomizationPatch,
     FourBoxInventoryPatch,
     GameSettingsTurnPatch,
     NativePayloadPatch,
@@ -137,6 +138,8 @@ def build_pipeline(
                 config.required_powers_mode, config.custom_required_powers
             )
         )
+    if config.enemy_randomization:
+        patches.append(EnemyRandomizationPatch())
     return PatchPipeline(patches)
 
 

@@ -167,11 +167,17 @@ def apply_enemy_plan(rom: RomImage, plan: EnemyPlan) -> tuple[str, ...]:
     )
 
 
-class EnemyRandomizationProofPatch:
-    name = "enemy-randomization-proof-v1"
+class EnemyRandomizationPatch:
+    """Production-facing guarded enemy planner/materializer."""
+
+    name = "enemy-randomization"
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
         if not context.seed:
-            raise PatchError("enemy randomization proof requires a seed")
+            raise PatchError("enemy randomization requires a seed")
         plan = build_materializable_enemy_plan(context.seed)
         return apply_enemy_plan(rom, plan)
+
+
+# Compatibility alias for older proof tooling/imports.
+EnemyRandomizationProofPatch = EnemyRandomizationPatch
