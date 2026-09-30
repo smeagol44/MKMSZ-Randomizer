@@ -74,6 +74,16 @@ The early Fire foreign-key proof used a dedicated native callback at VA `0x8008E
 
 A reusable destination-safe path for the full key/crystal set remains **Pending** and is a gate before the global materializer can enter the normal browser/CLI pipeline.
 
+### Foreign-key inventory-mask round trip v01 — Runtime-confirmed with acquisition-boundary gap (2026-09-30)
+
+A bounded Fire -> Wind Circle composition used the established Fire destination materialization route together with production pickup persistence and four-box stage-local key masking. The foreign Wind Circle kept true inventory ID `0x0E` in authoritative backing storage. Outside Wind, a box switch or stage reconstruction exposed it as inert Glass `0x08`; entering Wind exposed the real Circle again; leaving Wind re-applied Glass. This confirms the backing-ID / stage-local LIVE-mask round trip on the tested route.
+
+One defect is isolated: **immediately after acquiring the foreign Circle in Fire, before any box switch or stage reconstruction, LIVE still displayed the real Circle rather than Glass.** The next reconstruction boundary corrected it. Therefore the current masker is correct at reconstruction boundaries but does not yet run at the ordinary-pickup acquisition boundary.
+
+The next bounded proof should reuse the existing four-box contract immediately after an ordinary pickup award: filtered LIVE -> active backing box, then active backing box -> stage-masked LIVE. This must preserve placeholder slots and the true backing ID while making a newly acquired foreign key appear as Glass in the same pickup lifecycle.
+
+Key lifecycle correction: native key items are **used, not consumed**. Ordinary key use does not remove the key from inventory. Stage-completion cleanup/removal is a separate lifecycle concern and remains Pending.
+
 #### Key-triggered respawn relocation: static trace (2026-09-27)
 
 The clean USA Rev. 0 ROM (SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`) separates inventory award from a stage-state write in generic pickup callback `0x80038770` (ROM `0x39370`). On `a0=0`, its stage-4 branch calls `0x80075448(s0+0x1A)` and writes `0x802C18F8=7` for `s0=0` or `8` for `s0=1` at VA `0x80038854` / ROM `0x39454` and VA `0x80038878` / ROM `0x39478`. Its stage-3 `s0=0` branch writes `0x802C18F8=2` at VA `0x800387F8` / ROM `0x393F8`. Other stage mappings award `s0+0x11` or `s0+0x20` through `0x80075448`; callback sound is `0x80064C18(0x3B,0,0x40)`. The three `0x8002830C(0x15,0x80062D60)` spawns are separate. Checkpoint-suppression v01/v02 NOPed those spawns and still relocated respawn at runtime: **Rejected / failed** as a suppression seam. Do not patch `0x80062D60` globally.
