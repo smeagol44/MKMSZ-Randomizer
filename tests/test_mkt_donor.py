@@ -7,6 +7,7 @@ from mkmszr.donors.mkt_n64 import (
     CI4_PALETTE_SOURCES,
     MKT_N64_REV2_SHA256,
     MKT_N64_REV2_SIZE,
+    TEMPLE_AUDIO_PROFILES,
     _build_visual_assets,
     _decode_dict64_final,
     validate_mkt_n64_rev2,
@@ -56,3 +57,19 @@ def test_visual_translation_uses_confirmed_ci4_palette_order() -> None:
          CI4_INDEX_MAP[6] << 4)
     )
     assert hashlib.sha256(b"".join(slices)).hexdigest()
+
+
+def test_temple_audio_donor_profiles_match_approved_pools() -> None:
+    assert tuple(TEMPLE_AUDIO_PROFILES) == (
+        "friendship",
+        "choose-your-destiny",
+        "excellent",
+        "superb",
+        "well-done",
+        "liu-bike",
+        "raiden-bbb",
+        "raiden-sss",
+        "raiden-ttt",
+        "robot-run",
+        "shao-laugh",
+    )
