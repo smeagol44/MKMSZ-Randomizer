@@ -444,3 +444,30 @@ This yields resident fighter payload `0x20 + 0x8D = 0x2B4D0`. Against the user-m
 
 This establishes bounded Water portability for the self-contained Fire FAST MONK family using raw stock file `0x20` in the tested all-`0x0A` ordinary roster. It does **not** establish arbitrary mixed rosters, HULK MONK `0x09`, all fighter families, or worst-case transient pressure.
 
+## Water × raw HULK MONK / type `0x09` proof v01 (2026-09-30)
+
+The next family-expansion proof is **Water × `0x09 HULK MONK`**, chosen after the full armed PRIS family and FAST MONK had bounded cross-stage runtime coverage.
+
+**Static-confirmed dependency composition:**
+
+- type `0x09` primary fighter file: stock global file `0x25`, size `0x2C210`;
+- constructor resource slot: `0x801AE578`;
+- descriptor offset: `0x2C084`;
+- normal terminal route is fighter-file-internal through the same non-selector terminal family already identified for HULK/FAST MONK; no foreign Water selector-10 bundle is required for the normal path;
+- no secondary/base fighter file is listed for type `0x09` in the constructor-resource table.
+
+A conservative FAST-MONK-style proof that retained Water's unused second native fighter allocation would use `0x25 + 0x8D = 0x36580`, which exceeds the user-measured Water replacement ceiling `0x34520` by `0x2060`. Therefore this proof instead replaces Water's two-fighter residency with a **single** raw stock `0x25` load.
+
+The Water fighter loader consists of two back-to-back `size -> allocate -> store slot -> raw load` transactions. v01 redirects only the first transaction from file `0x8C` to file `0x25` and stores the allocator result at exact HULK MONK slot `0x801AE578`; the entire second native `0x8D` transaction at ROM `0xB58D8..0xB58F8` is NOPed. Code immediately following the fighter-loader block is left stock.
+
+Resident fighter payload is therefore **`0x2C210`**, leaving **`0x8310` = 33,552 B = 32.77 KiB** below the observed Water replacement ceiling before transient pressure.
+
+**Implementation/static-confirmed; runtime Pending:** `MKMSZR_hulk-monk_water-proof_v01.z64`, SHA-256 `90e6ae1f97934d42ededeb0b861caa577bc86870f1df7b27be7dc49b5f6ed4c7`, CRC1/CRC2 `0x6CBFAD5E / 0x945B4B76`.
+
+The proof starts from the clean USA Rev. 0 ROM, includes current Safe Stage Select, changes all nine ordinary Water spawn records to type `0x09`, leaves the Water boss/special path untouched, and leaves stock file `0x25` bytes/table entry unchanged. No compaction is used. No emulator automation or runtime execution was performed.
+
+Manual validation target:
+
+`spawn -> normal HULK MONK AI/movement -> ordinary attacks -> take/hit reactions -> kill -> full death/despawn -> continue through Water and encounter additional HULK MONKs`
+
+A success would establish bounded Water portability for the second self-contained Fire ordinary family and strengthen the planner case for a simple one-file resident family class. It would not establish arbitrary mixed rosters or worst-case transient pressure.
