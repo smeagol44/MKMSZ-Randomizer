@@ -8,6 +8,8 @@ MKMSZR currently randomizes the 84 ordinary pickup records **within each stage**
 
 This is a real production system, but it is intentionally an **interim 1.0 mode**. The final 1.0 design requires one cross-stage logical pool plus a destination resource materializer and whole-run solvability verifier. Those are separate systems because a resource selector that is valid in one stage is not automatically meaningful in another.
 
+**Known Wind ownership risk (Static-confirmed, 2026-09-30):** the current stage-local implementation moves the complete `+0x10..+0x2B` tuple, so Wind callback `0x802F2CB4` and its parameter move with the shuffled reward. The focused Wind trace now shows that callback parameters 0/1 also inject physical stage/checkpoint selector steps `3/5`, and parameter 2 writes live Wind-local state `0x802F60A0`. Therefore the complete tuple is not purely logical reward identity in Wind. A different reward placed at a stock Wind key location can remove that location's native stage-state action, while a Wind key moved elsewhere can carry that action to the wrong physical location. This is an architectural risk established by static code/implementation comparison; no claim is made that a particular production seed has runtime-failed from it. The current stage-local system remains interim and must not be used as the template for 1.0 global award semantics.
+
 ## Ordinary pickup behavior and identity semantics
 
 All eight main stages use ordinary `0x30`-byte records. The catalog contains exactly 84 ordinary records.
@@ -111,7 +113,7 @@ The current stage-local ordinary-pickup system deliberately excludes:
 
 ## Why global materialization is a separate system
 
-Within one stage, the complete ordinary identity tuple can be shuffled because its resource selector remains meaningful against the same destination stage resource file. Across stages, that assumption breaks: `+0x24` is stage-local, resource bundles may be embedded or externally backed, and key/crystal award semantics may need a destination-safe path.
+Within one stage, the complete ordinary identity tuple keeps its resource selector meaningful against the same stage resource file, which is why the interim implementation can render same-stage identities. **Wind now proves that resource validity is not enough to establish behavioral ownership:** its callback/parameter words also carry stage/checkpoint state that belongs to physical Wind progression. Across stages—and for the final 1.0 same-stage semantics as well—the materializer must separate logical reward award/visual identity from destination-location state effects rather than assuming the whole tuple is movable.
 
 Therefore the current stage-local shuffle owns **which same-stage identity goes to which ordinary location**. The 1.0 global system must separately own **which logical item goes to which stage and how that item is physically materialized there**, including resource import, extension selectors, deduplication, destination-safe awards, deterministic global retries, and whole-run solvability.
 
