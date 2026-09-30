@@ -25,6 +25,7 @@ from .runtime_v1 import (
     runtime_v1_fire_patches,
 )
 from .stage_selector import SafeStageSelectorPatch
+from .temple_intro_audio import MktAudioClip, TempleIntroAudioAssets, TempleIntroAudioPatch
 from .title_branding import TitleBrandingPatch
 from .toasty import ToastyProductionCompositionPatch
 from .toasty_constants import ToastyAssets
@@ -49,6 +50,9 @@ __all__ = [
     "SafeStageSelectSkipAutoSavePatch",
     "SafeStageSelectorPatch",
     "SubZeroPalettePatch",
+    "MktAudioClip",
+    "TempleIntroAudioAssets",
+    "TempleIntroAudioPatch",
     "TitleBrandingPatch",
     "ToastyAssets",
     "ToastyProductionCompositionPatch",
