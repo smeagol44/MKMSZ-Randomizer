@@ -51,6 +51,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="shuffle the nine Power Up unlock tiers with the accepted Ice Shatter constraint",
     )
     parser.add_argument(
+        "--enemy-randomization",
+        action="store_true",
+        help="enable deterministic ordinary-enemy randomization using registered safe profiles",
+    )
+    parser.add_argument(
         "--no-powers-as-pickups",
         action="store_true",
         help="earn powers through stock XP instead of nine generated pickup rewards",
@@ -91,6 +96,7 @@ def main(argv: list[str] | None = None) -> int:
         outfit=OutfitConfig(mode=args.outfit, hue_degrees=args.hue, rgb=args.rgb),
         edition_name=args.edition_name,
         shuffle_power_progression=args.shuffle_power_progression,
+        enemy_randomization=args.enemy_randomization,
         powers_as_pickups=not args.no_powers_as_pickups,
         required_powers_mode=args.required_powers,
         custom_required_powers=args.custom_required_powers,
