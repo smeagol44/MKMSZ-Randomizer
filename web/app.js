@@ -177,7 +177,7 @@ async function patchRom() {
     await pyodide.runPythonAsync(`
 from pathlib import Path
 from mkmszr.config import GameSettingsConfig, OutfitConfig, RandomizerConfig
-from mkmszr.donors import extract_toasty_assets
+from mkmszr.donors import extract_temple_intro_audio_assets, extract_toasty_assets
 from mkmszr.patcher import patch_file
 
 _mode = str(web_outfit_mode)
@@ -201,16 +201,17 @@ _config = RandomizerConfig(
         run_auto=bool(web_run_auto),
     ),
 )
-_toasty_assets = (
-    extract_toasty_assets(Path("/tmp/mkt.z64").read_bytes())
-    if bool(web_has_mkt_donor)
-    else None
+_mkt_bytes = Path("/tmp/mkt.z64").read_bytes() if bool(web_has_mkt_donor) else None
+_toasty_assets = extract_toasty_assets(_mkt_bytes) if _mkt_bytes is not None else None
+_temple_intro_audio_assets = (
+    extract_temple_intro_audio_assets(_mkt_bytes) if _mkt_bytes is not None else None
 )
 _result = patch_file(
     Path("/tmp/input.z64"),
     Path("/tmp/output.z64"),
     _config,
     toasty_assets=_toasty_assets,
+    temple_intro_audio_assets=_temple_intro_audio_assets,
 )
 web_patch_result = {
     "seed": _seed,
