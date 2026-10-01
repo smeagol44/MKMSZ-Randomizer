@@ -141,7 +141,7 @@ HOOKS = (
 # spare-life count, so configured 9 yields 8 spare lives plus the active life.
 CONFIG_ROM = 0x000A6BA8
 EXPECTED_CONFIG = bytes.fromhex("000200030001")
-PRODUCTION_CONFIG = bytes.fromhex("000400090005")
+RUNTIME_CONFIRMED_V06_CONFIG = bytes.fromhex("000400090005")
 
 # v05 correctly restored a living HP snapshot through the native carrier, but
 # stock immediately overwrote +0x654 with full HP in this later constructor
