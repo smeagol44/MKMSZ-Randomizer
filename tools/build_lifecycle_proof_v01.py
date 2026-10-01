@@ -11,6 +11,7 @@ documented manual runtime route passes.
 from __future__ import annotations
 
 import argparse
+import hashlib
 from pathlib import Path
 
 from mkmszr.config import RandomizerConfig
@@ -421,8 +422,6 @@ def main() -> int:
     args.output.write_bytes(output)
     if args.output.read_bytes() != output:
         raise OSError("output read-back verification failed")
-
-    import hashlib
 
     print(f"Output: {args.output}")
     print(f"SHA-256: {hashlib.sha256(output).hexdigest()}")
