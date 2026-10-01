@@ -483,23 +483,41 @@ The build-time range for Custom/Seed is `0..9`. Global mode-aware solver reachab
 
 Native progression mechanics and current runtime evidence through XP 85/258 belong to [XP and progression](XP-and-Progression).
 
-## Temple Map and the possible 85th check
+## Temple scripted Map location — policy Runtime-confirmed
 
-The Temple Map is **not** one of the 84 ordinary `0x30`-byte records. It follows a scripted/special actor path and is deliberately absent from the ordinary stage catalog count.
+The Temple Map is **not** one of the 84 ordinary `0x30`-byte records. It follows a scripted/special actor path and remains outside the ordinary stage catalog and ordinary-pickup persistence bitset.
 
-The current sources do not settle whether the Map should become a randomized **85th check**. Two concerns must be separated:
+### Reward/progression separation proof v01
 
-### Trigger versus reward
+Static trace identified the scripted Temple callback beginning at VA `0x802EEC54` in Temple overlay file `0xA0`. Its inventory insert is the call to `0x80075448` at VA `0x802EEE5C` / ROM `0x000CC53C`; the delay slot at VA `0x802EEE60` / ROM `0x000CC540` is stock `2404000D` (`addiu a0,zero,0x0D`).
 
-The Map's logical inventory reward is coupled to Temple-specific progression behavior, including the elevator/exit path. Before the logical Map reward can be shuffled elsewhere, research must establish whether the inventory award can be separated from the Temple trigger so Temple remains completable regardless of where the logical reward is placed.
+Disposable v01 changed only that delay-slot immediate to `24040004` (Herbs), preserving the complete scripted actor and later Temple-local logic, including the progression path around `0x802EE9B8`. Proof identity: `MKMSZR_temple-map-herbs_temple-proof_v01.z64`, SHA-256 `c9334451576af3b5b5492e4c9c1b8e514da1b35686cf3c7fb5c13cca9d58900e`, CRC1/CRC2 `C34304BE / 5C014BB5`.
 
-The solver must model the Temple trigger and the logical reward as separate concepts unless/until a safe unified design is proven.
+**Runtime-confirmed bounded result (2026-10-01):** the scripted pickup still rendered as the Map, awarded Herbs instead of Map, and the Temple elevator/platform moved normally. This is the intended isolation result: visual identity remained stock because v01 changed only reward semantics. The observation confirms the location-owned elevator/progression effect survives a different logical inventory award.
 
-### Cross-stage lifecycle
+### 1.0 policy
 
-Stock behavior removes the Map on Temple -> Wind. If the Map becomes a true randomized logical inventory item, that cleanup must be suppressed or replaced by explicit randomizer lifecycle handling, and later-stage side effects must be checked.
+- Logical item Map `0x0D` is excluded from the randomizer item pool.
+- No cross-stage Map persistence and no Temple -> Wind Map-cleanup workaround are required.
+- The scripted Map actor/location remains a **special Temple randomizer check**.
+- Its Temple progression/elevator effect is a property of the physical location and must remain attached to that location regardless of assigned logical reward.
+- Reward identity is independently replaceable.
+- The global solver/check model must represent this special check explicitly; it must not turn it into a fifth ordinary Temple record or silently fold it into the 84-record ordinary catalog.
+- The special check needs its own collected-state persistence outside the 84 ordinary-pickup bitset.
 
-Until these questions are resolved, the Map remains separate from the ordinary 84-location global pool and must not be silently counted as an ordinary record.
+### Smallest production architecture
+
+Do **not** redesign the 84 ordinary-pickup system for this location. The smallest compatible architecture is:
+
+1. keep the scripted Temple actor/callback and all post-award progression code intact;
+2. treat the scripted location as one special check in the global layout/check registry;
+3. at build time, patch only this callback's logical award seam to the location's assigned reward path;
+4. for ordinary fixed inventory rewards that can be expressed safely through `0x80075448`, use a guarded location-specific award plan rather than importing an ordinary pickup callback wholesale;
+5. for key/crystal/native-effect/power rewards, use the same destination-safe logical-award/materializer rules being built for global items rather than source-stage callbacks;
+6. independently replace/materialize the scripted actor's visible Map model so it matches the assigned randomized reward; v01 deliberately did not test this;
+7. give the special check a dedicated persistent collected flag/state so title/stage re-entry cannot re-award it, without adding it to the eight ordinary pickup bitset words.
+
+The exact production hook/data encoding remains Pending until the global destination-safe award dispatcher/materializer shape is finalized. The proof establishes the ownership split and removes the old Map-persistence problem; it does **not** by itself validate arbitrary reward families or correct non-Map visuals at this scripted actor.
 
 ## Rejected, failed, and superseded materialization approaches
 
