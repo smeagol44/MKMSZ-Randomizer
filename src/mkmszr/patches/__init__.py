@@ -27,6 +27,7 @@ from .runtime_v1 import (
 )
 from .stage_selector import SafeStageSelectorPatch
 from .temple_intro_audio import MktAudioClip, TempleIntroAudioAssets, TempleIntroAudioPatch
+from .temple_special_check import TempleSpecialCheckPatch
 from .title_branding import TitleBrandingPatch
 from .toasty import ToastyProductionCompositionPatch
 from .toasty_constants import ToastyAssets
@@ -55,6 +56,7 @@ __all__ = [
     "SubZeroPalettePatch",
     "TempleIntroAudioAssets",
     "TempleIntroAudioPatch",
+    "TempleSpecialCheckPatch",
     "TitleBrandingPatch",
     "ToastyAssets",
     "ToastyProductionCompositionPatch",
