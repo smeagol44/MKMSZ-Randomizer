@@ -1,0 +1,96 @@
+from mkmszr.config import RandomizerConfig
+from mkmszr.errors import PatchError
+from mkmszr.patcher import build_pipeline
+from mkmszr.patches.controls_production import ControlsProductionPatch
+from mkmszr.patches.global_materialization import (
+    ACQUISITION_REMASK,
+    GENERIC_AWARD,
+    MATERIALIZER_HELPER,
+    MATERIALIZER_HELPER_END_K0,
+    MATERIALIZER_HELPER_K0,
+    MATERIALIZER_RUNTIME_LIMIT,
+    GlobalItemMaterializationPatch,
+)
+from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
+from mkmszr.resource_materialization import (
+    GlobalMaterializationPlan,
+    MaterializationAssignment,
+    StageResourcePlacement,
+    portable_materialized_identity,
+)
+
+
+def _plan(*assignments: MaterializationAssignment) -> GlobalMaterializationPlan:
+    stages = sorted({assignment.stage_id for assignment in assignments})
+    return GlobalMaterializationPlan(
+        assignments=tuple(assignments),
+        placements=tuple(
+            StageResourcePlacement(stage_id=stage_id, rom_start=0x00F00000 + i * 0x10000, capacity=0x10000)
+            for i, stage_id in enumerate(stages)
+        ),
+    )
+
+
+def test_materializer_helper_fits_controls_to_toasty_gap() -> None:
+    assert MATERIALIZER_HELPER_K0 == 0x801B0900
+    assert MATERIALIZER_HELPER_END_K0 <= MATERIALIZER_RUNTIME_LIMIT == 0x801B1000
+    assert len(GENERIC_AWARD) > 0
+    assert len(ACQUISITION_REMASK) > 0
+    assert len(MATERIALIZER_HELPER) == MATERIALIZER_HELPER_END_K0 - MATERIALIZER_HELPER_K0
+
+
+def test_portable_inventory_token_uses_generic_award_callback() -> None:
+    identity = portable_materialized_identity(
+        "wind-circle",
+        0x123C,
+        generic_inventory_callback=0xA01B0900,
+    )
+    assert int.from_bytes(identity[0x04:0x08], "big") == 0x0E
+    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B0900
+    assert int.from_bytes(identity[0x14:0x18], "big") == 0x123C
+
+
+def test_fortress_boss_gate_composes_with_fixed_reward() -> None:
+    identity = portable_materialized_identity(
+        "potion",
+        0x0D88,
+        generic_inventory_callback=0xA01B0900,
+        boss_gate=True,
+    )
+    assert int.from_bytes(identity[0x04:0x08], "big") == 0x8000
+    assert int.from_bytes(identity[0x08:0x0C], "big") == 0x800388FC
+
+
+def test_prison_key_fails_closed_without_destination_safe_credential_wrapper() -> None:
+    try:
+        portable_materialized_identity(
+            "prison-l1",
+            0x123C,
+            generic_inventory_callback=0xA01B0900,
+        )
+    except PatchError as exc:
+        assert "not established" in str(exc)
+    else:
+        raise AssertionError("Prison key should require a dedicated credential wrapper")
+
+
+def test_explicit_materialization_replaces_stage_local_patch_in_pipeline() -> None:
+    plan = _plan(MaterializationAssignment(5, 0, "wind-circle"))
+    pipeline = build_pipeline(
+        RandomizerConfig(seed="GLOBAL-PROOF", powers_as_pickups=False),
+        materialization_plan=plan,
+    )
+    types = [type(patch) for patch in pipeline.patches]
+    assert PickupRandomizationPatch not in types
+    assert GlobalItemMaterializationPatch in types
+    assert types.index(ControlsProductionPatch) < types.index(GlobalItemMaterializationPatch)
+
+
+def test_materialization_rejects_current_pickup_xp_overlay() -> None:
+    plan = _plan(MaterializationAssignment(5, 0, "wind-circle"))
+    try:
+        build_pipeline(RandomizerConfig(seed="GLOBAL-PROOF"), materialization_plan=plan)
+    except ValueError as exc:
+        assert "pickup-XP overlay" in str(exc)
+    else:
+        raise AssertionError("global materialization must not silently compose with stage-local XP placement")
