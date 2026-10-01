@@ -402,6 +402,12 @@ A disposable Kia -> Potion proof retained Kia reward record `0xC4834` as the enc
 
 This is direct bounded evidence for the required architecture: **boss trigger/location semantics stay with the Fortress destination check while logical reward identity is independently materialized**. Jataaka/Sareena were not separately runtime-tested, but the static trigger manager uses the same indexed-record activation pattern for all three. Production still needs guarded allocation/ownership and generalized emission rather than copying this proof-local construction verbatim.
 
+### Production-composition transport v01 — Rejected / failed
+
+The first production-composition attempt placed the acquisition-mask/generic-award helper at the intended expansion-pool address but introduced a **second raw file (`0x19`) load from the pickup-manager stage-init resume path**. Manual runtime validation failed broadly at the mission-objective -> stage-entry boundary: stages hung, some reached music, and Fire did not complete load. The resource assignments themselves were not reached reliably enough to evaluate.
+
+Treat that transport as rejected. The corrected v02 design leaves pickup-manager resume on the previously Runtime-confirmed four-box reconstruction path and instead uses the established shared file-`0x1A` bootstrap expansion-load seam. Runtime validation of v02 remains Pending.
+
 ## Early Fire foreign-key proof
 
 Before the extension-selector work, a direct raw Prison-to-Fire identity copy produced no usable item because the source selector was not meaningful in Fire. The successful follow-up demonstrated the broader architecture by relocating Fire's resource file, populating stock logical slot 5 with a Prison Level 1 key bundle, and using a dedicated award callback for item `0x1A`.
