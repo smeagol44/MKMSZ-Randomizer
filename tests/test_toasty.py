@@ -6,7 +6,10 @@ from mkmszr.patches.rainbow_palette import RainbowPalettePatch
 from mkmszr.patches.toasty import ToastyProductionCompositionPatch
 from mkmszr.patches.toasty_codegen import (
     _build_call_trampoline,
+    _build_decoder,
     _build_init_loader,
+    _pack_ci4_slice_rle,
+    _unpack_ci4_slice_rle,
     pack_toasty_module,
 )
 from mkmszr.patches.toasty_constants import (
@@ -36,8 +39,27 @@ def fake_assets() -> ToastyAssets:
 def test_toasty_module_fits_reserved_pool_at_aligned_base() -> None:
     packed = pack_toasty_module(fake_assets(), DEFAULT_PROBABILITY_PER_THOUSAND)
     assert packed.allocation_start == MODULE_K0 == 0x801B1000
-    assert len(packed.data) == 0x1DF0
-    assert MODULE_K0 + len(packed.data) == 0x801B2DF0
+    # Zero-filled fixture slices exercise the strongest RLE case. The exact
+    # compact module remains deterministic and far below the old 0x1DF0 owner.
+    assert len(packed.data) == 0x9B6
+    assert MODULE_K0 + len(packed.data) == 0x801B19B6
+
+
+def test_toasty_ci4_rle_round_trips_exact_padded_bytes() -> None:
+    source = (
+        bytes(130)
+        + bytes(range(128))
+        + b"\xAA" * 3
+        + b"\x01\x02\x02\x03"
+        + bytes(257)
+    )
+    encoded = _pack_ci4_slice_rle(source)
+    assert len(encoded) < len(source)
+    assert _unpack_ci4_slice_rle(encoded, len(source)) == source
+
+
+def test_toasty_native_decoder_stays_tiny() -> None:
+    assert len(_build_decoder()) == 0x7C
 
 
 def test_toasty_is_optional_and_runs_after_rainbow() -> None:
