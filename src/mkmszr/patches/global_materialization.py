@@ -23,6 +23,7 @@ are represented explicitly by the global generator.
 from __future__ import annotations
 
 from collections import defaultdict
+from itertools import pairwise
 
 from ..data.addresses import FILE_TABLE_ENTRY_SIZE, FILE_TABLE_ROM
 from ..data.pickups import IDENTITY_OFFSET, STAGE_PICKUPS
@@ -209,7 +210,7 @@ def _validate_placements(
         if not 0 <= placement.rom_start < placement.rom_end_exclusive <= len(rom.data):
             raise PatchError(f"stage {placement.stage_id}: placement exceeds ROM bounds")
 
-    for left, right in zip(placements, placements[1:]):
+    for left, right in pairwise(placements):
         if left.rom_end_exclusive > right.rom_start:
             raise PatchError(
                 f"materializer placements overlap: stage {left.stage_id} and "
