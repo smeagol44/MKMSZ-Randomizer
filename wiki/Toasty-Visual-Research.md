@@ -53,6 +53,16 @@ The accepted controls/CI4 full-product v02 repacks the nine Toasty slices as 16-
 
 The user reported **“Works perfectly!”** for the corrected v02 full-product ROM, SHA-256 `b12ed90201ab754aac542b7b89458735b5a756f480fffca89c129c0ed3173147`. That hash remains the Runtime-confirmed historical baseline. The 2026-10-01 production palette polish intentionally changes only four TLUT words, so new builds are no longer expected to be byte-identical to that historical ROM; the new visual delta is Implementation/CI-confirmed pending an opportunistic in-game visual check. The original v47 CI8 allocation and earlier visual proofs remain historical evidence.
 
+## Compact CI4 source candidate (2026-10-01)
+
+**Implementation/CI-confirmed; runtime Pending.** Draft PR #131 keeps the accepted production Toasty renderer and allocation semantics but compacts only the source bytes carried inside shared file `0x1A`. The nine runtime texture buffers, allocation order, visible 7+64+7 geometry, CI4 format, 32/64-byte source-row widths at slot record `+0x08`, palette selector/TLUT contents, trigger, audio route, and gameplay-HUD compositor are unchanged.
+
+The accepted production module stores nine already-padded CI4 slices totaling `0x1540` = 5,440 bytes. Against the exact supported MKT Rev. 2 donor, a deterministic PackBits-style byte codec reduces those same padded bytes to **1,978 bytes** while an independent reference decode reproduces all 5,440 source bytes byte-for-byte. The native decoder is `0x7C` = 124 bytes and expands each compressed slice directly into its existing uncached dynamic texture backing during Toasty init. The first candidate deliberately retains the existing `0x200` palette reservation so palette ownership and addresses are not another runtime variable.
+
+Static layout accounting for the exact donor gives a candidate module end of approximately `0x801B2132` (module size `0x1132` = 4,402 bytes), reclaiming `0xCBE` = **3,262 bytes** relative to current production `0x1DF0`. With the fixed Toasty base `0x801B1000`, that would leave approximately `0x12EE` = **4,846 bytes** before the 16-KiB reservation boundary `0x801B3420`, versus current `0x630`. These reclaimed bytes remain inside the already-reserved MKMSZR pool; they do not by themselves move the arena floor or become globally confirmed-free.
+
+The branch adds build-time round-trip guards, a native-decoder size guard, and compact-module bounds tests. GitHub Actions run `36932923513` passed lint and the full pytest suite. No ROM has been built and no emulator has been run for this candidate. One bounded runtime proof must verify all eight safe stages (or at minimum the historically sensitive Temple/Earth/Fire plus Fortress control), normal Toasty slide/audio/trigger behavior, and absence of HUD/player corruption before this can replace the Runtime-confirmed current production layout.
+
 ## Rejected or superseded Toasty visual approaches
 
 - **v01-v05 direct use of `0x80073CEC` as the final gameplay renderer:** superseded by preserved evidence showing that renderer family is context-specific. v02 wrapper execution and v05 allocator success remain valid independent findings.
