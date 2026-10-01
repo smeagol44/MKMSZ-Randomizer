@@ -438,6 +438,20 @@ The user manually exercised all requested stage smoke routes and reported **ever
 
 This does **not** establish every seed/profile combination, unresolved foreign MONK1/MONK3/MONK4 or GRUNT1/GRUNT2 families, or arbitrary cross-family phase substitutions. It does satisfy the current bounded runtime gate for moving the enemy feature out of proof-only orchestration and into the normal product pipeline.
 
+### Production compact fallback
+
+**Implementation/CI-pending:** the production materializer now promotes the already Runtime-confirmed compact PRIS profiles instead of deterministically skipping them.
+
+- `water-pris15` builds compact `0x8E + 0x8F`;
+- `water-pris16` builds compact `0x8E + 0x90`;
+- `water-pris14-16` uses the same compact `0x8E + 0x90` resource family with the accepted mixed roster.
+
+The compact resources are regenerated at build time from the user's clean ROM. No fighter-resource bytes are stored in the repository. The builder decodes native Type-5 art, applies the accepted 16-color body index/palette-family mapping, preserves already-4-bit weapon/projectile art, rebuilds native Type-5 dictionaries/streams, rebases file-internal frame/palette offsets, updates global palette-offset tables, zeroes stale shortened-file tails, and independently decodes every emitted frame before accepting the build.
+
+The recovered production builder reproduces the accepted compact GRUNT3 `0x8E` and `0x90` layouts byte-for-byte and generalizes the same proven transform to `0x8F` and `0x91`. Raw resources remain preferred where the registered profile already fits; compaction is used by profiles whose accepted resource contract requires it.
+
+This does **not** make storage the only compatibility criterion. Foreign MONK1/MONK3/MONK4 and GRUNT1/GRUNT2 remain fail-closed because their unresolved terminal/cache/action semantics are independent of file size.
+
 ### Shared product integration
 
 **Implementation/CI-pending:** the shared product configuration now has `enemy_randomization: bool = False`. Browser and CLI expose the same option (web **Enemy Randomization** switch; CLI `--enemy-randomization`), and `build_pipeline()` appends the guarded `EnemyRandomizationPatch` only when enabled. The option uses the normal build seed and the same fail-closed materializable-profile retry contract validated by the proof line. Default-OFF builds omit this patch entirely.
