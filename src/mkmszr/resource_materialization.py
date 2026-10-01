@@ -147,6 +147,49 @@ class StageResourcePlan:
         raise KeyError(key)
 
 
+@dataclass(frozen=True)
+class MaterializationAssignment:
+    """One logical reward assigned to one ordinary destination record."""
+
+    stage_id: int
+    destination_index: int
+    item_key: str
+
+
+@dataclass(frozen=True)
+class StageResourcePlacement:
+    """Caller-owned ROM backing for one relocated destination resource file."""
+
+    stage_id: int
+    rom_start: int
+    capacity: int
+
+    @property
+    def rom_end_exclusive(self) -> int:
+        return self.rom_start + self.capacity
+
+
+@dataclass(frozen=True)
+class GlobalMaterializationPlan:
+    """Explicit assignments plus guarded ROM ownership supplied by the caller.
+
+    The materializer deliberately does not discover "free" high-ROM space from
+    FF/padding bytes. The future global generator/allocator must supply concrete
+    non-overlapping placements whose ownership has already been established.
+    """
+
+    assignments: tuple[MaterializationAssignment, ...]
+    placements: tuple[StageResourcePlacement, ...]
+
+    def placement_for(self, stage_id: int) -> StageResourcePlacement:
+        matches = [item for item in self.placements if item.stage_id == stage_id]
+        if len(matches) != 1:
+            raise PatchError(
+                f"stage {stage_id}: expected exactly one resource placement, got {len(matches)}"
+            )
+        return matches[0]
+
+
 def _be32(data: bytes | bytearray, offset: int) -> int:
     if offset < 0 or offset + 4 > len(data):
         raise PatchError(f"out-of-range 32-bit read at 0x{offset:X}")
@@ -693,4 +736,70 @@ def portable_fixed_callback_identity(key: str, selector: int) -> bytes:
 
     identity = bytearray(pickup.identity)
     identity[0x14:0x18] = selector.to_bytes(4, "big")
+    return bytes(identity)
+
+
+# Inventory-token families whose gameplay progression is owned by the permanent
+# item-use dispatch rather than by an irreplaceable source-stage pickup callback.
+# Prison is intentionally excluded: the L1 door trace proves pickup-time acquired
+# bits are part of its credential lifecycle and a generic inventory insert alone
+# is not sufficient.
+PORTABLE_INVENTORY_TOKENS = frozenset(
+    key for key in CANONICAL_VISUAL_DONORS
+    if key.startswith(("wind-", "earth-", "water-", "fire-", "bridge-", "crystal-"))
+)
+
+
+def portable_materialized_identity(
+    key: str,
+    selector: int,
+    *,
+    generic_inventory_callback: int,
+    boss_gate: bool = False,
+) -> bytes:
+    """Build a destination-safe identity for one supported logical reward.
+
+    Fixed global callbacks retain their canonical callback/parameter semantics.
+    Supported stage-bound inventory tokens are converted to the Runtime-confirmed
+    generic inventory-award callback, with the logical inventory ID in the low
+    15 bits of the callback parameter. Fortress boss reward locations preserve
+    their encounter-owned activation contract by setting bit 15; the encounter
+    manager clears only that bit when the corresponding assassin dies.
+
+    Prison keys and synthetic power-upgrades intentionally fail closed here.
+    """
+
+    try:
+        donor = CANONICAL_VISUAL_DONORS[key]
+    except KeyError as exc:
+        raise PatchError(f"no canonical donor registered for {key!r}") from exc
+
+    stage = _stage_pickups(donor.stage_id)
+    pickup = stage.records[donor.record_index]
+    logical = logical_item_from_record(donor.stage_id, donor.record_index, pickup)
+    if logical.key != key:
+        raise PatchError(
+            f"{key}: canonical donor decodes as unexpected logical item {logical.key!r}"
+        )
+
+    identity = bytearray(pickup.identity)
+    identity[0x14:0x18] = selector.to_bytes(4, "big")
+
+    if logical.native_callback is None:
+        if key not in PORTABLE_INVENTORY_TOKENS:
+            raise PatchError(
+                f"{key}: destination-safe logical award semantics are not established"
+            )
+        if logical.inventory_id is None:
+            raise PatchError(f"{key}: portable token has no inventory ID")
+        parameter = logical.inventory_id
+        identity[0x04:0x08] = parameter.to_bytes(4, "big")
+        identity[0x08:0x0C] = generic_inventory_callback.to_bytes(4, "big")
+
+    if boss_gate:
+        parameter = int.from_bytes(identity[0x04:0x08], "big")
+        if parameter & 0x8000:
+            raise PatchError(f"{key}: canonical callback parameter already owns bit 15")
+        identity[0x04:0x08] = (parameter | 0x8000).to_bytes(4, "big")
+
     return bytes(identity)
