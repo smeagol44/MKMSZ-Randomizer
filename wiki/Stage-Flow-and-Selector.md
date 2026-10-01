@@ -39,25 +39,28 @@ The selector wrap/count sites at ROM `0xDD60` and `0xDD64` are bounded to eight 
 Stock entries excluded from production are **Unused**, **Fire God Room**, and **Test Characters**. The original eleven-label order was Temple, Wind, Water, Earth, Prison, Fire, Unused, Fire God Room, Bridge, Fortress, Test Characters.
 
 
-### Blue cursor + title-menu SFX candidate (Static/implementation-confirmed; runtime Pending)
+### Blue cursor + title-menu SFX proof status (bounded runtime, 2026-09-30)
 
 The clean USA Rev. 0 cursor comparison resolves the visual change without importing file `0x5E` into the selector lifecycle:
 
-- selector frames `0x352..0x35A` in global file `0x5F` and title frames `0x3CC..0x3D4` in global file `0x5E` have **byte-identical indexed pixel payloads** for all nine corresponding frames;
-- the corresponding records keep the same dimensions and record sizes; only their descriptor placement/IDs differ;
-- both cursor presentations use a 29-entry palette and the nine selector frames collectively reference **every index `0..28`**;
+- selector frames `0x352..0x35A` in global file `0x5F` and title frames `0x3CC..0x3D4` in global file `0x5E` have byte-identical indexed pixel payloads for all nine corresponding frames;
+- both cursor presentations use all 29 palette indices `0..28`;
 - selector palette source ROM `0x000B21D8` and title cursor palette source ROM `0x000B32E8` differ in 27 of 29 entries.
 
-Therefore the candidate keeps selector file `0x5F`, sprite IDs `0x352..0x35A`, registration slot `0x1C2`, and the existing `0x8001D520` draw path unchanged. It copies only the title cursor's 58-byte palette into the selector-local 29-entry palette source. No compressed file rewrite or frame transplant is required; files `0x5E` and `0x5F` remain byte-for-byte unchanged, so their existing file-table bounds/capacity and lifetimes are preserved.
+The proof therefore keeps selector file `0x5F`, sprite IDs `0x352..0x35A`, registration slot `0x1C2`, and the existing `0x8001D520` draw path unchanged, copying only the title cursor's 58-byte palette into the selector-local palette source. Files `0x5E` and `0x5F` remain byte-for-byte unchanged.
 
-For audio, the candidate uses the native title SFX wrapper `0x80064C18` with the established descriptors:
+**Runtime-confirmed from proof v01:** the selector cursor is blue and animates correctly; the title-menu movement sound is audible on Up/Down navigation. This is bounded frontend evidence, not yet a production integration claim.
 
-- movement: descriptor `0x1FC` / sound `0x0230`, only when exactly one newly pressed Up/Down edge is present in the selector input state;
-- confirmation: descriptor `0x1FD` / sound `0x0231`, only inside the selector's one-time state-`0x18` stage-commit branch.
+**Confirmation correction.** v02 incorrectly treated semantic A bit `0x0002` as the selector's commit control. Runtime showed A plays the requested chime but does not choose a stage. Static reconciliation identifies the actual selection owner as the Start-event callback table entry at ROM `0x0009B730`, which points to `0x80015088`; in state `0x18`, that callback runs the compact-stage commit path at `0x800150C8..0x800150F4`. A-based confirmation is therefore Rejected / failed.
 
-The movement hook replaces the argument setup at ROM `0x0000DD70` and uses a guarded unreachable compiler-epilogue span at ROM `0x0000E27C..0x0000E2AF` for its frontend-resident helper. The confirmation hook replaces the first word at ROM `0x00015CEC`; its original stage-store remains in the JAL delay slot, and a guarded unreachable compiler-epilogue span at ROM `0x0000DE2C..0x0000DE5F` holds the confirmation helper. Neither helper depends on gameplay file `0x1A` or the runtime expansion pool, which are not valid title/frontend dependencies.
+**Audio-corruption warning.** After v02, the user observed delayed choppy/crunchy/noisy stage audio several seconds after stage load. This is treated as a possible regression/corruption symptom until isolated. Static binary audit found no unexpected ROM edits and no direct branch/jump/JAL targets into the reused helper span at `0x8000D67C..0x8000D6AC`; the added helper itself performs no arbitrary memory stores outside the native `0x80064C18` SFX path. That does not clear the audio lifecycle: a frontend voice or indirect SFX-state side effect may still survive incorrectly into stage teardown/load.
 
-**Test limit:** this enhancement is not Runtime-confirmed yet. The disposable proof must be manually checked for (1) blue nine-frame animation without corruption, (2) one movement sound per valid Up/Down press and no repeat while held, (3) one confirmation sound on stage commit, (4) all eight safe destinations still entering their intended stages, and (5) selector re-entry to exercise palette/resource lifetime. Until that manual check passes, the existing eight-stage selector functionality retains its prior Runtime-confirmed status, while only the new cursor/audio presentation remains Pending.
+Two clean-ROM isolation controls are the next runtime gate:
+
+- **v03a blue + MOVE only:** selector-local blue palette plus descriptor `0x1FC` on valid Up/Down edges; no `0x1FD` confirmation call and stock Start commit path untouched.
+- **v03b blue only:** selector-local blue palette; no added SFX calls and stock Start commit path untouched.
+
+Do not design another Start-confirmation hook until those controls establish whether the delayed audio defect follows the movement SFX path or only the rejected v02 `0x1FD` path.
 
 ## Compact-to-native selection mapping
 
