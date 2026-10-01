@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .config import RandomizerConfig
+from .resource_materialization import GlobalMaterializationPlan
 from .patches import (
     PICKUP_PERSISTENCE_PAYLOAD,
     ArenaReservationPatch,
@@ -12,6 +13,7 @@ from .patches import (
     BoxIndicatorPatch,
     FourBoxInventoryPatch,
     GameSettingsTurnPatch,
+    GlobalItemMaterializationPatch,
     NativePayloadPatch,
     NativePayloadSpec,
     PickupPersistencePatch,
@@ -60,6 +62,7 @@ def build_pipeline(
     toasty_assets: ToastyAssets | None = None,
     temple_intro_audio_assets: TempleIntroAudioAssets | None = None,
     toasty_probability_per_thousand: int = 80,
+    materialization_plan: GlobalMaterializationPlan | None = None,
 ) -> PatchPipeline:
     settings_state = 0
     if config.game_settings.turn_lock:
@@ -73,14 +76,22 @@ def build_pipeline(
     if config.game_settings.run_auto:
         settings_state |= RUN_AUTO_STATE_MASK
 
+    if materialization_plan is not None and config.powers_as_pickups:
+        raise ValueError(
+            "explicit global materialization is not yet composable with the current "
+            "pickup-XP overlay; global progression placement must be supplied by the "
+            "future global generator/solver"
+        )
+
     patches = [
         SafeStageSelectorPatch(),
         ArenaReservationPatch(),
         NativePayloadPatch(NativePayloadSpec(payload=PICKUP_PERSISTENCE_PAYLOAD)),
         PickupPersistencePatch(),
-        PickupRandomizationPatch(),
-        FourBoxInventoryPatch(initial_settings_state=settings_state),
     ]
+    if materialization_plan is None:
+        patches.append(PickupRandomizationPatch())
+    patches.append(FourBoxInventoryPatch(initial_settings_state=settings_state))
     if config.powers_as_pickups:
         # Only pickup mode replaces the four-box resume tail. The other mode
         # keeps stock XP stores/caps and ordinary Herbs callbacks.
@@ -125,6 +136,8 @@ def build_pipeline(
     # expansion gap, so it must compose after ControlsProductionPatch.
     if outfit_mode == "rainbow":
         patches.append(RainbowPalettePatch())
+    if materialization_plan is not None:
+        patches.append(GlobalItemMaterializationPatch(materialization_plan))
     # Controls production deliberately verifies the stock Slide/Super Slide
     # gates before installing helpers that call those recognizers. Apply the
     # optional order remap afterwards so both safety guards and shuffled tiers
@@ -147,6 +160,7 @@ def patch_bytes(
     toasty_assets: ToastyAssets | None = None,
     temple_intro_audio_assets: TempleIntroAudioAssets | None = None,
     toasty_probability_per_thousand: int = 80,
+    materialization_plan: GlobalMaterializationPlan | None = None,
 ) -> BuildResult:
     rom = RomImage.from_bytes(source, require_clean=True)
     results = build_pipeline(
@@ -154,6 +168,7 @@ def patch_bytes(
         toasty_assets=toasty_assets,
         temple_intro_audio_assets=temple_intro_audio_assets,
         toasty_probability_per_thousand=toasty_probability_per_thousand,
+        materialization_plan=materialization_plan,
     ).apply(rom, PatchContext(seed=config.seed))
     required_count, required_xp = resolve_required_powers(
         config.required_powers_mode, config.custom_required_powers, config.seed
@@ -179,6 +194,7 @@ def patch_file(
     toasty_assets: ToastyAssets | None = None,
     temple_intro_audio_assets: TempleIntroAudioAssets | None = None,
     toasty_probability_per_thousand: int = 80,
+    materialization_plan: GlobalMaterializationPlan | None = None,
 ) -> BuildResult:
     if source.resolve() == output.resolve():
         raise ValueError("output must be a separate file; the clean ROM is never modified in place")
@@ -190,6 +206,7 @@ def patch_file(
         toasty_assets=toasty_assets,
         temple_intro_audio_assets=temple_intro_audio_assets,
         toasty_probability_per_thousand=toasty_probability_per_thousand,
+        materialization_plan=materialization_plan,
     )
     output.write_bytes(result.data)
     if output.read_bytes() != result.data:
