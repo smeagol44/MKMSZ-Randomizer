@@ -4,6 +4,9 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 
+DifficultyMode = Literal["very_easy", "easy", "medium", "hard", "very_hard"]
+
+
 @dataclass(frozen=True)
 class OutfitConfig:
     mode: str = "vanilla"
@@ -37,8 +40,20 @@ class RandomizerConfig:
     powers_as_pickups: bool = True
     required_powers_mode: Literal["vanilla", "custom", "seed"] = "vanilla"
     custom_required_powers: int | None = None
+    difficulty: DifficultyMode = "very_hard"
+    lives: int = 5
+    continues: int = 3
+    persist_hp: bool = True
 
     def __post_init__(self) -> None:
+        if self.difficulty not in ("very_easy", "easy", "medium", "hard", "very_hard"):
+            raise ValueError("difficulty must be very_easy, easy, medium, hard, or very_hard")
+        if type(self.lives) is not int or not 1 <= self.lives <= 10:
+            raise ValueError("lives must be an integer from 1 to 10")
+        if type(self.continues) is not int or not 0 <= self.continues <= 5:
+            raise ValueError("continues must be an integer from 0 to 5")
+        if type(self.persist_hp) is not bool:
+            raise ValueError("persist_hp must be a boolean")
         if self.required_powers_mode not in ("vanilla", "custom", "seed"):
             raise ValueError("required powers mode must be vanilla, custom, or seed")
         if self.required_powers_mode == "custom":
