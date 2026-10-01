@@ -1,9 +1,8 @@
-"""Guarded proof materializer for deterministic ordinary-enemy plans.
+"""Guarded production materializer for deterministic ordinary-enemy plans.
 
-This module remains pipeline-disconnected. Materializer v1 supports native
-stage profiles plus the stock-resource Water profiles whose loader transforms
-are already bounded Runtime-confirmed: HULK MONK (0x09), FAST MONK (0x0A),
-and PRIS GRUNT4 (0x17).
+The materializer supports native profiles, bounded Runtime-confirmed raw
+foreign profiles, compact 16-color PRIS profiles, and the phase-aware Prison
+FAST-MONK profile. Unsupported semantic/resource combinations remain fail-closed.
 """
 
 from __future__ import annotations
