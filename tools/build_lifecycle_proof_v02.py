@@ -1,12 +1,16 @@
-"""Build the bounded HP/lives/continues/Game-Over lifecycle proof v02.
+"""Build the bounded HP/lives/continues lifecycle proof v02.
 
 This is deliberately proof-only. It first builds the current full product with
-an MKT Rev. 2 donor, then installs five guarded lifecycle hooks into the
+an MKT Rev. 2 donor, then installs four guarded lifecycle hooks into the
 already-loaded FF gap between the Temple special-check module and Toasty.
 
-Do not promote this allocation/hook composition to production until the
-documented manual runtime route passes.\n\nv02 deliberately leaves Game Over reset unhooked after v01 proved that ROM 0x000364EC is a generic stage-state seam, not a terminal Game Over seam.
-"""
+v01 is Rejected: ROM 0x000364EC is a normal stage-state seam, not a terminal
+Game Over seam, so its reset hook cleared all run state on ordinary stage entry.
+v02 deliberately leaves Game Over reset completely unhooked.
+
+Do not promote this composition to production until the documented manual
+runtime route passes.
+""
 
 # ruff: noqa: I001 -- proof builder keeps grouped MIPS imports readable.
 
@@ -81,7 +85,6 @@ TRANSITION_HOOK_ROM = 0x0007B94C
 TRANSITION_RESUME = 0x8007AD54
 PERSISTENCE_RESTORE_HOOK_ROM = 0x00F101BC
 ORIGINAL_PROGRESSION_RESTORE = 0x801AF6C0
-FINAL_GAME_OVER_HOOK_ROM = 0x000364EC
 DEATH_COMMIT_SLEEP_HOOK_ROM = 0x000368A4
 DEATH_COMMIT_ALT_HOOK_ROM = 0x00036B10
 STOCK_SLEEP = 0x80028794
@@ -90,7 +93,6 @@ STOCK_ALT_AFTER_DEATH = 0x80017F78
 EXPECTED_CONFIG = bytes.fromhex("000200030001")
 EXPECTED_TRANSITION = bytes.fromhex("3c08800a8d0960e8")
 EXPECTED_RESTORE_JAL = 0x0C06BDB0
-EXPECTED_GAME_OVER = bytes.fromhex("8fa7002c24020004")
 EXPECTED_DEATH_SLEEP = bytes.fromhex("0c00a1e52404001e")
 EXPECTED_DEATH_ALT = bytes.fromhex("0c005fde240600ff")
 NOP = 0
@@ -251,99 +253,6 @@ def build_death_commit(target: int) -> bytes:
     return e.finish()
 
 
-def build_game_over_reset() -> bytes:
-    e = Emitter()
-    _force_config(e)
-
-    # Preserve the V2 header, clear every run-owned word +0x10..+0x4C.
-    e.emit(
-        *address_words("t0", STATE),
-        addiu("t1", "t0", 0x10),
-        addiu("t2", "zero", 16),
-    )
-    e.label("clear_state")
-    e.emit(
-        sw("zero", 0, "t1"),
-        addiu("t1", "t1", 4),
-        addiu("t2", "t2", -1),
-    )
-    e.bne("t2", "zero", "clear_state")
-    e.emit(NOP)
-    e.emit(
-        addiu("t1", "zero", FLAG_RESET_PENDING),
-        sw("t1", FLAGS, "t0"),
-    )
-
-    for addr in (CURRENT_XP, POWER_TIER_CACHE):
-        e.emit(*address_words("t0", addr), sw("zero", 0, "t0"))
-    e.emit(*address_words("t0", LIVE_LIVES), sw("zero", 0, "t0"))
-    e.emit(*address_words("t0", LIVE_CONTINUES), sh("zero", 0, "t0"))
-    e.emit(*address_words("t0", HP_CARRIER), sh("zero", 0, "t0"))
-    e.emit(*address_words("t0", HP_CARRIER_VALID), sh("zero", 0, "t0"))
-
-    # Four authoritative backing boxes: empty everything, then restore the
-    # stock starter set (Herbs, Herbs, Potion) in Box 1 only.
-    e.emit(*address_words("t0", BOX0))
-    _emit_u32(e, "t1", 0xFFFFFFFF)
-    e.emit(addiu("t2", "zero", 40))
-    e.label("clear_boxes")
-    e.emit(
-        sw("t1", 0, "t0"),
-        addiu("t0", "t0", 4),
-        addiu("t2", "t2", -1),
-    )
-    e.bne("t2", "zero", "clear_boxes")
-    e.emit(NOP)
-    e.emit(*address_words("t0", BOX0))
-    e.emit(
-        addiu("t1", "zero", 4),
-        sw("t1", 0, "t0"),
-        sw("t1", 4, "t0"),
-        addiu("t1", "zero", 1),
-        sw("t1", 8, "t0"),
-    )
-
-    e.emit(*address_words("t0", LIVE_INV))
-    _emit_u32(e, "t1", 0xFFFFFFFF)
-    e.emit(addiu("t2", "zero", 10))
-    e.label("clear_live")
-    e.emit(
-        sw("t1", 0, "t0"),
-        addiu("t0", "t0", 4),
-        addiu("t2", "t2", -1),
-    )
-    e.bne("t2", "zero", "clear_live")
-    e.emit(NOP)
-    e.emit(*address_words("t0", LIVE_INV))
-    e.emit(
-        addiu("t1", "zero", 4),
-        sw("t1", 0, "t0"),
-        sw("t1", 4, "t0"),
-        addiu("t1", "zero", 1),
-        sw("t1", 8, "t0"),
-    )
-
-    # Reset box index/latch, preserve all five non-progress GAME SETTINGS.
-    e.emit(
-        *address_words("t0", BOX_STATE),
-        lw("t1", 0, "t0"),
-        andi("t1", "t1", SETTINGS_MASK),
-        sw("t1", 0, "t0"),
-    )
-    e.emit(*address_words("t0", BOX_MAGIC))
-    _emit_u32(e, "t1", MKBX)
-    e.emit(sw("t1", 0, "t0"))
-
-    # Replay the displaced instruction; the following stock branch needs v0=4.
-    e.emit(
-        lw("a3", 0x2C, "sp"),
-        addiu("v0", "zero", 4),
-        jr("ra"),
-        NOP,
-    )
-    return e.finish()
-
-
 def _align(value: int, alignment: int = 16) -> int:
     return (value + alignment - 1) & ~(alignment - 1)
 
@@ -354,7 +263,6 @@ def pack_module() -> tuple[bytes, dict[str, int]]:
         ("restore", build_restore()),
         ("death_sleep", build_death_commit(STOCK_SLEEP)),
         ("death_alt", build_death_commit(STOCK_ALT_AFTER_DEATH)),
-        ("reset", build_game_over_reset()),
     )
     blob = bytearray()
     offsets: dict[str, int] = {}
@@ -377,7 +285,6 @@ def apply_proof(product: bytes) -> tuple[bytes, int, int]:
     rom.expect_bytes(0x000A6BA8, EXPECTED_CONFIG)
     rom.expect_bytes(TRANSITION_HOOK_ROM, EXPECTED_TRANSITION)
     rom.expect_u32(PERSISTENCE_RESTORE_HOOK_ROM, EXPECTED_RESTORE_JAL)
-    rom.expect_bytes(FINAL_GAME_OVER_HOOK_ROM, EXPECTED_GAME_OVER)
     rom.expect_bytes(DEATH_COMMIT_SLEEP_HOOK_ROM, EXPECTED_DEATH_SLEEP)
     rom.expect_bytes(DEATH_COMMIT_ALT_HOOK_ROM, EXPECTED_DEATH_ALT)
     rom.expect_bytes(MODULE_ROM, b"\xFF" * MODULE_CAPACITY)
@@ -393,7 +300,6 @@ def apply_proof(product: bytes) -> tuple[bytes, int, int]:
     rom.write_u32(PERSISTENCE_RESTORE_HOOK_ROM, jal(va["restore"]))
     rom.write_u32(DEATH_COMMIT_SLEEP_HOOK_ROM, jal(va["death_sleep"]))
     rom.write_u32(DEATH_COMMIT_ALT_HOOK_ROM, jal(va["death_alt"]))
-    rom.write_u32(FINAL_GAME_OVER_HOOK_ROM, jal(va["reset"]))
 
     crc1, crc2 = rom.update_header_crc()
     return rom.to_bytes(), crc1, crc2
@@ -404,7 +310,7 @@ def main() -> int:
     parser.add_argument("source", type=Path, help="exact clean MKMSZ USA Rev. 0 .z64")
     parser.add_argument("mkt", type=Path, help="exact MKT USA Rev. 2 donor .z64")
     parser.add_argument("output", type=Path, help="new disposable proof .z64")
-    parser.add_argument("--seed", default="LIFECYCLE-V01")
+    parser.add_argument("--seed", default="LIFECYCLE-V02")
     args = parser.parse_args()
 
     if args.source.resolve() == args.output.resolve():
