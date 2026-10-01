@@ -20,7 +20,7 @@ Progression state is separate: V2 state `+0x40` stores the number of progression
 
 At the pickup-manager stage-init boundary, the progression restore helper writes only persistent XP before continuing into the established four-box reconstruction. It does not call the native tier evaluator. Calling that evaluator at this boundary is rejected because it caused the pre-gameplay hang in the first production attempt.
 
-Game Over/new-game reset behavior is still pending.
+Game Over/new-game reset behavior is Runtime-confirmed in lifecycle v06 on the accepted bounded route: classified final Game Over clears MKMSZR run state and inventory/progression authority while preserving all five GAME SETTINGS preferences; the next run returns to Very Hard, nine total lives, five continues, full HP, and starter inventory.
 
 ## Four-box inventory
 
@@ -91,7 +91,7 @@ The legacy Lua is only a clue here, not a solution. It writes startup configurat
 
 It also names `0x0F1057` as a life-related address, but does not use it for stage-transition preservation. There is no Lua logic that carries current HP, current lives, or current continues between stages.
 
-The focused 2026-10-01 [static lifecycle closure and single v05 design](Lifecycle-Static-Closure-v05) records the actual death/Continue/constructor/terminal chains, exact instruction guards, reset contract, evidence hashes and remaining limits. No emulator was run and no v05 ROM was built. Static ownership is located; HP/inventory correction and the final reset are not runtime-accepted.
+The focused 2026-10-01 [static lifecycle closure](Lifecycle-Static-Closure-v05) established the death/Continue/constructor/terminal chains used by v05/v06. The user then Runtime-confirmed v05 for lives/continues/XP/powers/inventory/death/Continue/final-reset behavior; HP alone was still overwritten to 166 by the later stock constructor store at VA `0x8002EE44`. v06 NOPs only that redundant second full-HP store, and the user reported the complete lifecycle worked perfectly, including damaged-HP persistence across Pause -> Quit -> re-entry.
 
 | Lifecycle proof | Evidence / disposition |
 |---|---|
@@ -101,9 +101,11 @@ The focused 2026-10-01 [static lifecycle closure and single v05 design](Lifecycl
 | v04 | **Rejected / unsafe composition** because music sometimes sped up. **XP/powers persistence across Pause -> Quit is Runtime-confirmed in v04**, but does not accept its composition. |
 | v04 lives floor | Static inspection shows its repeated restore writes saved lives after the stock death decrement, undoing it. The roughly ×7 / eight-total floor is a proof bug, not stock minimum-life behavior. |
 | v04 HP | Restore runs after player construction; constructor has already selected/stored HP. Carrier priming at that late boundary does not restore the current player. Corrected constructor-local restoration remains runtime Pending. |
-| v04 death inventory | Exact late writer is backing -> LIVE mask copy. No death-time LIVE commit is present. Stale backing explains lost uncommitted items; actual all-four-box overwrite is not runtime-established. Corrected commit/reconstruction remains Pending. |
+| v04 death inventory | Exact late writer is backing -> LIVE mask copy. No death-time LIVE commit is present. Stale backing explains lost uncommitted items; actual all-four-box overwrite is not runtime-established. |
+| v05 | **Runtime-confirmed except HP.** Lives/continues decremented and persisted correctly, XP/powers and all inventory behavior remained correct, ordinary death used full replacement HP, and final Game Over reset run progress/defaults correctly. Living HP restoration was overwritten later by stock `0x8002EE44: sh v0,0x654(a1)`. |
+| v06 | **Runtime-confirmed accepted lifecycle baseline.** Same v05 composition plus NOP at ROM `0x2FA44` / VA `0x8002EE44`. Damaged HP now persists across living exit/re-entry while fresh run/death/Continue still get full HP from the earlier stock constructor branch. User: “worked perfectly, like a charm.” |
 
-The v05 design preserves production XP restore byte-for-byte, commits inventory before death teardown, and uses a one-shot living re-entry token in the player constructor. Ordinary death/Continue invalidates damaged-HP eligibility and leaves stock resource mutation intact. The final reset is guarded at ROM `0x367B4` by zero current lives, nonpositive signed continues and a real-run terminal context, with demo protection latched before its indicators are cleared. Fresh defaults are Very Hard, nine total lives, five continues and normal starter inventory; all five user GAME SETTINGS preference bits (`0x3E00`) survive.
+Production lifecycle v06 preserves production XP restoration byte-for-byte, commits inventory before death teardown, and uses a one-shot living re-entry token in the player constructor. Ordinary death/Continue invalidates damaged-HP eligibility and leaves stock resource mutation intact. The final reset is guarded at ROM `0x367B4` by zero current lives, nonpositive signed continues and a real-run terminal context, with demo protection latched before its indicators are cleared. Fresh defaults are Very Hard, nine total lives, five continues and normal starter inventory; all five user GAME SETTINGS preference bits (`0x3E00`) survive.
 
 
 ## Temple scripted-check lifecycle
@@ -114,4 +116,4 @@ v01 Runtime-confirmed that replacing only the scripted location's inventory awar
 
 This state is intentionally independent of the 84 ordinary manager-backed persistence bits. No cross-stage logical-Map retention or Temple -> Wind Map-removal workaround exists in 1.0 because Map `0x0D` is not a randomized logical item.
 
-The exact reset boundary for the special-check bit follows the same still-Pending Game Over/new-run policy as the rest of run-scoped randomizer state; that broader reset policy is not a Temple-specific blocker.
+Lifecycle v06 now owns the accepted Game Over/new-run reset and clears the Temple special-check persistence bit together with the rest of run-scoped MKMSZR state.
