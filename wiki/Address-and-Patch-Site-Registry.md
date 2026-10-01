@@ -1,6 +1,6 @@
 # Address and patch-site registry
 
-**2026-10-01 lifecycle candidates:** [Static closure and unbuilt v05](Lifecycle-Static-Closure-v05) contains exact clean-word guards for Pause Quit ROM `0x172CC`, failure root `0x36178`, alternate reconstruction `0x36934`, valid-preserving reconstruction `0x36B38`, stage completion `0x36BC0`, player constructor `0x2F984`, and classified terminal yield `0x367B4`. These are proposed ownership hooks, not production patches. ROM `0x364EC` remains prohibited for reset. The production progression restore and default-loader replacement retain their current owners and bytes.
+**2026-10-01 lifecycle production:** accepted v06 promotes the static-closure sites at ROM `0x172CC`, `0x36178`, `0x36934`, `0x36B38`, `0x36BC0`, `0x2F984`, and `0x367B4`, plus the HP overwrite suppression at `0x2FA44` and fresh-run configuration words at `0xA6BA8..0xA6BAD`. Exact four-word guards and the Runtime-confirmed helper blob are enforced by `run_lifecycle.py` and tests. ROM `0x364EC` remains prohibited for reset. Production XP/Mission Objective restoration and the four-box default-loader replacement retain their existing owners.
 
 > **Scope:** This page is the canonical owner for **exact guarded ROM edits**: patch location, expected/original bytes or guard condition, replacement/effect, and the feature that performs the edit.
 >
@@ -23,6 +23,15 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x0005CCE0` | `0x8005C0E0` | Toasty stage init | `3C048029 8C841C10` | Jump through production-owned selector padding to load file `0x1A` and initialize Toasty |
 | `0x0005D2E0` | `0x8005C6E0` | Toasty HUD compositor | `0C007AB9 A0C20046` | JAL shared Toasty dispatcher while preserving the stock HUD submission path |
 | `0x000396CC` | `0x80038ACC` | Persistence | `3C03800A 8C63A910` | Restore collected flags, resume `0x80038AD4` |
+| `0x000172CC..0x000172DB` | `0x800166CC` | Lifecycle v06 Pause Quit | Guard stock four-word Quit->Yes teardown call | Transfer to uncached helper, snapshot living HP/resources/inventory, replay stock teardown contract |
+| `0x00036178..0x00036187` | `0x80035578` | Lifecycle v06 failure root | Guard `27BDFFA0 AFB30044 00009821 AFBF005C` | Commit inventory, classify failure/demo, invalidate living HP token, preserve stock death/Continue graph |
+| `0x00036934..0x00036943` | `0x80035D34` | Lifecycle v06 alternate reconstruction | Guard `27BDFFE0 AFB00010 00808021 3C02802F` | Classify living/failure reconstruction through uncached helper |
+| `0x00036B38..0x00036B47` | `0x80035F38` | Lifecycle v06 valid-preserving reconstruction | Guard `3C02802F 8C42CE20 27BDFFE8 AFBF0010` | Capture living state before teardown/reconstruction |
+| `0x00036BC0..0x00036BCF` | `0x80035FC0` | Lifecycle v06 stage completion | Guard `27BDFFE8 24040012 2402001A AFBF0010` | Capture living HP/resources, commit active inventory box, arm one-shot re-entry |
+| `0x0002F984..0x0002F993` | `0x8002ED84` | Lifecycle v06 player constructor | Guard `3C04802C 8C841AC0 3C02800C 844211F8` | Consume one-shot living re-entry and seed native HP carrier before stock HP branch |
+| `0x0002FA44` | `0x8002EE44` | Lifecycle v06 HP preservation | `A4A20654` | NOP redundant second full-HP store; fresh/death/Continue full HP remains at earlier stock constructor branch |
+| `0x000367B4..0x000367C3` | `0x80035BB4` | Lifecycle v06 final Game Over | Guard `0C00A1E5 24040004 8FA7002C 00002021` | Classified terminal reset, then replay stock yield/title chain |
+| `0x000A6BA8..0x000A6BAD` | `0x800A5FA8..0x800A5FAD` | Lifecycle v06 fresh-run settings | Stock halfwords `2 / 3 / 1` | `4 / 9 / 5` = Very Hard / nine total lives / five continues |
 | `0x00016354` | `0x80015754` | Production TURN action gate | `A62406DC 3C058003` | Jump to guarded v10/v06 action-install helper; suppress player states 23/24 only when effective LOCK is active |
 | `0x00029FB0` | `0x800293B0` | Production TURN direction decision | `8C640704 24020305` | JAL production TURN decision trampoline; TOGGLE follows stock, LOCK uses accepted v10 facing correction while preserving stock forced-facing authority |
 | `0x0002A0DC` | `0x800294DC` | Production TURN release path | `8C820638 94430000` | JAL leaf-only v06 release helper; forced-facing fallback uses bounded direct controller-list scan |
