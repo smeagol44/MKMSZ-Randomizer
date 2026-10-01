@@ -111,7 +111,9 @@ Static re-trace of the native Pause callback `0x80016300` resolves the confirmed
 - wraps only the production inventory reconstruction call so lives/continues and the native HP carrier are restored immediately afterward;
 - leaves Game Over reset and death/Continue persistence out of scope.
 
-v03 is **Implementation/static-confirmed, Runtime Pending** on the exact Pause -> Quit route.
+v03 is **Rejected / failed**: stage entry hung at Mission Objective before gameplay. Static audit found a proof-builder typo in the post-inventory restore helper: it direct-JALed `0xA00A9B14`, but the accepted four-box load/mask wrapper is `0xA0099B14`. That one-nibble error jumped into the wrong runtime address.
+
+v04 changes only that JAL target (`0x0C02A6C5 -> 0x0C0266C5`) at proof ROM `0x00F69208`. All v03 lifecycle semantics remain unchanged: production XP/inventory restore composition is otherwise preserved, Pause -> Quit -> YES remains the save seam, and Game Over/death handling remains out of scope. v04 is **Implementation/static-confirmed, Runtime Pending**.
 
 ## Temple scripted-check lifecycle
 
