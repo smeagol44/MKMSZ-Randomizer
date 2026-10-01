@@ -31,6 +31,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x00077910..0x0007791B` | GAME SETTINGS loop tail | Production GAME SETTINGS frontend | `24080002 AFD006F4 AFC806F8` | JAL JUMP draw/cursor helper + NOPs; v04 owns all three words so stock cannot overwrite cursor type |
 | `0x000AF824..0x000AF833` | GAME SETTINGS cursor coordinate table | Production GAME SETTINGS frontend | guarded stock type-2 four-entry table | Five-setting cursor coordinates; RUN/EXIT use stock OPTIONS cursor type 0 |
 | `0x0003A018` | `0x80039418` | Persistence | `ACA2002C` | Capture stage/ordinal after collected store while preserving displaced store |
+| `0x00039FD4..0x00039FDB` | `0x800393D4..0x800393DB` | Global materializer acquisition re-mask | `00121040 00521021` | PR #126 integration candidate: JAL shared file-`0x1A` acquisition-remask helper + replay first displaced instruction; helper commits LIVE inventory to backing then reconstructs stage-masked LIVE before replaying the second displaced instruction. v03 Runtime-confirmed at relocated helper `0x801B0970..0x801B0A5F`; merge pending. |
 | `0x0005D9CC` | HUD function | Box indicator | JAL `0x8001EAE4` | JAL native box-indicator wrapper |
 | `0x00066F60..0x00066F67` | arena construction | Arena reservation | `3C02801B 2442F420` | `3C02801B 24423420` = floor `0x801B3420` |
 | `0x00066FE0` | `0x800663E0` | Bootstrap | guarded native sequence | Call native bootstrap stub |
