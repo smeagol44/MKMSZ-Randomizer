@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from ..enemy_planner import EnemyPlan, build_enemy_plan, format_enemy_plan
 from ..errors import PatchError
+from ..fighter_compaction import compact_pris_file
 from ..rom import RomImage
 from .base import PatchContext
 
@@ -20,7 +21,10 @@ MATERIALIZABLE_PROFILE_KEYS = frozenset(
         "water-native",
         "water-hulk",
         "water-fast",
+        "water-pris15",
+        "water-pris16",
         "water-pris17",
+        "water-pris14-16",
         "earth-native",
         "prison-native",
         "prison-fast-phase",
@@ -61,6 +65,36 @@ WATER_PROFILE_PATCHES: dict[str, tuple[tuple[int, int, int], ...]] = {
         (WATER_FIRST_SLOT_STORE, 0xAC2514C0, 0xAC252560),
         (WATER_FIRST_FILE_LOAD_IMM, 0x2404008C, 0x24040020),
     ),
+    "water-pris15": (
+        (WATER_FIRST_FILE_SIZE_IMM, 0x2404008C, 0x2404008E),
+        (WATER_FIRST_SLOT_HI, 0x3C018011, 0x3C018011),
+        (WATER_FIRST_SLOT_STORE, 0xAC2514C0, 0xAC251528),
+        (WATER_FIRST_FILE_LOAD_IMM, 0x2404008C, 0x2404008E),
+        (0x000B58DC, 0x2404008D, 0x2404008F),
+        (0x000B58EC, 0x3C01802E, 0x3C018011),
+        (0x000B58F0, 0xAC257268, 0xAC252008),
+        (0x000B58F8, 0x2404008D, 0x2404008F),
+    ),
+    "water-pris16": (
+        (WATER_FIRST_FILE_SIZE_IMM, 0x2404008C, 0x2404008E),
+        (WATER_FIRST_SLOT_HI, 0x3C018011, 0x3C018011),
+        (WATER_FIRST_SLOT_STORE, 0xAC2514C0, 0xAC251528),
+        (WATER_FIRST_FILE_LOAD_IMM, 0x2404008C, 0x2404008E),
+        (0x000B58DC, 0x2404008D, 0x24040090),
+        (0x000B58EC, 0x3C01802E, 0x3C01802C),
+        (0x000B58F0, 0xAC257268, 0xAC250FA0),
+        (0x000B58F8, 0x2404008D, 0x24040090),
+    ),
+    "water-pris14-16": (
+        (WATER_FIRST_FILE_SIZE_IMM, 0x2404008C, 0x2404008E),
+        (WATER_FIRST_SLOT_HI, 0x3C018011, 0x3C018011),
+        (WATER_FIRST_SLOT_STORE, 0xAC2514C0, 0xAC251528),
+        (WATER_FIRST_FILE_LOAD_IMM, 0x2404008C, 0x2404008E),
+        (0x000B58DC, 0x2404008D, 0x24040090),
+        (0x000B58EC, 0x3C01802E, 0x3C01802C),
+        (0x000B58F0, 0xAC257268, 0xAC250FA0),
+        (0x000B58F8, 0x2404008D, 0x24040090),
+    ),
     "water-pris17": (
         (WATER_FIRST_FILE_SIZE_IMM, 0x2404008C, 0x2404008E),
         (WATER_FIRST_SLOT_HI, 0x3C018011, 0x3C018011),
@@ -96,9 +130,15 @@ def _guard_stock_enemy_types(rom: RomImage, plan: EnemyPlan) -> None:
         rom.expect_u32(assignment.type_word_rom, assignment.stock_type)
 
 
-def _apply_water_profile(rom: RomImage, profile_key: str) -> None:
+def _apply_water_profile(rom: RomImage, profile_key: str) -> tuple[str, ...]:
     if profile_key == "water-native":
-        return
+        return ()
+
+    compact_files: tuple[int, ...] = ()
+    if profile_key == "water-pris15":
+        compact_files = (0x8E, 0x8F)
+    elif profile_key in ("water-pris16", "water-pris14-16"):
+        compact_files = (0x8E, 0x90)
 
     if profile_key == "water-hulk":
         for offset, expected in WATER_STOCK_FIRST:
@@ -112,7 +152,7 @@ def _apply_water_profile(rom: RomImage, profile_key: str) -> None:
         rom.write_u32(WATER_FIRST_FILE_LOAD_IMM, 0x24040025)
         for offset, _expected in WATER_SECOND_TRANSACTION:
             rom.write_u32(offset, 0)
-        return
+        return ()
 
     try:
         patches = WATER_PROFILE_PATCHES[profile_key]
@@ -121,8 +161,14 @@ def _apply_water_profile(rom: RomImage, profile_key: str) -> None:
 
     for offset, expected, _replacement in patches:
         rom.expect_u32(offset, expected)
+
+    notes: list[str] = []
+    for file_id in compact_files:
+        notes.extend(compact_pris_file(rom, file_id))
+
     for offset, _expected, replacement in patches:
         rom.write_u32(offset, replacement)
+    return tuple(notes)
 
 
 def _apply_prison_profile(rom: RomImage, profile_key: str) -> None:
@@ -147,7 +193,7 @@ def apply_enemy_plan(rom: RomImage, plan: EnemyPlan) -> tuple[str, ...]:
 
     water = next(stage for stage in plan.stages if stage.stage_key == "water")
     prison = next(stage for stage in plan.stages if stage.stage_key == "prison")
-    _apply_water_profile(rom, water.profile_key)
+    water_notes = _apply_water_profile(rom, water.profile_key)
     _apply_prison_profile(rom, prison.profile_key)
 
     changed_types = 0
@@ -163,6 +209,7 @@ def apply_enemy_plan(rom: RomImage, plan: EnemyPlan) -> tuple[str, ...]:
         f"{changed_types} of 99 randomizable type words changed; 5 gated singleton records fixed",
         f"Water resource profile: {water.profile_key}",
         f"Prison resource profile: {prison.profile_key}",
+        *water_notes,
         *format_enemy_plan(plan),
     )
 
