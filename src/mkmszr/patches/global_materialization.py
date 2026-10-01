@@ -41,6 +41,7 @@ from .controls_production import CONTROLS_RUNTIME_END, FILE_ROM, MODULE_K0
 from .game_settings_turn import EXPANSION_FILE_ENTRY_ROM
 from .inventory_boxes import LOAD_DEFAULT_VA, LOAD_MASK_WRAPPER_VA
 from .native_payload import kseg1_alias
+from .temple_special_check import TEMPLE_MODULE_END_CACHED
 from .toasty_constants import MODULE_K0 as TOASTY_K0
 
 NOP = 0
@@ -53,9 +54,11 @@ ACQUISITION_HOOK_ROM = 0x00039FD4
 ACQUISITION_DISPLACED_0 = 0x00121040  # sll v0,s2,1
 ACQUISITION_DISPLACED_1 = 0x00521021  # addu v0,v0,s2
 
-# v02 runtime-confirmed placement: after accepted controls runtime and optional
-# compact-rainbow loader, below fixed Toasty base.
-MATERIALIZER_HELPER_K0 = 0x801B0900
+# The v02 proof used 0x801B0900 before the Temple special check was integrated.
+# Current production owns 0x801B08E0..0x801B096F for that scripted-check module,
+# so the shared-core materializer starts immediately after it.  The helper is
+# position-independent except for its generated absolute call targets.
+MATERIALIZER_HELPER_K0 = TEMPLE_MODULE_END_CACHED
 MATERIALIZER_HELPER_K1 = kseg1_alias(MATERIALIZER_HELPER_K0)
 MATERIALIZER_HELPER_ROM = FILE_ROM + (MATERIALIZER_HELPER_K0 - MODULE_K0)
 MATERIALIZER_RUNTIME_LIMIT = TOASTY_K0
@@ -135,6 +138,8 @@ GENERIC_AWARD_K1 = MATERIALIZER_HELPER_K1 + GENERIC_AWARD_OFFSET
 
 if MATERIALIZER_HELPER_K0 < CONTROLS_RUNTIME_END:
     raise AssertionError("materializer helper overlaps accepted controls runtime")
+if MATERIALIZER_HELPER_K0 < TEMPLE_MODULE_END_CACHED:
+    raise AssertionError("materializer helper overlaps Temple special-check module")
 if MATERIALIZER_HELPER_END_K0 > MATERIALIZER_RUNTIME_LIMIT:
     raise AssertionError("materializer helper reaches Toasty runtime allocation")
 
