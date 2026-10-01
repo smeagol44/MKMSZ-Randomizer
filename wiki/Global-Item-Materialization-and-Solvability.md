@@ -212,7 +212,7 @@ The local Wind/Water/Earth fields above are not dead checkpoint bookkeeping: eac
 
 **Current generalization boundary (revised after Wind v01 runtime failure):** Prison L1 and Fire remain Runtime-confirmed bounded successes, but Wind disproves the broader assumption that pickup-time selector stores can be removed merely because use-time progression has a separate owner. Wind `0x802C18F8` is both checkpoint/respawn state and live stage-segment state. Selector-assisted v01 skipped the stock key-created steps `3/5`; after death the player re-entered an earlier non-key world state while retaining later key/progression state, and a later upper-room fight produced an abrupt live drop/relocation to the lower bridge area with earlier bridge geometry present again. Wind v01 is **Rejected / failed** as a production model, and Water/Earth runtime proofs using the same assumption are paused.
 
-The corrected architectural question is now **reward ownership vs. location/state ownership**, not simply “key checkpoints on/off.” A global logical reward must not carry arbitrary destination-stage checkpoint/segment mutations with it. Conversely, stock stage-location/segment transitions may still be required even when that location's randomized reward changes.
+The architecture is now fixed by requirement: **logical key award is checkpoint-free**. A global logical reward must not carry source-stage checkpoint/segment mutations with it. Destination wrappers may still preserve separately proven non-checkpoint progression/credential state, but key pickup itself does not create or advance a respawn checkpoint.
 
 ### Wind location/reward ownership trace — Static-confirmed (2026-09-30)
 
