@@ -163,6 +163,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x802F2448` | Water | Triangle/Three Bars/Moon award callback |
 | `0x802F52B0` | Earth | Square/Four Squares/Triangle award callback |
 | `0x802EF178` | Bridge | Omega/Rings/Arrow award callback |
+| `0x802EEC54` | Temple | Scripted Map actor callback. Its `jal 0x80075448` at `0x802EEE5C` uses delay-slot item ID immediate at `0x802EEE60`; bounded v01 changed only `0x0D -> 0x04` and Runtime-confirmed Herbs award with stock elevator/platform progression preserved. Keep subsequent Temple-local actor/progression path location-owned. |
 
 ## PS1 counterparts
 
