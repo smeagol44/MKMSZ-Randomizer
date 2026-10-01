@@ -102,7 +102,16 @@ Lifecycle v01 is therefore **Rejected / failed**. Its observed failure is useful
 
 Lifecycle v02 keeps the same bounded hardcoded-settings and HP/lives/continues persistence experiment but removes the Game Over reset hook entirely. It still uses the already-loaded Temple→Toasty file-`0x1A` gap and does not expand RDRAM or file size. v02 must first prove that existing XP/pickup/four-box persistence remains intact while HP/lives/continues persist. Only after that passes should the real terminal Game Over seam be traced and tested separately.
 
-**Evidence state:** v01 Rejected / failed; v02 Implementation/CI-confirmed candidate, Runtime Pending.
+**Evidence state:** v01 Rejected / failed. v02 is **partial Runtime-confirmed / superseded**: on the tested Pause -> Quit -> title -> stage route, four-box inventory remained persistent, but XP/powers, HP, and lives did not. This established that Pause -> Quit bypasses the v02 lifecycle-save seam and that replacing the production progression-restore composition was itself unsafe.
+
+Static re-trace of the native Pause callback `0x80016300` resolves the confirmed Quit path: choosing **QUIT -> YES** reaches VA `0x800166CC` / ROM `0x000172CC`, where stock calls teardown `0x80028488` while the player controller is still live. Lifecycle v03 therefore:
+- restores the production XP stage-init helper and four-box reconstruction path unchanged;
+- removes v02's stage-entry transition-save and death wrappers;
+- captures XP/HP/current-lives/current-continues only at `0x800166CC` before Pause -> Quit teardown;
+- wraps only the production inventory reconstruction call so lives/continues and the native HP carrier are restored immediately afterward;
+- leaves Game Over reset and death/Continue persistence out of scope.
+
+v03 is **Implementation/static-confirmed, Runtime Pending** on the exact Pause -> Quit route.
 
 ## Temple scripted-check lifecycle
 
