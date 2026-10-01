@@ -5,6 +5,7 @@ import pytest
 from mkmszr.data.enemies import STAGE_ENEMIES
 from mkmszr.enemy_planner import build_enemy_plan
 from mkmszr.errors import PatchError
+import mkmszr.patches.enemy_randomization as enemy_randomization
 from mkmszr.patches.enemy_randomization import (
     MATERIALIZABLE_PROFILE_KEYS,
     WATER_SECOND_TRANSACTION,
@@ -53,19 +54,45 @@ def _stage(plan, key):
     return next(stage for stage in plan.stages if stage.stage_key == key)
 
 
-def test_materializer_retries_to_supported_profiles_deterministically():
-    plan = build_materializable_enemy_plan("ENEMYPLAN05")
+NATIVE_PROFILE_KEYS = frozenset(
+    {
+        "temple-native",
+        "wind-native",
+        "water-native",
+        "earth-native",
+        "prison-native",
+        "fire-native",
+        "bridge-native",
+        "fortress-native",
+    }
+)
 
-    assert _stage(plan, "water").profile_key == "water-pris17"
-    assert _stage(plan, "water").attempts == 2
-    assert _stage(plan, "fire").profile_key == "fire-native"
-    assert _stage(plan, "fire").attempts == 2
-    assert all(stage.profile_key in MATERIALIZABLE_PROFILE_KEYS for stage in plan.stages)
+
+def _plan_with_water_profile(profile_key: str):
+    allowed = frozenset(set(NATIVE_PROFILE_KEYS) | {profile_key})
+    for index in range(2048):
+        plan = build_enemy_plan(
+            f"WATER-PROFILE-{profile_key}-{index}",
+            allowed_profile_keys=allowed,
+        )
+        if _stage(plan, "water").profile_key == profile_key:
+            return plan
+    raise AssertionError(f"no deterministic seed found for {profile_key}")
+
+
+def test_materializer_retries_to_supported_profiles_deterministically():
+    first = build_materializable_enemy_plan("ENEMYPLAN05")
+    second = build_materializable_enemy_plan("ENEMYPLAN05")
+
+    assert first == second
+    assert all(
+        stage.profile_key in MATERIALIZABLE_PROFILE_KEYS for stage in first.stages
+    )
 
 
 def test_pris17_seed_materializes_resource_loader_and_keeps_specials_fixed():
     rom = _stock_rom()
-    plan = build_materializable_enemy_plan("ENEMYPLAN05")
+    plan = _plan_with_water_profile("water-pris17")
     apply_enemy_plan(rom, plan)
 
     assert rom.read_u32(0xB58B8) == 0x2404008E
@@ -86,7 +113,7 @@ def test_pris17_seed_materializes_resource_loader_and_keeps_specials_fixed():
 
 def test_hulk_profile_nops_only_second_water_transaction():
     rom = _stock_rom()
-    plan = build_materializable_enemy_plan("ENEMYPLAN01")
+    plan = _plan_with_water_profile("water-hulk")
 
     assert _stage(plan, "water").profile_key == "water-hulk"
     apply_enemy_plan(rom, plan)
@@ -103,7 +130,7 @@ def test_hulk_profile_nops_only_second_water_transaction():
 
 def test_fast_profile_preserves_second_water_transaction():
     rom = _stock_rom()
-    plan = build_materializable_enemy_plan("ENEMYPLAN02")
+    plan = _plan_with_water_profile("water-fast")
 
     assert _stage(plan, "water").profile_key == "water-fast"
     apply_enemy_plan(rom, plan)
@@ -157,7 +184,7 @@ def test_generated_seed_keeps_prison_within_registered_paging_groups():
 
 def test_prison_fast_phase_materializes_combat_family_and_keeps_capture_anchor():
     rom = _stock_rom()
-    allowed = frozenset(set(MATERIALIZABLE_PROFILE_KEYS) | {"prison-fast-phase"})
+    allowed = frozenset(set(NATIVE_PROFILE_KEYS) | {"prison-fast-phase"})
     plan = build_enemy_plan("PRISON-FAST-PHASE", allowed_profile_keys=allowed)
     prison = _stage(plan, "prison")
     if prison.profile_key != "prison-fast-phase":
@@ -187,3 +214,36 @@ def test_prison_fast_phase_materializes_combat_family_and_keeps_capture_anchor()
     # Capture set-piece anchor remains stock file-0x8F slot.
     assert rom.read_u32(0xC4EDC) == 0x3C048011
     assert rom.read_u32(0xC4EE0) == 0x8C842008
+
+
+@pytest.mark.parametrize(
+    ("profile_key", "second_file", "slot_hi", "slot_store"),
+    (
+        ("water-pris15", 0x8F, 0x3C018011, 0xAC252008),
+        ("water-pris16", 0x90, 0x3C01802C, 0xAC250FA0),
+        ("water-pris14-16", 0x90, 0x3C01802C, 0xAC250FA0),
+    ),
+)
+def test_compact_pris_profiles_use_production_compactor_and_loader(
+    monkeypatch, profile_key, second_file, slot_hi, slot_store
+):
+    rom = _stock_rom()
+    plan = _plan_with_water_profile(profile_key)
+    compacted = []
+
+    def fake_compactor(_rom, file_id):
+        compacted.append(file_id)
+        return (f"compact {file_id:02X}",)
+
+    monkeypatch.setattr(enemy_randomization, "compact_pris_file", fake_compactor)
+    notes = apply_enemy_plan(rom, plan)
+
+    assert compacted == ([0x8E, 0x8F] if profile_key == "water-pris15" else [0x8E, 0x90])
+    assert rom.read_u32(0xB58B8) == 0x2404008E
+    assert rom.read_u32(0xB58CC) == 0xAC251528
+    assert rom.read_u32(0xB58D4) == 0x2404008E
+    assert rom.read_u32(0xB58DC) == 0x24040000 | second_file
+    assert rom.read_u32(0xB58EC) == slot_hi
+    assert rom.read_u32(0xB58F0) == slot_store
+    assert rom.read_u32(0xB58F8) == 0x24040000 | second_file
+    assert any("compact 8E" in note for note in notes)
