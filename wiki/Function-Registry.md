@@ -152,7 +152,23 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80079510` | Owning legal/logo/title routine | Static-confirmed | Contains two logo presentations |
 | `0x800798A8` | Automatic stage-save flow | Static/runtime-confirmed | Generic routine remains intact |
 | `0x8007AD00` | Stock inventory sanitizer | Runtime-confirmed/replaced | Production replaces with stage-key mask copy |
-| `0x8007AD4C` | Stock default-inventory loader | Runtime-confirmed/replaced | Production reconstructs live window |
+| `0x8007AD4C` | Stock default-inventory loader; production filtered SAVE wrapper | Runtime-confirmed/replaced; ownership corrected statically | Current production computes active backing pointer and tail-calls `0xA01AF5F4`: LIVE -> backing, skipping Glass. It does not reconstruct LIVE. Reconstruction is `0x80099B14 -> 0x8007AD00`. |
+
+### Static lifecycle owners (2026-10-01)
+
+These entries identify stock behavior and proposed seams, not an implemented v05. Detailed call ordering, guards, evidence and remaining limits: [Lifecycle static closure](Lifecycle-Static-Closure-v05).
+
+| Address | Meaning | Evidence / limit |
+|---|---|---|
+| `0x80028F3C` | Player process including zero-HP death dispatch | Static-confirmed: matching live-player process calls `0x80035578` at `0x80029124` |
+| `0x80035578` | Life/Continue/terminal presentation owner | Static-confirmed: remaining-life branch bypasses configured reload; stock decrement store `0x80035CA0`; accepted Continue reload `0x80035C8C` |
+| `0x80016080` | Stage callback reconstruction dispatcher | Static-confirmed: class teardown, stage dispatch, stage-specific resource/player reconstruction; not a life reload owner |
+| `0x80016B10` | Frontend/fresh-flow current-resource initialization | Static-confirmed: configured continues/lives -> current at `0x80016BC0/8`, lives minus one; called from `0x8000D260` |
+| `0x80035D34` | Alternate failure or valid-preserving reconstruction | Static-confirmed: states `0x16/0x1B` preserve carrier-valid; other paths decrement at `0x80035F04` or enter life/Continue owner |
+| `0x80035F38` | Valid-preserving reconstruction owner | Static-confirmed consumer flow; callback references indirect; stock HP-carrier producer not closed |
+| `0x80035FC0` | Stage completion teardown/next-stage owner | Static-confirmed: capture candidate before teardown and live-pointer clear, not after |
+| `0x8002EC78`, `0x8002ECF4` | Player wrapper and constructor | Static-confirmed: zero-fill -> one-shot carrier/valid consume -> HP `+0x654` (default 166); constructor-local candidate `0x8002ED84` |
+| `0x80035BB4` | Resolved terminal-choice yield before title dispatch | Static-confirmed common terminal label; final reset additionally requires zero current lives, signed continues <= 0 and a latched real-run failure context |
 
 ## Stage-overlay callbacks
 

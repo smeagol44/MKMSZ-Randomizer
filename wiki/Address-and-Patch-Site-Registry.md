@@ -1,5 +1,7 @@
 # Address and patch-site registry
 
+**2026-10-01 lifecycle candidates:** [Static closure and unbuilt v05](Lifecycle-Static-Closure-v05) contains exact clean-word guards for Pause Quit ROM `0x172CC`, failure root `0x36178`, alternate reconstruction `0x36934`, valid-preserving reconstruction `0x36B38`, stage completion `0x36BC0`, player constructor `0x2F984`, and classified terminal yield `0x367B4`. These are proposed ownership hooks, not production patches. ROM `0x364EC` remains prohibited for reset. The production progression restore and default-loader replacement retain their current owners and bytes.
+
 > **Scope:** This page is the canonical owner for **exact guarded ROM edits**: patch location, expected/original bytes or guard condition, replacement/effect, and the feature that performs the edit.
 >
 > It does **not** decide whether a continuous ROM/RDRAM interval is available or who owns a cave/reservation. Continuous ownership, lifecycle, conflicts, and production-safe bounds belong to [Memory and allocation map](Memory-and-Allocation-Map). Function meanings belong to [Function registry](Function-Registry).
@@ -38,7 +40,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x00066FE4..0x00066FEB` | second stock arena construction / bootstrap precondition | Arena reservation + bootstrap | `3C02801B 2442F420` | ArenaReservation guards the full pair and changes the low immediate to `0x3420`; the later bootstrap hook supersedes `0x66FE4` with its delay-slot NOP while the generated stub establishes the same `0x801B3420` floor |
 | `0x0007A3F4` | `0x800797F4` | Logo bypass | `0C01F113 00000000 0C01F143 00000000 0C018576 24040080` | first word `0x10000003` (`beq zero,zero,+3`); preserves fade/title |
 | `0x0007B900..0x0007B94B` | `0x8007AD00` | Four-box mask | guarded stock sanitizer body | Replace with stage-local key mask-copy routine |
-| `0x0007B94C..0x0007B97F` | `0x8007AD4C` | Four-box load | guarded stock default-loader body | Rebuild live inventory from authoritative backing box |
+| `0x0007B94C..0x0007B97F` | `0x8007AD4C` | Four-box filtered SAVE | guarded stock default-loader body | Commit non-Glass LIVE slots to the active authoritative backing box; LIVE reconstruction is the separately owned mask wrapper/sanitizer |
 | `0x0009B7DC` | `0x8009ABDC` | Stage selector | 12 stock pointers | Eight safe stage labels plus zeros |
 | `0x000B21D8..0x000B2211` | selector cursor palette | Stage selector presentation | Guarded clean 29-entry orange palette; count word at `0x000B21D4 = 0x1D` | Replace all 29 BGR555 entries with the separately guarded title-cursor palette from `0x000B32E8`; selector file `0x5F` and sprite frames remain unchanged. |
 | `0x0001645C`, `0x00029DDC`, `0x0002BDF8`, `0x0002BA5C` | SPECIALS / standing Jump / moving Jump / ledge | Modern controls | Guarded stock call/decision sequences | Route selected controls through file-`0x1A` helpers; Slide/Super Slide retain native progression recognizers |

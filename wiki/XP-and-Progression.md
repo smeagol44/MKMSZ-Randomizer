@@ -2,6 +2,8 @@
 
 XP progression is a production feature built from the runtime-confirmed Temple proof and Diagnostic B lifecycle validation. The full nine-tier generated-run coverage is still pending.
 
+**Lifecycle proof update (2026-10-01):** XP/powers persistence across Pause -> Quit is Runtime-confirmed in lifecycle v04, whose whole composition is nevertheless **Rejected / unsafe composition** because of intermittent music acceleration. Its extra nested lifecycle restore must not be promoted. The [v05 static design](Lifecycle-Static-Closure-v05) leaves production `_build_restore()` and its existing inventory reconstruction call byte-for-byte unchanged; only the already-confirmed Pause-Quit current-XP save may be retained if necessary. HP/resource work belongs at direct teardown/constructor seams. No evaluator or lifecycle calls are added to Mission Objective/stage-init progression restoration.
+
 ## Native XP system
 
 | Purpose | Address |

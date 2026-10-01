@@ -26,6 +26,7 @@
 - [Pickups and stage-local randomization](Pickups-and-Item-Randomization)
 - [Global item materialization and solvability](Global-Item-Materialization-and-Solvability)
 - [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle)
+- [Lifecycle static closure / unbuilt v05](Lifecycle-Static-Closure-v05)
 - [XP and progression](XP-and-Progression)
 - [Native HUD and UI](Native-HUD-and-UI)
 - [Presentation and branding](Presentation-and-Branding)

@@ -1,5 +1,7 @@
 # Stage flow and selector
 
+**Lifecycle ownership (2026-10-01):** [Static death/Continue/constructor/terminal trace and unbuilt v05](Lifecycle-Static-Closure-v05). Ordinary remaining-life respawn schedules `0x80016080` after the decrement at `0x80035CA0`; accepted Continue alone reloads configured lives at `0x80035C8C`. Frontend `0x8000D260 -> 0x80016B10` is a separate configured-resource reload. Do not restore saved lives on all stage entries, or add lifecycle calls to Mission Objective/progression restore. The native constructor consumes HP before the pickup-manager restore; living re-entry requires an explicit constructor-local token.
+
 > **Scope:** This page is the canonical owner for the safe stage selector, compact-to-native stage mapping, the title/frontend route used to enter the selector, the post-legal company/logo bypass, the selector-specific automatic-save bypass, rejected broad flow-bypass approaches, and the relevant bounded runtime evidence.
 >
 > Exact guarded ROM patch bytes, expected bytes, and replacement words remain canonical in the [Address and patch-site registry](Address-and-Patch-Site-Registry). This page owns the behavior and flow boundaries, not a duplicate byte registry.

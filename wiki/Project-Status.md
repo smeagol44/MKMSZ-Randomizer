@@ -2,6 +2,8 @@
 
 Last consolidated: 2026-10-01.
 
+**Focused lifecycle update (2026-10-01):** [Static closure / unbuilt v05 design](Lifecycle-Static-Closure-v05) locates stock death decrement, Continue reload, LIVE writer, HP constructor consumer and a guarded terminal-reset seam. Lifecycle v04 is **Rejected / unsafe composition** for intermittent music-speed corruption; its XP/powers Pause -> Quit persistence is bounded Runtime-confirmed. The lives ×7 floor is its repeated restore undoing stock decrements. HP correction, inventory-on-death correction and final reset remain runtime Pending. No emulator was run and no ROM was built. This is the current focused investigation; the broader release gates below remain unchanged.
+
 > **Scope:** This page is the current-state dashboard for MKMSZR. It owns production/proof/pending maturity, current blockers, and priority order. It does **not** own full 1.0 requirements or long proof chronology.
 >
 > Canonical release requirements and acceptance gates: [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). Detailed runtime evidence: [Runtime validation status](Runtime-Validation-Status). Detailed mechanisms and proof histories remain on their owning domain pages.

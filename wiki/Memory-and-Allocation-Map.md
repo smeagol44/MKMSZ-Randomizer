@@ -1,5 +1,7 @@
 # Memory and allocation map
 
+**2026-10-01 lifecycle design note:** [Unbuilt v05](Lifecycle-Static-Closure-v05) proposes only the existing reserved MKSV bytes `0x801AF7E4..0x801AF7EF` (`+0x14..+0x1F`) for HP/reason/current-resource snapshots. `0x801AF81C` (`+0x4C`) is the GAME SETTINGS transient editor, not spare lifecycle state. A final reset preserves all five durable preference bits (`0x3E00`) at `0x800A60E8`. Proposed helper candidate `[0x801B0A60,0x801B1000)` / ROM `[0xF69240,0xF697E0)` is a guarded suballocation inside the existing 16-KiB reservation, not confirmed-free space or an emitted owner. Current main includes PR #126 materializer ownership `[0x801B0970,0x801B0A60)`; v04's helpers overlap that owner and must not be reused. No allocation or ROM build was performed for this trace.
+
 > **Scope:** This page is the canonical owner for **continuous literal-space ownership** in the supported 16 MiB MKMSZ USA Rev. 0 ROM and its physical 4 MiB RDRAM. It records exact bounded intervals, aliases, lifecycle, ownership, evidence, production safety, and known conflicts.
 >
 > It does **not** replace the [patch-site registry](Address-and-Patch-Site-Registry) for individual guarded edits, the [function registry](Function-Registry) for function semantics, the [ROM/overlay/resource map](ROM-Overlay-and-Resource-Map) for loader/resource grammar, or the separate decomp-readiness view. Unknown space remains unknown.
