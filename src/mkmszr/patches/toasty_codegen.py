@@ -19,8 +19,10 @@ def _i(op:int,rs:int,rt:int,imm:int)->int:
 def addiu(rt:int,rs:int,imm:int)->int: return _i(0x09,rs,rt,imm)
 def lui(rt:int,imm:int)->int: return _i(0x0F,0,rt,imm)
 def ori(rt:int,rs:int,imm:int)->int: return _i(0x0D,rs,rt,imm)
+def andi(rt:int,rs:int,imm:int)->int: return _i(0x0C,rs,rt,imm)
 def lw(rt:int,off:int,base:int)->int: return _i(0x23,base,rt,off)
 def sw(rt:int,off:int,base:int)->int: return _i(0x2B,base,rt,off)
+def lb(rt:int,off:int,base:int)->int: return _i(0x20,base,rt,off)
 def lbu(rt:int,off:int,base:int)->int: return _i(0x24,base,rt,off)
 def lhu(rt:int,off:int,base:int)->int: return _i(0x25,base,rt,off)
 def lh(rt:int,off:int,base:int)->int: return _i(0x21,base,rt,off)
@@ -141,12 +143,43 @@ def _build_compositor(state_k1:int,draw_table_k1:int,feature_state_k1:int,audio_
            lw(S2,0x40,SP),lw(S1,0x44,SP),lw(S0,0x48,SP),lw(RA,0x4C,SP),addiu(SP,SP,0x50),jr(RA),NOP)
     return e.finish()
 
-def _build_init(state_k1:int,init_table_k1:int,palette_k0:int,feature_state_k1:int)->bytes:
+def _build_decoder()->bytes:
+    """Leaf PackBits decoder for the nine CI4 source slices.
+
+    Input: a0=compressed KSEG1 source, a1=uncached destination, a2=exact
+    decompressed byte count. Controls 0x00..0x7F encode 1..128 literal bytes;
+    controls 0x80..0xFF encode 3..130 repeats followed by the repeated byte.
+    """
+    e=MiniEmitter()
+    e.label('next')
+    e.emit(lb(T0,0,A0),addiu(A0,A0,1));e.bltz(T0,'repeat');e.emit(NOP)
+    e.emit(addiu(T1,T0,1))
+    e.label('literal_loop')
+    e.emit(lbu(T2,0,A0),sb(T2,0,A1),addiu(A0,A0,1),addiu(A1,A1,1),
+           addiu(T1,T1,-1),addiu(A2,A2,-1))
+    e.bne(T1,ZERO,'literal_loop');e.emit(NOP)
+    e.bne(A2,ZERO,'next');e.emit(NOP)
+    e.emit(jump(0),NOP)  # Patched below to the shared return label.
+    literal_done_jump=len(e.w)-2
+    e.label('repeat')
+    e.emit(andi(T1,T0,0x7F),addiu(T1,T1,3),lbu(T2,0,A0),addiu(A0,A0,1))
+    e.label('repeat_loop')
+    e.emit(sb(T2,0,A1),addiu(A1,A1,1),addiu(T1,T1,-1),addiu(A2,A2,-1))
+    e.bne(T1,ZERO,'repeat_loop');e.emit(NOP)
+    e.bne(A2,ZERO,'next');e.emit(NOP)
+    e.label('done')
+    e.emit(jr(RA),NOP)
+    # Replace the temporary absolute jump with an unconditional local branch.
+    off=e.labels['done']-(literal_done_jump+1)
+    e.w[literal_done_jump]=_i(0x04,ZERO,ZERO,off)
+    return e.finish()
+
+def _build_init(state_k1:int,init_table_k1:int,palette_k0:int,feature_state_k1:int,decoder_k1:int)->bytes:
     e=MiniEmitter()
     e.emit(addiu(SP,SP,-0x40),sw(RA,0x3C,SP),sw(S0,0x38,SP),sw(S1,0x34,SP),sw(S2,0x30,SP),
            sw(S3,0x2C,SP),sw(S4,0x28,SP),sw(S5,0x24,SP),sw(S6,0x20,SP))
     e.emit(*addr_words(S0,state_k1),*addr_words(S1,0x802E83F0),*addr_words(S2,0x800ED940),
-           *addr_words(S3,init_table_k1),*addr_words(S4,0x8001C2B4),addiu(S6,ZERO,9))
+           *addr_words(S3,init_table_k1),*addr_words(S4,0x8001C2B4),*addr_words(S5,decoder_k1),addiu(S6,ZERO,9))
     e.label('alloc_loop')
     e.emit(lbu(A0,2,S3),lbu(A1,3,S3),jalr(S4),NOP);e.bltz(V0,'fail');e.emit(NOP)
     e.emit(lbu(T0,0,S3),sll(T0,T0,2),addu(T1,S0,T0),sw(V0,0,T1))
@@ -156,9 +189,7 @@ def _build_init(state_k1:int,init_table_k1:int,palette_k0:int,feature_state_k1:i
     e.emit(lhu(T2,0,T1),_i(0x0C,T2,T2,0xFF7F),sh(T2,0,T1))
     e.emit(lhu(T0,4,S3),sh(T0,0x08,T1))
     e.emit(sll(T0,V0,2),addu(T1,S2,T0),lw(T2,0,T1),lui(T3,0x2000),or_reg(T2,T2,T3),lw(T5,8,S3),lhu(T4,6,S3))
-    e.label('copy_loop')
-    e.emit(lbu(T6,0,T5),sb(T6,0,T2),addiu(T5,T5,1),addiu(T2,T2,1),addiu(T4,T4,-1))
-    e.bne(T4,ZERO,'copy_loop');e.emit(NOP)
+    e.emit(move(A0,T5),move(A1,T2),move(A2,T4),jalr(S5),NOP)
     e.emit(addiu(S3,S3,12),addiu(S6,S6,-1));e.bne(S6,ZERO,'alloc_loop');e.emit(NOP)
     e.emit(*addr_words(T0,0x80290A88),addiu(T1,ZERO,CUSTOM_PALETTE_SELECTOR),sh(T1,0,T0),sh(T1,2,T0),lui(T1,0x0100),sw(T1,4,T0))
     e.emit(*addr_words(T0,0x802E7424),*addr_words(T1,palette_k0),sw(T1,0,T0))
@@ -205,6 +236,55 @@ def _build_init_loader()->bytes:
 def _align(value:int,alignment:int=16)->int:
     return (value+alignment-1)&~(alignment-1)
 
+def _pack_ci4_slice_rle(data:bytes)->bytes:
+    """Pack exact padded CI4 bytes with a tiny PackBits-style byte codec."""
+    out=bytearray();position=0
+    while position<len(data):
+        run=1
+        while position+run<len(data) and data[position+run]==data[position] and run<130:
+            run+=1
+        if run>=3:
+            out.append(0x80|(run-3));out.append(data[position]);position+=run
+            continue
+
+        literal_start=position;position+=run
+        while position<len(data) and position-literal_start<128:
+            run=1
+            while position+run<len(data) and data[position+run]==data[position] and run<130:
+                run+=1
+            if run>=3:
+                break
+            take=min(run,128-(position-literal_start))
+            position+=take
+            if take<run:
+                break
+        length=position-literal_start
+        out.append(length-1);out.extend(data[literal_start:position])
+    return bytes(out)
+
+def _unpack_ci4_slice_rle(encoded:bytes,expected_size:int)->bytes:
+    """Reference decoder used to guard the build-time codec."""
+    out=bytearray();position=0
+    while len(out)<expected_size:
+        if position>=len(encoded):
+            raise ValueError("truncated Toasty CI4 RLE stream")
+        control=encoded[position];position+=1
+        if control<0x80:
+            count=control+1
+            if position+count>len(encoded):
+                raise ValueError("truncated Toasty CI4 RLE literal")
+            out.extend(encoded[position:position+count]);position+=count
+        else:
+            count=(control&0x7F)+3
+            if position>=len(encoded):
+                raise ValueError("truncated Toasty CI4 RLE repeat")
+            out.extend(bytes((encoded[position],))*count);position+=1
+        if len(out)>expected_size:
+            raise ValueError("Toasty CI4 RLE stream overruns expected output")
+    if position!=len(encoded):
+        raise ValueError("Toasty CI4 RLE stream has trailing bytes")
+    return bytes(out)
+
 @dataclass(frozen=True)
 class PackedToastyModule:
     data: bytes
@@ -215,9 +295,15 @@ def pack_toasty_module(assets:ToastyAssets, probability_per_thousand:int)->Packe
     if not 1<=probability_per_thousand<=1000:
         raise ValueError("Toasty probability must be between 1 and 1000 per thousand")
 
-    dummy_state=0xA01B1000;dummy_table=0xA01B1100;dummy_feature=0xA01B1200;dummy_audio=0xA01B1300
+    compressed_slices=tuple(_pack_ci4_slice_rle(data) for data in assets.visual_slices)
+    for raw,packed in zip(assets.visual_slices,compressed_slices,strict=True):
+        if _unpack_ci4_slice_rle(packed,len(raw))!=raw:
+            raise AssertionError("Toasty CI4 RLE round-trip failed")
+    decoder=_build_decoder()
+
+    dummy_state=0xA01B1000;dummy_table=0xA01B1100;dummy_feature=0xA01B1200;dummy_audio=0xA01B1300;dummy_decoder=0xA01B1400
     comp_probe=_build_compositor(dummy_state,dummy_table,dummy_feature,dummy_audio,probability_per_thousand)
-    init_probe=_build_init(dummy_state,dummy_table,0x801B1400,dummy_feature)
+    init_probe=_build_init(dummy_state,dummy_table,0x801B1500,dummy_feature,dummy_decoder)
     audio=_build_audio_helper();trigger_probe=_build_trigger(dummy_feature)
     dispatch_probe=_build_dispatcher(0xA01B0100,0xA01B0200,0xA01B0300)
 
@@ -231,7 +317,8 @@ def pack_toasty_module(assets:ToastyAssets, probability_per_thousand:int)->Packe
     # The target keeps the original 0x200-byte TLUT slot, filling only its
     # first 16 entries. That preserves deterministic module addresses.
     take('init-table',9*12);take('slot-state',9*4);take('feature-state',0x10);take('palette',0x200)
-    for index,data in enumerate(assets.visual_slices): take(f'piece-{index}',len(data))
+    take('decoder',len(decoder))
+    for index,data in enumerate(compressed_slices): take(f'piece-{index}',len(data))
 
     pool=ExpansionPoolAllocator(start=MODULE_K0,end_exclusive=EXPANSION_POOL_END_EXCLUSIVE)
     allocation=pool.allocate('toasty-production',cursor,align=0x1000)
@@ -245,12 +332,12 @@ def pack_toasty_module(assets:ToastyAssets, probability_per_thousand:int)->Packe
     table_k1=kseg1(MODULE_K0+offsets['init-table']);feature_k1=kseg1(MODULE_K0+offsets['feature-state'])
     audio_k1=kseg1(MODULE_K0+offsets['audio']);palette_k0=MODULE_K0+offsets['palette']
     comp_k1=kseg1(MODULE_K0+offsets['compositor']);init_k1=kseg1(MODULE_K0+offsets['init'])
-    trigger_k1=kseg1(MODULE_K0+offsets['trigger'])
+    trigger_k1=kseg1(MODULE_K0+offsets['trigger']);decoder_k1=kseg1(MODULE_K0+offsets['decoder'])
 
     dispatch=_build_dispatcher(init_k1,comp_k1,trigger_k1)
     comp=_build_compositor(state_k1,draw_k1,feature_k1,audio_k1,probability_per_thousand)
     init_table=_build_init_table(source_addrs,assets)
-    init=_build_init(state_k1,table_k1,palette_k0,feature_k1)
+    init=_build_init(state_k1,table_k1,palette_k0,feature_k1,decoder_k1)
     trigger=_build_trigger(feature_k1)
     if not (len(dispatch)==len(dispatch_probe) and len(comp)==len(comp_probe) and len(init)==len(init_probe) and len(trigger)==len(trigger_probe)):
         raise AssertionError("Toasty packing pass changed code size")
@@ -261,6 +348,6 @@ def pack_toasty_module(assets:ToastyAssets, probability_per_thousand:int)->Packe
     put('dispatcher',dispatch);put('compositor',comp);put('init',init);put('audio',audio);put('trigger',trigger)
     put('draw-table',DRAW_TABLE);put('init-table',init_table);put('slot-state',bytes([0xFF])*(9*4))
     put('feature-state',(0).to_bytes(8,'big')+SLIDE_START_X_SHIFT.to_bytes(4,'big')+(0).to_bytes(4,'big'))
-    put('palette',assets.palette_tlut)
-    for index,data in enumerate(assets.visual_slices): put(f'piece-{index}',data)
+    put('palette',assets.palette_tlut);put('decoder',decoder)
+    for index,data in enumerate(compressed_slices): put(f'piece-{index}',data)
     return PackedToastyModule(bytes(blob),allocation.start,offsets)
