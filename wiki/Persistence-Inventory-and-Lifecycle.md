@@ -94,15 +94,12 @@ It also names `0x0F1057` as a life-related address, but does not use it for stag
 The remaining technical work is a focused native lifecycle trace for the actual current-run values and the writers that reset them on stage entry/direct selector routes. The preserve/reset mechanism must be established from runtime/static evidence rather than inferred from the Lua startup configuration.
 
 
-## Temple Map lifecycle implications
+## Temple scripted-check lifecycle
 
-The canonical Temple Map 1.0 policy and acceptance criteria are owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). This section records the lifecycle mechanics and pending traces that any accepted policy must account for.
+The canonical 1.0 policy is resolved in [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap): logical Map item `0x0D` is excluded from the randomizer pool, while the scripted Temple Map location remains a special check.
 
-If the Temple Map becomes a shuffled 1.0 inventory item, stock lifecycle behavior is not acceptable: the game removes it when transitioning from Temple to Wind.
+v01 Runtime-confirmed that replacing only the scripted location's inventory award with Herbs leaves the Temple elevator/platform progression intact. v02 then closes the special-check lifecycle: collection sets **MKSV header flags bit `0x0001`**; on title -> Temple re-entry the helper sees that bit, reconstructs the stock Temple-local collected word at `0x8026E9A4 = 0x00000100`, and resumes the stock post-award loop at `0x802EEE94` without respawning or re-awarding the check. The user confirmed the check remained absent, elevator/rope progression remained correct, and Temple -> Wind completed normally.
 
-Pending technical investigation:
+This state is intentionally independent of the 84 ordinary manager-backed persistence bits. No cross-stage logical-Map retention or Temple -> Wind Map-removal workaround exists in 1.0 because Map `0x0D` is not a randomized logical item.
 
-- identify the stock writer/removal path;
-- determine whether keeping the Map item across transitions has side effects;
-- preserve the logical Map item in randomizer inventory until the run lifecycle explicitly clears it;
-- independently preserve/replace the Temple elevator/exit trigger so Temple completion does not depend on where the shuffled Map reward is located.
+The exact reset boundary for the special-check bit follows the same still-Pending Game Over/new-run policy as the rest of run-scoped randomizer state; that broader reset policy is not a Temple-specific blocker.

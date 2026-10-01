@@ -1,6 +1,6 @@
 # Project status
 
-Last consolidated: 2026-09-30.
+Last consolidated: 2026-10-01.
 
 > **Scope:** This page is the current-state dashboard for MKMSZR. It owns production/proof/pending maturity, current blockers, and priority order. It does **not** own full 1.0 requirements or long proof chronology.
 >
@@ -53,7 +53,7 @@ These results are important feasibility evidence but are **not** normal browser/
 | Deterministic global shuffle and retry model | **Pending.** Replace the interim eight stage-local pools with one deterministic global logical run and explicit deterministic retry attempts |
 | Whole-run solvability validation | **Pending.** Finalize current access rules and a completion predicate for both pickup and earned-XP modes using Vanilla / Custom / Seed required-power settings |
 | Native randomizer HUD | **Partial.** Native text and box state are proven; checks/progression/key/pickup run-state display is still required |
-| Temple Map and run lifecycle invariants | **Pending.** Resolve Map inclusion/trigger separation/persistence, then HP/lives/continues preservation, Game Over/new-run reset, and Very Hard enforcement |
+| Run lifecycle invariants | **Temple scripted-check portion closed.** v01 Runtime-confirmed reward/progression separation; v02 then Runtime-confirmed the complete Herbs representative path: correct Herbs visual, Herbs award, elevator/rope progression, dedicated special-check persistence across title/Temple re-entry, and Temple -> Wind continuation. Logical Map `0x0D` remains excluded and the location stays outside the 84 ordinary records. The shared patch core now carries this validated Temple-special mechanism; future global assignment only supplies the logical reward/materializer input. HP/lives/continues, Game Over/new-run reset, and Very Hard remain Pending. |
 | Final production-composition runtime gate | **Pending.** Run a representative full global seed after the above are integrated, including all nine progression tiers and the major lifecycle boundaries |
 
 ## Current priority order
@@ -65,7 +65,7 @@ Current user direction is to close the remaining **materialization safety gates 
 3. Complete the remaining destination-stage materializer stress/capacity gates, especially Fortress, then build the smallest guarded disposable production-composition integration proof with current allocation ownership.
 4. Only after those gates are green, replace the interim stage-local generation with the deterministic global shuffle plus whole-run solver, explicit deterministic retries, the selected Vanilla / Custom / Seed required-power setting and its pickup/earned-XP source, and the approved optional deterministic constrained nine-slot power-order shuffle.
 5. Build the native randomizer HUD around the finalized global-run state.
-6. Resolve Temple Map behavior, then HP/lives/continues lifecycle, Game Over/new-run reset, and the Very Hard invariant.
+6. Temple-specific mechanism is closed. When the global generator is integrated, feed its assigned logical reward/materializer result into the already-separated special-check seam; do not reopen Temple progression/persistence architecture. Then close HP/lives/continues lifecycle, Game Over/new-run reset, and the Very Hard invariant.
 7. Run the final representative full-seed 1.0 validation.
 8. Post-1.0: ordinary-enemy randomization/resource compatibility, imported-enemy death/despawn work, and donor-move/Sektor expansion.
 
@@ -73,6 +73,7 @@ This order follows the current user direction and the materializer dependency ch
 
 ## Current evidence notes
 
+- **Temple scripted check (2026-10-01):** v01 Runtime-confirmed that changing only the scripted Map award `0x0D -> 0x04` preserves the elevator/platform progression. v02 then closed presentation and lifecycle: the location rendered as Herbs, awarded Herbs, moved the elevator, exposed/retained the exit-rope route, stayed collected after title -> Temple re-entry through dedicated MKSV header flag bit `0x0001`, and completed Temple -> Wind normally. The promoted patch keeps this scripted check outside the 84 ordinary records and uses the file-`0x1A` expansion gap for its two helpers. The later global generator may change the assigned reward, but that is global-materializer work rather than unresolved Temple architecture.
 - **XP:** the first V2 productionization attempt is **Rejected / failed** because stage initialization called the native tier evaluator too early. Diagnostic B isolated that timing error and is the current production behavior: restore persistent XP at stage entry, evaluate tiers only when a progression pickup is collected. Detailed Diagnostics A/B remain in [XP and progression](XP-and-Progression).
 - **Title:** the approved typeset title was confirmed visually in the production webapp on 2026-09-29. The non-vanilla outfit/title color match and fixed rainbow title are data-only and preserve the 16-color CI8/stock-slot contract; color variants are static-checked, runtime Pending. The old executable wrapper that overlapped pickup-persistence ownership remains **Rejected / failed**; prior proof hashes and integration history remain in [Presentation and branding](Presentation-and-Branding).
 - **Sektor:** v62 remains the tested combo baseline; v75 the last stable tested straight-missile flight. v76–v79 remain negative/failed controls; v85 is statically rejected and untested. v87 Runtime-confirms exact retail rocket pixels/colors. v88 preserves the good rocket but still exposes a one-frame corrupted Sektor-like texture, showing that early descriptor/cursor binding alone does not synchronously replace the finalized projectile texture slot before publication. v84's earlier apparent first-frame suppression is therefore reinterpreted as a selector-zero presentation artifact, not proof of ready rocket texture. v89 Runtime-confirms the synchronous pre-publication slot-load proof: the corrupted first-frame Sektor is gone and the correct rocket remains. Next work is lifecycle/ownership productionization, not further first-frame cosmetic iteration.
@@ -90,7 +91,7 @@ This order follows the current user direction and the materializer dependency ch
 
 - Enemy randomization and Reverse Elbow / foreign-move completion are **not 1.0 blockers**.
 - Bosses and scripted encounters are not ordinary-enemy entries.
-- The Temple Map is not one of the 84 ordinary pickup records; its 1.0 inclusion policy is still explicit Pending work.
+- The Temple Map is not one of the 84 ordinary pickup records. 1.0 policy is now explicit: logical item `0x0D` is excluded from the randomizer pool, while the scripted Temple location remains a special check whose elevator/progression side effect is location-owned. Arbitrary reward visual/materialization and special-check persistence remain Pending production work.
 - Zero/unused-looking resource selectors are not automatically free physical storage.
 - PS1 addresses and platform behavior do not transfer to N64 without demonstrated compatibility.
 - Disposable proof ROM patches, proof caves, and archive handoffs are not silently part of the production pipeline.

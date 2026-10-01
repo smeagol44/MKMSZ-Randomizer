@@ -31,7 +31,7 @@ Production V2 lives at `0x801AF7D0..0x801AF81F`.
 | `+0x04` | Version `2` |
 | `+0x08` | Total size `0x50` |
 | `+0x0C` | Header size `0x20` |
-| `+0x10` | Flags |
+| `+0x10` | Flags; bit `0x0001` = Temple scripted special check collected |
 | `+0x14..+0x1F` | Reserved |
 | `+0x20` | Temple ordinary-pickup bitset |
 | `+0x24` | Wind |
@@ -52,7 +52,7 @@ Fire's 19 manager ordinals translate to catalog bits as:
 [2, 5, 4, FF, FF, FF, 9, 14, 0, 1, 8, 11, 12, 3, 7, 6, 10, 13, 15]
 ```
 
-`FF` ordinals `3`, `4`, and `5` are special type-4 records and intentionally excluded. Progression count/XP are separate from these 84 ordinary-pickup persistence bits.
+`FF` ordinals `3`, `4`, and `5` are special type-4 records and intentionally excluded. Progression count/XP and the Temple scripted-check header flag are separate from these 84 ordinary-pickup persistence bits.
 
 ## Four-box inventory layout
 

@@ -163,6 +163,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x802F2448` | Water | Triangle/Three Bars/Moon award callback |
 | `0x802F52B0` | Earth | Square/Four Squares/Triangle award callback |
 | `0x802EF178` | Bridge | Omega/Rings/Arrow award callback |
+| `0x802EEC54` | Temple | Scripted Map/special-check actor callback. v01 Runtime-confirmed that its inventory award at `0x802EEE5C/60` is separable from the later elevator/progression path. v02 Runtime-confirms native Herbs visual materialization, dedicated MKSV special-check persistence, re-entry reconstruction, rope/elevator behavior, and Temple -> Wind while keeping the post-award loop location-owned. |
 
 ## PS1 counterparts
 

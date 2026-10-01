@@ -12,6 +12,7 @@ from mkmszr.patches.power_order import PowerOrderPatch
 from mkmszr.patches.rainbow_palette import RainbowPalettePatch
 from mkmszr.patches.required_powers import RequiredPowersPatch
 from mkmszr.patches.stage_selector import SafeStageSelectorPatch
+from mkmszr.patches.temple_special_check import TempleSpecialCheckPatch
 from mkmszr.patches.xp_progression import XPProgressionPatch
 
 
@@ -88,3 +89,17 @@ def test_enemy_randomization_is_default_off_and_optional_in_shared_pipeline() ->
     types = [type(patch) for patch in enabled.patches]
     assert EnemyRandomizationPatch in types
     assert types[-1] is EnemyRandomizationPatch
+
+
+def test_temple_special_check_runs_after_controls_and_optional_rainbow() -> None:
+    normal = build_pipeline(RandomizerConfig(seed="TEMPLE-SPECIAL"))
+    types = [type(patch) for patch in normal.patches]
+    assert TempleSpecialCheckPatch in types
+    assert types.index(ControlsProductionPatch) < types.index(TempleSpecialCheckPatch)
+
+    rainbow = build_pipeline(
+        RandomizerConfig(seed="TEMPLE-SPECIAL", outfit=OutfitConfig(mode="rainbow"))
+    )
+    types = [type(patch) for patch in rainbow.patches]
+    assert types.index(ControlsProductionPatch) < types.index(RainbowPalettePatch)
+    assert types.index(RainbowPalettePatch) < types.index(TempleSpecialCheckPatch)

@@ -483,23 +483,53 @@ The build-time range for Custom/Seed is `0..9`. Global mode-aware solver reachab
 
 Native progression mechanics and current runtime evidence through XP 85/258 belong to [XP and progression](XP-and-Progression).
 
-## Temple Map and the possible 85th check
+## Temple scripted Map location — policy Runtime-confirmed
 
-The Temple Map is **not** one of the 84 ordinary `0x30`-byte records. It follows a scripted/special actor path and is deliberately absent from the ordinary stage catalog count.
+The Temple Map is **not** one of the 84 ordinary `0x30`-byte records. It follows a scripted/special actor path and remains outside the ordinary stage catalog and ordinary-pickup persistence bitset.
 
-The current sources do not settle whether the Map should become a randomized **85th check**. Two concerns must be separated:
+### Reward/progression separation proof v01
 
-### Trigger versus reward
+Static trace identified the scripted Temple callback beginning at VA `0x802EEC54` in Temple overlay file `0xA0`. Its inventory insert is the call to `0x80075448` at VA `0x802EEE5C` / ROM `0x000CC53C`; the delay slot at VA `0x802EEE60` / ROM `0x000CC540` is stock `2404000D` (`addiu a0,zero,0x0D`).
 
-The Map's logical inventory reward is coupled to Temple-specific progression behavior, including the elevator/exit path. Before the logical Map reward can be shuffled elsewhere, research must establish whether the inventory award can be separated from the Temple trigger so Temple remains completable regardless of where the logical reward is placed.
+Disposable v01 changed only that delay-slot immediate to `24040004` (Herbs), preserving the complete scripted actor and later Temple-local logic, including the progression path around `0x802EE9B8`. Proof identity: `MKMSZR_temple-map-herbs_temple-proof_v01.z64`, SHA-256 `c9334451576af3b5b5492e4c9c1b8e514da1b35686cf3c7fb5c13cca9d58900e`, CRC1/CRC2 `C34304BE / 5C014BB5`.
 
-The solver must model the Temple trigger and the logical reward as separate concepts unless/until a safe unified design is proven.
+**Runtime-confirmed bounded result (2026-10-01):** the scripted pickup still rendered as the Map, awarded Herbs instead of Map, and the Temple elevator/platform moved normally. This is the intended isolation result: visual identity remained stock because v01 changed only reward semantics. The observation confirms the location-owned elevator/progression effect survives a different logical inventory award.
 
-### Cross-stage lifecycle
+### Full special-check closure v02
 
-Stock behavior removes the Map on Temple -> Wind. If the Map becomes a true randomized logical inventory item, that cleanup must be suppressed or replaced by explicit randomizer lifecycle handling, and later-stage side effects must be checked.
+Disposable v02 extended the v01 isolation with the remaining Temple-specific concerns while preserving the same scripted location/progression owner:
 
-Until these questions are resolved, the Map remains separate from the ordinary 84-location global pool and must not be silently counted as an ordinary record.
+- visual path retargeted from the Map actor resource to Temple's native Herbs selector `15` and Herbs palette;
+- logical award remained Herbs `0x04`;
+- collection persisted through dedicated MKSV header flags bit `0x0001`, not through any ordinary-pickup bit;
+- on Temple re-entry the helper reconstructs stock local Map-collected state at `0x8026E9A4` and resumes the post-award loop at `0x802EEE94` without respawning or re-awarding the check.
+
+Proof identity: `MKMSZR_temple-special-herbs_temple-proof_v02.z64`, SHA-256 `d14380afe698d7daa9173a3295882e04f58e1bb747a88e33df33b32720118f66`, CRC1/CRC2 `D267F169 / 8BFE7ED6`.
+
+**Runtime-confirmed bounded result (2026-10-01):** the user reported the complete v02 route worked perfectly: the scripted location visibly appeared as Herbs, awarded Herbs, moved the elevator/platform, preserved the exit-rope route, remained collected after title -> Temple re-entry with progression still correct, and continued through Temple -> Wind normally.
+
+### 1.0 policy
+
+- Logical item Map `0x0D` is excluded from the randomizer item pool.
+- No cross-stage Map persistence and no Temple -> Wind Map-cleanup workaround are required.
+- The scripted Map actor/location remains a **special Temple randomizer check**.
+- Its Temple progression/elevator effect is a property of the physical location and remains attached regardless of assigned logical reward.
+- The location is not a fifth ordinary Temple record and does not consume an ordinary-pickup persistence bit.
+- Dedicated special-check collection state is MKSV header flags bit `0x0001`.
+- The global solver/check model must represent this special check explicitly.
+- The global destination-safe award/resource materializer may later supply a different assigned logical reward; that does not require reopening the Temple-specific progression/persistence mechanism proven here.
+
+### Promoted production architecture
+
+The Temple-specific architecture is now closed around the validated ownership split:
+
+1. keep the scripted Temple actor/callback and post-award progression path intact;
+2. hook the scripted-location entry only to suppress re-award after persistent collection and resume the stock post-award elevator loop;
+3. wrap the inventory insertion only to commit the dedicated special-check flag and reconstruct the stock local state word;
+4. materialize the assigned visual/reward independently from those location-owned effects;
+5. keep this state outside the eight ordinary pickup bitset words.
+
+The first promoted product implementation uses the Runtime-confirmed Herbs representative presentation/reward. This is intentionally **not** a claim that the still-Pending global shuffle already assigns arbitrary rewards. When the global item generator/materializer is connected, it should feed the selected logical reward into this established special-check seam rather than redesigning Temple progression or persistence.
 
 ## Rejected, failed, and superseded materialization approaches
 

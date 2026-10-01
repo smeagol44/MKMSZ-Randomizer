@@ -21,6 +21,7 @@ The test workflow uses Python 3.11 for pushes to `main`, `refactor/**`, and `fea
 | `test_native_payload.py` | File entry, loader stub, hook, capacity |
 | `test_pickup_persistence.py` / `test_manager_persistence.py` | State layout, hook code, stage/ordinal mapping |
 | `test_pickup_randomization.py` | 84-record catalog, deterministic shuffle, access constraints, 250-seed sweep |
+| `test_temple_special_check.py` | Scripted Temple-check allocation, guarded Herbs visual/reward seams, dedicated MKSV persistence flag, re-entry hook targets, and file-`0x1A` composition |
 | `test_enemy_planner.py` | 104-record ordinary-enemy catalog, five fixed singleton exclusions, deterministic resource-family profiles, Water payload ceilings/shared-resource accounting, Prison phase paging/auxiliary dependencies, pending-family fail-closed rules |
 | `test_fighter_compaction.py` | Accepted 64->16 PRIS body mapping, palette representatives, recovered compact file-size contracts |
 | `test_enemy_materializer.py` | Deterministic supported-profile retry, guarded Water HULK/FAST/raw-PRIS17 and compact PRIS15/PRIS16/mixed loader transforms, Prison FAST phase loader + fixed capture anchor, singleton preservation, fail-before-write guards, unsupported-profile rejection |

@@ -24,6 +24,7 @@ from .patches import (
     SubZeroPalettePatch,
     TempleIntroAudioAssets,
     TempleIntroAudioPatch,
+    TempleSpecialCheckPatch,
     TitleBrandingPatch,
     ToastyAssets,
     ToastyProductionCompositionPatch,
@@ -126,6 +127,11 @@ def build_pipeline(
     # expansion gap, so it must compose after ControlsProductionPatch.
     if outfit_mode == "rainbow":
         patches.append(RainbowPalettePatch())
+    # The scripted Temple check uses the production file-0x1A expansion
+    # transport and composes after the optional rainbow wrapper. Its validated
+    # location/progression/persistence behavior remains separate from the 84
+    # ordinary pickup records.
+    patches.append(TempleSpecialCheckPatch())
     # Controls production deliberately verifies the stock Slide/Super Slide
     # gates before installing helpers that call those recognizers. Apply the
     # optional order remap afterwards so both safety guards and shuffled tiers
