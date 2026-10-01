@@ -58,6 +58,7 @@
 - [Toasty visual research](Toasty-Visual-Research)
 - [PS1 research](PS1-Research)
 - [N64–PS1 comparison](N64-PS1-Comparison)
+- [N64 -> PS1 port planning and strategy](N64-to-PS1-Port-Planning-and-Strategy)
 
 **History / Failures / Superseded Material**
 
