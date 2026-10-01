@@ -4,6 +4,7 @@ import pytest
 
 from mkmszr.donors.mkt_n64 import (
     CI4_INDEX_MAP,
+    CI4_PALETTE_RGBA5551_OVERRIDES,
     CI4_PALETTE_SOURCES,
     MKT_N64_REV2_SHA256,
     MKT_N64_REV2_SIZE,
@@ -49,7 +50,19 @@ def test_visual_translation_uses_confirmed_ci4_palette_order() -> None:
 
     assert len(slices) == 9
     assert len(tlut) == 0x20
-    assert tlut == b"".join(index.to_bytes(2, "big") for index in CI4_PALETTE_SOURCES)
+    expected_tlut = bytearray(
+        b"".join(index.to_bytes(2, "big") for index in CI4_PALETTE_SOURCES)
+    )
+    for index, rgba5551 in CI4_PALETTE_RGBA5551_OVERRIDES.items():
+        start = index * 2
+        expected_tlut[start : start + 2] = rgba5551.to_bytes(2, "big")
+    assert tlut == bytes(expected_tlut)
+    assert CI4_PALETTE_RGBA5551_OVERRIDES == {
+        3: 0x388F,
+        4: 0x5059,
+        6: 0x6221,
+        9: 0xA2AD,
+    }
     assert slices[0][:4] == bytes(
         (CI4_INDEX_MAP[0] << 4 | CI4_INDEX_MAP[1],
          CI4_INDEX_MAP[2] << 4 | CI4_INDEX_MAP[3],
