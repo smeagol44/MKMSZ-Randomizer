@@ -138,6 +138,10 @@ The earlier blanket statement that textured-image rendering was unproven is supe
 | Treat the Ice `0x80060A3C` process as a disposable visual clone | v65-v67 suppressed one/both process spawns while also changing parent setup and hard-hung | The process constructs, inserts, animates and tears down two actors plus texture/palette state; the broad failures cannot isolate that suppression as sole cause. Keep parent/helper ownership intact until a replacement transaction and teardown are proven | [Player actions and special moves](Player-Actions-and-Special-Moves), [MKT adapter primitives](MKT-Adapter-Primitives) |
 | Treat v72's stable direct `(+5,+38)` placement as proof that donor local units and MKMSZ world units are universally 1:1 | v74's cadence-resampled path is stable, but comparative 60-fps donor/target video measures late visible flight at roughly half MKT speed | Placement stability does not establish cross-engine spatial-unit equivalence; preserve the proven temporal resampler and calibrate donor-local -> target-world scale separately | [MKT adapter primitives](MKT-Adapter-Primitives), [Sektor takeover proof history](Sektor-Takeover-Proof-History) |
 
+## Key-checkpoint product-direction supersession
+
+- **Wind checkpoint guard v04/v05 — superseded as product behavior (2026-10-01):** these proofs remain valid evidence about Wind selector ordering and the danger of stale relative checkpoint transitions, but they no longer define the 1.0 design. The accepted product requirement is that collecting a key/icon/crystal does **not** create a checkpoint. TEST LAB remaining-key no-checkpoint v01 Runtime-confirms checkpoint-free logical awards for Water ×3, Earth ×3, and Prison L1/L2/L3 with correct inventory identity. Production must preserve required non-checkpoint progression/credential state separately.
+
 ## Flow, inventory, and run-lifecycle rejections
 
 | Attempt / scope | Observed failure / rejection | What it established | Detailed owner |
