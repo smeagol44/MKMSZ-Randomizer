@@ -2,6 +2,8 @@
 
 Unless stated otherwise, PS1 results are **static-confirmed**, not runtime-confirmed. Target executable: `SLUS_004.76`.
 
+For the standing phase order, experiments, and exit gates for a future full port after N64 1.0 is complete, see [N64 -> PS1 port planning and strategy](N64-to-PS1-Port-Planning-and-Strategy). This page remains the owner of PS1 technical findings.
+
 ## Executable and memory layout
 
 | Property | Value |
