@@ -2,6 +2,8 @@
 
 The ports share strong source/data lineage, but they do not share executable addresses, overlay placement, file containers, patch sites, free-memory claims, or checksum behavior.
 
+For how to turn these transfer rules into an actual phased port once N64 1.0 is finished, see [N64 -> PS1 port planning and strategy](N64-to-PS1-Port-Planning-and-Strategy).
+
 | Concept | N64 USA Rev. 0 | PS1 `SLUS_004.76` | Transfer status |
 |---|---|---|---|
 | Executable base | Cartridge segments/overlays; main overlay base `0x802ECE30` | Payload `0x80010000`, overlay base near `0x80130FF8` | Concept only |
