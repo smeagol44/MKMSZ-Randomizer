@@ -5,6 +5,7 @@ from .boot_branding import BootBrandingPatch
 from .box_indicator import BoxIndicatorPatch
 from .flow_bypass import BootLogoBypassPatch, SafeStageSelectSkipAutoSavePatch
 from .game_settings_turn import GameSettingsTurnPatch
+from .global_materialization import GlobalItemMaterializationPatch
 from .inventory_boxes import FourBoxInventoryPatch
 from .manager_persistence import (
     ManagerPersistenceFirePatch,
@@ -39,6 +40,7 @@ __all__ = [
     "BoxIndicatorPatch",
     "FourBoxInventoryPatch",
     "GameSettingsTurnPatch",
+    "GlobalItemMaterializationPatch",
     "ManagerPersistenceFirePatch",
     "MktAudioClip",
     "NativePayloadPatch",
