@@ -1,3 +1,6 @@
+import pytest
+
+from mkmszr.errors import PatchError
 from mkmszr.mips import jal, words_blob
 from mkmszr.patches.base import PatchContext
 from mkmszr.patches.stage_selector import (
@@ -123,9 +126,5 @@ def test_selector_presentation_guards_reject_drift() -> None:
     ):
         rom = _selector_shape()
         rom.data[offset] ^= 0x01
-        try:
+        with pytest.raises(PatchError, match="guard failed"):
             SafeStageSelectorPatch().apply(rom, PatchContext())
-        except Exception:
-            pass
-        else:
-            raise AssertionError(f"selector presentation guard did not reject drift at 0x{offset:X}")
