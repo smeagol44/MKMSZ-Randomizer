@@ -2,10 +2,10 @@ from collections import Counter
 
 import pytest
 
-from mkmszr.patches import enemy_randomization
 from mkmszr.data.enemies import STAGE_ENEMIES
 from mkmszr.enemy_planner import build_enemy_plan
 from mkmszr.errors import PatchError
+from mkmszr.patches import enemy_randomization
 from mkmszr.patches.enemy_randomization import (
     MATERIALIZABLE_PROFILE_KEYS,
     WATER_SECOND_TRANSACTION,
