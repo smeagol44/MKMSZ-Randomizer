@@ -38,6 +38,18 @@ The selector wrap/count sites at ROM `0xDD60` and `0xDD64` are bounded to eight 
 
 Stock entries excluded from production are **Unused**, **Fire God Room**, and **Test Characters**. The original eleven-label order was Temple, Wind, Water, Earth, Prison, Fire, Unused, Fire God Room, Bridge, Fortress, Test Characters.
 
+### Blue cursor and movement sound — Runtime-confirmed
+
+The accepted production presentation is the bounded **v03a** composition.
+
+Static comparison of the clean USA Rev. 0 resources established that selector frames `0x352..0x35A` from global file `0x5F` and title-menu cursor frames `0x3CC..0x3D4` from file `0x5E` have byte-identical indexed pixel payloads for all nine corresponding frames. Both presentations use a 29-entry palette and collectively reference every palette index `0..28`. The selector therefore keeps its existing file `0x5F`, sprite IDs, slot `0x1C2`, registration path, and `0x8001D520` draw path; production changes only the selector-local 58-byte palette at ROM `0x000B21D8` to the title cursor palette from ROM `0x000B32E8`. Files `0x5E` and `0x5F` are not rewritten for this feature.
+
+Movement sound is also Runtime-confirmed in v03a. At the selector input-loop hook, only a newly pressed single Up/Down direction plays title MOVE descriptor `0x1FC` (raw sound `0x0230`) through native wrapper `0x80064C18`. Holding a direction does not repeatedly retrigger the sound. The helper occupies guarded frontend-resident ROM `0x0000E27C..0x0000E2AF`, replacing an unreachable compiler epilogue whose clean bytes and direct-target absence are guarded/static-checked.
+
+Manual v03a validation confirmed the blue animated cursor, movement SFX, normal stage selection, and normal stage audio after remaining in gameplay beyond the delay that had exposed the rejected v02 audio symptom. This runtime result is bounded to the tested selector/stage route rather than exhaustive frontend/audio coverage.
+
+**Confirmation chime is intentionally deferred.** Stage choice inside the native selector is committed by **Start**, through the existing event/callback route to `0x80015088`; A is only the verified title-screen route used to enter Safe Stage Select. The v02 experiment incorrectly played descriptor `0x1FD` on an A edge inside the selector and was rejected: A produced the sound without choosing a stage, and after stage load the user observed delayed crunchy/choppy/noisy audio. The exact corruption mechanism was not proven, so production contains **no added confirmation-SFX hook**.
+
 ## Compact-to-native selection mapping
 
 The debug menu writes its compact selection at `0x800C11E0`. The transition path at `0x80015088` ultimately stores the native stage at `0x8009A910`.

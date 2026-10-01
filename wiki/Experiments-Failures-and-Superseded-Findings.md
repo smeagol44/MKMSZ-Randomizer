@@ -141,7 +141,10 @@ The earlier blanket statement that textured-image rendering was unproven is supe
 
 | Attempt / scope | Observed failure / rejection | What it established | Detailed owner |
 |---|---|---|---|
-| Start-button selector shortcut | Intermittent | Production selector uses the A-button route | [Stage flow and selector](Stage-Flow-and-Selector) |
+| Start-button selector shortcut | Intermittent | Production selector uses the A-button route from the title screen; inside the native selector, Start remains the actual stage-choice/commit control | [Stage flow and selector](Stage-Flow-and-Selector) |
+| Safe-selector confirmation SFX v01 | Added title descriptor `0x1FD` very late in the stage-commit path; no audible confirmation was reported | Reject the late commit seam. The title confirmation voice is not proven safe/effective at that teardown boundary. | [Stage flow and selector](Stage-Flow-and-Selector) |
+| Safe-selector confirmation SFX v02 | A inside the selector played `0x1FD`, but A does not choose a stage; after stage load the user observed delayed crunchy/choppy/noisy audio | **Rejected / failed.** A is not the native selector commit input; Start owns the commit event. The delayed audio symptom did not recur in movement-only v03a, so production drops the added confirmation path entirely. The exact v02 corruption mechanism remains unresolved; do not reintroduce this composition. | [Stage flow and selector](Stage-Flow-and-Selector); [Address and patch-site registry](Address-and-Patch-Site-Registry) |
+| Safe-selector audio isolation v03a | Blue cursor + movement descriptor `0x1FC` only; no confirmation path | **Runtime-confirmed accepted production baseline.** Cursor/movement sound work and the delayed stage-audio corruption did not recur on the tested route. | [Stage flow and selector](Stage-Flow-and-Selector) |
 | Broad boot-routine deletion | Rejected | Fade/title normalization still has to run | [Stage flow and selector](Stage-Flow-and-Selector) |
 | Disable saving globally | Rejected | Selector-only suppression uses the native one-shot flag; normal post-stage saving remains | [Stage flow and selector](Stage-Flow-and-Selector) |
 | Tablet `0x24` as foreign-key placeholder | Consumable | Use inert Glass `0x08` for LIVE masking instead | [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle) |
