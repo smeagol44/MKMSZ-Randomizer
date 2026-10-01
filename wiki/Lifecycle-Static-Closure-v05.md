@@ -11,7 +11,7 @@ Current repository source: `main` at `62cf0e4d317779b6a75b9964cfc53d278476ddc1` 
 | Clean USA Rev. 0 ROM | `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6` |
 | Exact `MKMSZR_lifecycle_pause-quit_proof_v04.z64` recovered for inspection | `63357955a89e3059c405e42bf127c79cb6692395e7f730d2bad0c733123c47db` |
 
-The v04 builder was not recovered. Its emitted instructions were inspected directly. [Machine-readable trace evidence](https://github.com/smeagol44/MKMSZ-Randomizer/blob/main/docs/research/lifecycle-static-v05.json) records mapped bytes/disassembly and production source hashes. This report does not attribute the intermittent music-speed corruption to a specific instruction: its cause is unresolved, and the entire v04 composition is rejected.
+The v04 builder was not recovered. Its emitted instructions were inspected directly. Machine-readable trace evidence (`lifecycle-static-v05.json`) is outside the scope of this Wiki publication; the Wiki records the relevant guards, identities and evidence limits. This report does not attribute the intermittent music-speed corruption to a specific instruction: its cause is unresolved, and the entire v04 composition is rejected.
 
 ## Ordinary death and remaining-life reconstruction
 
