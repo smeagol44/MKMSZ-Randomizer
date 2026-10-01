@@ -2,10 +2,10 @@ from collections import Counter
 
 import pytest
 
+import mkmszr.patches.enemy_randomization as enemy_randomization
 from mkmszr.data.enemies import STAGE_ENEMIES
 from mkmszr.enemy_planner import build_enemy_plan
 from mkmszr.errors import PatchError
-import mkmszr.patches.enemy_randomization as enemy_randomization
 from mkmszr.patches.enemy_randomization import (
     MATERIALIZABLE_PROFILE_KEYS,
     WATER_SECOND_TRANSACTION,
@@ -247,3 +247,11 @@ def test_compact_pris_profiles_use_production_compactor_and_loader(
     assert rom.read_u32(0xB58F0) == slot_store
     assert rom.read_u32(0xB58F8) == 0x24040000 | second_file
     assert any("compact 8E" in note for note in notes)
+
+
+def test_runtime_confirmed_compact_pris_profiles_are_materializable():
+    assert {
+        "water-pris15",
+        "water-pris16",
+        "water-pris14-16",
+    } <= MATERIALIZABLE_PROFILE_KEYS
