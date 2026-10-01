@@ -12,6 +12,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 |---:|---:|---|---|---|
 | `0x0000DD60` | — | Stage selector | `0x2414000A` | Last compact menu index becomes `7` |
 | `0x0000DD64` | — | Stage selector | `0x2A82000B` | Entry count becomes `8` |
+| `0x0000DD70` | `0x8000D170` | Stage selector movement SFX | `24040050 24050014` | First word becomes JAL frontend-resident movement helper; original `li a1,0x14` remains in delay slot. Helper plays descriptor `0x1FC` only for a newly pressed single Up/Down edge and restores displaced draw arguments. |
 | `0x0000E028` | — | Stage selector | JAL `0x8002830C` | JAL debug menu `0x8000D0B8` |
 | `0x00015CD0` | — | Stage selector | load from `0x800C11E0` | JAL compact-index mapper |
 | `0x0001674C` | — | Four-box input | `3C03802F 9463CE18` | Call switching action routine, then resume `0x80015B54` |
@@ -38,6 +39,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x0007B900..0x0007B94B` | `0x8007AD00` | Four-box mask | guarded stock sanitizer body | Replace with stage-local key mask-copy routine |
 | `0x0007B94C..0x0007B97F` | `0x8007AD4C` | Four-box load | guarded stock default-loader body | Rebuild live inventory from authoritative backing box |
 | `0x0009B7DC` | `0x8009ABDC` | Stage selector | 12 stock pointers | Eight safe stage labels plus zeros |
+| `0x000B21D8..0x000B2211` | selector cursor palette | Stage selector presentation | Guarded clean 29-entry orange palette; count word at `0x000B21D4 = 0x1D` | Replace all 29 BGR555 entries with the separately guarded title-cursor palette from `0x000B32E8`; selector file `0x5F` and sprite frames remain unchanged. |
 | `0x0001645C`, `0x00029DDC`, `0x0002BDF8`, `0x0002BA5C` | SPECIALS / standing Jump / moving Jump / ledge | Modern controls | Guarded stock call/decision sequences | Route selected controls through file-`0x1A` helpers; Slide/Super Slide retain native progression recognizers |
 | `0x0001674C`, `0x00029FD8`, `0x0002A0A0`, `0x0002A738`, `0x0002A7C4`, `0x0002A378` | input capture / Run calls and active Run loop | Modern RUN | Guarded stock hook/calls/back-edge | Snapshot physical Run after remap, interpose HOLD/AUTO predicate and preserve running Jump classifier |
 | `0x00015738`, `0x0002A848`, `0x00033410`, `0x0004E3AC` | modern Attack event, steady Block, startup Block, combo | Modern ATTACK | Guarded stock hook/call sequences | Event translation, Block+Attack cancellation and native combo parser |
@@ -62,6 +64,8 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x000B3364` palette base | `0x800B2764` | Title branding | selected guarded Candidate-B-unused CI8 entries | Replace 15 entries with the shared dark-to-light icy-blue art/edition ramp; index `0xFF` stays the stock background |
 
 Boot string pointer instructions live at ROM `0x7A22C`, `0x7A250`, `0x7A274`, `0x7A298`, `0x7A2BC`, `0x7A2E0`, `0x7A304`, `0x7A328`, `0x7A34C`, `0x7A370`, and `0x7A394`; every instruction is guarded before replacement.
+
+The selector movement helper itself occupies production-owned ROM `[0x0000E27C,0x0000E2B0)`; continuous ownership is canonical in the Memory Map. Production intentionally has **no confirmation-SFX edit**: v02's A-edge `0x1FD` experiment is Rejected / failed and the Start-owned commit path remains stock apart from the established compact-index mapper/save-bypass behavior.
 
 ## Allocation-backed generated writes
 
