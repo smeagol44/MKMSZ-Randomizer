@@ -1,6 +1,5 @@
 import hashlib
 
-from mkmszr.mips import words_blob
 from mkmszr.patches.base import PatchContext
 from mkmszr.patches.global_materialization import MATERIALIZER_HELPER_END_ROM
 from mkmszr.patches.run_lifecycle import (
