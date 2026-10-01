@@ -1,14 +1,14 @@
-"""Pure cross-stage pickup visual resource planner.
+"""Cross-stage pickup visual/resource planning and materialization schema.
 
-This module is intentionally not wired into the production patch pipeline yet.
-It implements the runtime-confirmed extension-selector architecture and the
-runtime-confirmed external-resource-ID -> embedded type-4 conversion, but the
-normal browser/CLI path remains stage-local until a composed multi-item proof
-ROM is manually validated.
+The pure planner implements the Runtime-confirmed extension-selector
+architecture and external-resource-ID -> embedded type-4 conversion.  The
+shared patch pipeline can now consume an explicit GlobalMaterializationPlan,
+but normal seeded product generation remains stage-local until the global
+generator/solver supplies complete assignments and owned ROM placements.
 
-The planner keeps award semantics separate from visual materialization.  Fixed
-global pickup callbacks can be composed directly; stage-bound key/crystal
-callbacks still require a destination-safe wrapper before production use.
+Award semantics stay separate from visual materialization.  Portable reward
+identities are emitted only for established fixed callbacks and supported
+inventory-token families; unresolved destination/source semantics fail closed.
 """
 
 from __future__ import annotations
