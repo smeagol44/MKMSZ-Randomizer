@@ -8,6 +8,8 @@ Do not promote this allocation/hook composition to production until the
 documented manual runtime route passes.
 """
 
+# ruff: noqa: I001 -- proof builder keeps grouped MIPS imports readable.
+
 from __future__ import annotations
 
 import argparse
