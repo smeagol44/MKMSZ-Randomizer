@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 
+from ..config import DifficultyMode
 from ..errors import PatchError
 from ..rom import RomImage
 from .base import PatchContext
@@ -152,10 +153,66 @@ EXPECTED_FINAL_FULL_HP_STORE = 0xA4A20654
 NOP = 0
 
 
+DIFFICULTY_VALUES: dict[DifficultyMode, int] = {
+    "very_easy": 0,
+    "easy": 1,
+    "medium": 2,
+    "hard": 3,
+    "very_hard": 4,
+}
+
+# Immediate-word offsets inside the exact v06 helper blob.
+MODULE_CONFIG_DIFFICULTY_OFFSET = 0x320
+MODULE_CONFIG_LIVES_OFFSET = 0x328
+MODULE_CONFIG_CONTINUES_OFFSET = 0x330
+MODULE_NATIVE_DIFFICULTY_OFFSET = 0x33C
+MODULE_CURRENT_LIVES_OFFSET = 0x358
+MODULE_CURRENT_CONTINUES_OFFSET = 0x368
+
+
+def _addiu_zero(register: int, value: int) -> bytes:
+    return ((0x09 << 26) | (register << 16) | (value & 0xFFFF)).to_bytes(4, "big")
+
+
+def configured_lifecycle_module(
+    difficulty: DifficultyMode,
+    lives: int,
+    continues: int,
+) -> bytes:
+    """Return v06 control flow with only run-setting immediates changed."""
+
+    data = bytearray(LIFECYCLE_MODULE)
+    difficulty_value = DIFFICULTY_VALUES[difficulty]
+    replacements = (
+        (MODULE_CONFIG_DIFFICULTY_OFFSET, 11, difficulty_value),
+        (MODULE_CONFIG_LIVES_OFFSET, 11, lives),
+        (MODULE_CONFIG_CONTINUES_OFFSET, 11, continues),
+        (MODULE_NATIVE_DIFFICULTY_OFFSET, 11, difficulty_value),
+        (MODULE_CURRENT_LIVES_OFFSET, 13, lives - 1),
+        (MODULE_CURRENT_CONTINUES_OFFSET, 13, continues),
+    )
+    for offset, register, value in replacements:
+        data[offset : offset + 4] = _addiu_zero(register, value)
+    return bytes(data)
+
+
 class RunLifecyclePatch:
-    """Install the runtime-confirmed v06 run lifecycle."""
+    """Install v06 lifecycle semantics with configurable fresh-run settings."""
 
     name = "run-lifecycle-v06"
+
+    def __init__(
+        self,
+        *,
+        difficulty: DifficultyMode = "very_hard",
+        lives: int = 5,
+        continues: int = 3,
+        persist_hp: bool = True,
+    ):
+        self.difficulty = difficulty
+        self.lives = lives
+        self.continues = continues
+        self.persist_hp = persist_hp
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
         del context
@@ -179,18 +236,35 @@ class RunLifecyclePatch:
         for offset, expected, _replacement, _label in HOOKS:
             rom.expect_bytes(offset, expected)
 
-        rom.write_bytes(LIFECYCLE_MODULE_ROM, LIFECYCLE_MODULE)
+        module = configured_lifecycle_module(self.difficulty, self.lives, self.continues)
+        rom.write_bytes(LIFECYCLE_MODULE_ROM, module)
         if file_end < LIFECYCLE_MODULE_END_ROM:
             rom.write_u32(EXPANSION_FILE_ENTRY_ROM + 4, LIFECYCLE_MODULE_END_ROM)
 
-        rom.write_bytes(CONFIG_ROM, PRODUCTION_CONFIG)
-        rom.write_u32(FINAL_FULL_HP_STORE_ROM, NOP)
+        difficulty_value = DIFFICULTY_VALUES[self.difficulty]
+        rom.write_bytes(
+            CONFIG_ROM,
+            (
+                difficulty_value.to_bytes(2, "big")
+                + self.lives.to_bytes(2, "big")
+                + self.continues.to_bytes(2, "big")
+            ),
+        )
+        if self.persist_hp:
+            rom.write_u32(FINAL_FULL_HP_STORE_ROM, NOP)
         for offset, _expected, replacement, _label in HOOKS:
             rom.write_bytes(offset, replacement)
 
         return (
-            "Very Hard / 9 total lives / 5 continues enforced for fresh real runs",
-            "HP, lives, continues, XP/powers and four-box inventory persist on living exits/transitions",
+            (
+                f"{self.difficulty.replace('_', ' ').title()} / {self.lives} total lives / "
+                f"{self.continues} continues configured for fresh real runs"
+            ),
+            (
+                "HP persists across living exits/transitions"
+                if self.persist_hp
+                else "HP resets to full on living stage re-entry"
+            ),
             "ordinary death and Continue retain stock counter/full-HP behavior while preserving run progress",
             "classified final Game Over resets run progress and starter inventory while preserving GAME SETTINGS",
             (
