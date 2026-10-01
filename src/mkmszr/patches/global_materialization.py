@@ -303,14 +303,27 @@ class GlobalItemMaterializationPatch:
             {stage_id: stage_plan.expanded_size for stage_id, stage_plan in stage_plans.items()},
         )
 
-        # Guard destination records against the researched stock catalog.  The
-        # explicit global plan is mutually exclusive with stage-local tuple
-        # randomization and pickup-XP callback overlay in the current pipeline.
+        # Guard destination records against the researched stock catalog and
+        # precompute every final identity before any write.  This keeps unsupported
+        # source reward semantics fail-closed and atomic.
+        planned_identities: dict[tuple[int, int], bytes] = {}
         for stage_id, assignments in assignments_by_stage.items():
             stage = _stage_by_id(stage_id)
+            stage_plan = stage_plans[stage_id]
             for assignment in assignments:
                 target = stage.records[assignment.destination_index]
                 rom.expect_bytes(target.rom_base + IDENTITY_OFFSET, target.identity)
+                selector = stage_plan.selector_for(assignment.item_key)
+                planned_identities[(stage_id, assignment.destination_index)] = (
+                    portable_materialized_identity(
+                        assignment.item_key,
+                        selector,
+                        generic_inventory_callback=GENERIC_AWARD_K1,
+                        boss_gate=_is_fortress_boss_destination(
+                            assignment.stage_id, assignment.destination_index
+                        ),
+                    )
+                )
 
         # Install runtime helpers through existing shared file 0x1A.
         rom.write_bytes(MATERIALIZER_HELPER_ROM, MATERIALIZER_HELPER)
@@ -337,19 +350,12 @@ class GlobalItemMaterializationPatch:
         # helper code are resident.
         for stage_id, assignments in assignments_by_stage.items():
             stage = _stage_by_id(stage_id)
-            stage_plan = stage_plans[stage_id]
             for assignment in assignments:
                 target = stage.records[assignment.destination_index]
-                selector = stage_plan.selector_for(assignment.item_key)
-                identity = portable_materialized_identity(
-                    assignment.item_key,
-                    selector,
-                    generic_inventory_callback=GENERIC_AWARD_K1,
-                    boss_gate=_is_fortress_boss_destination(
-                        assignment.stage_id, assignment.destination_index
-                    ),
+                rom.write_bytes(
+                    target.rom_base + IDENTITY_OFFSET,
+                    planned_identities[(stage_id, assignment.destination_index)],
                 )
-                rom.write_bytes(target.rom_base + IDENTITY_OFFSET, identity)
 
         return (
             f"{len(self.plan.assignments)} explicit global pickup assignments materialized",
