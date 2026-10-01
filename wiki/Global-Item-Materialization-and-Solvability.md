@@ -214,6 +214,8 @@ The local Wind/Water/Earth fields above are not dead checkpoint bookkeeping: eac
 
 The architecture is now fixed by requirement: **logical key award is checkpoint-free with respect to the source key's checkpoint effects**. A global logical reward must not carry source-stage checkpoint/segment mutations with it. Destination wrappers preserve separately proven destination-owned behavior, which may include checkpoint/stage-state transitions such as Wind's guarded physical-location checkpoint as well as non-checkpoint progression/credential state.
 
+**Earth destination-wrapper closure (2026-10-01, Static-confirmed):** Earth uses an absolute, live selector ladder rather than Wind-style relative key increments. The stock Square physical pickup location is the only one of the three ordinary Earth key locations that directly writes `0x802C18F8`, targeting selector `2`; Four Squares and Triangle instead write Earth-local progression state. Later Earth selectors `3..8` belong to separate scripted/progression/set-piece owners, with stock guards on at least the `6` and `7` transitions. Production therefore keeps logical Earth rewards checkpoint-free but preserves the Square location as a destination-owned checkpoint with a monotonic guard: commit absolute target `2` and show checkpoint presentation only when current selector is below `2`; never lower a later Earth selector. Do not apply this monotonic wrapper mechanically to native scripted transitions `3..8`, whose prerequisites remain stock-owned.
+
 ### Wind location/reward ownership trace — Static-confirmed (2026-09-30)
 
 The focused Wind trace resolves the central split far enough to constrain the materializer design:
