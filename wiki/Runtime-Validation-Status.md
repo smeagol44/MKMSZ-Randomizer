@@ -1,5 +1,7 @@
 # Runtime validation status
 
+**Lifecycle update (2026-10-01):** lifecycle Pause-Quit v04 is **Rejected / unsafe composition** because of intermittent music-speed corruption, while XP/powers persistence on its tested Pause -> Quit route is Runtime-confirmed. Static inspection explains repeated saved-life restoration undoing stock decrements and HP restore occurring after construction. Death inventory correction and final no-continues reset remain runtime Pending. [The static closure and unbuilt v05 design](Lifecycle-Static-Closure-v05) include exact ROM identity, guards and limits; no new runtime evidence or ROM build was produced.
+
 > **Scope:** This page is the canonical summary of **runtime evidence scope** by subsystem. It records the narrowest runtime-confirmed claim, the relevant static/implementation-confirmed scope, and what remains unestablished. Detailed mechanisms and proof chronology belong to the owning domain pages.
 >
 > **Rule:** “Runtime-confirmed” is always bounded to the documented ROM/build, route, state, and lifecycle boundary. It does not mean exhaustive coverage.

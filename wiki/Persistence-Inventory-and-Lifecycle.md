@@ -60,7 +60,7 @@ Native key items are **not consumed by normal use**. They remain in inventory af
 ## Lifecycle hooks
 
 - The stock sanitizer at `0x8007AD00` is replaced by a fixed-size mask-copy routine rather than deleting special IDs.
-- The stock default loader at `0x8007AD4C` becomes an initialization/reconstruction boundary for live/backing state.
+- The stock default loader at `0x8007AD4C` is replaced by the filtered **LIVE -> active backing save** wrapper. LIVE reconstruction is `0x80099B14 -> 0x8007AD00`, with the ten-word LIVE store at `0x8007AD34`. Keep this inventory ownership unchanged; see the [static lifecycle closure](Lifecycle-Static-Closure-v05).
 - Transition wrappers commit non-placeholder live items back to the active backing box; Glass slots are skipped so hidden true keys survive.
 - Saves serialize the filtered live view through the established game path; loads rebuild live state from authoritative backing data and current-stage masking.
 - Title-menu START was the destructive live-window boundary in stock behavior and is explicitly intercepted.
@@ -91,7 +91,19 @@ The legacy Lua is only a clue here, not a solution. It writes startup configurat
 
 It also names `0x0F1057` as a life-related address, but does not use it for stage-transition preservation. There is no Lua logic that carries current HP, current lives, or current continues between stages.
 
-The remaining technical work is a focused native lifecycle trace for the actual current-run values and the writers that reset them on stage entry/direct selector routes. The preserve/reset mechanism must be established from runtime/static evidence rather than inferred from the Lua startup configuration.
+The focused 2026-10-01 [static lifecycle closure and single v05 design](Lifecycle-Static-Closure-v05) records the actual death/Continue/constructor/terminal chains, exact instruction guards, reset contract, evidence hashes and remaining limits. No emulator was run and no v05 ROM was built. Static ownership is located; HP/inventory correction and the final reset are not runtime-accepted.
+
+| Lifecycle proof | Evidence / disposition |
+|---|---|
+| v01 | **Rejected.** Supposed reset at ROM `0x364EC` cleared run state on stage entry. Never reuse that reset composition. |
+| v02 | Inventory survived Pause -> Quit; XP/powers, HP and lives did not. Partial evidence only. |
+| v03 | **Rejected.** Bad stage-entry composition hung at Mission Objective. |
+| v04 | **Rejected / unsafe composition** because music sometimes sped up. **XP/powers persistence across Pause -> Quit is Runtime-confirmed in v04**, but does not accept its composition. |
+| v04 lives floor | Static inspection shows its repeated restore writes saved lives after the stock death decrement, undoing it. The roughly ×7 / eight-total floor is a proof bug, not stock minimum-life behavior. |
+| v04 HP | Restore runs after player construction; constructor has already selected/stored HP. Carrier priming at that late boundary does not restore the current player. Corrected constructor-local restoration remains runtime Pending. |
+| v04 death inventory | Exact late writer is backing -> LIVE mask copy. No death-time LIVE commit is present. Stale backing explains lost uncommitted items; actual all-four-box overwrite is not runtime-established. Corrected commit/reconstruction remains Pending. |
+
+The v05 design preserves production XP restore byte-for-byte, commits inventory before death teardown, and uses a one-shot living re-entry token in the player constructor. Ordinary death/Continue invalidates damaged-HP eligibility and leaves stock resource mutation intact. The final reset is guarded at ROM `0x367B4` by zero current lives, nonpositive signed continues and a real-run terminal context, with demo protection latched before its indicators are cleared. Fresh defaults are Very Hard, nine total lives, five continues and normal starter inventory; all five user GAME SETTINGS preference bits (`0x3E00`) survive.
 
 
 ## Temple scripted-check lifecycle
