@@ -32,7 +32,7 @@ def _plan(*assignments: MaterializationAssignment) -> GlobalMaterializationPlan:
 
 
 def test_materializer_helper_fits_controls_to_toasty_gap() -> None:
-    assert MATERIALIZER_HELPER_K0 == 0x801B0900
+    assert MATERIALIZER_HELPER_K0 == 0x801B0970
     assert MATERIALIZER_HELPER_END_K0 <= MATERIALIZER_RUNTIME_LIMIT == 0x801B1000
     assert len(GENERIC_AWARD) > 0
     assert len(ACQUISITION_REMASK) > 0
@@ -43,10 +43,10 @@ def test_portable_inventory_token_uses_generic_award_callback() -> None:
     identity = portable_materialized_identity(
         "wind-circle",
         0x123C,
-        generic_inventory_callback=0xA01B0900,
+        generic_inventory_callback=0xA01B0970,
     )
     assert int.from_bytes(identity[0x04:0x08], "big") == 0x0E
-    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B0900
+    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B0970
     assert int.from_bytes(identity[0x14:0x18], "big") == 0x123C
 
 
