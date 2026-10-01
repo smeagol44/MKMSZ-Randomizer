@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .config import RandomizerConfig
-from .resource_materialization import GlobalMaterializationPlan
 from .patches import (
     PICKUP_PERSISTENCE_PAYLOAD,
     ArenaReservationPatch,
@@ -43,6 +42,7 @@ from .patches.inventory_boxes import (
 )
 from .patches.required_powers import RequiredPowersPatch, resolve_required_powers
 from .patches.toasty_codegen import pack_toasty_module
+from .resource_materialization import GlobalMaterializationPlan
 from .rom import RomImage
 
 
