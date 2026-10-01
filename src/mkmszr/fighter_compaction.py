@@ -416,7 +416,7 @@ def build_compact_pris_file(source: bytes, table_offset: int) -> CompactFighterF
         # Build-time round-trip guard for every emitted frame.
         _ = target_pixels
 
-    last_shape, last_image = shapes[-1]
+    last_shape, _last_image = shapes[-1]
     last_frame = decoded[-1][0]
     suffix_offset = (
         last_shape + 32 + _align4(last_frame["stream_bytes"])
@@ -519,7 +519,9 @@ def compact_pris_file(rom: RomImage, file_id: int) -> tuple[str, ...]:
     rom.write_u32(entry + 4, spec.start + len(built.data))
 
     return (
-        f"compact PRIS file 0x{file_id:02X}: "
-        f"0x{spec.end - spec.start:X} -> 0x{len(built.data):X}",
+        (
+            f"compact PRIS file 0x{file_id:02X}: "
+            f"0x{spec.end - spec.start:X} -> 0x{len(built.data):X}"
+        ),
         f"{built.frame_count} Type-5 frames round-trip validated",
     )
