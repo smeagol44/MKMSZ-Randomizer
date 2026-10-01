@@ -91,8 +91,29 @@ The legacy Lua is only a clue here, not a solution. It writes startup configurat
 
 It also names `0x0F1057` as a life-related address, but does not use it for stage-transition preservation. There is no Lua logic that carries current HP, current lives, or current continues between stages.
 
-The remaining technical work is a focused native lifecycle trace for the actual current-run values and the writers that reset them on stage entry/direct selector routes. The preserve/reset mechanism must be established from runtime/static evidence rather than inferred from the Lua startup configuration.
+The focused native lifecycle trace has one important correction from runtime v01:
 
+- current lives are still **Static-confirmed** at `0x8010BCFC`; the Extra Life paths increment this word and the death flow decrements it;
+- current continues are still **Static-confirmed** at halfword `0x801AE45C`; the death flow uses and updates it;
+- live player HP is still **Static-confirmed** at controller `+0x654`; stage-completion code uses carrier `0x801AE4C0` with validity halfword `0x800C11F8`;
+- **Rejected / failed:** ROM `0x000364EC` / VA `0x800358EC` is not the terminal Game Over seam. v01 hooked it as a reset boundary, and runtime showed that normal stage entry then cleared XP/powers, inventory, lives, and HP. The earlier `0x800368EC` VA notation was also arithmetically wrong.
+
+Lifecycle v01 is therefore **Rejected / failed**. Its observed failure is useful evidence: the reset helper executed during normal stage setup and cleared the whole run authority, exactly matching the user report that every stage entry returned to full HP/default lives with XP/powers and inventory gone.
+
+Lifecycle v02 keeps the same bounded hardcoded-settings and HP/lives/continues persistence experiment but removes the Game Over reset hook entirely. It still uses the already-loaded Temple→Toasty file-`0x1A` gap and does not expand RDRAM or file size. v02 must first prove that existing XP/pickup/four-box persistence remains intact while HP/lives/continues persist. Only after that passes should the real terminal Game Over seam be traced and tested separately.
+
+**Evidence state:** v01 Rejected / failed. v02 is **partial Runtime-confirmed / superseded**: on the tested Pause -> Quit -> title -> stage route, four-box inventory remained persistent, but XP/powers, HP, and lives did not. This established that Pause -> Quit bypasses the v02 lifecycle-save seam and that replacing the production progression-restore composition was itself unsafe.
+
+Static re-trace of the native Pause callback `0x80016300` resolves the confirmed Quit path: choosing **QUIT -> YES** reaches VA `0x800166CC` / ROM `0x000172CC`, where stock calls teardown `0x80028488` while the player controller is still live. Lifecycle v03 therefore:
+- restores the production XP stage-init helper and four-box reconstruction path unchanged;
+- removes v02's stage-entry transition-save and death wrappers;
+- captures XP/HP/current-lives/current-continues only at `0x800166CC` before Pause -> Quit teardown;
+- wraps only the production inventory reconstruction call so lives/continues and the native HP carrier are restored immediately afterward;
+- leaves Game Over reset and death/Continue persistence out of scope.
+
+v03 is **Rejected / failed**: stage entry hung at Mission Objective before gameplay. Static audit found a proof-builder typo in the post-inventory restore helper: it direct-JALed `0xA00A9B14`, but the accepted four-box load/mask wrapper is `0xA0099B14`. That one-nibble error jumped into the wrong runtime address.
+
+v04 changes only that JAL target (`0x0C02A6C5 -> 0x0C0266C5`) at proof ROM `0x00F69208`. All v03 lifecycle semantics remain unchanged: production XP/inventory restore composition is otherwise preserved, Pause -> Quit -> YES remains the save seam, and Game Over/death handling remains out of scope. v04 is **Implementation/static-confirmed, Runtime Pending**.
 
 ## Temple scripted-check lifecycle
 
