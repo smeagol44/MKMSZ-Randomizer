@@ -188,8 +188,9 @@
 
 - All four ordinary pickup records are Herbs and all use stage-local resource slot `15`.
 - The Temple Map is tracked by the legacy runtime work at collected flag RDRAM `0x8026E9A4`, but it is not one of the four ordinary records and is not assigned an ordinary resource slot here.
-- The Map's Temple trigger/reward separation and possible 85th-check/global-shuffle policy are owned by [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
-- Cross-stage Map retention/removal and run-lifecycle behavior are owned by [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle). This catalog records only the Temple-local boundary and does not make the Map policy canonical here.
+- **Runtime-confirmed bounded v01:** changing only the scripted Map callback's inventory award from `0x0D` to Herbs `0x04` leaves the stock elevator/platform progression working. The scripted actor still renders as the Map in this proof by design.
+- 1.0 policy: logical Map `0x0D` is excluded from the randomizer pool; this scripted location remains a special Temple randomizer check whose location-owned progression/elevator effect must stay attached. Reward identity and visual/materialization are separate.
+- Special-check policy/materialization is owned by [Global item materialization and solvability](Global-Item-Materialization-and-Solvability); special-check collected-state lifecycle is owned by [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle).
 
 ## Related owners
 
