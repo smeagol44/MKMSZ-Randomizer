@@ -39,6 +39,10 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 | `rgb` | Requires `RRGGBB` or `#RRGGBB` |
 | Title character | Temporary freeform uppercase name, default `SUB-ZERO`, max 12 characters; patcher appends ` EDITION` and rasterizes it into the typeset CI8 title. Its 16-color palette follows every non-vanilla outfit color option, including the same seed-derived hue for `seeded`; `rainbow` uses a fixed multicolor title. See [Presentation and branding](Presentation-and-Branding). |
 | Shuffle Power Progression | Default **off**. When enabled, deterministically shuffles the nine native Power Up slots while preserving the single Ice Shatter prerequisite rule; Slide and Super Slide are independent. The same generated order drives gameplay gates and native Power Ups icon/help presentation. |
+| Difficulty | Build-time run setting: Very Easy / Easy / Medium / Hard / Very Hard. Default **Very Hard**. The lifecycle patch restores the selected value on fresh-run/reset boundaries. |
+| Lives | Total starting lives, integer **1..10**. Default **5**. Game Over/new-run reset uses the same configured value. |
+| Continues | Starting continues, integer **0..5**. Default **3**. Game Over/new-run reset uses the same configured value. |
+| Persistent HP | Default **on**. On: damaged HP survives living stage exit/re-entry. Off: living re-entry receives full HP; ordinary death/Continue always receive full replacement HP in either mode. |
 
 Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.
 
@@ -69,4 +73,4 @@ This separation matters: product deployment does not package research artifacts,
 
 This is a **non-exhaustive product-facing summary**. The canonical complete 1.0 requirements, acceptance criteria, blockers/non-blockers, dependency order, and final release gates are owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap).
 
-The current stage-local pickup mode is not the final 1.0 randomizer. From the product surface, the major unresolved 1.0 work includes the global cross-stage item model and solvability validation, the broader native randomizer HUD, run-lifecycle handling such as HP/lives/continues and reset behavior, and the Very Hard invariant before final full-seed validation. Refer to the Roadmap for the authoritative and complete requirement set.
+The current stage-local pickup mode is not the final 1.0 randomizer. Run lifecycle is now integrated and the browser/CLI expose configurable difficulty, starting lives/continues, and HP persistence; the exact Very Hard / 9 / 5 / HP-ON v06 baseline is Runtime-confirmed, while other value combinations are Implementation/CI-confirmed pending representative runtime coverage. The major unresolved 1.0 work is now the global cross-stage item model and solvability validation, the broader native randomizer HUD, and final full-seed validation. Refer to the Roadmap for the authoritative and complete requirement set.
