@@ -151,7 +151,7 @@ EXPECTED_DICT_SHA256 = "dd467f1b389d8f1e83761062638748e4aec0e1f856900b8a24a299c0
 EXPECTED_IMAGE_STREAM_SHA256 = "f78135df4dc0e8d7c1fe42cc3f3a921d162a3d6751a357390b64370e67736204"
 EXPECTED_IMAGE_DECODED_SHA256 = "18eed9a06f82249cd7b3db3b83cb1cd0115df739ca77712fdc4e274413794736"
 EXPECTED_PALETTE_SOURCE_SHA256 = "1e0864523ff24b957738682bd1e8f4d2354f87036dd908291b1e5e98393337dd"
-EXPECTED_TARGET_TLUT_SHA256 = "687569e2c16520796b0f11ace50915827d50320e73ac15690f9e3bc5914e4a5b"
+EXPECTED_TARGET_TLUT_SHA256 = "127d1f012b7f7e8f6dac125bc57e02f87a10c561bac3228a4513c9a4076a3e8a"
 EXPECTED_CTL_SHA256 = "8dc6f036dc795cba2aa151e2fa7833d3bc3ac70f454b48fcd50df6c6d365b836"
 EXPECTED_PRED_SHA256 = "6ec8e062f6eff4c49755c0bb27de754313706bc6033f34601601c214235efc5f"
 EXPECTED_SAMPLE_SHA256 = "57090534e758a3d0a1676722b2ce5715da2e0b13ac155aff9cc7df04822d678f"
@@ -173,6 +173,17 @@ _PIECES = (
 # Deterministic 16-color quantization confirmed in the accepted composition.
 # Indices address the first-appearance palette of the donor's visible pixels.
 CI4_PALETTE_SOURCES = (0, 15, 37, 10, 50, 1, 3, 40, 7, 51, 16, 47, 25, 45, 31, 41)
+
+# Palette-only production polish approved from the exact CI4 preview. These are
+# target CI4 TLUT entry -> hardware RGBA5551 word replacements. Pixel indices,
+# slice sizes, and the 0x20-byte TLUT allocation remain unchanged.
+CI4_PALETTE_RGBA5551_OVERRIDES = {
+    3: 0x388F,
+    4: 0x5059,
+    6: 0x6221,
+    9: 0xA2AD,
+}
+
 CI4_INDEX_MAP = (
     0, 5, 6, 6, 5, 10, 8, 8, 4, 8, 3, 9, 1, 10, 9, 1,
     10, 10, 12, 12, 10, 8, 9, 14, 12, 12, 7, 3, 10, 9, 10, 14,
@@ -260,10 +271,15 @@ def _build_visual_assets(decoded: bytes, source_palette: bytes) -> tuple[tuple[b
     if len(palette_order) != len(CI4_INDEX_MAP):
         raise ValueError("MKT Toasty visible palette differs from the confirmed 55 colors")
     remap = {pixel: CI4_INDEX_MAP[index] for index, pixel in enumerate(palette_order)}
-    tlut = b"".join(
-        source_palette[palette_order[index] * 2 : palette_order[index] * 2 + 2]
-        for index in CI4_PALETTE_SOURCES
+    tlut = bytearray(
+        b"".join(
+            source_palette[palette_order[index] * 2 : palette_order[index] * 2 + 2]
+            for index in CI4_PALETTE_SOURCES
+        )
     )
+    for index, rgba5551 in CI4_PALETTE_RGBA5551_OVERRIDES.items():
+        start = index * 2
+        tlut[start : start + 2] = rgba5551.to_bytes(2, "big")
 
     slices: list[bytes] = []
     for x, y, width, height in _PIECES:
@@ -277,7 +293,7 @@ def _build_visual_assets(decoded: bytes, source_palette: bytes) -> tuple[tuple[b
                 data[offset] |= index << (4 if column % 2 == 0 else 0)
         slices.append(bytes(data))
 
-    return tuple(slices), tlut
+    return tuple(slices), bytes(tlut)
 
 
 def validate_mkt_n64_rev2(source: bytes) -> None:
