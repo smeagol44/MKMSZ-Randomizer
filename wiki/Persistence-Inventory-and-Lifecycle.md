@@ -94,12 +94,12 @@ It also names `0x0F1057` as a life-related address, but does not use it for stag
 The remaining technical work is a focused native lifecycle trace for the actual current-run values and the writers that reset them on stage entry/direct selector routes. The preserve/reset mechanism must be established from runtime/static evidence rather than inferred from the Lua startup configuration.
 
 
-## Temple scripted-check lifecycle implications
+## Temple scripted-check lifecycle
 
-The canonical 1.0 policy is now resolved in [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap): logical Map item `0x0D` is excluded from the randomizer pool, while the scripted Temple Map location remains a special check.
+The canonical 1.0 policy is resolved in [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap): logical Map item `0x0D` is excluded from the randomizer pool, while the scripted Temple Map location remains a special check.
 
-Bounded v01 Runtime-confirms that replacing only the scripted location's inventory award with Herbs leaves the Temple elevator/platform progression intact. Therefore the former cross-stage Map-retention problem is no longer a 1.0 requirement: there is no randomized logical Map item that must survive Temple -> Wind, and no stock Map-removal workaround is needed.
+v01 Runtime-confirmed that replacing only the scripted location's inventory award with Herbs leaves the Temple elevator/platform progression intact. v02 then closes the special-check lifecycle: collection sets **MKSV header flags bit `0x0001`**; on title -> Temple re-entry the helper sees that bit, reconstructs the stock Temple-local collected word at `0x8026E9A4 = 0x00000100`, and resumes the stock post-award loop at `0x802EEE94` without respawning or re-awarding the check. The user confirmed the check remained absent, elevator/rope progression remained correct, and Temple -> Wind completed normally.
 
-The remaining lifecycle requirement is **special-check collection persistence**. The scripted location is outside the 84 ordinary manager-backed records and therefore must not consume one of the existing ordinary-pickup bitset positions. Production needs a dedicated collected-state flag/state for this special check so a title/stage re-entry cannot re-award its randomized reward, while the location-owned elevator/progression side effect remains correct on the supported route.
+This state is intentionally independent of the 84 ordinary manager-backed persistence bits. No cross-stage logical-Map retention or Temple -> Wind Map-removal workaround exists in 1.0 because Map `0x0D` is not a randomized logical item.
 
-The exact reset boundary for that special-check state follows the same still-Pending Game Over/new-run policy as the rest of run-scoped randomizer state.
+The exact reset boundary for the special-check bit follows the same still-Pending Game Over/new-run policy as the rest of run-scoped randomizer state; that broader reset policy is not a Temple-specific blocker.
