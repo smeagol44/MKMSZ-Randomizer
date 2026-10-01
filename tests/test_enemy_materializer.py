@@ -2,7 +2,7 @@ from collections import Counter
 
 import pytest
 
-import mkmszr.patches.enemy_randomization as enemy_randomization
+from mkmszr.patches import enemy_randomization
 from mkmszr.data.enemies import STAGE_ENEMIES
 from mkmszr.enemy_planner import build_enemy_plan
 from mkmszr.errors import PatchError
