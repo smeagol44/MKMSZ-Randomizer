@@ -1,6 +1,6 @@
 # Project status
 
-Last consolidated: 2026-09-30.
+Last consolidated: 2026-10-01.
 
 > **Scope:** This page is the current-state dashboard for MKMSZR. It owns production/proof/pending maturity, current blockers, and priority order. It does **not** own full 1.0 requirements or long proof chronology.
 >
@@ -53,7 +53,7 @@ These results are important feasibility evidence but are **not** normal browser/
 | Deterministic global shuffle and retry model | **Pending.** Replace the interim eight stage-local pools with one deterministic global logical run and explicit deterministic retry attempts |
 | Whole-run solvability validation | **Pending.** Finalize current access rules and a completion predicate for both pickup and earned-XP modes using Vanilla / Custom / Seed required-power settings |
 | Native randomizer HUD | **Partial.** Native text and box state are proven; checks/progression/key/pickup run-state display is still required |
-| Temple Map and run lifecycle invariants | **Pending.** Resolve Map inclusion/trigger separation/persistence, then HP/lives/continues preservation, Game Over/new-run reset, and Very Hard enforcement |
+| Temple scripted check and run lifecycle invariants | **Policy resolved / production implementation Pending.** Bounded v01 Runtime-confirms that changing only the scripted Temple Map award from item `0x0D` to Herbs `0x04` still advances the stock elevator/platform progression. The 1.0 logical Map item is therefore excluded from the randomizer pool; the scripted location remains a special check whose location-owned progression effect stays attached. Arbitrary reward materialization/visual replacement and special-check persistence still need production integration; no logical-Map cross-stage persistence or Temple -> Wind cleanup workaround is required. HP/lives/continues, Game Over/new-run reset, and Very Hard remain Pending. |
 | Final production-composition runtime gate | **Pending.** Run a representative full global seed after the above are integrated, including all nine progression tiers and the major lifecycle boundaries |
 
 ## Current priority order
@@ -65,7 +65,7 @@ Current user direction is to close the remaining **materialization safety gates 
 3. Complete the remaining destination-stage materializer stress/capacity gates, especially Fortress, then build the smallest guarded disposable production-composition integration proof with current allocation ownership.
 4. Only after those gates are green, replace the interim stage-local generation with the deterministic global shuffle plus whole-run solver, explicit deterministic retries, the selected Vanilla / Custom / Seed required-power setting and its pickup/earned-XP source, and the approved optional deterministic constrained nine-slot power-order shuffle.
 5. Build the native randomizer HUD around the finalized global-run state.
-6. Resolve Temple Map behavior, then HP/lives/continues lifecycle, Game Over/new-run reset, and the Very Hard invariant.
+6. Integrate the resolved Temple scripted-check policy into the finalized global model: keep its elevator/progression effect location-owned, give its assigned reward correct award/visual semantics, and persist the special check independently of the 84 ordinary records. Then close HP/lives/continues lifecycle, Game Over/new-run reset, and the Very Hard invariant.
 7. Run the final representative full-seed 1.0 validation.
 8. Post-1.0: ordinary-enemy randomization/resource compatibility, imported-enemy death/despawn work, and donor-move/Sektor expansion.
 
@@ -90,7 +90,7 @@ This order follows the current user direction and the materializer dependency ch
 
 - Enemy randomization and Reverse Elbow / foreign-move completion are **not 1.0 blockers**.
 - Bosses and scripted encounters are not ordinary-enemy entries.
-- The Temple Map is not one of the 84 ordinary pickup records; its 1.0 inclusion policy is still explicit Pending work.
+- The Temple Map is not one of the 84 ordinary pickup records. 1.0 policy is now explicit: logical item `0x0D` is excluded from the randomizer pool, while the scripted Temple location remains a special check whose elevator/progression side effect is location-owned. Arbitrary reward visual/materialization and special-check persistence remain Pending production work.
 - Zero/unused-looking resource selectors are not automatically free physical storage.
 - PS1 addresses and platform behavior do not transfer to N64 without demonstrated compatibility.
 - Disposable proof ROM patches, proof caves, and archive handoffs are not silently part of the production pipeline.
