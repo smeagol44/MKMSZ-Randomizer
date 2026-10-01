@@ -91,19 +91,18 @@ The legacy Lua is only a clue here, not a solution. It writes startup configurat
 
 It also names `0x0F1057` as a life-related address, but does not use it for stage-transition preservation. There is no Lua logic that carries current HP, current lives, or current continues between stages.
 
-The focused native lifecycle trace is now **Static-confirmed** for the bounded v01 proof:
+The focused native lifecycle trace has one important correction from runtime v01:
 
-- current lives are owned by `0x8010BCFC`; the Extra Life paths increment this word and the death flow decrements it;
-- current continues are the halfword at `0x801AE45C`; the death flow tests it before the final Game Over branch and decrements it only on the ordinary Continue route;
-- live player HP is controller `+0x654`; stage-completion overlays copy that value into carrier `0x801AE4C0`, and player construction can restore the carrier when `0x800C11F8` marks it valid;
-- the true no-continues Game Over arm is reached at VA `0x800368EC` / ROM `0x000364EC`; this is distinct from ordinary life loss and from spending a remaining Continue.
+- current lives are still **Static-confirmed** at `0x8010BCFC`; the Extra Life paths increment this word and the death flow decrements it;
+- current continues are still **Static-confirmed** at halfword `0x801AE45C`; the death flow uses and updates it;
+- live player HP is still **Static-confirmed** at controller `+0x654`; stage-completion code uses carrier `0x801AE4C0` with validity halfword `0x800C11F8`;
+- **Rejected / failed:** ROM `0x000364EC` / VA `0x800358EC` is not the terminal Game Over seam. v01 hooked it as a reset boundary, and runtime showed that normal stage entry then cleared XP/powers, inventory, lives, and HP. The earlier `0x800368EC` VA notation was also arithmetically wrong.
 
-Disposable lifecycle proof v01 builds on the full current product and uses the already-loaded FF gap between the Temple special-check module and Toasty: ROM `[0x00F69150,0x00F697E0)`, runtime `[0x801B0970,0x801B1000)`. The emitted module is `0x444` bytes and does **not** grow file `0x1A` or the 16 KiB reservation. It proposes MKSV reserved words `+0x14/+0x18/+0x1C` for HP/current-lives/current-continues and flags bits `0x0002/0x0004` for lifecycle-valid/reset-pending. These assignments remain **proof-only** until runtime validation.
+Lifecycle v01 is therefore **Rejected / failed**. Its observed failure is useful evidence: the reset helper executed during normal stage setup and cleared the whole run authority, exactly matching the user report that every stage entry returned to full HP/default lives with XP/powers and inventory gone.
 
-The v01 policy is: force configuration to Very Hard / 9 lives / 5 continues; persist HP, current lives, current continues, and the already-owned XP state across transition/reconstruction boundaries; commit full HP after a death while retaining the decremented counters; and clear run-owned MKSV state, pickup bitsets, Temple-special state, XP/power cache, all four inventory backing boxes, and LIVE inventory only on the true final Game Over path. The reset reconstructs the normal starter inventory in Box 1 and leaves Boxes 2–4 empty while preserving non-progress GAME SETTINGS preferences.
+Lifecycle v02 keeps the same bounded hardcoded-settings and HP/lives/continues persistence experiment but removes the Game Over reset hook entirely. It still uses the already-loaded Temple→Toasty file-`0x1A` gap and does not expand RDRAM or file size. v02 must first prove that existing XP/pickup/four-box persistence remains intact while HP/lives/continues persist. Only after that passes should the real terminal Game Over seam be traced and tested separately.
 
-**Evidence state:** implementation/static-confirmed proof, Runtime Pending. Do not promote the hooks or proof-gap allocation to production until the bounded manual route passes.
-
+**Evidence state:** v01 Rejected / failed; v02 Implementation/CI-confirmed candidate, Runtime Pending.
 
 ## Temple scripted-check lifecycle
 
