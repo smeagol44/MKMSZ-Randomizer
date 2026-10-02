@@ -50,15 +50,36 @@ def test_portable_inventory_token_uses_generic_award_callback() -> None:
     assert int.from_bytes(identity[0x14:0x18], "big") == 0x123C
 
 
-def test_fortress_boss_gate_composes_with_fixed_reward() -> None:
+def test_destination_activation_gate_composes_with_fixed_reward() -> None:
     identity = portable_materialized_identity(
         "potion",
         0x0D88,
         generic_inventory_callback=0xA01B0900,
-        boss_gate=True,
+        activation_gate=True,
     )
     assert int.from_bytes(identity[0x04:0x08], "big") == 0x8000
     assert int.from_bytes(identity[0x08:0x0C], "big") == 0x800388FC
+
+
+def test_strength_uses_generic_inventory_award_without_prison_checkpoint() -> None:
+    identity = portable_materialized_identity(
+        "strength-urn",
+        0x0D89,
+        generic_inventory_callback=0xA01B0900,
+    )
+    assert int.from_bytes(identity[0x04:0x08], "big") == 0x0B
+    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B0900
+
+
+def test_activation_gate_composes_with_generic_inventory_award() -> None:
+    identity = portable_materialized_identity(
+        "bridge-omega",
+        0x0D8A,
+        generic_inventory_callback=0xA01B0900,
+        activation_gate=True,
+    )
+    assert int.from_bytes(identity[0x04:0x08], "big") == 0x801D
+    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B0900
 
 
 def test_prison_key_fails_closed_without_destination_safe_credential_wrapper() -> None:
