@@ -221,7 +221,7 @@ The Runtime-confirmed compact-tail v01 architecture edits all 15 stock Sub-Zero 
 | ROM `0x0094A11C` | Isolated host subpatch 329 | Guarded; uniquely owned by patch 486; donor subpatch copied with waveform ID rebased to 319 |
 | ROM `0x0094DF20` | Isolated host waveform 319 | Guarded; uniquely owned by subpatch 329; donor waveform copied with sample pointer rebased to Temple sample storage |
 | ROM `0x00964D88..0x00964E8F` | Isolated host predictor 319 | Guarded by stock SHA-256; replaced by selected donor predictor |
-| ROM `0x000A3794`, `0x0097C7D8`, `0x009485C4`, `0x0094A860`, `0x0094DFD8` | Superseded `0x20A -> 0x1A6 -> 579 -> 422 -> 412` carrier | **Rejected / leave stock.** Runtime showed unrelated Bridge/Prison robot/miniboss audio reaches this route; regression tests require these bytes to remain unchanged. |
+| ROM `0x000A3794`, `0x0097C7D8`, `0x009485C4`, `0x0094A860`, `0x0094E7D8` | Superseded `0x20A -> 0x1A6 -> 579 -> 422 -> 412` carrier | **Rejected / leave stock.** Runtime showed unrelated Bridge/Prison robot/miniboss audio reaches this route; regression tests require these bytes to remain unchanged. |
 | ROM `0x00F6BDF0..0x00F6D80F` | Conditional selected Temple donor sample | Production-owned only when valid MKT donor is supplied; clean region must be `FF` and stock file-table overlap is rejected |
 
 The earlier proof carrier descriptor `0x220` / event `0x1B8` is **not a production edit site**. Whole-ROM audit found live stock callers for descriptor `0x220`; it remains proof history only.
