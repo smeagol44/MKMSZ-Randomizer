@@ -7,6 +7,7 @@ from mkmszr.global_generation import (
     build_global_run_plan,
     completion_satisfied,
     find_accepted_candidate,
+    materialization_plan_from_run,
     required_power_target,
     solve_reachability,
 )
@@ -191,3 +192,25 @@ def test_global_run_plan_is_retry_reproducible() -> None:
     assert first.candidate.assignment == candidate_permutation(
         "RUN-RETRY", first.candidate.attempt_index
     )
+
+
+
+def test_run_plan_converts_to_84_plus_temple_materializer_schema() -> None:
+    from mkmszr.resource_materialization import StageResourcePlacement
+
+    run = build_global_run_plan(
+        "MATERIALIZER-SPLIT",
+        powers_as_pickups=True,
+        policy=CompletionPolicy(required_powers=0),
+        max_attempts=100,
+    )
+    placements = tuple(
+        StageResourcePlacement(stage_id=stage_id, rom_start=0x100000 + i * 0x10000, capacity=0x10000)
+        for i, stage_id in enumerate((0, 1, 2, 3, 4, 5, 8, 9))
+    )
+    plan = materialization_plan_from_run(run, placements)
+
+    assert len(plan.assignments) == 84
+    assert plan.temple_special_item_key == run.temple_special_item_key
+    assert {assignment.stage_id for assignment in plan.assignments} == {0, 1, 2, 3, 4, 5, 8, 9}
+    assert len(plan.placements) == 8
