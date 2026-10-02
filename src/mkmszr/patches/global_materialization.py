@@ -29,9 +29,52 @@ from itertools import pairwise
 from ..data.addresses import FILE_TABLE_ENTRY_SIZE, FILE_TABLE_ROM
 from ..data.pickups import IDENTITY_OFFSET, STAGE_PICKUPS
 from ..errors import PatchError
-from ..mips import addiu, addu, andi, jal, jr, lw, sw, words_blob
+from ..mips import (
+    Emitter,
+    addiu,
+    addu,
+    andi,
+    jal,
+    jr,
+    lbu,
+    lui,
+    lw,
+    or_,
+    sb,
+    sh,
+    sll,
+    sllv,
+    sltiu,
+    srl,
+    sw,
+    words_blob,
+)
 from ..resource_materialization import (
+    AWARD_EXTRA_LIFE,
+    AWARD_INVENTORY,
+    AWARD_MANA,
+    CALLBACK_ACTION_MASK,
+    CALLBACK_ACTION_SHIFT,
+    CALLBACK_AWARD_MASK,
+    CALLBACK_AWARD_SHIFT,
+    CALLBACK_ITEM_MASK,
     CANONICAL_VISUAL_DONORS,
+    DEST_EARTH_FOUR_SQUARE,
+    DEST_EARTH_SQUARE,
+    DEST_EARTH_TRIANGLE,
+    DEST_FIRE_TRIANGLE_DOWN,
+    DEST_FIRE_TRIANGLE_UP,
+    DEST_FIRE_TWO_BARS,
+    DEST_NONE,
+    DEST_PRISON_L1,
+    DEST_PRISON_L2,
+    DEST_PRISON_STRENGTH,
+    DEST_WATER_MOON,
+    DEST_WATER_THREE_BARS,
+    DEST_WATER_TRIANGLE,
+    DEST_WIND_CIRCLE,
+    DEST_WIND_THREE_BARS,
+    DEST_WIND_TRIANGLE,
     GlobalMaterializationPlan,
     apply_stage_resource_plan,
     plan_stage_resources,
@@ -41,7 +84,11 @@ from ..rom import RomImage
 from .base import PatchContext
 from .controls_production import CONTROLS_RUNTIME_END, FILE_ROM, MODULE_K0
 from .game_settings_turn import EXPANSION_FILE_ENTRY_ROM
-from .inventory_boxes import LOAD_DEFAULT_VA, LOAD_MASK_WRAPPER_VA
+from .inventory_boxes import (
+    BOX0_VA,
+    LOAD_DEFAULT_VA,
+    LOAD_MASK_WRAPPER_VA,
+)
 from .native_payload import kseg1_alias
 from .temple_special_check import TEMPLE_MODULE_END_CACHED
 from .toasty_constants import MODULE_K0 as TOASTY_K0
@@ -51,6 +98,21 @@ FILE_TABLE_COUNT = 0xAC
 
 INVENTORY_INSERT_VA = 0x80075448
 PICKUP_SOUND_VA = 0x80064C18
+CHECKPOINT_PROCESS_VA = 0x80062D60
+PROCESS_CREATE_VA = 0x8002830C
+EXTRA_LIFE_CALLBACK_VA = 0x80038A1C
+MANA_CALLBACK_VA = 0x80038A58
+CURRENT_STAGE_VA = 0x8009A910
+STAGE_SELECTOR_VA = 0x802C18F8
+ACQUIRED_BITS_VA = 0x802C0D54
+WIND_THREE_BARS_STATE_VA = 0x802F60A0
+WATER_THREE_BARS_STATE_VA = 0x802F2980
+EARTH_FOUR_SQUARE_STATE_VA = 0x802F5520
+EARTH_TRIANGLE_STATE_VA = 0x802F5E22
+
+PRISON_RESET_VA = 0x802ED538
+PRISON_RESET_CALL_ROM = 0x00010E64
+PRISON_RESET_CALL_EXPECTED = jal(PRISON_RESET_VA)
 
 ACQUISITION_HOOK_ROM = 0x00039FD4
 ACQUISITION_DISPLACED_0 = 0x00121040  # sll v0,s2,1
@@ -72,32 +134,194 @@ def _align(value: int, alignment: int = 16) -> int:
     return (value + alignment - 1) & ~(alignment - 1)
 
 
-def build_generic_inventory_award() -> bytes:
-    """Award low-15-bit callback parameter and reproduce ordinary pickup SFX."""
+def _emit_checkpoint(e: Emitter, target: int, *, exact_predecessor: int | None) -> None:
+    """Emit one destination-owned checkpoint transition."""
 
-    return words_blob(
-        [
-            addiu("sp", "sp", -0x20),
-            sw("ra", 0x1C, "sp"),
-            sw("a1", 0x18, "sp"),
-            andi("a0", "a1", 0x7FFF),
-            jal(INVENTORY_INSERT_VA),
-            NOP,
-            addiu("a0", "zero", 0x3B),
-            addu("a1", "zero", "zero"),
-            addiu("a2", "zero", 0x40),
-            jal(PICKUP_SOUND_VA),
-            NOP,
-            lw("a1", 0x18, "sp"),
-            lw("ra", 0x1C, "sp"),
-            addiu("sp", "sp", 0x20),
-            jr("ra"),
-            NOP,
-        ]
+    e.emit(lui("t4", 0x802C), lhu("t5", STAGE_SELECTOR_VA & 0xFFFF, "t4"))
+    if exact_predecessor is not None:
+        e.emit(addiu("t6", "zero", exact_predecessor))
+        e.bne("t5", "t6", "action_done")
+        e.emit(addiu("t6", "zero", target))
+    else:
+        e.emit(sltiu("t6", "t5", target))
+        e.beq("t6", "zero", "action_done")
+        e.emit(addiu("t6", "zero", target))
+    e.emit(
+        sh("t6", STAGE_SELECTOR_VA & 0xFFFF, "t4"),
+        lui("a1", 0x8006),
+        addiu("a1", "a1", CHECKPOINT_PROCESS_VA & 0xFFFF),
+        jal(PROCESS_CREATE_VA),
+        addiu("a0", "zero", 0x15),
     )
+    e.beq("zero", "zero", "action_done")
+    e.emit(0)
+
+
+def build_generic_inventory_award() -> bytes:
+    """Compose logical award semantics with the physical destination wrapper."""
+
+    e = Emitter()
+    e.emit(
+        addiu("sp", "sp", -0x28),
+        sw("ra", 0x24, "sp"),
+        sw("s0", 0x20, "sp"),
+        sw("s1", 0x1C, "sp"),
+        andi("s0", "a1", CALLBACK_ITEM_MASK),
+        srl("s1", "a1", CALLBACK_ACTION_SHIFT),
+        andi("s1", "s1", CALLBACK_ACTION_MASK),
+        srl("t0", "a1", CALLBACK_AWARD_SHIFT),
+        andi("t0", "t0", CALLBACK_AWARD_MASK),
+    )
+
+    # Logical award.
+    e.emit(addiu("t1", "zero", AWARD_INVENTORY))
+    e.bne("t0", "t1", "award_extra")
+    e.emit(addu("a0", "s0", "zero"))
+    e.emit(jal(INVENTORY_INSERT_VA), 0)
+
+    # Prison key credentials are logical-key semantics. Commit immediately when
+    # the award occurs inside Prison; stage-entry reconstruction covers keys
+    # acquired elsewhere and later re-entry after the stock reset.
+    e.emit(
+        addiu("t1", "s0", -0x1A),
+        sltiu("t2", "t1", 3),
+    )
+    e.beq("t2", "zero", "award_sound")
+    e.emit(lui("t3", 0x800A))
+    e.emit(lw("t3", CURRENT_STAGE_VA & 0xFFFF, "t3"), addiu("t2", "zero", 4))
+    e.bne("t3", "t2", "award_sound")
+    e.emit(addiu("t2", "zero", 1))
+    e.emit(
+        sllv("t2", "t2", "t1"),
+        lui("t3", 0x802C),
+        lw("t4", ACQUIRED_BITS_VA & 0xFFFF, "t3"),
+        or_("t4", "t4", "t2"),
+        sw("t4", ACQUIRED_BITS_VA & 0xFFFF, "t3"),
+    )
+    e.label("award_sound")
+    e.emit(
+        addiu("a0", "zero", 0x3B),
+        addu("a1", "zero", "zero"),
+        addiu("a2", "zero", 0x40),
+        jal(PICKUP_SOUND_VA),
+        0,
+    )
+    e.beq("zero", "zero", "dispatch_action")
+    e.emit(0)
+
+    e.label("award_extra")
+    e.emit(addiu("t1", "zero", AWARD_EXTRA_LIFE))
+    e.bne("t0", "t1", "award_mana")
+    e.emit(0)
+    e.emit(jal(EXTRA_LIFE_CALLBACK_VA), 0)
+    e.beq("zero", "zero", "dispatch_action")
+    e.emit(0)
+
+    e.label("award_mana")
+    e.emit(addiu("t1", "zero", AWARD_MANA))
+    e.bne("t0", "t1", "dispatch_action")
+    e.emit(0)
+    e.emit(jal(MANA_CALLBACK_VA), 0)
+
+    # Destination-owned stage/location action.
+    e.label("dispatch_action")
+    e.beq("s1", "zero", "action_done")
+    e.emit(0)
+
+    for action, label in (
+        (DEST_WIND_CIRCLE, "wind_circle"),
+        (DEST_WIND_TRIANGLE, "wind_triangle"),
+        (DEST_WIND_THREE_BARS, "wind_three_bars"),
+        (DEST_WATER_TRIANGLE, "water_triangle"),
+        (DEST_WATER_THREE_BARS, "water_three_bars"),
+        (DEST_WATER_MOON, "water_moon"),
+        (DEST_EARTH_SQUARE, "earth_square"),
+        (DEST_EARTH_FOUR_SQUARE, "earth_four_square"),
+        (DEST_EARTH_TRIANGLE, "earth_triangle"),
+        (DEST_FIRE_TRIANGLE_UP, "fire_triangle_up"),
+        (DEST_FIRE_TWO_BARS, "fire_two_bars"),
+        (DEST_FIRE_TRIANGLE_DOWN, "fire_triangle_down"),
+        (DEST_PRISON_L1, "prison_l1"),
+        (DEST_PRISON_L2, "prison_l2"),
+        (DEST_PRISON_STRENGTH, "prison_strength"),
+    ):
+        e.emit(addiu("t0", "zero", action))
+        e.beq("s1", "t0", label)
+        e.emit(0)
+    e.beq("zero", "zero", "action_done")
+    e.emit(0)
+
+    e.label("wind_circle")
+    _emit_checkpoint(e, 3, exact_predecessor=2)
+
+    e.label("wind_triangle")
+    _emit_checkpoint(e, 5, exact_predecessor=4)
+
+    e.label("wind_three_bars")
+    e.emit(lui("t0", 0x802F), addiu("t1", "zero", 1), sb("t1", WIND_THREE_BARS_STATE_VA & 0xFFFF, "t0"))
+    e.beq("zero", "zero", "action_done")
+    e.emit(0)
+
+    e.label("water_triangle")
+    _emit_checkpoint(e, 2, exact_predecessor=1)
+
+    e.label("water_three_bars")
+    e.emit(
+        lui("t0", 0x802F),
+        lbu("t1", WATER_THREE_BARS_STATE_VA & 0xFFFF, "t0"),
+        addiu("t1", "t1", 1),
+        sb("t1", WATER_THREE_BARS_STATE_VA & 0xFFFF, "t0"),
+    )
+    _emit_checkpoint(e, 3, exact_predecessor=2)
+
+    e.label("water_moon")
+    _emit_checkpoint(e, 5, exact_predecessor=4)
+
+    e.label("earth_square")
+    _emit_checkpoint(e, 2, exact_predecessor=None)
+
+    e.label("earth_four_square")
+    e.emit(lui("t0", 0x802F), addiu("t1", "zero", 1), sb("t1", EARTH_FOUR_SQUARE_STATE_VA & 0xFFFF, "t0"))
+    e.beq("zero", "zero", "action_done")
+    e.emit(0)
+
+    e.label("earth_triangle")
+    e.emit(lui("t0", 0x802F), addiu("t1", "zero", 1), sh("t1", EARTH_TRIANGLE_STATE_VA & 0xFFFF, "t0"))
+    e.beq("zero", "zero", "action_done")
+    e.emit(0)
+
+    e.label("fire_triangle_up")
+    _emit_checkpoint(e, 2, exact_predecessor=None)
+
+    e.label("fire_two_bars")
+    _emit_checkpoint(e, 3, exact_predecessor=None)
+
+    e.label("fire_triangle_down")
+    _emit_checkpoint(e, 4, exact_predecessor=None)
+
+    e.label("prison_l1")
+    _emit_checkpoint(e, 7, exact_predecessor=None)
+
+    e.label("prison_l2")
+    _emit_checkpoint(e, 8, exact_predecessor=None)
+
+    e.label("prison_strength")
+    _emit_checkpoint(e, 11, exact_predecessor=None)
+
+    e.label("action_done")
+    e.emit(
+        lw("s1", 0x1C, "sp"),
+        lw("s0", 0x20, "sp"),
+        lw("ra", 0x24, "sp"),
+        addiu("sp", "sp", 0x28),
+        jr("ra"),
+        0,
+    )
+    return e.finish()
 
 
 GENERIC_AWARD = build_generic_inventory_award()
+
 ACQUISITION_REMASK_OFFSET = _align(len(GENERIC_AWARD), 0x40)
 ACQUISITION_REMASK_K0 = MATERIALIZER_HELPER_K0 + ACQUISITION_REMASK_OFFSET
 
@@ -131,8 +355,49 @@ def build_acquisition_remask_helper() -> bytes:
 
 
 ACQUISITION_REMASK = build_acquisition_remask_helper()
+PRISON_RECONSTRUCT_OFFSET = _align(
+    ACQUISITION_REMASK_OFFSET + len(ACQUISITION_REMASK), 0x40
+)
+PRISON_RECONSTRUCT_K0 = MATERIALIZER_HELPER_K0 + PRISON_RECONSTRUCT_OFFSET
+
+
+def build_prison_reconstruct_wrapper() -> bytes:
+    """Run the stock Prison reset, then rebuild key credentials from all boxes."""
+
+    e = Emitter()
+    e.emit(
+        addiu("sp", "sp", -0x20),
+        sw("ra", 0x1C, "sp"),
+        jal(PRISON_RESET_VA),
+        0,
+        lui("t0", 0x800A),
+        addiu("t0", "t0", BOX0_VA & 0xFFFF),
+        addiu("t1", "t0", 160),
+        addu("t2", "zero", "zero"),
+    )
+    e.label("scan")
+    e.emit(lw("t3", 0, "t0"), addiu("t4", "t3", -0x1A), sltiu("t5", "t4", 3))
+    e.beq("t5", "zero", "next")
+    e.emit(addiu("t6", "zero", 1))
+    e.emit(sllv("t6", "t6", "t4"), or_("t2", "t2", "t6"))
+    e.label("next")
+    e.emit(addiu("t0", "t0", 4))
+    e.bne("t0", "t1", "scan")
+    e.emit(0)
+    e.emit(
+        lui("t3", 0x802C),
+        sw("t2", ACQUIRED_BITS_VA & 0xFFFF, "t3"),
+        lw("ra", 0x1C, "sp"),
+        addiu("sp", "sp", 0x20),
+        jr("ra"),
+        0,
+    )
+    return e.finish()
+
+
+PRISON_RECONSTRUCT = build_prison_reconstruct_wrapper()
 MATERIALIZER_HELPER_SIZE = _align(
-    ACQUISITION_REMASK_OFFSET + len(ACQUISITION_REMASK), 0x10
+    PRISON_RECONSTRUCT_OFFSET + len(PRISON_RECONSTRUCT), 0x10
 )
 MATERIALIZER_HELPER_END_K0 = MATERIALIZER_HELPER_K0 + MATERIALIZER_HELPER_SIZE
 MATERIALIZER_HELPER_END_ROM = MATERIALIZER_HELPER_ROM + MATERIALIZER_HELPER_SIZE
@@ -153,6 +418,10 @@ MATERIALIZER_HELPER[
     ACQUISITION_REMASK_OFFSET :
     ACQUISITION_REMASK_OFFSET + len(ACQUISITION_REMASK)
 ] = ACQUISITION_REMASK
+MATERIALIZER_HELPER[
+    PRISON_RECONSTRUCT_OFFSET :
+    PRISON_RECONSTRUCT_OFFSET + len(PRISON_RECONSTRUCT)
+] = PRISON_RECONSTRUCT
 MATERIALIZER_HELPER = bytes(MATERIALIZER_HELPER)
 
 
@@ -163,13 +432,42 @@ def _stage_by_id(stage_id: int):
         raise PatchError(f"unknown pickup stage ID {stage_id}") from exc
 
 
+DESTINATION_ACTIONS = {
+    (1, 3): DEST_WIND_CIRCLE,
+    (1, 4): DEST_WIND_TRIANGLE,
+    (1, 5): DEST_WIND_THREE_BARS,
+    (2, 6): DEST_WATER_TRIANGLE,
+    (2, 7): DEST_WATER_THREE_BARS,
+    (2, 8): DEST_WATER_MOON,
+    (3, 0): DEST_EARTH_SQUARE,
+    (3, 1): DEST_EARTH_FOUR_SQUARE,
+    (3, 2): DEST_EARTH_TRIANGLE,
+    (5, 4): DEST_FIRE_TRIANGLE_UP,
+    (5, 9): DEST_FIRE_TWO_BARS,
+    (5, 14): DEST_FIRE_TRIANGLE_DOWN,
+    (4, 0): DEST_PRISON_L1,
+    (4, 1): DEST_PRISON_L2,
+    (4, 3): DEST_PRISON_STRENGTH,
+}
+
+CLOSED_TOKEN_DESTINATIONS = frozenset(
+    set(DESTINATION_ACTIONS)
+    | {
+        (4, 2),  # Prison L3: activation gate only
+        (8, 0), (8, 1), (8, 2),
+        (9, 0), (9, 1), (9, 2),
+    }
+)
+
+
 def _has_closed_token_destination_semantics(
     stage_id: int, destination_index: int
 ) -> bool:
-    return (
-        (stage_id == 8 and destination_index in (0, 1, 2))
-        or (stage_id == 9 and destination_index in (0, 1, 2))
-    )
+    return (stage_id, destination_index) in CLOSED_TOKEN_DESTINATIONS
+
+
+def _destination_action(stage_id: int, destination_index: int) -> int:
+    return DESTINATION_ACTIONS.get((stage_id, destination_index), DEST_NONE)
 
 
 def _destination_activation_gate(record) -> bool:
@@ -284,6 +582,7 @@ class GlobalItemMaterializationPatch:
 
         rom.expect_u32(ACQUISITION_HOOK_ROM, ACQUISITION_DISPLACED_0)
         rom.expect_u32(ACQUISITION_HOOK_ROM + 4, ACQUISITION_DISPLACED_1)
+        rom.expect_u32(PRISON_RESET_CALL_ROM, PRISON_RESET_CALL_EXPECTED)
 
         assignments_by_stage: dict[int, list] = defaultdict(list)
         seen_destinations: set[tuple[int, int]] = set()
@@ -337,6 +636,9 @@ class GlobalItemMaterializationPatch:
                         selector,
                         generic_inventory_callback=GENERIC_AWARD_K1,
                         activation_gate=_destination_activation_gate(target),
+                        destination_action=_destination_action(
+                            assignment.stage_id, assignment.destination_index
+                        ),
                     )
                 )
 
@@ -347,6 +649,7 @@ class GlobalItemMaterializationPatch:
 
         rom.write_u32(ACQUISITION_HOOK_ROM, jal(ACQUISITION_REMASK_K0))
         rom.write_u32(ACQUISITION_HOOK_ROM + 4, ACQUISITION_DISPLACED_0)
+        rom.write_u32(PRISON_RESET_CALL_ROM, jal(PRISON_RECONSTRUCT_K0))
 
         resource_notes: list[str] = []
         for stage_id, stage_plan in stage_plans.items():
@@ -380,6 +683,8 @@ class GlobalItemMaterializationPatch:
                 f"RDRAM 0x{MATERIALIZER_HELPER_K0:08X}"
             ),
             "ordinary awards immediately commit backing inventory and reconstruct stage-masked LIVE",
+            "destination checkpoint/state wrappers compose independently of logical rewards",
+            "Prison acquired bits rebuild after the stock reset from authoritative backing inventory",
             "stock destination bit-15 activation gates are preserved independently of reward identity",
             "resource placements: " + ", ".join(resource_notes),
         )
