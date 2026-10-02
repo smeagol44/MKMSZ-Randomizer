@@ -9,7 +9,6 @@ from .box_indicator import BOX_REGION, BOX_REGION_ROM
 from .game_settings_turn import CONTROL_MODULE, SHARED_EXPANSION_ROM
 from .toasty_codegen import (
     NOP,
-    _align,
     _build_call_trampoline,
     _build_init_loader,
     jal,
@@ -32,8 +31,11 @@ class ToastyProductionCompositionPatch:
     def apply(self,rom:RomImage,context:PatchContext)->tuple[str,...]:
         del context
         module=self.module.data
-        audio_rom=_align(MODULE_ROM+len(module),16)
-        audio_end=audio_rom+len(self.assets.audio_sample)
+        module_end=MODULE_ROM+len(module)
+        audio_rom=TOASTY_AUDIO_ROM
+        audio_end=TOASTY_AUDIO_END_ROM
+        if module_end>audio_rom:
+            raise PatchError("Toasty module reaches fixed audio allocation")
         if audio_end>TOASTY_ROM_LIMIT:
             raise PatchError("Toasty high-ROM allocation exceeds audited bound")
 
@@ -55,7 +57,8 @@ class ToastyProductionCompositionPatch:
             control_end_rom,
             b"\xFF" * (MODULE_ROM - control_end_rom),
         )
-        rom.expect_bytes(MODULE_ROM,b'\xFF'*(audio_end-MODULE_ROM))
+        rom.expect_bytes(MODULE_ROM,b'\xFF'*len(module))
+        rom.expect_bytes(audio_rom,b'\xFF'*len(self.assets.audio_sample))
         for selector,callback in zip(QUALIFYING_REACTION_SELECTORS,QUALIFYING_REACTION_CALLBACKS,strict=True):
             if rom.read_u32(TARGET_REACTION_TABLE_ROM+selector*4)!=callback:
                 raise PatchError(f"Toasty reaction selector 0x{selector:02X} no longer resolves to expected callback")
@@ -75,8 +78,11 @@ class ToastyProductionCompositionPatch:
             if file_id==EXPANSION_FILE_ID: continue
             entry=FILE_TABLE_ROM+file_id*FILE_TABLE_ENTRY_SIZE
             start=rom.read_u32(entry);end=rom.read_u32(entry+4)
-            if start and end and end>start and not (end<=SHARED_EXPANSION_ROM or start>=audio_end):
-                raise PatchError(f"Toasty high-ROM allocation overlaps file 0x{file_id:02X}")
+            if start and end and end>start:
+                overlaps_shared = not (end<=SHARED_EXPANSION_ROM or start>=module_end)
+                overlaps_audio = not (end<=audio_rom or start>=audio_end)
+                if overlaps_shared or overlaps_audio:
+                    raise PatchError(f"Toasty high-ROM allocation overlaps file 0x{file_id:02X}")
 
         sub=bytearray(self.assets.audio_subpatch);sub[0x0A:0x0C]=TARGET_WAVE_ID.to_bytes(2,'big')
         wave=bytearray(self.assets.audio_wave);wave[0:4]=(audio_rom-MKMSZ_TBL_BASE).to_bytes(4,'big')
@@ -85,7 +91,7 @@ class ToastyProductionCompositionPatch:
         rom.write_bytes(audio_rom,self.assets.audio_sample)
 
         rom.write_u32(EXPANSION_FILE_ENTRY_ROM,SHARED_EXPANSION_ROM)
-        rom.write_u32(EXPANSION_FILE_ENTRY_ROM+4,MODULE_ROM+len(module))
+        rom.write_u32(EXPANSION_FILE_ENTRY_ROM+4,module_end)
         rom.write_u32(EXPANSION_FILE_ENTRY_ROM+8,0)
         rom.write_bytes(MODULE_ROM,module)
 
