@@ -17,3 +17,15 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - run: ruff check .
       - run: pytest
+      - name: Build proof wheel
+        if: github.event_name == 'pull_request'
+        run: |
+          python -m pip install build
+          python -m build --wheel
+      - name: Upload proof wheel
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mkmszr-pr-wheel
+          path: dist/*.whl
+          if-no-files-found: error
