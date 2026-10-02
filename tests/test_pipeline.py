@@ -9,6 +9,7 @@ from mkmszr.patches.native_payload import NativePayloadPatch
 from mkmszr.patches.pickup_persistence import PickupPersistencePatch
 from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
 from mkmszr.patches.power_order import PowerOrderPatch
+from mkmszr.patches.progression_presentation import ProgressionPickupPresentationPatch
 from mkmszr.patches.rainbow_palette import RainbowPalettePatch
 from mkmszr.patches.required_powers import RequiredPowersPatch
 from mkmszr.patches.run_lifecycle import RunLifecyclePatch
@@ -58,6 +59,21 @@ def test_power_order_shuffle_is_optional_and_runs_after_controls() -> None:
     )
     types = [type(patch) for patch in enabled.patches]
     assert types[-1] is PowerOrderPatch
+
+
+def test_progression_presentation_follows_lifecycle_only_in_pickup_mode() -> None:
+    enabled = build_pipeline(RandomizerConfig(seed="POWER-FLASH"))
+    types = [type(patch) for patch in enabled.patches]
+    assert ProgressionPickupPresentationPatch in types
+    assert types.index(XPProgressionPatch) < types.index(ProgressionPickupPresentationPatch)
+    assert types.index(RunLifecyclePatch) < types.index(ProgressionPickupPresentationPatch)
+
+    disabled = build_pipeline(
+        RandomizerConfig(seed="POWER-FLASH", powers_as_pickups=False)
+    )
+    assert ProgressionPickupPresentationPatch not in [
+        type(patch) for patch in disabled.patches
+    ]
 
 
 def test_powers_as_pickups_and_required_count_are_independent() -> None:
