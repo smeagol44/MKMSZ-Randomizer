@@ -3,7 +3,6 @@
 from dataclasses import dataclass, field
 from typing import Literal
 
-
 DifficultyMode = Literal["very_easy", "easy", "medium", "hard", "very_hard"]
 
 
