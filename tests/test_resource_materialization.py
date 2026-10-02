@@ -12,9 +12,9 @@ from mkmszr.resource_materialization import (
 )
 
 
-def test_canonical_visual_registry_covers_every_stock_logical_key() -> None:
+def test_canonical_visual_registry_covers_stock_keys_and_power_upgrade() -> None:
     keys = {item.key for item in build_stock_logical_pool()}
-    assert keys == set(CANONICAL_VISUAL_DONORS)
+    assert set(CANONICAL_VISUAL_DONORS) == keys | {"power-upgrade"}
 
 
 
