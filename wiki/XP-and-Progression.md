@@ -45,7 +45,7 @@ The disposable proof changed Temple ordinary Herbs #1, #3, and #4 into progressi
 - normal and progression pickups coexisted and were visually distinguishable;
 - Temple displayed max XP `20000`.
 
-The experimental progression model is pale blue-grey and visually Herbs-like. The intended final presentation is a bright-blue Herbs body while retaining the bronze/gold-looking handle. That visual refinement is separate from the confirmed progression logic.
+The earlier experimental progression model was pale blue-grey and visually Herbs-like. The current presentation-polish branch keeps the exact stage-local Herbs model/resource but changes only selected progression records' `+0x28` presentation pointer from stock Herbs descriptor `0x800B1D38` to stock-resident 16-color blue descriptor `0x800B29AC`. This makes Power Upgrade Herbs visibly blue without adding ROM/RDRAM allocation or changing callback semantics; ordinary Herbs remain on `0x800B1D38`. Evidence is Static/implementation-confirmed pending in-game visual confirmation.
 
 ## Power-order shuffle proof — 2026-09-27
 
@@ -98,7 +98,7 @@ The 2026-09-23 full-composition rainbow proof Runtime-confirmed this larger code
 
 Progression uses state `+0x40` for acquired reward count and `+0x44` for persistent XP, separate from the 84 ordinary-pickup persistence bits at `+0x20..+0x3C`.
 
-Nine rewards are selected only after the ordinary 84-location layout is finalized, using the independent domain `MKMSZR:PROGRESSION:HERBS:V1\0`. Only generated Herbs locations are eligible and only their callback word is replaced, so the ordinary shuffle is not perturbed and no foreign resource import is required.
+Nine rewards are selected only after the ordinary 84-location layout is finalized, using the independent domain `MKMSZR:PROGRESSION:HERBS:V1\0`. Only generated Herbs locations are eligible. Their callback word is replaced with the progression callback and their presentation pointer is replaced with globally resident blue palette descriptor `0x800B29AC`; the stage-local Herbs model/resource selector is preserved. The ordinary shuffle is not perturbed and no foreign resource import or new allocation is required.
 
 The acquisition callback advances to the next threshold, stores count/XP, writes current XP, and calls native tier evaluator `0x80074FBC` at the safe pickup-acquisition point. It does not add an inventory item.
 
@@ -165,7 +165,7 @@ Diagnostic B behavior is the production design.
 ## Remaining limits
 
 - All nine generated progression rewards are implementation/CI-confirmed, but a full nine-tier runtime run is still pending.
-- Production progression pickups currently retain ordinary Herbs graphics. Bright-blue Herbs body with a bronze/gold-looking handle remains a visual refinement.
+- Progression pickup blue-palette presentation is Implementation/CI candidate; exact in-game visual acceptance remains Pending.
 - Game Over/new-run reset behavior remains pending as part of the shared MKMSZR lifecycle work.
 
 
