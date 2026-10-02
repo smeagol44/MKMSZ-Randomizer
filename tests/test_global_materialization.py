@@ -25,7 +25,10 @@ from mkmszr.resource_materialization import (
     DEST_WIND_CIRCLE,
     GlobalMaterializationPlan,
     MaterializationAssignment,
+    StageResourcePlan,
     StageResourcePlacement,
+    MaterializedVisual,
+    bind_materialized_visual_to_stock_selector,
     portable_materialized_identity,
 )
 
@@ -194,3 +197,46 @@ def test_power_upgrade_uses_herbs_visual_blue_presentation_and_shared_dispatcher
     assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B2960
     assert int.from_bytes(identity[0x14:0x18], "big") == 0x123C
     assert int.from_bytes(identity[0x18:0x1C], "big") == 0x800B1E68
+
+
+
+def test_temple_special_fixed_reward_can_force_shared_dispatcher() -> None:
+    identity = portable_materialized_identity(
+        "potion",
+        1,
+        generic_inventory_callback=0xA01B2960,
+        power_upgrade_callback=0xA01B2160,
+        force_shared_award=True,
+    )
+    assert int.from_bytes(identity[0x04:0x08], "big") == 0x01
+    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B2960
+
+
+def test_temple_special_can_alias_appended_visual_to_empty_stock_selector() -> None:
+    resource = bytearray(0x40)
+    plan = StageResourcePlan(
+        stage_id=0,
+        stock_size=0x20,
+        resource_file=bytes(resource),
+        visuals=(
+            MaterializedVisual(
+                key="wind-circle",
+                selector=0x10,
+                selector_entry_offset=0x20,
+                descriptor_offset=0x30,
+            ),
+        ),
+    )
+    rebound = bind_materialized_visual_to_stock_selector(plan, "wind-circle", 1)
+    assert int.from_bytes(rebound.resource_file[4:8], "big") == 0x30
+
+
+def test_global_materialization_plan_carries_temple_special_reward() -> None:
+    plan = GlobalMaterializationPlan(
+        assignments=(),
+        placements=(
+            StageResourcePlacement(stage_id=0, rom_start=0x00F00000, capacity=0x10000),
+        ),
+        temple_special_item_key="wind-circle",
+    )
+    assert plan.temple_special_item_key == "wind-circle"
