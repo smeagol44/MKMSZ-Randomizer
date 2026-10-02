@@ -36,8 +36,8 @@ from ..errors import PatchError
 from ..mips import (
     Emitter,
     addiu,
-    addu,
     address_words,
+    addu,
     andi,
     jal,
     jr,
@@ -101,6 +101,8 @@ from .native_payload import kseg1_alias
 from .progression_presentation import PROGRESSION_FLASH_CALLBACK_ENTRY
 from .temple_special_check import (
     AWARD_HELPER_VA as TEMPLE_BASE_AWARD_HELPER_VA,
+)
+from .temple_special_check import (
     LEGACY_MAP_FLAG_VA,
     MAP_AWARD_CALL_ROM,
     STATE_FLAGS_VA,
