@@ -53,8 +53,8 @@ from .patches.required_powers import (
     RequiredPowersPatch,
     resolve_required_powers,
 )
-from .patches.xp_progression import XP_THRESHOLDS
 from .patches.toasty_codegen import pack_toasty_module
+from .patches.xp_progression import XP_THRESHOLDS
 from .resource_materialization import (
     GLOBAL_OUTPUT_SIZE,
     GlobalMaterializationPlan,
