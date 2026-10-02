@@ -26,6 +26,11 @@ from .global_items import (
     LogicalItem,
     build_global_logical_pool,
 )
+from .resource_materialization import (
+    GlobalMaterializationPlan,
+    MaterializationAssignment,
+    StageResourcePlacement,
+)
 
 GLOBAL_RNG_DOMAIN = b"MKMSZR:PICKUPS:GLOBAL:V2\0"
 REQUIRED_POWERS_RNG_DOMAIN = b"MKMSZR:REQUIRED-POWERS:V1\0"
@@ -367,4 +372,26 @@ def build_global_run_plan(
         ordinary_assignments=tuple(ordinary),
         temple_special_item_key=temple_reward.key,
         power_locations=frozenset(power_locations),
+    )
+
+
+
+def materialization_plan_from_run(
+    run: GlobalRunPlan,
+    placements: Iterable[StageResourcePlacement],
+) -> GlobalMaterializationPlan:
+    """Convert one accepted logical run into the physical materializer schema.
+
+    Placement ownership remains explicit and caller-supplied. This function
+    performs no free-space discovery or allocation inference.
+    """
+
+    assignments = tuple(
+        MaterializationAssignment(stage_id, record_index, item_key)
+        for stage_id, record_index, item_key in run.ordinary_assignments
+    )
+    return GlobalMaterializationPlan(
+        assignments=assignments,
+        placements=tuple(placements),
+        temple_special_item_key=run.temple_special_item_key,
     )
