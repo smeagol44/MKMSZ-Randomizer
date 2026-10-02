@@ -181,6 +181,43 @@
 
       <div class="settings-defaults">
         <div class="settings-defaults-copy">
+          <h3>Run Settings</h3>
+          <p>Choose the starting resources and difficulty for each new run.</p>
+        </div>
+        <div class="grid requirement-grid">
+          <div class="field">
+            <label for="difficulty">Difficulty</label>
+            <select id="difficulty">
+              <option value="very_easy">Very Easy</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+              <option value="very_hard" selected>Very Hard</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="startingLives">Lives</label>
+            <input id="startingLives" type="number" min="1" max="10" step="1" value="5">
+            <p class="hint">Total starting lives. Maximum 10.</p>
+          </div>
+          <div class="field">
+            <label for="startingContinues">Continues</label>
+            <input id="startingContinues" type="number" min="0" max="5" step="1" value="3">
+            <p class="hint">Starting continues. Maximum 5.</p>
+          </div>
+          <label class="setting-toggle" for="persistHp">
+            <span>
+              <strong>Persistent HP</strong>
+              <small>Keep current HP when leaving and re-entering stages. Off: re-enter at full HP.</small>
+            </span>
+            <input id="persistHp" type="checkbox" checked>
+            <span class="toggle-switch" aria-hidden="true"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-defaults">
+        <div class="settings-defaults-copy">
           <h3>Default Game Settings</h3>
           <p>Choose how the generated ROM starts. You can still change these later from the in-game GAME SETTINGS menu.</p>
         </div>
