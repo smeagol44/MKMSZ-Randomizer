@@ -15,21 +15,21 @@ EXPECTED_MAGIC = 0x80371240
 
 
 def _changed_spans(before: bytes, after: bytes | bytearray) -> tuple[tuple[int, int], ...]:
-    """Return half-open contiguous byte ranges that differ."""
-
-    if len(before) != len(after):
-        raise ValueError("buffers must have equal length")
+    """Return half-open contiguous byte ranges that differ, including appended output."""
 
     spans: list[tuple[int, int]] = []
     start: int | None = None
-    for index, (old, new) in enumerate(zip(before, after)):
+    shared_length = min(len(before), len(after))
+    for index, (old, new) in enumerate(zip(before[:shared_length], after[:shared_length])):
         if old != new and start is None:
             start = index
         elif old == new and start is not None:
             spans.append((start, index))
             start = None
     if start is not None:
-        spans.append((start, len(after)))
+        spans.append((start, shared_length))
+    if len(after) > shared_length:
+        spans.append((shared_length, len(after)))
     return tuple(spans)
 
 
@@ -104,6 +104,16 @@ class RomImage:
 
     def write_bytes(self, offset: int, value: bytes) -> None:
         self.data[offset : offset + len(value)] = value
+
+    def expand_output(self, size: int, *, fill: int = 0xFF) -> None:
+        """Grow only the generated output image; clean-input validation stays 16 MiB."""
+
+        if size < len(self.data):
+            raise ValueError("expanded output size cannot shrink the ROM")
+        if not 0 <= fill <= 0xFF:
+            raise ValueError("fill byte must be 0..255")
+        if size > len(self.data):
+            self.data.extend(bytes((fill,)) * (size - len(self.data)))
 
     def update_header_crc(self) -> tuple[int, int]:
         crc1, crc2 = calculate_crc_6102(self.data)
