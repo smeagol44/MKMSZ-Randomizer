@@ -229,9 +229,12 @@ if len(PROGRESSION_RESUME_PATCH) != len(PERSISTENCE_RESUME_PATCH):
 
 
 class XPProgressionPatch:
-    """Install no-combat-XP and nine pickup-driven native progression rewards."""
+    """Install no-combat-XP and pickup-driven native progression runtime."""
 
     name = "xp-progression"
+
+    def __init__(self, *, global_mode: bool = False):
+        self.global_mode = global_mode
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
         if not context.seed:
@@ -248,37 +251,41 @@ class XPProgressionPatch:
         rom.expect_bytes(PROGRESSION_EXTENSION_ROM, bytes(PROGRESSION_EXTENSION_SIZE))
         rom.expect_bytes(PERSISTENCE_RESUME_ROM, PERSISTENCE_RESUME_PATCH)
 
-        # Require the exact post-shuffle ordinary layout before selecting Herbs.
         stage_by_id = {stage.stage_id: stage for stage in STAGE_PICKUPS}
-        for stage in STAGE_PICKUPS:
-            assignment, _attempts = build_stage_assignment(stage, context.seed)
-            for destination, source_index in enumerate(assignment):
-                target = stage.records[destination]
-                rom.expect_bytes(
-                    target.rom_base + IDENTITY_OFFSET,
-                    stage.records[source_index].identity,
+        selected: tuple[tuple[int, int], ...] = ()
+        if not self.global_mode:
+            # Stage-local mode still overlays nine generated Herbs after the
+            # accepted within-stage shuffle. Global mode receives explicit
+            # Power Upgrade rewards from the 85-item generator instead.
+            for stage in STAGE_PICKUPS:
+                assignment, _attempts = build_stage_assignment(stage, context.seed)
+                for destination, source_index in enumerate(assignment):
+                    target = stage.records[destination]
+                    rom.expect_bytes(
+                        target.rom_base + IDENTITY_OFFSET,
+                        stage.records[source_index].identity,
+                    )
+
+            rom.expect_bytes(
+                PROGRESSION_HERBS_PALETTE_ROM,
+                PROGRESSION_HERBS_PALETTE,
+            )
+
+            selected = build_progression_locations(context.seed)
+            for stage_id, destination in selected:
+                stage = stage_by_id[stage_id]
+                callback_rom = (
+                    stage.records[destination].rom_base
+                    + IDENTITY_OFFSET
+                    + CALLBACK_OFFSET_WITHIN_IDENTITY
                 )
-
-        rom.expect_bytes(
-            PROGRESSION_HERBS_PALETTE_ROM,
-            PROGRESSION_HERBS_PALETTE,
-        )
-
-        selected = build_progression_locations(context.seed)
-        for stage_id, destination in selected:
-            stage = stage_by_id[stage_id]
-            callback_rom = (
-                stage.records[destination].rom_base
-                + IDENTITY_OFFSET
-                + CALLBACK_OFFSET_WITHIN_IDENTITY
-            )
-            presentation_rom = (
-                stage.records[destination].rom_base
-                + IDENTITY_OFFSET
-                + PRESENTATION_OFFSET_WITHIN_IDENTITY
-            )
-            rom.expect_u32(callback_rom, HERBS_CALLBACK_VA)
-            rom.expect_u32(presentation_rom, HERBS_PRESENTATION_VA)
+                presentation_rom = (
+                    stage.records[destination].rom_base
+                    + IDENTITY_OFFSET
+                    + PRESENTATION_OFFSET_WITHIN_IDENTITY
+                )
+                rom.expect_u32(callback_rom, HERBS_CALLBACK_VA)
+                rom.expect_u32(presentation_rom, HERBS_PRESENTATION_VA)
 
         for offset, expected in XP_AWARD_STORE_SITES.items():
             rom.expect_u32(offset, expected)
@@ -312,17 +319,24 @@ class XPProgressionPatch:
         for stage_id in XP_MAIN_STAGE_CAPS:
             rom.write_u16(XP_CAP_TABLE_ROM + stage_id * 2, XP_CAP_VALUE)
 
-        locations = ", ".join(
-            f"{stage_by_id[stage_id].key}:{destination + 1}"
-            for stage_id, destination in selected
-        )
+        if self.global_mode:
+            reward_note = (
+                "global mode: progression callback/state installed; shuffled "
+                "Power Upgrade rewards are emitted by the global materializer"
+            )
+        else:
+            locations = ", ".join(
+                f"{stage_by_id[stage_id].key}:{destination + 1}"
+                for stage_id, destination in selected
+            )
+            reward_note = (
+                "9 generated Herbs callbacks -> progression callback and stock-resident "
+                f"blue palette 0x{PROGRESSION_HERBS_PRESENTATION_VA:08X} ({locations})"
+            )
         return (
             "normal XP stores disabled at the central helper and all three mapped direct paths",
             "combo EXPERIENCE label/value suppressed; HITS render calls preserved",
             f"8 main-stage XP caps guarded and set to {XP_CAP_VALUE}",
-            (
-                "9 generated Herbs callbacks -> progression callback and stock-resident "
-                f"blue palette 0x{PROGRESSION_HERBS_PRESENTATION_VA:08X} ({locations})"
-            ),
+            reward_note,
             "progression count/XP use V2 state +0x40/+0x44; ordinary pickup bitsets remain separate",
         )
