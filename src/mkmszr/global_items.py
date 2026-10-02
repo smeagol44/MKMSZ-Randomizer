@@ -68,8 +68,9 @@ FIXED_CALLBACK_ITEMS: dict[int, tuple[str, str, AwardKind, int | None]] = {
     0x8003892C: ("shield", "Shield", "inventory", 0x06),
     0x80038A1C: ("extra-life", "Urn (Extra Life)", "native-effect", None),
     0x80038A58: ("mana", "Mana", "native-effect", None),
-    # Strength does more than merely insert inventory ID 0x0B.
-    0x80038A90: ("strength-urn", "Urn (Strength)", "native-effect", None),
+    # Static closure: this callback inserts inventory ID 0x0B, then performs
+    # Prison-location checkpoint work.  The logical reward itself is inventory.
+    0x80038A90: ("strength-urn", "Urn (Strength)", "inventory", 0x0B),
 }
 
 
