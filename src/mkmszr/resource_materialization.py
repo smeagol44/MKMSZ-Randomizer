@@ -56,7 +56,7 @@ GLOBAL_RESOURCE_REGION_END = (
 )
 
 
-def production_global_resource_placements() -> tuple["StageResourcePlacement", ...]:
+def production_global_resource_placements() -> tuple[StageResourcePlacement, ...]:
     """Return the approved appended-ROM ownership for global stage resources."""
 
     return tuple(
