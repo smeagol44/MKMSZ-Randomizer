@@ -3,6 +3,10 @@ from mkmszr.patcher import build_pipeline
 from mkmszr.patches.controls_production import ControlsProductionPatch
 from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
 from mkmszr.patches.rainbow_palette import RainbowPalettePatch
+from mkmszr.patches.progression_presentation import (
+    FLASH_MODULE_END_ROM,
+    FLASH_MODULE_ROM,
+)
 from mkmszr.patches.toasty import ToastyProductionCompositionPatch
 from mkmszr.patches.toasty_codegen import (
     _build_call_trampoline,
@@ -83,3 +87,15 @@ def test_toasty_audio_uses_fixed_documented_production_slot() -> None:
     assert TOASTY_AUDIO_ROM == 0x00F6B5D0
     assert TOASTY_AUDIO_END_ROM == 0x00F6BDE6
     assert TOASTY_AUDIO_END_ROM - TOASTY_AUDIO_ROM == 0x816
+
+
+def test_toasty_audio_and_progression_flash_allocations_do_not_overlap() -> None:
+    assert FLASH_MODULE_ROM == 0x00F6A940
+    assert FLASH_MODULE_END_ROM == 0x00F6AAF0
+    assert FLASH_MODULE_END_ROM <= TOASTY_AUDIO_ROM
+
+    packed = pack_toasty_module(fake_assets(), DEFAULT_PROBABILITY_PER_THOUSAND)
+    old_dynamic_audio_rom = (MODULE_ROM + len(packed.data) + 0x0F) & ~0x0F
+    old_dynamic_audio_end = old_dynamic_audio_rom + 0x816
+    assert old_dynamic_audio_rom < FLASH_MODULE_END_ROM
+    assert old_dynamic_audio_end > FLASH_MODULE_ROM
