@@ -11,6 +11,7 @@ from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
 from mkmszr.patches.power_order import PowerOrderPatch
 from mkmszr.patches.rainbow_palette import RainbowPalettePatch
 from mkmszr.patches.required_powers import RequiredPowersPatch
+from mkmszr.patches.run_lifecycle import RunLifecyclePatch
 from mkmszr.patches.stage_selector import SafeStageSelectorPatch
 from mkmszr.patches.temple_special_check import TempleSpecialCheckPatch
 from mkmszr.patches.xp_progression import XPProgressionPatch
@@ -89,6 +90,19 @@ def test_enemy_randomization_is_default_off_and_optional_in_shared_pipeline() ->
     types = [type(patch) for patch in enabled.patches]
     assert EnemyRandomizationPatch in types
     assert types[-1] is EnemyRandomizationPatch
+
+
+def test_lifecycle_v06_runs_after_temple_and_before_optional_power_order() -> None:
+    pipeline = build_pipeline(RandomizerConfig(seed="LIFECYCLE-V06"))
+    types = [type(patch) for patch in pipeline.patches]
+    assert RunLifecyclePatch in types
+    assert types.index(TempleSpecialCheckPatch) < types.index(RunLifecyclePatch)
+
+    shuffled = build_pipeline(
+        RandomizerConfig(seed="LIFECYCLE-V06", shuffle_power_progression=True)
+    )
+    types = [type(patch) for patch in shuffled.patches]
+    assert types.index(RunLifecyclePatch) < types.index(PowerOrderPatch)
 
 
 def test_temple_special_check_runs_after_controls_and_optional_rainbow() -> None:

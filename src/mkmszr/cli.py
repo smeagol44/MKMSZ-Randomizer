@@ -61,6 +61,31 @@ def _build_parser() -> argparse.ArgumentParser:
         help="earn powers through stock XP instead of nine generated pickup rewards",
     )
     parser.add_argument(
+        "--difficulty",
+        choices=("very_easy", "easy", "medium", "hard", "very_hard"),
+        default="very_hard",
+        help="fresh-run difficulty (default: very_hard)",
+    )
+    parser.add_argument(
+        "--lives",
+        type=int,
+        default=5,
+        metavar="1..10",
+        help="total starting lives (default: 5; max: 10)",
+    )
+    parser.add_argument(
+        "--continues",
+        type=int,
+        default=3,
+        metavar="0..5",
+        help="starting continues (default: 3; max: 5)",
+    )
+    parser.add_argument(
+        "--no-persist-hp",
+        action="store_true",
+        help="reset HP to full when leaving and re-entering a stage",
+    )
+    parser.add_argument(
         "--required-powers",
         choices=("vanilla", "custom", "seed"),
         default="vanilla",
@@ -89,6 +114,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--custom-required-powers requires --required-powers custom")
     if args.custom_required_powers is not None and not 0 <= args.custom_required_powers <= 9:
         parser.error("--custom-required-powers must be from 0 to 9")
+    if not 1 <= args.lives <= 10:
+        parser.error("--lives must be from 1 to 10")
+    if not 0 <= args.continues <= 5:
+        parser.error("--continues must be from 0 to 5")
 
     effective_seed = args.seed.strip() if args.seed and args.seed.strip() else generate_seed()
     config = RandomizerConfig(
@@ -100,6 +129,10 @@ def main(argv: list[str] | None = None) -> int:
         powers_as_pickups=not args.no_powers_as_pickups,
         required_powers_mode=args.required_powers,
         custom_required_powers=args.custom_required_powers,
+        difficulty=args.difficulty,
+        lives=args.lives,
+        continues=args.continues,
+        persist_hp=not args.no_persist_hp,
     )
 
     try:

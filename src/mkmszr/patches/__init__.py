@@ -22,6 +22,7 @@ from .pickup_persistence import (
 from .pickup_randomization import PickupRandomizationPatch
 from .power_order import PowerOrderPatch
 from .rainbow_palette import RainbowPalettePatch
+from .run_lifecycle import RunLifecyclePatch
 from .runtime_v1 import (
     RuntimeV1FirePersistencePatch,
     runtime_v1_fire_patches,
@@ -52,6 +53,7 @@ __all__ = [
     "PickupRandomizationPatch",
     "PowerOrderPatch",
     "RainbowPalettePatch",
+    "RunLifecyclePatch",
     "RuntimeV1FirePersistencePatch",
     "SafeStageSelectSkipAutoSavePatch",
     "SafeStageSelectorPatch",

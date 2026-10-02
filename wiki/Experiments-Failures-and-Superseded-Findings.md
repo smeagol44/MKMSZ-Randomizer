@@ -138,12 +138,6 @@ The earlier blanket statement that textured-image rendering was unproven is supe
 | Treat the Ice `0x80060A3C` process as a disposable visual clone | v65-v67 suppressed one/both process spawns while also changing parent setup and hard-hung | The process constructs, inserts, animates and tears down two actors plus texture/palette state; the broad failures cannot isolate that suppression as sole cause. Keep parent/helper ownership intact until a replacement transaction and teardown are proven | [Player actions and special moves](Player-Actions-and-Special-Moves), [MKT adapter primitives](MKT-Adapter-Primitives) |
 | Treat v72's stable direct `(+5,+38)` placement as proof that donor local units and MKMSZ world units are universally 1:1 | v74's cadence-resampled path is stable, but comparative 60-fps donor/target video measures late visible flight at roughly half MKT speed | Placement stability does not establish cross-engine spatial-unit equivalence; preserve the proven temporal resampler and calibrate donor-local -> target-world scale separately | [MKT adapter primitives](MKT-Adapter-Primitives), [Sektor takeover proof history](Sektor-Takeover-Proof-History) |
 
-## Key-checkpoint reward/location distinction
-
-- **Wind v01 direct checkpoint suppression — Rejected / failed.** It removed destination-owned Wind selector steps and produced incoherent world/checkpoint state after death.
-- **Wind checkpoint guard v04/v05 — accepted bounded destination-location evidence.** These proofs are not contradicted by the checkpoint-free logical-key requirement. They test a different case: another randomized reward (Herbs) occupying the old Circle physical location while that location retains its own guarded `2 -> 3` Wind checkpoint. v04/v05 prove both the late-visit no-op and expected-predecessor accept sides.
-- **TEST LAB remaining-key no-checkpoint v01 — accepted bounded logical-reward evidence.** It proves Water/Earth/Prison logical key awards can insert the correct inventory identity without carrying source-key checkpoint creation. Production must compose these two responsibilities: checkpoint-free logical reward plus separately owned destination behavior.
-
 ## Flow, inventory, and run-lifecycle rejections
 
 | Attempt / scope | Observed failure / rejection | What it established | Detailed owner |
@@ -156,6 +150,10 @@ The earlier blanket statement that textured-image rendering was unproven is supe
 | Disable saving globally | Rejected | Selector-only suppression uses the native one-shot flag; normal post-stage saving remains | [Stage flow and selector](Stage-Flow-and-Selector) |
 | Tablet `0x24` as foreign-key placeholder | Consumable | Use inert Glass `0x08` for LIVE masking instead | [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle) |
 | Auto-spill/global inventory scan | Intentionally rejected design | Four boxes remain explicit backing stores with controlled switching; no hidden global scan | [Persistence, inventory and lifecycle](Persistence-Inventory-and-Lifecycle) |
+| Lifecycle Pause-Quit v01 | Supposed Game Over reset at ROM `0x364EC` cleared all run state on normal stage entry | **Rejected.** Do not reuse this reset composition or address. The clean-image stage-sensitive presentation mapping is separately documented; only a classified terminal seam can own reset. | [Lifecycle static closure](Lifecycle-Static-Closure-v05) |
+| Lifecycle Pause-Quit v02 | Inventory survived Quit, but XP/powers, HP and lives did not | Partial evidence; inventory persistence does not establish resource/HP ownership. | [Lifecycle static closure](Lifecycle-Static-Closure-v05) |
+| Lifecycle Pause-Quit v03 | Mission Objective hang after bad stage-entry composition | **Rejected.** Do not add lifecycle calls to the Mission Objective/progression restore graph. | [Lifecycle static closure](Lifecycle-Static-Closure-v05) |
+| Lifecycle Pause-Quit v04 | Intermittent music-speed corruption; lives floor around ×7/eight total, HP not restored, inventory reset on death | **Rejected / unsafe composition; must not be extended.** XP/powers Pause -> Quit persistence is bounded Runtime-confirmed. Static ROM inspection identifies repeated saved-life restoration undoing the stock decrement and HP carrier restoration after construction. Death inventory commit is absent; correction and actual backing-vs-LIVE state need bounded validation. Exact audio corruption cause remains unresolved. SHA-256 `63357955a89e3059c405e42bf127c79cb6692395e7f730d2bad0c733123c47db`. | [Lifecycle static closure](Lifecycle-Static-Closure-v05) |
 
 ## XP productionization failure
 
