@@ -172,6 +172,14 @@
             </select>
             <p class="hint">Controls the XP gate before the final Fortress fight in either progression mode. Seed chooses a repeatable count for this seed.</p>
           </div>
+          <div class="field">
+            <label for="globalCompletionMode">Seed completion rule</label>
+            <select id="globalCompletionMode">
+              <option value="all_85" selected>All 85 available</option>
+              <option value="game_beatable">Game beatable</option>
+            </select>
+            <p class="hint">All 85 available requires every shuffled check to become reachable. Game beatable requires all progression credentials and the selected power requirement, while optional checks may remain unreachable.</p>
+          </div>
           <div class="field" id="customRequiredPowersField" hidden>
             <label for="customRequiredPowers">Custom required powers</label>
             <input id="customRequiredPowers" type="number" min="0" max="9" step="1" value="8">
