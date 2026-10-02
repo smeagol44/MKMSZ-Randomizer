@@ -26,7 +26,11 @@ from __future__ import annotations
 from collections import defaultdict
 from itertools import pairwise
 
-from ..data.addresses import FILE_TABLE_ENTRY_SIZE, FILE_TABLE_ROM
+from ..data.addresses import (
+    EXPANSION_POOL_END_EXCLUSIVE,
+    FILE_TABLE_ENTRY_SIZE,
+    FILE_TABLE_ROM,
+)
 from ..data.pickups import IDENTITY_OFFSET, STAGE_PICKUPS
 from ..errors import PatchError
 from ..mips import (
@@ -90,7 +94,6 @@ from .inventory_boxes import (
     LOAD_MASK_WRAPPER_VA,
 )
 from .native_payload import kseg1_alias
-from .temple_special_check import TEMPLE_MODULE_END_CACHED
 from .toasty_constants import MODULE_K0 as TOASTY_K0
 
 NOP = 0
@@ -118,14 +121,17 @@ ACQUISITION_HOOK_ROM = 0x00039FD4
 ACQUISITION_DISPLACED_0 = 0x00121040  # sll v0,s2,1
 ACQUISITION_DISPLACED_1 = 0x00521021  # addu v0,v0,s2
 
-# The v02 proof used 0x801B0900 before the Temple special check was integrated.
-# Current production owns 0x801B08E0..0x801B096F for that scripted-check module,
-# so the shared-core materializer starts immediately after it.  The helper is
-# position-independent except for its generated absolute call targets.
-MATERIALIZER_HELPER_K0 = TEMPLE_MODULE_END_CACHED
+# The original 0x801B0970 candidate was only 0xF0 bytes and immediately
+# preceded the now Runtime-confirmed lifecycle-v06 owner at 0x801B0A60.
+# Destination wrappers make the helper larger, so preserve lifecycle/Toasty
+# ownership and place this module in the high tail of the already-reserved
+# 16-KiB expansion pool.  ROM 0xF6B140 is beyond the current supported
+# Toasty module + voice footprint; if a future Toasty asset grows into this
+# range the expected-FF guard fails closed rather than silently overlapping.
+MATERIALIZER_HELPER_K0 = 0x801B2960
 MATERIALIZER_HELPER_K1 = kseg1_alias(MATERIALIZER_HELPER_K0)
-MATERIALIZER_HELPER_ROM = FILE_ROM + (MATERIALIZER_HELPER_K0 - MODULE_K0)
-MATERIALIZER_RUNTIME_LIMIT = TOASTY_K0
+MATERIALIZER_HELPER_ROM = 0x00F6B140
+MATERIALIZER_RUNTIME_LIMIT = EXPANSION_POOL_END_EXCLUSIVE
 
 GENERIC_AWARD_OFFSET = 0x00
 
@@ -403,12 +409,10 @@ MATERIALIZER_HELPER_END_K0 = MATERIALIZER_HELPER_K0 + MATERIALIZER_HELPER_SIZE
 MATERIALIZER_HELPER_END_ROM = MATERIALIZER_HELPER_ROM + MATERIALIZER_HELPER_SIZE
 GENERIC_AWARD_K1 = MATERIALIZER_HELPER_K1 + GENERIC_AWARD_OFFSET
 
-if MATERIALIZER_HELPER_K0 < CONTROLS_RUNTIME_END:
-    raise AssertionError("materializer helper overlaps accepted controls runtime")
-if MATERIALIZER_HELPER_K0 < TEMPLE_MODULE_END_CACHED:
-    raise AssertionError("materializer helper overlaps Temple special-check module")
+if MATERIALIZER_HELPER_K0 < TOASTY_K0:
+    raise AssertionError("materializer helper must remain after Toasty runtime base")
 if MATERIALIZER_HELPER_END_K0 > MATERIALIZER_RUNTIME_LIMIT:
-    raise AssertionError("materializer helper reaches Toasty runtime allocation")
+    raise AssertionError("materializer helper exceeds the reserved expansion pool")
 
 MATERIALIZER_HELPER = bytearray(MATERIALIZER_HELPER_SIZE)
 MATERIALIZER_HELPER[
