@@ -1,5 +1,4 @@
 from mkmszr.config import RandomizerConfig
-from mkmszr.errors import PatchError
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.controls_production import ControlsProductionPatch
 from mkmszr.patches.global_materialization import (
