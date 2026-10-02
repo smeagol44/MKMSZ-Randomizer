@@ -75,6 +75,8 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80038A58` | Mana pickup | Static-confirmed | Native mana, distinct from Herbs despite legacy Lua substitution |
 | `0x80038A90` | Strength urn pickup | Static-confirmed | Adds ID `0x0B` |
 | `0x80038ACC` | Pickup manager | Static/runtime-confirmed | Production restore hook |
+| `0x80038EF8` | Ordinary pickup action-eligibility seam | Static-confirmed; Ice Blast cancel v01 Runtime-confirmed bounded | Stock accepts the ordinary pickup action state `0x303`. The post-1.0 proof additionally normalizes **normal ground Ice Blast only** into that accepted state when controller `+0x6F0 == 0x8004AB84` and native Ice mode `0x80111F98 == 0`, then leaves stock Pickup input/spatial gates authoritative. |
+| `0x80038FA4` | Ordinary pickup transition-commit seam | Static-confirmed; Ice Blast cancel v01 Runtime-confirmed bounded | Reached after stock pickup interaction/spatial gates. The proof replays the displaced player-controller load, rechecks normal Ice, clears special-action lock `0x800BF308`, then returns to the stock pickup transition. Proof-only / Post-1.0. |
 | `0x800490CC` | Shinnok Amulet pickup | Static-confirmed | Adds ID `0x23`; outside ordinary tables |
 | `0x8004AA4C` | Special-action scheduler context-transfer shim | Static-confirmed | Dispatch table at `0x800A1050`; not a generic initializer |
 | `0x8004AB84` | Complete ice-projectile action root | Static-confirmed | Includes special lock behavior |
