@@ -88,9 +88,12 @@ PROGRESSION_FLASH_CALLBACK_ENTRY = FLASH_HELPER_K1
 
 
 class ProgressionPickupPresentationPatch:
-    """Install Ice Blue progression pickup flash presentation."""
+    """Install Ice Blue Power Upgrade pickup flash presentation."""
 
     name = "progression-pickup-presentation"
+
+    def __init__(self, *, global_mode: bool = False):
+        self.global_mode = global_mode
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
         if not context.seed:
@@ -99,9 +102,9 @@ class ProgressionPickupPresentationPatch:
         rom.expect_u32(EXPANSION_FILE_ENTRY_ROM, EXPANSION_FILE_ROM)
         file_end = rom.read_u32(EXPANSION_FILE_ENTRY_ROM + 4)
         rom.expect_u32(EXPANSION_FILE_ENTRY_ROM + 8, 0)
-        if file_end > FLASH_MODULE_ROM:
+        if FLASH_MODULE_ROM < file_end < FLASH_MODULE_END_ROM:
             raise PatchError(
-                "shared file 0x1A reaches the progression flash allocation"
+                "shared file 0x1A ends inside the progression flash allocation"
             )
 
         rom.expect_bytes(
@@ -114,28 +117,31 @@ class ProgressionPickupPresentationPatch:
         )
 
         stage_by_id = {stage.stage_id: stage for stage in STAGE_PICKUPS}
-        selected = build_progression_locations(context.seed)
-        for stage_id, destination in selected:
-            record = stage_by_id[stage_id].records[destination]
-            callback_rom = (
-                record.rom_base
-                + IDENTITY_OFFSET
-                + CALLBACK_OFFSET_WITHIN_IDENTITY
-            )
-            presentation_rom = (
-                record.rom_base
-                + IDENTITY_OFFSET
-                + PRESENTATION_OFFSET_WITHIN_IDENTITY
-            )
-            rom.expect_u32(callback_rom, PROGRESSION_CALLBACK_ENTRY)
-            rom.expect_u32(
-                presentation_rom,
-                PROGRESSION_HERBS_PRESENTATION_VA,
-            )
+        selected: tuple[tuple[int, int], ...] = ()
+        if not self.global_mode:
+            selected = build_progression_locations(context.seed)
+            for stage_id, destination in selected:
+                record = stage_by_id[stage_id].records[destination]
+                callback_rom = (
+                    record.rom_base
+                    + IDENTITY_OFFSET
+                    + CALLBACK_OFFSET_WITHIN_IDENTITY
+                )
+                presentation_rom = (
+                    record.rom_base
+                    + IDENTITY_OFFSET
+                    + PRESENTATION_OFFSET_WITHIN_IDENTITY
+                )
+                rom.expect_u32(callback_rom, PROGRESSION_CALLBACK_ENTRY)
+                rom.expect_u32(
+                    presentation_rom,
+                    PROGRESSION_HERBS_PRESENTATION_VA,
+                )
 
         rom.write_bytes(WHITE_PALETTE_ROM, WHITE_FLASH_PALETTE)
         rom.write_bytes(FLASH_HELPER_ROM, PRODUCTION_FLASH_HELPER)
-        rom.write_u32(EXPANSION_FILE_ENTRY_ROM + 4, FLASH_MODULE_END_ROM)
+        if file_end < FLASH_MODULE_END_ROM:
+            rom.write_u32(EXPANSION_FILE_ENTRY_ROM + 4, FLASH_MODULE_END_ROM)
 
         for stage_id, destination in selected:
             record = stage_by_id[stage_id].records[destination]
