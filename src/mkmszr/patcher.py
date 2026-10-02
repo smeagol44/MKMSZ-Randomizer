@@ -149,7 +149,14 @@ def build_pipeline(
     # Runtime-confirmed lifecycle v06 owns the remaining shared file-0x1A gap
     # after Temple/materializer composition and before Toasty. Apply it here so
     # allocation guards see the final upstream helper ownership.
-    patches.append(RunLifecyclePatch())
+    patches.append(
+        RunLifecyclePatch(
+            difficulty=config.difficulty,
+            lives=config.lives,
+            continues=config.continues,
+            persist_hp=config.persist_hp,
+        )
+    )
     # Controls production deliberately verifies the stock Slide/Super Slide
     # gates before installing helpers that call those recognizers. Apply the
     # optional order remap afterwards so both safety guards and shuffled tiers
