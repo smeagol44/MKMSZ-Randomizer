@@ -57,6 +57,7 @@ from ..resource_materialization import (
     AWARD_EXTRA_LIFE,
     AWARD_INVENTORY,
     AWARD_MANA,
+    AWARD_POWER_UPGRADE,
     CALLBACK_ACTION_MASK,
     CALLBACK_ACTION_SHIFT,
     CALLBACK_AWARD_MASK,
@@ -94,6 +95,7 @@ from .inventory_boxes import (
     LOAD_MASK_WRAPPER_VA,
 )
 from .native_payload import kseg1_alias
+from .progression_presentation import PROGRESSION_FLASH_CALLBACK_ENTRY
 from .toasty_constants import MODULE_K0 as TOASTY_K0
 
 NOP = 0
@@ -225,9 +227,17 @@ def build_generic_inventory_award() -> bytes:
 
     e.label("award_mana")
     e.emit(addiu("t1", "zero", AWARD_MANA))
-    e.bne("t0", "t1", "dispatch_action")
+    e.bne("t0", "t1", "award_power")
     e.emit(0)
     e.emit(jal(MANA_CALLBACK_VA), 0)
+    e.beq("zero", "zero", "dispatch_action")
+    e.emit(0)
+
+    e.label("award_power")
+    e.emit(addiu("t1", "zero", AWARD_POWER_UPGRADE))
+    e.bne("t0", "t1", "dispatch_action")
+    e.emit(0)
+    e.emit(jal(PROGRESSION_FLASH_CALLBACK_ENTRY), 0)
 
     # Destination-owned stage/location action.
     e.label("dispatch_action")
@@ -639,6 +649,7 @@ class GlobalItemMaterializationPatch:
                         assignment.item_key,
                         selector,
                         generic_inventory_callback=GENERIC_AWARD_K1,
+                        power_upgrade_callback=PROGRESSION_FLASH_CALLBACK_ENTRY,
                         activation_gate=_destination_activation_gate(target),
                         destination_action=_destination_action(
                             assignment.stage_id, assignment.destination_index
