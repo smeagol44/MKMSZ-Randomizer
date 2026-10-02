@@ -1,9 +1,10 @@
 """Production pickup-driven XP / special-move progression.
 
 The ordinary 84-location shuffle runs first. A dedicated RNG namespace then
-selects exactly nine locations whose generated identity is Herbs and changes
-only their callback pointer. The same-stage Herbs resource/presentation stays
-intact, so no foreign resource import is required.
+selects exactly nine locations whose generated identity is Herbs. Their
+callback becomes the progression award callback and their presentation pointer
+uses a stock-resident blue palette; the same-stage Herbs model/resource remains
+intact, so no foreign resource import or new allocation is required.
 """
 
 from __future__ import annotations
