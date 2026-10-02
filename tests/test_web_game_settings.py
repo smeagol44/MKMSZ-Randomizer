@@ -16,6 +16,10 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
         "powersAsPickups",
         "requiredPowersMode",
         "customRequiredPowers",
+        "difficulty",
+        "startingLives",
+        "startingContinues",
+        "persistHp",
     ):
         assert f'id="{control_id}"' in html
         assert f'querySelector("#{control_id}")' in app
@@ -36,6 +40,15 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
     assert "required_powers_mode=str(web_required_powers_mode)" in app
     assert "custom_required_powers=int(web_custom_required_powers)" in app
     assert "resultRequiredPowers.textContent" in app
+    assert 'id="difficulty"' in html
+    assert '<option value="very_hard" selected>Very Hard</option>' in html
+    assert 'id="startingLives" type="number" min="1" max="10" step="1" value="5"' in html
+    assert 'id="startingContinues" type="number" min="0" max="5" step="1" value="3"' in html
+    assert 'id="persistHp" type="checkbox" checked' in html
+    assert "difficulty=str(web_difficulty)" in app
+    assert "lives=int(web_lives)" in app
+    assert "continues=int(web_continues)" in app
+    assert "persist_hp=bool(web_persist_hp)" in app
 
 
 def test_web_jump_button_dependency_is_enforced_in_ui() -> None:

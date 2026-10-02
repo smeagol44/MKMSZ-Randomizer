@@ -19,6 +19,10 @@ const powersAsPickups = document.querySelector("#powersAsPickups");
 const requiredPowersMode = document.querySelector("#requiredPowersMode");
 const customRequiredPowersField = document.querySelector("#customRequiredPowersField");
 const customRequiredPowers = document.querySelector("#customRequiredPowers");
+const difficulty = document.querySelector("#difficulty");
+const startingLives = document.querySelector("#startingLives");
+const startingContinues = document.querySelector("#startingContinues");
+const persistHp = document.querySelector("#persistHp");
 const patchButton = document.querySelector("#patchButton");
 const resultPanel = document.querySelector("#result");
 const resultSeed = document.querySelector("#resultSeed");
@@ -132,6 +136,20 @@ async function patchRom() {
     return;
   }
 
+  const livesText = startingLives.value.trim();
+  const livesValue = Number(livesText);
+  if (!livesText || !Number.isInteger(livesValue) || livesValue < 1 || livesValue > 10) {
+    setLog("Lives must be a whole number from 1 to 10.", true);
+    return;
+  }
+
+  const continuesText = startingContinues.value.trim();
+  const continuesValue = Number(continuesText);
+  if (!continuesText || !Number.isInteger(continuesValue) || continuesValue < 0 || continuesValue > 5) {
+    setLog("Continues must be a whole number from 0 to 5.", true);
+    return;
+  }
+
   const mode = outfitMode.value;
   let editionValue = normalizeEditionName(editionName.value).trim().replace(/\s+/g, " ");
   if (!editionValue) editionValue = "SUB-ZERO";
@@ -173,6 +191,10 @@ async function patchRom() {
     pyodide.globals.set("web_powers_as_pickups", powersAsPickups.checked);
     pyodide.globals.set("web_required_powers_mode", requiredPowersMode.value);
     pyodide.globals.set("web_custom_required_powers", requiredPowersMode.value === "custom" ? customPowerCount : 0);
+    pyodide.globals.set("web_difficulty", difficulty.value);
+    pyodide.globals.set("web_lives", livesValue);
+    pyodide.globals.set("web_continues", continuesValue);
+    pyodide.globals.set("web_persist_hp", persistHp.checked);
 
     setLog("Validating game files and applying patches…");
 
@@ -196,6 +218,10 @@ _config = RandomizerConfig(
     powers_as_pickups=bool(web_powers_as_pickups),
     required_powers_mode=str(web_required_powers_mode),
     custom_required_powers=int(web_custom_required_powers) if str(web_required_powers_mode) == "custom" else None,
+    difficulty=str(web_difficulty),
+    lives=int(web_lives),
+    continues=int(web_continues),
+    persist_hp=bool(web_persist_hp),
     game_settings=GameSettingsConfig(
         turn_lock=bool(web_turn_lock),
         attack_modern=bool(web_attack_modern),
