@@ -17,7 +17,6 @@ from __future__ import annotations
 from ..data.addresses import EXPANSION_POOL_START
 from ..data.pickups import IDENTITY_OFFSET, STAGE_PICKUPS
 from ..errors import PatchError
-from ..mips import NOP if False else words_blob
 from ..mips import address_words, words_blob
 from ..rom import RomImage
 from .base import PatchContext
