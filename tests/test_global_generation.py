@@ -4,6 +4,7 @@ from mkmszr.global_generation import (
     TOTAL_GLOBAL_LOCATIONS,
     CompletionPolicy,
     candidate_permutation,
+    build_global_run_plan,
     completion_satisfied,
     find_accepted_candidate,
     required_power_target,
@@ -157,4 +158,36 @@ def test_completion_policy_is_explicit_not_hardcoded() -> None:
             required_powers=9,
             required_tokens=frozenset({"not-a-real-token"}),
         ),
+    )
+
+
+
+def test_global_run_plan_splits_84_ordinary_and_one_temple_special() -> None:
+    plan = build_global_run_plan(
+        "RUN-PLAN",
+        powers_as_pickups=True,
+        policy=CompletionPolicy(required_powers=0),
+        max_attempts=100,
+    )
+
+    assert len(plan.ordinary_assignments) == 84
+    assert len({(stage_id, record_index) for stage_id, record_index, _ in plan.ordinary_assignments}) == 84
+    assert plan.temple_special_item_key
+    assert plan.temple_special_item_key != "map"
+    assert len(plan.power_locations) == 9
+    assert all(0 <= index < 85 for index in plan.power_locations)
+
+
+def test_global_run_plan_is_retry_reproducible() -> None:
+    kwargs = dict(
+        powers_as_pickups=True,
+        policy=CompletionPolicy(required_powers=5),
+        max_attempts=500,
+    )
+    first = build_global_run_plan("RUN-RETRY", **kwargs)
+    second = build_global_run_plan("RUN-RETRY", **kwargs)
+
+    assert first == second
+    assert first.candidate.assignment == candidate_permutation(
+        "RUN-RETRY", first.candidate.attempt_index
     )
