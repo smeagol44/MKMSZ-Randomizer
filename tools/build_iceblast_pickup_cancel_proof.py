@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Reproduce the Runtime-confirmed normal Ice Blast -> Pickup cancel proof.
 
 Proof-only. The helper addresses are disposable proof ownership and MUST NOT be
