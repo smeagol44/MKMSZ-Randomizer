@@ -236,7 +236,7 @@ PR #129 implements the full researched ordinary-location contract in the shared 
 
 Prison credential lifecycle is also represented: the stage-4 reset call at ROM `0x00010E64` is wrapped so stock `0x802ED538` runs first, then acquired bits `0..2` are rebuilt by scanning all four authoritative backing boxes for IDs `0x1A..0x1C`. A Prison key acquired while already in Prison also commits its logical credential bit immediately. The accepted lifecycle-v06 allocation remains byte-for-byte at `0x801B0A60..0x801B0FF3`; the enlarged materializer was therefore moved to the high reserved expansion tail at runtime `0x801B2960..0x801B2EBF` / ROM `0x00F6B140..0x00F6B69F`. CI run **#1583** passes the current-main composition.
 
-Disposable proof `MKMSZR_destination-wrappers_all-proof_v01.z64` (SHA-256 `13aafd9b2784351fc489204657038cfb23266946217756e38e7643a35720d12e`, CRC1/CRC2 `61308066 / 17F77DF8`) exercises every wrapper/gate class with stock reward visuals and is **Runtime Pending**. It intentionally does not re-test foreign visual conversion. Its Prison backing mirror is proof-only scaffolding so the exact reconstruction helper can be exercised without installing the full four-box UI.
+Disposable proof `MKMSZR_destination-wrappers_all-proof_v02.z64` (SHA-256 `78de56e90491e90c14f4db3290598daf00057a12037c6b0f1fa95f16090e9223`, CRC1/CRC2 `1891F0E7 / 6D421098`) exercises every wrapper/gate class with stock reward visuals and is **Runtime Pending**. It intentionally does not re-test foreign visual conversion. Its Prison backing mirror is proof-only scaffolding so the exact reconstruction helper can be exercised without installing the full four-box UI.
 
 ### Wind location/reward ownership trace — Static-confirmed (2026-09-30)
 
@@ -612,3 +612,5 @@ The following remain unresolved before global item materialization/solvability c
 - [Stage catalogs](Stage-Catalogs) — all 84 concrete ordinary records and stage-local resource instances.
 - [XP and progression](XP-and-Progression) — native progression tiers, persistence, and current runtime evidence.
 - [Runtime validation status](Runtime-Validation-Status) — concise evidence-scope matrix.
+
+- **Proof packaging correction (2026-10-02):** v01 is superseded as a validation package because it omitted Safe Stage Select. v02 adds only the Runtime-confirmed compact eight-stage selector presentation plus its selector-specific one-shot auto-save bypass; the destination-wrapper helper/pickup test payload is unchanged. Runtime status remains Pending.
