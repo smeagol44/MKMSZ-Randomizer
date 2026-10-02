@@ -19,6 +19,17 @@ AUDIO1_POOL = (
     "superb",
     "well-done",
     "liu-bike",
+    "mk3-03065",
+    "mk3-04070",
+    "mk3-04270",
+    "mk3-06025",
+    "mk3-10000",
+    "mk3-05205",
+    "mk3-05220",
+    "mk3-21135",
+    "mk3-21140",
+    "mk3-02205",
+    "mk3-07015",
 )
 AUDIO2_POOL = (
     "raiden-bbb",
@@ -26,6 +37,9 @@ AUDIO2_POOL = (
     "raiden-ttt",
     "robot-run",
     "shao-laugh",
+    "mk3-04025",
+    "mk3-04075",
+    "mk3-02200",
 )
 
 TEMPLE_LINE_A_IMM_ROM = 0x000CB274
