@@ -25,9 +25,9 @@ from mkmszr.resource_materialization import (
     DEST_WIND_CIRCLE,
     GlobalMaterializationPlan,
     MaterializationAssignment,
-    StageResourcePlan,
-    StageResourcePlacement,
     MaterializedVisual,
+    StageResourcePlacement,
+    StageResourcePlan,
     bind_materialized_visual_to_stock_selector,
     portable_materialized_identity,
 )
