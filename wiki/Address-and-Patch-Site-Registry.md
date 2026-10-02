@@ -31,7 +31,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x0002F984..0x0002F993` | `0x8002ED84` | Lifecycle v06 player constructor | Guard `3C04802C 8C841AC0 3C02800C 844211F8` | Consume one-shot living re-entry and seed native HP carrier before stock HP branch |
 | `0x0002FA44` | `0x8002EE44` | Lifecycle v06 HP preservation | `A4A20654` | NOP redundant second full-HP store; fresh/death/Continue full HP remains at earlier stock constructor branch |
 | `0x000367B4..0x000367C3` | `0x80035BB4` | Lifecycle v06 final Game Over | Guard `0C00A1E5 24040004 8FA7002C 00002021` | Classified terminal reset, then replay stock yield/title chain |
-| `0x000A6BA8..0x000A6BAD` | `0x800A5FA8..0x800A5FAD` | Lifecycle v06 fresh-run settings | Stock halfwords `2 / 3 / 1` | `4 / 9 / 5` = Very Hard / nine total lives / five continues |
+| `0x000A6BA8..0x000A6BAD` | `0x800A5FA8..0x800A5FAD` | Lifecycle run settings | Stock halfwords `2 / 3 / 1` | Build-time difficulty `0..4` (Very Easy..Very Hard), lives `1..10`, continues `0..5`; defaults `4 / 5 / 3`. Exact Runtime-confirmed v06 reference was `4 / 9 / 5`. |
 | `0x00016354` | `0x80015754` | Production TURN action gate | `A62406DC 3C058003` | Jump to guarded v10/v06 action-install helper; suppress player states 23/24 only when effective LOCK is active |
 | `0x00029FB0` | `0x800293B0` | Production TURN direction decision | `8C640704 24020305` | JAL production TURN decision trampoline; TOGGLE follows stock, LOCK uses accepted v10 facing correction while preserving stock forced-facing authority |
 | `0x0002A0DC` | `0x800294DC` | Production TURN release path | `8C820638 94430000` | JAL leaf-only v06 release helper; forced-facing fallback uses bounded direct controller-list scan |
