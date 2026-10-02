@@ -42,7 +42,6 @@ from ..mips import (
     or_,
     sb,
     sh,
-    sll,
     sllv,
     sltiu,
     srl,
