@@ -37,6 +37,7 @@ from ..mips import (
     jal,
     jr,
     lbu,
+    lhu,
     lui,
     lw,
     or_,
