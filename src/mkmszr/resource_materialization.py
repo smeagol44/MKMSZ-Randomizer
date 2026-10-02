@@ -755,16 +755,17 @@ def portable_materialized_identity(
     selector: int,
     *,
     generic_inventory_callback: int,
-    boss_gate: bool = False,
+    activation_gate: bool = False,
 ) -> bytes:
     """Build a destination-safe identity for one supported logical reward.
 
-    Fixed global callbacks retain their canonical callback/parameter semantics.
-    Supported stage-bound inventory tokens are converted to the Runtime-confirmed
-    generic inventory-award callback, with the logical inventory ID in the low
-    15 bits of the callback parameter. Fortress boss reward locations preserve
-    their encounter-owned activation contract by setting bit 15; the encounter
-    manager clears only that bit when the corresponding assassin dies.
+    Fixed global callbacks retain their canonical callback/parameter semantics
+    unless static ownership proves the callback mixes logical award with
+    destination-only state. Supported stage-bound inventory tokens are converted
+    to the Runtime-confirmed generic inventory-award callback, with the logical
+    inventory ID in the low 15 bits of the callback parameter. Destination
+    records whose stock parameter owns bit 15 preserve that activation gate
+    independently of the assigned logical reward.
 
     Prison keys and synthetic power-upgrades intentionally fail closed here.
     """
@@ -785,21 +786,22 @@ def portable_materialized_identity(
     identity = bytearray(pickup.identity)
     identity[0x14:0x18] = selector.to_bytes(4, "big")
 
-    if logical.native_callback is None:
-        if key not in PORTABLE_INVENTORY_TOKENS:
+    use_generic_inventory_award = (
+        logical.native_callback is None or key == "strength-urn"
+    )
+    if use_generic_inventory_award:
+        if logical.native_callback is None and key not in PORTABLE_INVENTORY_TOKENS:
             raise PatchError(
                 f"{key}: destination-safe logical award semantics are not established"
             )
         if logical.inventory_id is None:
-            raise PatchError(f"{key}: portable token has no inventory ID")
+            raise PatchError(f"{key}: portable inventory reward has no inventory ID")
         parameter = logical.inventory_id
         identity[0x04:0x08] = parameter.to_bytes(4, "big")
         identity[0x08:0x0C] = generic_inventory_callback.to_bytes(4, "big")
 
-    if boss_gate:
+    if activation_gate:
         parameter = int.from_bytes(identity[0x04:0x08], "big")
-        if parameter & 0x8000:
-            raise PatchError(f"{key}: canonical callback parameter already owns bit 15")
         identity[0x04:0x08] = (parameter | 0x8000).to_bytes(4, "big")
 
     return bytes(identity)
