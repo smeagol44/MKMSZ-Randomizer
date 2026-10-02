@@ -3,8 +3,8 @@ from mkmszr.global_generation import (
     TEMPLE_SPECIAL_LOCATION_INDEX,
     TOTAL_GLOBAL_LOCATIONS,
     CompletionPolicy,
-    candidate_permutation,
     build_global_run_plan,
+    candidate_permutation,
     completion_satisfied,
     find_accepted_candidate,
     materialization_plan_from_run,
@@ -180,11 +180,11 @@ def test_global_run_plan_splits_84_ordinary_and_one_temple_special() -> None:
 
 
 def test_global_run_plan_is_retry_reproducible() -> None:
-    kwargs = dict(
-        powers_as_pickups=True,
-        policy=CompletionPolicy(required_powers=5),
-        max_attempts=500,
-    )
+    kwargs = {
+        "powers_as_pickups": True,
+        "policy": CompletionPolicy(required_powers=5),
+        "max_attempts": 500,
+    }
     first = build_global_run_plan("RUN-RETRY", **kwargs)
     second = build_global_run_plan("RUN-RETRY", **kwargs)
 
