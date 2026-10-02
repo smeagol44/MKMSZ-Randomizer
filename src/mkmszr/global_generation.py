@@ -306,3 +306,65 @@ def validate_candidate(
         ),
         policy,
     )
+
+
+
+@dataclass(frozen=True)
+class GlobalRunPlan:
+    """Accepted logical run split into ordinary and Temple-special destinations."""
+
+    candidate: GlobalCandidate
+    rewards: tuple[LogicalItem, ...]
+    ordinary_assignments: tuple[tuple[int, int, str], ...]
+    temple_special_item_key: str
+    power_locations: frozenset[int]
+
+
+def build_global_run_plan(
+    seed: str,
+    *,
+    powers_as_pickups: bool,
+    policy: CompletionPolicy,
+    max_attempts: int,
+) -> GlobalRunPlan:
+    """Generate the first deterministic solver-accepted 85-check logical run.
+
+    Physical resource placement is deliberately not chosen here. The returned
+    ordinary assignments feed GlobalMaterializationPlan once the caller supplies
+    explicitly owned stage-resource backing. The Temple-special reward feeds its
+    dedicated scripted-location materializer seam.
+    """
+
+    rewards = build_global_logical_pool(powers_as_pickups=powers_as_pickups)
+
+    candidate = find_accepted_candidate(
+        seed,
+        lambda item: validate_candidate(
+            item,
+            powers_as_pickups=powers_as_pickups,
+            policy=policy,
+        ),
+        max_attempts=max_attempts,
+    )
+
+    ordinary: list[tuple[int, int, str]] = []
+    power_locations: set[int] = set()
+    for location in GLOBAL_LOCATIONS:
+        reward = rewards[candidate.assignment[location.global_index]]
+        if reward.key == "power-upgrade":
+            power_locations.add(location.global_index)
+        if location.kind == "ordinary":
+            assert location.record_index is not None
+            ordinary.append((location.stage_id, location.record_index, reward.key))
+
+    temple_reward = rewards[candidate.assignment[TEMPLE_SPECIAL_LOCATION_INDEX]]
+    if len(ordinary) != TOTAL_ORDINARY_PICKUPS:
+        raise AssertionError("global run plan lost an ordinary destination")
+
+    return GlobalRunPlan(
+        candidate=candidate,
+        rewards=rewards,
+        ordinary_assignments=tuple(ordinary),
+        temple_special_item_key=temple_reward.key,
+        power_locations=frozenset(power_locations),
+    )
