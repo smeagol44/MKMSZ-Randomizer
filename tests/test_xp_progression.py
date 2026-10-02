@@ -24,9 +24,14 @@ from mkmszr.patches.runtime_v2 import CODE_SIZE
 from mkmszr.patches.xp_progression import (
     CALLBACK_OFFSET_WITHIN_IDENTITY,
     HERBS_CALLBACK_VA,
+    HERBS_PRESENTATION_VA,
+    PRESENTATION_OFFSET_WITHIN_IDENTITY,
     PROGRESSION_CALLBACK_ENTRY,
     PROGRESSION_COUNT_OFFSET,
     PROGRESSION_EXTENSION,
+    PROGRESSION_HERBS_PALETTE,
+    PROGRESSION_HERBS_PALETTE_ROM,
+    PROGRESSION_HERBS_PRESENTATION_VA,
     PROGRESSION_EXTENSION_ROM,
     PROGRESSION_RESTORE_OFFSET,
     PROGRESSION_RESUME_PATCH,
@@ -47,6 +52,7 @@ def _post_four_box_shape(seed: str) -> RomImage:
         max(COMBO_EXPERIENCE_RENDER_SITES) + 4,
         XP_CAP_TABLE_ROM + 20,
         PERSISTENCE_RESUME_ROM + len(PERSISTENCE_RESUME_PATCH),
+        PROGRESSION_HERBS_PALETTE_ROM + len(PROGRESSION_HERBS_PALETTE),
     )
     data = bytearray(end)
     data[MKMSZR_FILE_ENTRY_ROM:MKMSZR_FILE_ENTRY_ROM + 12] = (
@@ -55,6 +61,10 @@ def _post_four_box_shape(seed: str) -> RomImage:
         + bytes(4)
     )
     data[PROGRESSION_EXTENSION_ROM:PROGRESSION_EXTENSION_ROM + 0x100] = bytes(0x100)
+    data[
+        PROGRESSION_HERBS_PALETTE_ROM :
+        PROGRESSION_HERBS_PALETTE_ROM + len(PROGRESSION_HERBS_PALETTE)
+    ] = PROGRESSION_HERBS_PALETTE
     data[PERSISTENCE_RESUME_ROM:PERSISTENCE_RESUME_ROM + len(PERSISTENCE_RESUME_PATCH)] = PERSISTENCE_RESUME_PATCH
 
     for stage in STAGE_PICKUPS:
@@ -133,8 +143,46 @@ def test_patch_disables_xp_caps_and_converts_exactly_nine_callbacks() -> None:
             actual = bytes(rom.data[base:base + len(original)])
             if (stage.stage_id, destination) in selected:
                 assert actual[:CALLBACK_OFFSET_WITHIN_IDENTITY] == original[:CALLBACK_OFFSET_WITHIN_IDENTITY]
-                assert int.from_bytes(actual[CALLBACK_OFFSET_WITHIN_IDENTITY:CALLBACK_OFFSET_WITHIN_IDENTITY + 4], "big") == PROGRESSION_CALLBACK_ENTRY
-                assert actual[CALLBACK_OFFSET_WITHIN_IDENTITY + 4:] == original[CALLBACK_OFFSET_WITHIN_IDENTITY + 4:]
+                assert (
+                    int.from_bytes(
+                        actual[
+                            CALLBACK_OFFSET_WITHIN_IDENTITY :
+                            CALLBACK_OFFSET_WITHIN_IDENTITY + 4
+                        ],
+                        "big",
+                    )
+                    == PROGRESSION_CALLBACK_ENTRY
+                )
+                assert (
+                    actual[
+                        CALLBACK_OFFSET_WITHIN_IDENTITY + 4 :
+                        PRESENTATION_OFFSET_WITHIN_IDENTITY
+                    ]
+                    == original[
+                        CALLBACK_OFFSET_WITHIN_IDENTITY + 4 :
+                        PRESENTATION_OFFSET_WITHIN_IDENTITY
+                    ]
+                )
+                assert (
+                    int.from_bytes(
+                        actual[
+                            PRESENTATION_OFFSET_WITHIN_IDENTITY :
+                            PRESENTATION_OFFSET_WITHIN_IDENTITY + 4
+                        ],
+                        "big",
+                    )
+                    == PROGRESSION_HERBS_PRESENTATION_VA
+                )
+                assert (
+                    int.from_bytes(
+                        original[
+                            PRESENTATION_OFFSET_WITHIN_IDENTITY :
+                            PRESENTATION_OFFSET_WITHIN_IDENTITY + 4
+                        ],
+                        "big",
+                    )
+                    == HERBS_PRESENTATION_VA
+                )
                 changed += 1
             else:
                 assert actual == original
