@@ -92,3 +92,5 @@ Current user direction is to finish the **materializer safety gate before global
 - PS1 addresses and platform behavior do not transfer to N64 without demonstrated compatibility.
 - Disposable proof ROM patches, proof caves, and archive handoffs are not silently part of the production pipeline.
 - Runtime confirmation is always limited to the documented route; CI/static success does not imply exhaustive gameplay validation.
+
+- **First-item-swap v04 validation correction (2026-10-02):** v03's coordinate clustering is superseded. v04 returns to v02's exact wrapper/Safe-Stage-Select base and swaps logical/visual identities only: Wind first Herbs <-> Circle, Water first Mana <-> Triangle, Earth first Formula <-> Square, Fire starting Potion <-> Triangle Up, and Prison first Herbs <-> L1 key. Each moved key therefore awards from a non-checkpoint destination, while its original physical key location now holds the mundane first-stage reward but retains the researched destination wrapper. This directly tests key-without-checkpoint, checkpoint-without-key, and late revisit/non-downgrade behavior. Runtime status remains Pending.
