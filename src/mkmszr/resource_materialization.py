@@ -739,14 +739,48 @@ def portable_fixed_callback_identity(key: str, selector: int) -> bytes:
     return bytes(identity)
 
 
-# Inventory-token families whose gameplay progression is owned by the permanent
-# item-use dispatch rather than by an irreplaceable source-stage pickup callback.
-# Prison is intentionally excluded: the L1 door trace proves pickup-time acquired
-# bits are part of its credential lifecycle and a generic inventory insert alone
-# is not sufficient.
+# Shared materializer callback parameter layout after the native pickup manager
+# strips raw destination activation bit 15:
+#   bits  0..7  logical inventory ID / award payload
+#   bits  8..12 destination-wrapper action
+#   bits 13..14 award kind
+# Raw bit 15 remains owned by the physical destination record.
+CALLBACK_ITEM_MASK = 0x00FF
+CALLBACK_ACTION_SHIFT = 8
+CALLBACK_ACTION_MASK = 0x1F
+CALLBACK_AWARD_SHIFT = 13
+CALLBACK_AWARD_MASK = 0x03
+
+AWARD_INVENTORY = 0
+AWARD_EXTRA_LIFE = 1
+AWARD_MANA = 2
+
+DEST_NONE = 0
+DEST_WIND_CIRCLE = 1
+DEST_WIND_TRIANGLE = 2
+DEST_WIND_THREE_BARS = 3
+DEST_WATER_TRIANGLE = 4
+DEST_WATER_THREE_BARS = 5
+DEST_WATER_MOON = 6
+DEST_EARTH_SQUARE = 7
+DEST_EARTH_FOUR_SQUARE = 8
+DEST_EARTH_TRIANGLE = 9
+DEST_FIRE_TRIANGLE_UP = 10
+DEST_FIRE_TWO_BARS = 11
+DEST_FIRE_TRIANGLE_DOWN = 12
+DEST_PRISON_L1 = 13
+DEST_PRISON_L2 = 14
+DEST_PRISON_STRENGTH = 15
+
+# Inventory-token families whose gameplay progression is owned by permanent
+# item-use dispatch and/or a separately reconstructed stage credential. Prison
+# joins the portable set only because the shared patch now rebuilds its acquired
+# bits after the stock Prison reset and immediately on in-stage acquisition.
 PORTABLE_INVENTORY_TOKENS = frozenset(
     key for key in CANONICAL_VISUAL_DONORS
-    if key.startswith(("wind-", "earth-", "water-", "fire-", "bridge-", "crystal-"))
+    if key.startswith(
+        ("wind-", "earth-", "water-", "fire-", "prison-", "bridge-", "crystal-")
+    )
 )
 
 
@@ -756,19 +790,22 @@ def portable_materialized_identity(
     *,
     generic_inventory_callback: int,
     activation_gate: bool = False,
+    destination_action: int = DEST_NONE,
 ) -> bytes:
     """Build a destination-safe identity for one supported logical reward.
 
-    Fixed global callbacks retain their canonical callback/parameter semantics
-    unless static ownership proves the callback mixes logical award with
-    destination-only state. Supported stage-bound inventory tokens are converted
-    to the Runtime-confirmed generic inventory-award callback, with the logical
-    inventory ID in the low 15 bits of the callback parameter. Destination
-    records whose stock parameter owns bit 15 preserve that activation gate
-    independently of the assigned logical reward.
+    Fixed global callbacks retain canonical callback/parameter semantics when a
+    destination has no extra location-owned action. Stage-bound inventory
+    tokens, Strength, and every reward placed at a wrapped destination use the
+    shared materializer callback. Its low-15-bit parameter composes logical
+    award semantics with an explicit destination action; raw bit 15 remains the
+    physical destination activation gate.
 
-    Prison keys and synthetic power-upgrades intentionally fail closed here.
+    Synthetic power-upgrades still fail closed here.
     """
+
+    if not 0 <= destination_action <= CALLBACK_ACTION_MASK:
+        raise PatchError(f"destination action {destination_action} is out of range")
 
     try:
         donor = CANONICAL_VISUAL_DONORS[key]
@@ -786,17 +823,37 @@ def portable_materialized_identity(
     identity = bytearray(pickup.identity)
     identity[0x14:0x18] = selector.to_bytes(4, "big")
 
-    use_generic_inventory_award = (
-        logical.native_callback is None or key == "strength-urn"
+    use_shared_award = (
+        destination_action != DEST_NONE
+        or logical.native_callback is None
+        or key == "strength-urn"
     )
-    if use_generic_inventory_award:
-        if logical.native_callback is None and key not in PORTABLE_INVENTORY_TOKENS:
+    if use_shared_award:
+        if logical.award_kind == "inventory":
+            if logical.native_callback is None and key not in PORTABLE_INVENTORY_TOKENS:
+                raise PatchError(
+                    f"{key}: destination-safe logical award semantics are not established"
+                )
+            if logical.inventory_id is None:
+                raise PatchError(f"{key}: portable inventory reward has no inventory ID")
+            award_kind = AWARD_INVENTORY
+            payload = logical.inventory_id
+        elif key == "extra-life":
+            award_kind = AWARD_EXTRA_LIFE
+            payload = 0
+        elif key == "mana":
+            award_kind = AWARD_MANA
+            payload = 0
+        else:
             raise PatchError(
-                f"{key}: destination-safe logical award semantics are not established"
+                f"{key}: native-effect reward cannot compose with destination wrapper"
             )
-        if logical.inventory_id is None:
-            raise PatchError(f"{key}: portable inventory reward has no inventory ID")
-        parameter = logical.inventory_id
+
+        parameter = (
+            (payload & CALLBACK_ITEM_MASK)
+            | ((destination_action & CALLBACK_ACTION_MASK) << CALLBACK_ACTION_SHIFT)
+            | ((award_kind & CALLBACK_AWARD_MASK) << CALLBACK_AWARD_SHIFT)
+        )
         identity[0x04:0x08] = parameter.to_bytes(4, "big")
         identity[0x08:0x0C] = generic_inventory_callback.to_bytes(4, "big")
 
