@@ -52,8 +52,8 @@ These results are important feasibility evidence but are **not** normal browser/
 | Blocker | Current state |
 |---|---|
 | Production-safe global cross-stage item materialization | **Destination ownership closed; wrapper composition Runtime-confirmed bounded on PR #129.** PR #129 composes logical awards with researched Wind/Water/Earth/Fire/Prison destination actions, generic Bridge/Fortress activation gates, portable Strength semantics, immediate foreign-key re-mask, and Prison credential reconstruction after the stock reset. Current-main lifecycle v06 remains unchanged; the materializer occupies `0x801B2960..0x801B2EBF`. CI #1583 is green. First-item-swap v04 was manually validated successfully, directly confirming the exercised key-without-checkpoint / checkpoint-without-key / non-downgrade split. Global seeded generation/solver integration remains next. |
-| Deterministic global shuffle and retry model | **Pending.** Replace the interim eight stage-local pools with one deterministic global logical run and explicit deterministic retry attempts |
-| Whole-run solvability validation | **Pending.** Finalize current access rules and a completion predicate for both pickup and earned-XP modes using Vanilla / Custom / Seed required-power settings |
+| Deterministic global shuffle and retry model | **PR #137 draft — Implementation/CI-confirmed logical model.** The v2 generator shuffles **85 destinations** (84 ordinary + scripted Temple special check) against 85 rewards; logical Map `0x0D` is excluded. With Powers as pickups ON, nine Herbs entries become nine explicit Power Upgrade rewards **before** Fisher-Yates. Retry attempt index is explicit and deterministic. CI #1614 is green. Physical stage-resource backing is still fail-closed/caller-owned. |
+| Whole-run solvability validation | **PR #137 fixed-point solver Implementation/CI-confirmed; final completion policy Pending.** Current researched location requirements plus the Temple special check are modeled. Power Upgrades are counted from reached shuffled rewards. The solver deliberately leaves the final beat-the-game/all-check predicate caller-owned until product policy is approved. |
 | Native randomizer HUD | **Partial.** Native text and box state are proven; checks/progression/key/pickup run-state display is still required |
 | Run lifecycle invariants | **Runtime-confirmed baseline and configurable integration.** v06 confirms the Very Hard / 9-lives / 5-continues / HP-ON reference behavior. Browser/CLI now expose difficulty, 1..10 starting lives, 0..5 continues, and HP persistence; Game Over/new run reuses those configured defaults. Other combinations preserve the same guarded control flow and are Implementation/CI-confirmed pending runtime sampling. |
 | Final production-composition runtime gate | **Pending.** Run a representative full global seed after the above are integrated, including all nine progression tiers and the major lifecycle boundaries |
@@ -62,8 +62,8 @@ These results are important feasibility evidence but are **not** normal browser/
 
 Current user direction is to finish the **materializer safety gate before global shuffle/solver integration**:
 
-1. **Promote the Runtime-confirmed destination-wrapper / Prison-reconstruction composition from PR #129 while preserving lifecycle-v06 allocation and fail-closed guards.**
-2. Replace the interim stage-local generation with the deterministic global shuffle + whole-run solver, explicit deterministic retries, and the approved Vanilla / Custom / Seed required-power behavior.
+1. **Finish PR #137 production backing/completion-policy gate.** The 85-check generator, explicit shuffled Power Upgrades, Temple-special assignment seam, deterministic retries, and fixed-point solver are CI-green; stage-resource ROM backing remains explicitly unallocated and the final completion predicate remains product-policy Pending.
+2. Connect the accepted global run plan to the normal browser/CLI build only after that backing ownership is approved and guarded.
 3. Build the native randomizer HUD around finalized global-run state.
 4. Run the representative full-seed 1.0 gate across global items, solver, HUD, progression, and lifecycle.
 
