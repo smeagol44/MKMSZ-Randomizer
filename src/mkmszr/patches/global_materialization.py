@@ -8,16 +8,17 @@ shared patch core:
   re-mask helper live in the guarded controls->Toasty expansion gap;
 * helper transport reuses the already-established shared file 0x1A;
 * no second raw-file load is inserted into pickup-manager stage initialization;
-* Fortress boss reward records retain their encounter-owned high-bit gate.
+* destination records retain any stock bit-15 activation gate independently of reward identity.
 
 ROM backing for expanded stage resource files remains caller-owned.  This patch
 never infers reusable space from FF/padding bytes; GlobalMaterializationPlan must
 supply explicit placements and the patch guards both bounds and collisions.
 
 Destination locations with unresolved physical stage-state ownership fail
-closed.  In particular, ordinary Wind/Water/Earth/Prison/Fire/Bridge token
-locations are not silently rewritten until their destination wrapper semantics
-are represented explicitly by the global generator.
+closed. Bridge's three icon destinations are now represented by their stock
+bit-15 activation gates and stage-owned X relocation; Wind/Water/Earth/Prison/
+Fire token locations remain blocked until their dedicated wrappers are
+implemented.
 """
 
 from __future__ import annotations
@@ -162,8 +163,18 @@ def _stage_by_id(stage_id: int):
         raise PatchError(f"unknown pickup stage ID {stage_id}") from exc
 
 
-def _is_fortress_boss_destination(stage_id: int, destination_index: int) -> bool:
-    return stage_id == 9 and destination_index in (0, 1, 2)
+def _has_closed_token_destination_semantics(
+    stage_id: int, destination_index: int
+) -> bool:
+    return (
+        (stage_id == 8 and destination_index in (0, 1, 2))
+        or (stage_id == 9 and destination_index in (0, 1, 2))
+    )
+
+
+def _destination_activation_gate(record) -> bool:
+    parameter = int.from_bytes(record.identity[0x04:0x08], "big")
+    return bool(parameter & 0x8000)
 
 
 def _validate_destination(stage_id: int, destination_index: int) -> None:
@@ -174,7 +185,7 @@ def _validate_destination(stage_id: int, destination_index: int) -> None:
         )
 
     record = stage.records[destination_index]
-    if record.progression_token is not None and not _is_fortress_boss_destination(
+    if record.progression_token is not None and not _has_closed_token_destination_semantics(
         stage_id, destination_index
     ):
         raise PatchError(
@@ -325,9 +336,7 @@ class GlobalItemMaterializationPatch:
                         assignment.item_key,
                         selector,
                         generic_inventory_callback=GENERIC_AWARD_K1,
-                        boss_gate=_is_fortress_boss_destination(
-                            assignment.stage_id, assignment.destination_index
-                        ),
+                        activation_gate=_destination_activation_gate(target),
                     )
                 )
 
@@ -371,6 +380,6 @@ class GlobalItemMaterializationPatch:
                 f"RDRAM 0x{MATERIALIZER_HELPER_K0:08X}"
             ),
             "ordinary awards immediately commit backing inventory and reconstruct stage-masked LIVE",
-            "Fortress boss reward destinations preserve encounter-owned activation bit",
+            "stock destination bit-15 activation gates are preserved independently of reward identity",
             "resource placements: " + ", ".join(resource_notes),
         )
