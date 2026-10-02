@@ -36,8 +36,8 @@ def fake_assets() -> ToastyAssets:
 def test_toasty_module_fits_reserved_pool_at_aligned_base() -> None:
     packed = pack_toasty_module(fake_assets(), DEFAULT_PROBABILITY_PER_THOUSAND)
     assert packed.allocation_start == MODULE_K0 == 0x801B1000
-    assert len(packed.data) == 0x1DF0
-    assert MODULE_K0 + len(packed.data) == 0x801B2DF0
+    assert len(packed.data) == 0x9B6
+    assert MODULE_K0 + len(packed.data) == 0x801B19B6
 
 
 def test_toasty_is_optional_and_runs_after_rainbow() -> None:
