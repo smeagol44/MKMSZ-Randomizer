@@ -59,15 +59,15 @@ HERBS_PRESENTATION_VA = 0x800B1D38
 CALLBACK_OFFSET_WITHIN_IDENTITY = 0x08
 PRESENTATION_OFFSET_WITHIN_IDENTITY = 0x18
 
-# Stock global 16-color blue palette descriptor. It is already resident and is
+# Stock global 16-color Ice Blue palette descriptor. It is already resident and is
 # referenced broadly by retail code/data, so progression Herbs can reuse it
 # without adding ROM/RDRAM allocation or changing the stage-local Herbs model.
-PROGRESSION_HERBS_PRESENTATION_VA = 0x800B29AC
-PROGRESSION_HERBS_PALETTE_ROM = 0x000B35AC
+PROGRESSION_HERBS_PRESENTATION_VA = 0x800B1E68
+PROGRESSION_HERBS_PALETTE_ROM = 0x000B2A68
 PROGRESSION_HERBS_PALETTE = bytes.fromhex(
     "00000010"
-    "0000 7DAD 75AD 6DAD 65AD 5DAD 55AD 498C"
-    "416B 394A 3129 2908 20E7 18A5 1063 0842"
+    "0000 FF74 F331 EACE E28C DA2A D1E8 C9A6"
+    "C165 B923 B0E2 A8A1 A080 9840 9020 8800"
 )
 
 XP_THRESHOLDS = (85, 258, 834, 1410, 2323, 3315, 4503, 5911, 7354)
