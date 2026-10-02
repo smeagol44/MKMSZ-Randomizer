@@ -46,6 +46,28 @@ STAGE_RESOURCES: dict[int, StageResourceSpec] = {
     9: StageResourceSpec(9, 0x000A5334, 0x003B9700, 0x003BCD20),
 }
 
+GLOBAL_OUTPUT_SIZE = 32 * 1024 * 1024
+GLOBAL_RESOURCE_REGION_START = 0x01000000
+GLOBAL_RESOURCE_SLOT_SIZE = 0x00100000
+GLOBAL_RESOURCE_STAGE_ORDER = (0, 1, 2, 3, 4, 5, 8, 9)
+GLOBAL_RESOURCE_REGION_END = (
+    GLOBAL_RESOURCE_REGION_START
+    + GLOBAL_RESOURCE_SLOT_SIZE * len(GLOBAL_RESOURCE_STAGE_ORDER)
+)
+
+
+def production_global_resource_placements() -> tuple["StageResourcePlacement", ...]:
+    """Return the approved appended-ROM ownership for global stage resources."""
+
+    return tuple(
+        StageResourcePlacement(
+            stage_id=stage_id,
+            rom_start=GLOBAL_RESOURCE_REGION_START + index * GLOBAL_RESOURCE_SLOT_SIZE,
+            capacity=GLOBAL_RESOURCE_SLOT_SIZE,
+        )
+        for index, stage_id in enumerate(GLOBAL_RESOURCE_STAGE_ORDER)
+    )
+
 
 @dataclass(frozen=True)
 class VisualDonorSpec:
