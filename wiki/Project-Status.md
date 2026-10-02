@@ -51,7 +51,7 @@ These results are important feasibility evidence but are **not** normal browser/
 
 | Blocker | Current state |
 |---|---|
-| Production-safe global cross-stage item materialization | **All eight destination-ownership audits closed; wrappers implemented on PR #129, runtime proof Pending.** PR #129 composes logical awards with researched Wind/Water/Earth/Fire/Prison destination actions, generic Bridge/Fortress activation gates, portable Strength semantics, immediate foreign-key re-mask, and Prison credential reconstruction after the stock reset. Current-main lifecycle v06 remains unchanged; the materializer now occupies `0x801B2960..0x801B2EBF`. CI #1583 is green. Disposable all-wrapper v01 is built and awaits manual runtime validation. |
+| Production-safe global cross-stage item materialization | **Destination ownership closed; wrapper composition Runtime-confirmed bounded on PR #129.** PR #129 composes logical awards with researched Wind/Water/Earth/Fire/Prison destination actions, generic Bridge/Fortress activation gates, portable Strength semantics, immediate foreign-key re-mask, and Prison credential reconstruction after the stock reset. Current-main lifecycle v06 remains unchanged; the materializer occupies `0x801B2960..0x801B2EBF`. CI #1583 is green. First-item-swap v04 was manually validated successfully, directly confirming the exercised key-without-checkpoint / checkpoint-without-key / non-downgrade split. Global seeded generation/solver integration remains next. |
 | Deterministic global shuffle and retry model | **Pending.** Replace the interim eight stage-local pools with one deterministic global logical run and explicit deterministic retry attempts |
 | Whole-run solvability validation | **Pending.** Finalize current access rules and a completion predicate for both pickup and earned-XP modes using Vanilla / Custom / Seed required-power settings |
 | Native randomizer HUD | **Partial.** Native text and box state are proven; checks/progression/key/pickup run-state display is still required |
@@ -62,10 +62,10 @@ These results are important feasibility evidence but are **not** normal browser/
 
 Current user direction is to finish the **materializer safety gate before global shuffle/solver integration**:
 
-1. **Runtime-validate the bounded all-wrapper v01 proof.** Exercise representative relative checkpoint, monotonic checkpoint, local-stage-state, Prison credential reconstruction, Bridge activation-gate, and Fortress boss-gate paths. Do not promote static/CI success to Runtime-confirmed before user observation.
-2. If the bounded proof passes, promote the wrapper/reconstruction composition from PR #129 while preserving the runtime-confirmed lifecycle-v06 allocation and the fail-closed materializer guards.
-3. Then replace the interim stage-local generation with the deterministic global shuffle + whole-run solver, explicit deterministic retries, and the approved Vanilla / Custom / Seed required-power behavior.
-4. Build the native randomizer HUD around finalized global-run state, then run the representative full-seed 1.0 gate.
+1. **Promote the Runtime-confirmed destination-wrapper / Prison-reconstruction composition from PR #129 while preserving lifecycle-v06 allocation and fail-closed guards.**
+2. Replace the interim stage-local generation with the deterministic global shuffle + whole-run solver, explicit deterministic retries, and the approved Vanilla / Custom / Seed required-power behavior.
+3. Build the native randomizer HUD around finalized global-run state.
+4. Run the representative full-seed 1.0 gate across global items, solver, HUD, progression, and lifecycle.
 
 ## Current evidence notes
 
