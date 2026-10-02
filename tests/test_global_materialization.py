@@ -4,15 +4,24 @@ from mkmszr.patcher import build_pipeline
 from mkmszr.patches.controls_production import ControlsProductionPatch
 from mkmszr.patches.global_materialization import (
     ACQUISITION_REMASK,
+    DESTINATION_ACTIONS,
     GENERIC_AWARD,
     MATERIALIZER_HELPER,
     MATERIALIZER_HELPER_END_K0,
     MATERIALIZER_HELPER_K0,
     MATERIALIZER_RUNTIME_LIMIT,
+    PRISON_RECONSTRUCT,
+    PRISON_RECONSTRUCT_K0,
     GlobalItemMaterializationPatch,
 )
 from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
 from mkmszr.resource_materialization import (
+    DEST_EARTH_SQUARE,
+    DEST_FIRE_TRIANGLE_DOWN,
+    DEST_PRISON_L1,
+    DEST_PRISON_STRENGTH,
+    DEST_WATER_THREE_BARS,
+    DEST_WIND_CIRCLE,
     GlobalMaterializationPlan,
     MaterializationAssignment,
     StageResourcePlacement,
@@ -36,6 +45,8 @@ def test_materializer_helper_fits_controls_to_toasty_gap() -> None:
     assert MATERIALIZER_HELPER_END_K0 <= MATERIALIZER_RUNTIME_LIMIT == 0x801B1000
     assert len(GENERIC_AWARD) > 0
     assert len(ACQUISITION_REMASK) > 0
+    assert len(PRISON_RECONSTRUCT) > 0
+    assert MATERIALIZER_HELPER_K0 <= PRISON_RECONSTRUCT_K0 < MATERIALIZER_HELPER_END_K0
     assert len(MATERIALIZER_HELPER) == MATERIALIZER_HELPER_END_K0 - MATERIALIZER_HELPER_K0
 
 
@@ -100,17 +111,43 @@ def test_fortress_crystal_logical_award_separates_source_and_destination_gate() 
     assert int.from_bytes(boss_identity[0x08:0x0C], "big") == 0xA01B0900
 
 
-def test_prison_key_fails_closed_without_destination_safe_credential_wrapper() -> None:
-    try:
-        portable_materialized_identity(
-            "prison-l1",
+def test_prison_key_uses_shared_inventory_award_after_credential_closure() -> None:
+    identity = portable_materialized_identity(
+        "prison-l1",
+        0x123C,
+        generic_inventory_callback=0xA01B0900,
+    )
+    assert int.from_bytes(identity[0x04:0x08], "big") == 0x1A
+    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B0900
+
+
+def test_destination_action_encoding_composes_with_logical_award() -> None:
+    cases = (
+        ("herbs", DEST_WIND_CIRCLE, 0x0104),
+        ("potion", DEST_WATER_THREE_BARS, 0x0501),
+        ("earth-square", DEST_EARTH_SQUARE, 0x0711),
+        ("fire-two-bars", DEST_FIRE_TRIANGLE_DOWN, 0x0C18),
+        ("prison-l2", DEST_PRISON_L1, 0x0D1B),
+        ("strength-urn", DEST_PRISON_STRENGTH, 0x0F0B),
+    )
+    for key, action, expected_parameter in cases:
+        identity = portable_materialized_identity(
+            key,
             0x123C,
             generic_inventory_callback=0xA01B0900,
+            destination_action=action,
         )
-    except PatchError as exc:
-        assert "not established" in str(exc)
-    else:
-        raise AssertionError("Prison key should require a dedicated credential wrapper")
+        assert int.from_bytes(identity[0x04:0x08], "big") == expected_parameter
+        assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B0900
+
+
+def test_all_progression_destination_actions_are_registered() -> None:
+    assert DESTINATION_ACTIONS[(1, 3)] == DEST_WIND_CIRCLE
+    assert DESTINATION_ACTIONS[(2, 7)] == DEST_WATER_THREE_BARS
+    assert DESTINATION_ACTIONS[(3, 0)] == DEST_EARTH_SQUARE
+    assert DESTINATION_ACTIONS[(5, 14)] == DEST_FIRE_TRIANGLE_DOWN
+    assert DESTINATION_ACTIONS[(4, 0)] == DEST_PRISON_L1
+    assert DESTINATION_ACTIONS[(4, 3)] == DEST_PRISON_STRENGTH
 
 
 def test_explicit_materialization_replaces_stage_local_patch_in_pipeline() -> None:
