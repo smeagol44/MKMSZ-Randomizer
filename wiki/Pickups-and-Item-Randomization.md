@@ -29,6 +29,12 @@ Same-stage Fire Potion-to-Herbs testing established why the complete identity ha
 
 The concrete records, selectors, and resource instances remain canonical in the eight [stage catalogs](Stage-Catalogs); this page does not duplicate their raw tables.
 
+### Hand-authored pickup placement probe
+
+A bounded 2026-10-02 placement experiment established a reusable authoring workflow for intentionally placing ordinary pickups at new coordinates. The Runtime-confirmed probe reads the live player actor's raw fixed8 X/Y/Z directly from actor `+0x2C/+0x30/+0x34`. For hand-authored ordinary pickup placement, the accepted visual convention is **X = displayed player X, Z = displayed player Z, Y = displayed player Y + 28 world units = +0x1C00 fixed8**. Direct player Y put Herbs around head height; a later Wind revision was too low, so +28 is the project baseline. This is an authoring convention rather than an engine-coordinate rule and should be rechecked for models with materially different anchors.
+
+The reusable diagnostic is `tools/build_pickup_placement_probe.py`. Full proof mechanics, rejected probe variants, and the separate post-1.0 Ice Blast -> Pickup cancel are recorded in [Pickup placement and Ice-Blast cancel proofs](Pickup-Placement-and-Action-Cancel-Proofs).
+
 ## Current stage-local production shuffle
 
 For each stage, the generator uses a stable SHA-256-based Fisher-Yates shuffle with domain:

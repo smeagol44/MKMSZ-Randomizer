@@ -274,6 +274,14 @@ The SPECIALS/JUMP research builders temporarily forced current XP to **20,000** 
 
 **Runtime-confirmed progression regression (2026-09-26):** the first 16-KiB/CI4 full-product candidate removed the XP-force helper, exposing that MODERN Slide and Super Slide still bypassed their stock progression recognizers and called their action callbacks directly. Static reconciliation confirms these are the only two MODERN progression-sensitive routes that did not already use native condition functions. The corrected v02 production composition routes Slide through stock direct recognizer `0x8003C9F8` (native tier >=2 plus contextual gates) and Super Slide through `0x8003CAF4` (native tier >=7, resource >=`0x60`, plus contextual gates). The user reported the corrected replacement v02 full-product ROM **“Works perfectly!”** It is Runtime-confirmed for the tested progression routes. The accepted seed `CONTROLSV10CI4` / MKT Rev. 2 donor build, SHA-256 `b12ed90201ab754aac542b7b89458735b5a756f480fffca89c129c0ed3173147`, remains the Runtime-confirmed baseline. Current builds intentionally differ only in the approved Toasty four-word TLUT purple polish.
 
+## Ice Blast -> Pickup cancel — post-1.0 Runtime-confirmed proof
+
+A bounded 2026-10-02 Wind proof Runtime-confirms the requested **normal ground Ice Blast -> Pickup** cancel. The proof does not invent a pickup animation or bypass spatial/input checks. Instead, it broadens the ordinary pickup manager's action-eligibility gate at ROM `0x00039AF8` / VA `0x80038EF8`: stock pickup state `0x303` remains accepted, and normal Ice is additionally accepted only when controller `+0x6F0 == 0x8004AB84` and native Ice mode `0x80111F98 == 0`. This excludes Directional Ice modes 1/2; Air Ice uses a different action root.
+
+Only after the stock Pickup input/proximity/facing gates have passed does the proof hook ROM `0x00039BA4` / VA `0x80038FA4`, recheck normal Ice, and clear special-action lock `0x800BF308`. Stock pickup-manager code then performs the ordinary pickup transition and award path. The user reported the proof worked perfectly on the tested Wind route. This is intentionally **4Fun / Post-1.0**, not a 1.0 control requirement and not yet a production allocation/composition.
+
+Reproducer: `tools/build_iceblast_pickup_cancel_proof.py`. Exact artifact identity, placement-probe context, and evidence limits are in [Pickup placement and Ice-Blast cancel proofs](Pickup-Placement-and-Action-Cancel-Proofs).
+
 ## RUN: HOLD / AUTO — Runtime-confirmed proof semantics
 
 The accepted behavior is now Runtime-confirmed in control-suite v10:
