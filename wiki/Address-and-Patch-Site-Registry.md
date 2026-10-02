@@ -61,8 +61,8 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x000A6C48..0x000A6CEF` | `0x800A6048..0x800A60EF` | Four-box state | guarded stock data | Four backing boxes, active state, and `MKBX` magic |
 | `0x000A6E88` | item-use table | SEALED mask (stock Glass ID `0x08`) | `0x80071F58` | Inert `0x80071F50` |
 | `0x000AE40C..0x000AE413` | stock item-name text | Foreign-key placeholder label | `GLASS\0\0\0` | `SEALED\0\0`; native item identity remains `0x08` and its inert-use dispatch remains unchanged. |
-| generated progression records `+0x28` | ordinary pickup presentation pointer | Power Upgrade Herbs visual | stock Herbs `0x800B1D38` | `0x800B29AC`, a stock-resident 16-color blue descriptor; stage-local Herbs resource/model selector remains unchanged. |
-| `0x000B35AC..0x000B35CF` / VA `0x800B29AC` | stock resident palette descriptor | Power Upgrade Herbs palette source | guarded retail 16-color descriptor | Read-only reuse; no palette bytes or allocation changed. |
+| generated progression records `+0x28` | ordinary pickup presentation pointer | Power Upgrade Herbs visual | stock Herbs `0x800B1D38` | `0x800B1E68`, a stock-resident 16-color Ice Blue descriptor; stage-local Herbs resource/model selector remains unchanged. |
+| `0x000B2A68..0x000B2A8B` / VA `0x800B1E68` | stock resident palette descriptor | Power Upgrade Herbs palette source | guarded retail 16-color descriptor | Read-only reuse; no palette bytes or allocation changed. |
 | `0x000AF998..0x000AFA23` | boot strings | Branding | guarded legal-text storage | Product title, spaced RANDOMIZER, configurable `<CHAR> EDITION`, 2026 credit, seeded joke, author |
 | `0x000AFA24..0x000AFA97` | `0x800AEE24..` | Box indicator | guarded legal-text region | Native wrapper and `BOX 1 OF 4` text |
 | `0x000AFA98..0x000AFABB` | boot strings | Branding | guarded license text | `NOT LICENSED BY NINTENDO` |
