@@ -1,8 +1,8 @@
 from mkmszr.global_generation import (
+    ALL_PROGRESSION_TOKENS,
     GLOBAL_LOCATIONS,
     TEMPLE_SPECIAL_LOCATION_INDEX,
     TOTAL_GLOBAL_LOCATIONS,
-    ALL_PROGRESSION_TOKENS,
     CompletionPolicy,
     build_completion_policy,
     build_global_run_plan,
