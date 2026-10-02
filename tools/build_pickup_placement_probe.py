@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Build the disposable MKMSZR pickup-placement coordinate probe.
 
 Research tool, not a production patch.
@@ -34,8 +33,8 @@ from mkmszr.data.addresses import (
 from mkmszr.mips import (
     Emitter,
     addiu,
-    addu,
     address_words,
+    addu,
     jal,
     jr,
     lw,
