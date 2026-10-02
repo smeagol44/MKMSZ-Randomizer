@@ -2,11 +2,11 @@ from mkmszr.config import OutfitConfig, RandomizerConfig
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.controls_production import ControlsProductionPatch
 from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
-from mkmszr.patches.rainbow_palette import RainbowPalettePatch
 from mkmszr.patches.progression_presentation import (
     FLASH_MODULE_END_ROM,
     FLASH_MODULE_ROM,
 )
+from mkmszr.patches.rainbow_palette import RainbowPalettePatch
 from mkmszr.patches.toasty import ToastyProductionCompositionPatch
 from mkmszr.patches.toasty_codegen import (
     _build_call_trampoline,
