@@ -2,7 +2,9 @@ from mkmszr.global_generation import (
     GLOBAL_LOCATIONS,
     TEMPLE_SPECIAL_LOCATION_INDEX,
     TOTAL_GLOBAL_LOCATIONS,
+    ALL_PROGRESSION_TOKENS,
     CompletionPolicy,
+    build_completion_policy,
     build_global_run_plan,
     candidate_permutation,
     completion_satisfied,
@@ -214,3 +216,35 @@ def test_run_plan_converts_to_84_plus_temple_materializer_schema() -> None:
     assert plan.temple_special_item_key == run.temple_special_item_key
     assert {assignment.stage_id for assignment in plan.assignments} == {0, 1, 2, 3, 4, 5, 8, 9}
     assert len(plan.placements) == 8
+
+
+
+def test_completion_modes_are_distinct_and_default_policy_is_stricter() -> None:
+    all_85 = build_completion_policy("all_85", 5)
+    beatable = build_completion_policy("game_beatable", 5)
+
+    assert all_85.required_powers == 5
+    assert all_85.required_tokens == frozenset()
+    assert all_85.require_all_locations
+
+    assert beatable.required_powers == 5
+    assert beatable.required_tokens == ALL_PROGRESSION_TOKENS
+    assert len(beatable.required_tokens) == 21
+    assert not beatable.require_all_locations
+
+
+def test_game_beatable_requires_all_progression_credentials() -> None:
+    result = solve_reachability(tuple(range(85)), powers_as_pickups=True)
+    policy = build_completion_policy("game_beatable", 9)
+
+    assert ALL_PROGRESSION_TOKENS.issubset(result.acquired_tokens)
+    assert completion_satisfied(result, policy)
+
+
+def test_unknown_completion_mode_is_rejected() -> None:
+    try:
+        build_completion_policy("unknown", 0)
+    except ValueError as exc:
+        assert "completion mode" in str(exc)
+    else:
+        raise AssertionError("unknown completion mode must fail closed")
