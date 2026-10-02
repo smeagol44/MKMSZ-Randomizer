@@ -14,6 +14,8 @@ from mkmszr.patches.toasty_constants import (
     MODULE_K0,
     MODULE_ROM,
     SHARED_EXPANSION_ROM,
+    TOASTY_AUDIO_END_ROM,
+    TOASTY_AUDIO_ROM,
     ToastyAssets,
 )
 
@@ -75,3 +77,9 @@ def test_toasty_source_offset_matches_shared_runtime_offset() -> None:
 def test_toasty_init_uses_shifted_ci4_module() -> None:
     assert _build_call_trampoline() == bytes.fromhex("080266CF 00000000 00000000")
     assert _build_init_loader() == bytes.fromhex("3C19A01B 27391000 03200008 00000000")
+
+
+def test_toasty_audio_uses_fixed_documented_production_slot() -> None:
+    assert TOASTY_AUDIO_ROM == 0x00F6B5D0
+    assert TOASTY_AUDIO_END_ROM == 0x00F6BDE6
+    assert TOASTY_AUDIO_END_ROM - TOASTY_AUDIO_ROM == 0x816
