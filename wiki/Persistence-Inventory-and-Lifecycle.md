@@ -43,7 +43,7 @@ The native HUD displays `BOX n OF 4` at `(230,210)`. It reads the existing state
 
 ## Stage-local key masking
 
-Keys should be usable only in their origin stage. When backing data is copied to live inventory, foreign-stage IDs `0x0D..0x22` are represented as Glass `0x08`; the backing word remains unchanged. Production changes Glass's item-use dispatch from consuming stub `0x80071F58` to inert return-zero stub `0x80071F50`, making the placeholder safe. The Tablet (`0x24`) was rejected because its use path is consumable.
+Keys should be usable only in their origin stage. When backing data is copied to live inventory, foreign-stage IDs `0x0D..0x22` are represented by stock item ID `0x08`, displayed as **SEALED**; the backing word remains unchanged. Production changes stock item `0x08`'s item-use dispatch from consuming stub `0x80071F58` to inert return-zero stub `0x80071F50`, making the placeholder safe. The Tablet (`0x24`) was rejected because its use path is consumable.
 
 The stage mapping is Temple Map `0x0D`; Wind `0x0E..0x10`; Earth `0x11..0x13`; Water `0x14..0x16`; Fire `0x17..0x19`; Prison `0x1A..0x1C`; Bridge `0x1D..0x1F`; Fortress `0x20..0x22`.
 
@@ -51,7 +51,7 @@ The stage mapping is Temple Map `0x0D`; Wind `0x0E..0x10`; Earth `0x11..0x13`; W
 
 Fire -> Wind Circle v01 confirmed the existing reconstruction behavior but exposed an immediate-acquisition gap: directly after the foreign Circle was awarded in Fire, LIVE still showed real item ID `0x0E` until the next box/stage reconstruction. The authoritative backing identity itself was already correct.
 
-Disposable v02 added one bounded ordinary-pickup post-callback composition: filtered LIVE -> active backing save, followed immediately by active backing -> stage-masked LIVE reconstruction. Runtime validation confirmed that the newly acquired Wind Circle appears as inert Glass `0x08` **immediately** in Fire, without requiring a box switch or stage transition. Entering Wind restores the real Circle, and normal Wind use succeeds while retaining the key.
+Disposable v02 added one bounded ordinary-pickup post-callback composition: filtered LIVE -> active backing save, followed immediately by active backing -> stage-masked LIVE reconstruction. Runtime validation confirmed that the newly acquired Wind Circle appears as inert **SEALED** (stock item `0x08`) **immediately** in Fire, without requiring a box switch or stage transition. Entering Wind restores the real Circle, and normal Wind use succeeds while retaining the key.
 
 This Runtime-confirms the tested foreign-key masking round trip across both acquisition and reconstruction boundaries. Production integration still requires the normal guarded code/allocation path; the proof hook itself is not silently promoted to product ownership.
 
@@ -61,7 +61,7 @@ Native key items are **not consumed by normal use**. They remain in inventory af
 
 - The stock sanitizer at `0x8007AD00` is replaced by a fixed-size mask-copy routine rather than deleting special IDs.
 - The stock default loader at `0x8007AD4C` is replaced by the filtered **LIVE -> active backing save** wrapper. LIVE reconstruction is `0x80099B14 -> 0x8007AD00`, with the ten-word LIVE store at `0x8007AD34`. Keep this inventory ownership unchanged; see the [static lifecycle closure](Lifecycle-Static-Closure-v05).
-- Transition wrappers commit non-placeholder live items back to the active backing box; Glass slots are skipped so hidden true keys survive.
+- Transition wrappers commit non-placeholder live items back to the active backing box; SEALED/stock-Glass placeholder slots are skipped so hidden true keys survive.
 - Saves serialize the filtered live view through the established game path; loads rebuild live state from authoritative backing data and current-stage masking.
 - Title-menu START was the destructive live-window boundary in stock behavior and is explicitly intercepted.
 

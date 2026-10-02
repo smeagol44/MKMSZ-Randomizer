@@ -1,9 +1,10 @@
 """Production pickup-driven XP / special-move progression.
 
 The ordinary 84-location shuffle runs first. A dedicated RNG namespace then
-selects exactly nine locations whose generated identity is Herbs and changes
-only their callback pointer. The same-stage Herbs resource/presentation stays
-intact, so no foreign resource import is required.
+selects exactly nine locations whose generated identity is Herbs. Their
+callback becomes the progression award callback and their presentation pointer
+uses a stock-resident blue palette; the same-stage Herbs model/resource remains
+intact, so no foreign resource import or new allocation is required.
 """
 
 from __future__ import annotations
@@ -54,7 +55,20 @@ from .runtime_v2 import CODE_CACHED_BASE, CODE_SIZE, STATE_UNCACHED_BASE
 NOP = 0
 RNG_DOMAIN = b"MKMSZR:PROGRESSION:HERBS:V1\0"
 HERBS_CALLBACK_VA = 0x800389BC
+HERBS_PRESENTATION_VA = 0x800B1D38
 CALLBACK_OFFSET_WITHIN_IDENTITY = 0x08
+PRESENTATION_OFFSET_WITHIN_IDENTITY = 0x18
+
+# Stock global 16-color Ice Blue palette descriptor. It is already resident and is
+# referenced broadly by retail code/data, so progression Herbs can reuse it
+# without adding ROM/RDRAM allocation or changing the stage-local Herbs model.
+PROGRESSION_HERBS_PRESENTATION_VA = 0x800B1E68
+PROGRESSION_HERBS_PALETTE_ROM = 0x000B2A68
+PROGRESSION_HERBS_PALETTE = bytes.fromhex(
+    "00000010"
+    "0000 FF74 F331 EACE E28C DA2A D1E8 C9A6"
+    "C165 B923 B0E2 A8A1 A080 9840 9020 8800"
+)
 
 XP_THRESHOLDS = (85, 258, 834, 1410, 2323, 3315, 4503, 5911, 7354)
 PROGRESSION_REWARD_COUNT = len(XP_THRESHOLDS)
@@ -245,6 +259,11 @@ class XPProgressionPatch:
                     stage.records[source_index].identity,
                 )
 
+        rom.expect_bytes(
+            PROGRESSION_HERBS_PALETTE_ROM,
+            PROGRESSION_HERBS_PALETTE,
+        )
+
         selected = build_progression_locations(context.seed)
         for stage_id, destination in selected:
             stage = stage_by_id[stage_id]
@@ -253,7 +272,13 @@ class XPProgressionPatch:
                 + IDENTITY_OFFSET
                 + CALLBACK_OFFSET_WITHIN_IDENTITY
             )
+            presentation_rom = (
+                stage.records[destination].rom_base
+                + IDENTITY_OFFSET
+                + PRESENTATION_OFFSET_WITHIN_IDENTITY
+            )
             rom.expect_u32(callback_rom, HERBS_CALLBACK_VA)
+            rom.expect_u32(presentation_rom, HERBS_PRESENTATION_VA)
 
         for offset, expected in XP_AWARD_STORE_SITES.items():
             rom.expect_u32(offset, expected)
@@ -272,7 +297,13 @@ class XPProgressionPatch:
                 + IDENTITY_OFFSET
                 + CALLBACK_OFFSET_WITHIN_IDENTITY
             )
+            presentation_rom = (
+                stage.records[destination].rom_base
+                + IDENTITY_OFFSET
+                + PRESENTATION_OFFSET_WITHIN_IDENTITY
+            )
             rom.write_u32(callback_rom, PROGRESSION_CALLBACK_ENTRY)
+            rom.write_u32(presentation_rom, PROGRESSION_HERBS_PRESENTATION_VA)
 
         for offset in XP_AWARD_STORE_SITES:
             rom.write_u32(offset, NOP)
@@ -289,6 +320,9 @@ class XPProgressionPatch:
             "normal XP stores disabled at the central helper and all three mapped direct paths",
             "combo EXPERIENCE label/value suppressed; HITS render calls preserved",
             f"8 main-stage XP caps guarded and set to {XP_CAP_VALUE}",
-            f"9 generated Herbs callbacks -> progression callback ({locations})",
+            (
+                "9 generated Herbs callbacks -> progression callback and stock-resident "
+                f"blue palette 0x{PROGRESSION_HERBS_PRESENTATION_VA:08X} ({locations})"
+            ),
             "progression count/XP use V2 state +0x40/+0x44; ordinary pickup bitsets remain separate",
         )

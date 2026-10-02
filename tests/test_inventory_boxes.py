@@ -10,6 +10,7 @@ from mkmszr.patches.inventory_boxes import (
     DEFAULT_INV,
     DEFAULT_INV_ROM,
     EXPECTED_DEFAULT_LOADER,
+    EXPECTED_MASK_ITEM_NAME,
     EXPECTED_PERSISTENCE_RESUME,
     EXPECTED_SANITIZER,
     GLASS_USE_ENTRY_ROM,
@@ -23,6 +24,8 @@ from mkmszr.patches.inventory_boxes import (
     LOAD_MASK_WRAPPER_VA,
     MAGIC,
     MASK_COPY_ROUTINE,
+    MASK_ITEM_NAME,
+    MASK_ITEM_NAME_ROM,
     PERSISTENCE_CODE_END_ROM,
     PERSISTENCE_RESUME_PATCH,
     PERSISTENCE_RESUME_ROM,
@@ -77,6 +80,9 @@ def _post_core_shape() -> RomImage:
     data[SANITIZE_ROM:SANITIZE_END] = EXPECTED_SANITIZER
     data[LOAD_DEFAULT_ROM:LOAD_DEFAULT_END] = EXPECTED_DEFAULT_LOADER
     data[GLASS_USE_ENTRY_ROM:GLASS_USE_ENTRY_ROM + 4] = CONSUME_USE_STUB_VA.to_bytes(4, "big")
+    data[
+        MASK_ITEM_NAME_ROM : MASK_ITEM_NAME_ROM + len(EXPECTED_MASK_ITEM_NAME)
+    ] = EXPECTED_MASK_ITEM_NAME
     for call_rom in SANITIZE_CALL_ROMS:
         data[call_rom : call_rom + 4] = jal(SANITIZE_VA).to_bytes(4, "big")
     data[
@@ -165,5 +171,9 @@ def test_four_box_patch_installs_stage_masking_and_filtered_sync() -> None:
         PERSISTENCE_SAVE_ROM + len(SAVE_FILTERED_ROUTINE)
     ] == SAVE_FILTERED_ROUTINE
     assert rom.read_u32(GLASS_USE_ENTRY_ROM) == INERT_USE_STUB_VA
+    assert (
+        rom.data[MASK_ITEM_NAME_ROM : MASK_ITEM_NAME_ROM + len(MASK_ITEM_NAME)]
+        == MASK_ITEM_NAME
+    )
 
-    assert "Glass (0x08)" in notes[-2]
+    assert "SEALED" in notes[-2]

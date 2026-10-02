@@ -21,6 +21,7 @@ from .pickup_persistence import (
 )
 from .pickup_randomization import PickupRandomizationPatch
 from .power_order import PowerOrderPatch
+from .progression_presentation import ProgressionPickupPresentationPatch
 from .rainbow_palette import RainbowPalettePatch
 from .run_lifecycle import RunLifecyclePatch
 from .runtime_v1 import (
@@ -52,6 +53,7 @@ __all__ = [
     "PickupPersistencePatch",
     "PickupRandomizationPatch",
     "PowerOrderPatch",
+    "ProgressionPickupPresentationPatch",
     "RainbowPalettePatch",
     "RunLifecyclePatch",
     "RuntimeV1FirePersistencePatch",

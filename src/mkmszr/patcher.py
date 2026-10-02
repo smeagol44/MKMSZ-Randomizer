@@ -19,6 +19,7 @@ from .patches import (
     PickupPersistencePatch,
     PickupRandomizationPatch,
     PowerOrderPatch,
+    ProgressionPickupPresentationPatch,
     RainbowPalettePatch,
     RunLifecyclePatch,
     SafeStageSelectorPatch,
@@ -157,6 +158,10 @@ def build_pipeline(
             persist_hp=config.persist_hp,
         )
     )
+    if config.powers_as_pickups:
+        # Presentation is installed late so its shared file-0x1A allocation
+        # composes with optional Toasty and all earlier runtime owners.
+        patches.append(ProgressionPickupPresentationPatch())
     # Controls production deliberately verifies the stock Slide/Super Slide
     # gates before installing helpers that call those recognizers. Apply the
     # optional order remap afterwards so both safety guards and shuffled tiers

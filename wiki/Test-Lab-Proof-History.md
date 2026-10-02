@@ -2,6 +2,12 @@
 
 > **Scope:** This page owns the detailed disposable-proof chronology for the hidden Fire God Room / selected-Test-Characters composition that became the MKMSZR **TEST LAB**, including the 2026-09-28 pickup-placement and cross-stage materialization stress line. Current product state remains on [Project status](Project-Status); current materializer design remains on [Global item materialization and solvability](Global-Item-Materialization-and-Solvability). These proofs are not production allocations or browser/CLI features.
 
+## Power Upgrade Herbs presentation — 2026-10-02
+
+- **v01 — Runtime-confirmed visual proof:** TEST LAB placed ordinary brown Herbs beside the selected Ice Blue Herbs presentation. Both rendered and collected normally; the user accepted the Ice Blue look.
+- **v02 — Runtime-confirmed visual-feedback proof:** built directly on accepted v01. Only the Ice Blue pickup wrapped its normal Herbs callback with the stock-eel-style player flash: white 2 ticks -> normal 2 -> white 2 -> normal 2 -> white 2 -> normal. The user reported the result looked fantastic. The proof imported no damage, reaction, stun, or input-lock behavior.
+- Production direction: selected progression Herbs keep their stage-local Herbs model/resource, use stock-resident Ice Blue descriptor `0x800B1E68`, and wrap the existing progression award with the accepted v02 white-pulse helper using an MKMSZR-owned copy of the stock eel all-white 64-color palette.
+
 ## Current conclusion
 
 **Runtime-confirmed bounded result:** the hidden room can be composed as a stable empty TEST LAB by reusing the healthy Fire selector-5 shell, selected-Test-Characters helper behavior, and suppressing the test-fighter allocation. The room supports normal lighting, HUD, movement, attacks, Pause/Inventory, ordinary pickup-manager execution, controlled pickup placement, and bounded cross-stage resource experiments.
