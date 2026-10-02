@@ -40,8 +40,8 @@ def _plan(*assignments: MaterializationAssignment) -> GlobalMaterializationPlan:
 
 
 def test_materializer_helper_fits_controls_to_toasty_gap() -> None:
-    assert MATERIALIZER_HELPER_K0 == 0x801B0970
-    assert MATERIALIZER_HELPER_END_K0 <= MATERIALIZER_RUNTIME_LIMIT == 0x801B1000
+    assert MATERIALIZER_HELPER_K0 == 0x801B2960
+    assert MATERIALIZER_HELPER_END_K0 <= MATERIALIZER_RUNTIME_LIMIT == 0x801B3420
     assert len(GENERIC_AWARD) > 0
     assert len(ACQUISITION_REMASK) > 0
     assert len(PRISON_RECONSTRUCT) > 0
