@@ -36,8 +36,8 @@ from ..errors import PatchError
 from ..mips import (
     Emitter,
     addiu,
-    address_words,
     addu,
+    address_words,
     andi,
     jal,
     jr,
@@ -681,11 +681,13 @@ class GlobalItemMaterializationPatch:
             assignments_by_stage[assignment.stage_id].append(assignment)
 
         temple_special_key = self.plan.temple_special_item_key
-        if temple_special_key is not None:
-            if temple_special_key not in CANONICAL_VISUAL_DONORS:
-                raise PatchError(
-                    f"no canonical visual donor registered for {temple_special_key!r}"
-                )
+        if (
+            temple_special_key is not None
+            and temple_special_key not in CANONICAL_VISUAL_DONORS
+        ):
+            raise PatchError(
+                f"no canonical visual donor registered for {temple_special_key!r}"
+            )
 
         # Build every stage plan before any write so failures are atomic.
         baseline = bytes(rom.data)
