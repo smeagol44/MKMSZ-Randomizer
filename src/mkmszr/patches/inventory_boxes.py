@@ -82,6 +82,9 @@ RAW_LIVE_INV = words_blob(
 # Glass is the LIVE-only masking item. Vanilla dispatch consumes it; MKMSZR
 # redirects only Glass's USE entry to the native return-0/no-consume stub.
 MASK_ITEM = 0x08
+MASK_ITEM_NAME_ROM = 0x000AE40C
+EXPECTED_MASK_ITEM_NAME = b"GLASS\x00\x00\x00"
+MASK_ITEM_NAME = b"SEALED\x00\x00"
 
 ITEM_USE_TABLE_ROM = 0x000A6E68
 GLASS_USE_ENTRY_ROM = ITEM_USE_TABLE_ROM + MASK_ITEM * 4
@@ -499,6 +502,7 @@ class FourBoxInventoryPatch:
             bytes(PERSISTENCE_CODE_END_ROM - PERSISTENCE_SAVE_ROM),
         )
         rom.expect_u32(GLASS_USE_ENTRY_ROM, CONSUME_USE_STUB_VA)
+        rom.expect_bytes(MASK_ITEM_NAME_ROM, EXPECTED_MASK_ITEM_NAME)
 
         rom.write_bytes(RELOCATED_MAPPER_ROM, RELOCATED_MAPPER)
         rom.write_u32(SELECTION_LOAD_ROM, jal(RELOCATED_MAPPER_VA))
@@ -543,12 +547,13 @@ class FourBoxInventoryPatch:
         # consumes it when USE returns 1. Redirect only Glass to the game's
         # existing return-0 stub so the masked item cannot disappear.
         rom.write_u32(GLASS_USE_ENTRY_ROM, INERT_USE_STUB_VA)
+        rom.write_bytes(MASK_ITEM_NAME_ROM, MASK_ITEM_NAME)
 
         return (
             "4 native boxes x 10 slots; backing boxes remain authoritative",
             "Block + Use + Right/Left cycles using remapped actions",
             "switching is rejected while the inventory menu is open",
-            "Glass (0x08) masks key items outside their originating stage",
+            "SEALED (stock Glass ID 0x08) masks key items outside their originating stage",
             "stage transitions and box loads reconstruct masked LIVE from backing state",
         )
 
