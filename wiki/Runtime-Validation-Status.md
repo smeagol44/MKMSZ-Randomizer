@@ -81,3 +81,11 @@ This page no longer owns version-by-version proof diaries.
 - Toasty audio donor identification, rejected candidates, and v01-v03 proof history: [Toasty audio research](Toasty-Audio-Research). MKMSZ host mechanics remain in [Audio system](Sounds-and-Music).
 - Toasty visual diagnostics: [Toasty visual research](Toasty-Visual-Research).
 - XP proof and Diagnostic A/B history: [XP and progression](XP-and-Progression).
+
+## Destination-wrapper all-stage proof v01 — Runtime Pending (2026-10-02)
+
+- **Implementation/CI-confirmed:** PR #129 implements the researched Wind/Water/Earth/Fire/Prison destination actions, generic Bridge/Fortress activation gates, portable Strength award separation, and Prison credential reconstruction after the stock reset. Current-main lifecycle v06 is unchanged. CI run **#1583 passed**.
+- **Static-built proof:** `MKMSZR_destination-wrappers_all-proof_v01.z64`, SHA-256 `13aafd9b2784351fc489204657038cfb23266946217756e38e7643a35720d12e`, CRC1/CRC2 `61308066 / 17F77DF8`.
+- **Allocation:** materializer helper runtime `0x801B2960..0x801B2EBF`, ROM `0x00F6B140..0x00F6B69F`; lifecycle v06 remains `0x801B0A60..0x801B0FF3`.
+- **Proof scope:** stock reward visuals isolate wrapper/state behavior; foreign-resource visual conversion is not re-tested. Prison uses proof-only backing-box mirroring after key award so the exact entry reconstruction helper can be tested without the full four-box frontend.
+- **Runtime status:** **Pending user manual validation.** No emulator was run by the assistant.
