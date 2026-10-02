@@ -69,6 +69,11 @@ SHARED_EXPANSION_ROM = 0x00F68000
 MODULE_K0 = 0x801B1000
 MODULE_K1 = 0xA01B1000
 MODULE_ROM = SHARED_EXPANSION_ROM + (MODULE_K0 - EXPANSION_POOL_START)
+# Dedicated Toasty voice stays at the Runtime-confirmed fixed production slot.
+# Do not pack it directly after the variable-size visual module: the intervening
+# high-ROM gap contains other independently owned production allocations.
+TOASTY_AUDIO_ROM = 0x00F6B5D0
+TOASTY_AUDIO_END_ROM = TOASTY_AUDIO_ROM + 0x816
 # Conservative upper bound for the audited Toasty expansion; the title is in-place.
 TOASTY_ROM_LIMIT = 0x00F90000
 
