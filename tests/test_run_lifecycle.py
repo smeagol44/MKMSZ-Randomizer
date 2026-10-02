@@ -14,8 +14,8 @@ from mkmszr.patches.run_lifecycle import (
     LIFECYCLE_MODULE_SHA256,
     LIFECYCLE_MODULE_SIZE,
     RUNTIME_CONFIRMED_V06_CONFIG,
-    configured_lifecycle_module,
     RunLifecyclePatch,
+    configured_lifecycle_module,
 )
 from mkmszr.patches.temple_special_check import (
     EXPANSION_FILE_ENTRY_ROM,
@@ -56,11 +56,16 @@ def test_runtime_confirmed_v06_blob_and_allocation_are_exact() -> None:
 
 def test_lifecycle_v06_installs_exact_runtime_confirmed_seams() -> None:
     rom = _clean_shape()
-    result = RunLifecyclePatch(lives=9, continues=5).apply(rom, PatchContext(seed="LIFECYCLE-V06"))
+    result = RunLifecyclePatch(lives=9, continues=5).apply(
+        rom, PatchContext(seed="LIFECYCLE-V06")
+    )
 
     assert rom.data[LIFECYCLE_MODULE_ROM:LIFECYCLE_MODULE_END_ROM] == LIFECYCLE_MODULE
     assert rom.read_u32(EXPANSION_FILE_ENTRY_ROM + 4) == LIFECYCLE_MODULE_END_ROM
-    assert rom.data[CONFIG_ROM : CONFIG_ROM + len(RUNTIME_CONFIRMED_V06_CONFIG)] == RUNTIME_CONFIRMED_V06_CONFIG
+    assert (
+        rom.data[CONFIG_ROM : CONFIG_ROM + len(RUNTIME_CONFIRMED_V06_CONFIG)]
+        == RUNTIME_CONFIRMED_V06_CONFIG
+    )
     assert rom.read_u32(FINAL_FULL_HP_STORE_ROM) == 0
 
     for offset, _expected, replacement, _label in HOOKS:
@@ -75,7 +80,9 @@ def test_lifecycle_v06_preserves_existing_longer_shared_file() -> None:
     existing_end = TOASTY_ROM + 0x100
     rom.write_u32(EXPANSION_FILE_ENTRY_ROM + 4, existing_end)
 
-    RunLifecyclePatch(lives=9, continues=5).apply(rom, PatchContext(seed="LIFECYCLE-V06"))
+    RunLifecyclePatch(lives=9, continues=5).apply(
+        rom, PatchContext(seed="LIFECYCLE-V06")
+    )
 
     assert rom.read_u32(EXPANSION_FILE_ENTRY_ROM + 4) == existing_end
     assert rom.data[LIFECYCLE_MODULE_ROM:LIFECYCLE_MODULE_END_ROM] == LIFECYCLE_MODULE
