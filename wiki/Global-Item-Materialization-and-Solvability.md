@@ -590,8 +590,8 @@ These findings remain part of the canonical design history because they prevent 
 
 The destination-wrapper/credential architecture is Runtime-confirmed bounded on current `main`, and PR #137 now has an Implementation/CI-confirmed 85-check generator/solver/materializer seam. The remaining gates before normal product enablement are:
 
-- **production stage-resource ROM backing:** `GlobalMaterializationPlan` deliberately requires explicit owned placements. The current Memory Map exposes no reusable `confirmed-free` interval inside the stock 16 MiB image, so PR #137 does not guess one from FF/padding;
-- **final completion policy:** fixed-point reachability is implemented, but product policy must still decide the accepted completion predicate (for example, all checks reachable versus a narrower beat-the-game requirement) and the global retry ceiling;
+- **production stage-resource ROM backing:** user-approved design keeps the clean input at 16 MiB but expands generated output to **32 MiB**. PR #137 reserves appended `[0x01000000,0x01800000)` as eight explicit 1 MiB stage-resource slots in stage order `0,1,2,3,4,5,8,9`; `[0x01800000,0x02000000)` remains unassigned. A bounded Temple stock-resource relocation proof is Pending manual runtime validation before product enablement;
+- **completion policy:** user-approved selectable modes are now implemented: **All 85 available** (default) requires all destinations reachable; **Game beatable** requires all 21 progression tokens plus the selected Power requirement while optional mundane checks may remain unreachable. The global retry ceiling remains Pending;
 - **mode-aware earned-XP solver behavior when Powers as pickups is OFF;**
 - **guarded disposable production-composition proof** once resource backing is approved;
 - **normal browser/CLI integration**, then representative full-seed runtime validation and HUD integration.
