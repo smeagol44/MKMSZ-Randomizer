@@ -205,3 +205,10 @@ See [N64–PS1 comparison](N64-PS1-Comparison) before transferring any concept b
 - [Memory and allocation map](Memory-and-Allocation-Map) — continuous ROM/RDRAM ownership and availability.
 - [Address and patch-site registry](Address-and-Patch-Site-Registry) — exact guarded edit sites, displaced/original words, and replacement effects.
 - [Address quick reference](Address-Quick-Reference) — derivative orientation-only subset.
+
+### PR #129 materializer runtime helpers (2026-10-02)
+
+| Function / range | Role | Evidence | Notes |
+|---|---|---|---|
+| `0xA01B2960` (KSEG1 entry; cached `0x801B2960`) | PR #129 shared destination-aware award dispatcher | Implementation/CI-confirmed; Runtime Pending | Decodes logical award + destination-action fields from the masked callback parameter; awards inventory / Extra Life / Mana, immediately commits Prison key credential bits when stage 4 is live, and applies only the researched Wind/Water/Earth/Fire/Prison destination action. |
+| reconstruction entry inside `0x801B2960..0x801B2EBF` | Prison post-reset credential reconstruction wrapper | Implementation/CI-confirmed; Runtime Pending | Calls stock `0x802ED538`, scans all four authoritative inventory boxes for IDs `0x1A..0x1C`, and writes acquired bits 0..2 to `0x802C0D54`. Permanent call site is ROM `0x00010E64`. |
