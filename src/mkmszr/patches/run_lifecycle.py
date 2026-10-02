@@ -25,7 +25,6 @@ from ..config import DifficultyMode
 from ..errors import PatchError
 from ..rom import RomImage
 from .base import PatchContext
-from .global_materialization import MATERIALIZER_HELPER_END_ROM
 from .temple_special_check import (
     EXPANSION_FILE_ENTRY_ROM,
     EXPANSION_FILE_ROM,
@@ -33,8 +32,9 @@ from .temple_special_check import (
     TOASTY_ROM,
 )
 
-# The runtime-confirmed v06 helper starts immediately after the current optional
-# materializer allocation and ends twelve bytes before Toasty's fixed module.
+# Runtime-confirmed v06 keeps this exact fixed allocation and blob. The global
+# materializer now lives later in the reserved expansion-pool tail, so lifecycle
+# ownership no longer depends on materializer adjacency.
 LIFECYCLE_MODULE_ROM = 0x00F69240
 LIFECYCLE_MODULE_K0 = 0x801B0A60
 LIFECYCLE_MODULE_K1 = 0xA01B0A60
@@ -43,8 +43,6 @@ LIFECYCLE_MODULE_END_ROM = LIFECYCLE_MODULE_ROM + LIFECYCLE_MODULE_SIZE
 LIFECYCLE_MODULE_END_K0 = LIFECYCLE_MODULE_K0 + LIFECYCLE_MODULE_SIZE
 LIFECYCLE_MODULE_SHA256 = "b84e94b2c3f2dfbeb75ffd450523035e690545940ac515a205b9ccbd10e670e4"
 
-if MATERIALIZER_HELPER_END_ROM != LIFECYCLE_MODULE_ROM:
-    raise AssertionError("lifecycle v06 no longer starts after materializer helper")
 if LIFECYCLE_MODULE_END_ROM != 0x00F697D4:
     raise AssertionError("lifecycle v06 module size/layout drifted")
 if LIFECYCLE_MODULE_END_ROM >= TOASTY_ROM:
