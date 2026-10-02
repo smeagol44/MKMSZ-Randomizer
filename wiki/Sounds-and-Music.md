@@ -133,12 +133,31 @@ Approved **Audio 1** pool:
 - Shao Kahn “Superb” (`TS_SK_SUBERB`)
 - Shao Kahn “Well Done” (`TS_SK_WELL_DONE`)
 - Liu Kang bicycle-kick vocal (`ST_LK_BIKE`)
+- Mortal Kombat Warehouse audition IDs `mk3-04070`, `mk3-04270`, `mk3-05205`, `mk3-05220`, `mk3-21135`, `mk3-21140`, `mk3-02205`, and `mk3-07015`
 
 Approved **Audio 2** pool:
 
 - Raiden torpedo BBB / SSS / TTT (`ST_RD_BBB`, `ST_RD_SSS`, `ST_RD_TTT`)
 - robot run (`GS_RUN_ROBO`)
 - Shao Kahn laugh
+- Mortal Kombat Warehouse audition IDs `mk3-04025`, `mk3-04075`, and `mk3-02200`
+
+The Warehouse IDs above are **Implementation/static-confirmed mappings** against the exact MKT N64 USA Rev. 2 donor; they are not separate runtime assets. Their donor event/patch/subpatch/wave records and encoded samples are SHA-guarded exactly like the original pool entries. The largest newly admitted sample is `mk3-04075` at `0x197E` bytes, below the existing production reservation capacity `0x1A20`.
+
+Requested Warehouse IDs not yet promoted to the production pool:
+
+| Warehouse ID | Requested slot | Current result |
+|---|---:|---|
+| `mk3-03200` | Audio 1 | MKT waveform identity resolves through events 22/23, but the encoded sample is `0x1D64` bytes and exceeds the Runtime-confirmed `0x1A20` reservation. Pending a separately validated allocation change. |
+| `mk3-09455` | Audio 1 | Strong MKT match to `ST_SK_PATHETIC` / event 348 / wave 340, but the encoded sample is `0x1ADC` bytes and exceeds the current reservation. Pending a separately validated allocation change. |
+| `mk3-09345` | Audio 1 | Warehouse “shows mercy” maps strongly to surviving MKT patch 234 / subpatch 257 / wave 244 (`0x107E` bytes), but MKT has no live event track for this route. Pending a bounded proof for an eventless donor sample. |
+| `mk3-03065` | Audio 1 | MKT take remains ambiguous after whole-bank comparison; do not substitute a nearest waveform. |
+| `mk3-06025` | Audio 1 | MKT take remains ambiguous after whole-bank comparison; do not substitute a nearest waveform. |
+| `mk3-10000` | Audio 1 | MKT take remains ambiguous; no production profile promoted. |
+| `mk3-03210` | Audio 1 | MKT take remains ambiguous; no production profile promoted. |
+| `mk3-09445` | Audio 1 | Shao Kahn candidate remains ambiguous; no production profile promoted. |
+| `mk3-09450` | Audio 1 | Shao Kahn candidate remains ambiguous; no production profile promoted. |
+| `mk3-02230` | Audio 1 | Female-voice candidate remains ambiguous; no production profile promoted. |
 
 Only the selected encoded sample is materialized into the output ROM; the complete pool is never copied into one build.
 
