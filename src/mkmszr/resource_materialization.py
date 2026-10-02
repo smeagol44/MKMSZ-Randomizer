@@ -680,6 +680,43 @@ def plan_stage_resources(
     )
 
 
+def bind_materialized_visual_to_stock_selector(
+    plan: StageResourcePlan,
+    key: str,
+    selector: int,
+) -> StageResourcePlan:
+    """Bind one appended visual descriptor to an existing empty stock selector.
+
+    This is used by the scripted Temple special check, whose actor path uses a
+    small signed immediate rather than the ordinary pickup manager selector
+    lookup. The caller must choose a statically established empty stock slot.
+    """
+
+    if selector < 0:
+        raise PatchError("stock selector must be non-negative")
+    entry_offset = selector * 4
+    if entry_offset + 4 > plan.stock_size:
+        raise PatchError(
+            f"stage {plan.stage_id}: stock selector {selector} is out of range"
+        )
+
+    visual = next((item for item in plan.visuals if item.key == key), None)
+    if visual is None:
+        raise PatchError(f"{key}: visual is not present in stage resource plan")
+
+    output = bytearray(plan.resource_file)
+    if _be32(output, entry_offset) != 0:
+        raise PatchError(
+            f"stage {plan.stage_id}: stock selector {selector} is not empty"
+        )
+    _write_be32(output, entry_offset, visual.descriptor_offset)
+    return StageResourcePlan(
+        stage_id=plan.stage_id,
+        stock_size=plan.stock_size,
+        resource_file=bytes(output),
+        visuals=plan.visuals,
+    )
+
 def apply_stage_resource_plan(
     rom: bytearray,
     plan: StageResourcePlan,
