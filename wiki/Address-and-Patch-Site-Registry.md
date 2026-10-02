@@ -211,15 +211,17 @@ The Runtime-confirmed compact-tail v01 architecture edits all 15 stock Sub-Zero 
 
 | Address | Ownership / edit | Evidence / guard |
 |---|---|---|
-| ROM `0x000CB274` / VA `0x802EDB94` | Temple Audio-1 stock descriptor-A immediate | Stock `24040041`; changed to `li a0,0x20A` only when seed selects Audio 1 |
-| ROM `0x000CB280` / VA `0x802EDBA0` | Temple Audio-1 stock descriptor-B immediate | Stock `24040042`; changed to `li a0,0x20A` only when seed selects Audio 1 |
-| ROM `0x000CB2F8` / VA `0x802EDC18` | Temple Audio-2 stock laugh descriptor immediate | Stock `24040043`; changed to `li a0,0x20A` only when seed selects Audio 2 |
-| ROM `0x000A3794` | Production donor-audio carrier descriptor `0x20A -> event 0x1A6` | Stock bytes `01A6007F000000000000`; descriptor itself remains unchanged. v06 Runtime-confirms the carrier on seed `TEMPLE-PROD-CARRIER` / Audio 1 / Friendship. |
-| ROM `0x0097C7D8` | Carrier event-`0x1A6` 32-byte track | Guarded stock track; donor timing/control track is copied here with initial patch ID rebased to patch 579 |
-| ROM `0x009485C4` | Carrier patch 579 | Stock `010001A6`; retained, uniquely owns subpatch 422 |
-| ROM `0x0094A860` | Carrier subpatch 422 | Guarded; selected donor subpatch copied with waveform ID rebased to 412 |
-| ROM `0x0094E7D8` | Carrier waveform 412 | Guarded; selected donor waveform copied with TBL-relative sample pointer rebased to production Temple sample storage |
-| ROM `0x0096AD70..0x0096AE77` | Carrier predictor 412 | Guarded by stock SHA-256; replaced by selected donor predictor |
+| ROM `0x000CB274` / VA `0x802EDB94` | Temple Audio-1 stock descriptor-A immediate | Stock `24040041`; **remains stock** in the corrected isolated architecture |
+| ROM `0x000CB280` / VA `0x802EDBA0` | Temple Audio-1 stock descriptor-B immediate | Stock `24040042`; **remains stock** in the corrected isolated architecture |
+| ROM `0x000CB2F8` / VA `0x802EDC18` | Temple Audio-2 stock laugh descriptor immediate | Stock `24040043`; **remains stock** in the corrected isolated architecture |
+| ROM `0x0097A200` | Temple event 123 / descriptor `0x41` | Replaced with selected donor 32-byte one-shot event rebased to patch 486 only when Audio 1 is selected |
+| ROM `0x0097A220` | Temple event 124 / descriptor `0x42` | Same Audio-1 replacement as event 123 so stock alternation still resolves to the same selected donor clip |
+| ROM `0x0097A240` | Temple event 125 / descriptor `0x43` | Replaced with selected donor 32-byte one-shot event rebased to patch 486 only when Audio 2 is selected |
+| ROM `0x00948450` | Isolated host patch 486 | Stock `01000149`; event 329 is its only initial-patch user and no stock in-stream program change selects 486 |
+| ROM `0x0094A11C` | Isolated host subpatch 329 | Guarded; uniquely owned by patch 486; donor subpatch copied with waveform ID rebased to 319 |
+| ROM `0x0094DF20` | Isolated host waveform 319 | Guarded; uniquely owned by subpatch 329; donor waveform copied with sample pointer rebased to Temple sample storage |
+| ROM `0x00964D88..0x00964E8F` | Isolated host predictor 319 | Guarded by stock SHA-256; replaced by selected donor predictor |
+| ROM `0x000A3794`, `0x0097C7D8`, `0x009485C4`, `0x0094A860`, `0x0094E7D8` | Superseded `0x20A -> 0x1A6 -> 579 -> 422 -> 412` carrier | **Rejected / leave stock.** Runtime showed unrelated Bridge/Prison robot/miniboss audio reaches this route; regression tests require these bytes to remain unchanged. |
 | ROM `0x00F6BDF0..0x00F6D80F` | Conditional selected Temple donor sample | Production-owned only when valid MKT donor is supplied; clean region must be `FF` and stock file-table overlap is rejected |
 
 The earlier proof carrier descriptor `0x220` / event `0x1B8` is **not a production edit site**. Whole-ROM audit found live stock callers for descriptor `0x220`; it remains proof history only.
