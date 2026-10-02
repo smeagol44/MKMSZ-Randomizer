@@ -8,21 +8,33 @@ from mkmszr.patches.base import PatchContext
 from mkmszr.patches.temple_intro_audio import (
     AUDIO1_POOL,
     AUDIO2_POOL,
-    CARRIER_DESC_ROM,
-    CARRIER_EVENT_TRACK_ROM,
-    CARRIER_PATCH_ROM,
-    CARRIER_PRED_ROM,
-    CARRIER_SUBPATCH_ROM,
-    CARRIER_WAVE_ROM,
     EXPECTED_AUDIO2,
-    EXPECTED_CARRIER_DESC,
-    EXPECTED_CARRIER_EVENT_TRACK,
-    EXPECTED_CARRIER_PATCH,
-    EXPECTED_CARRIER_SUBPATCH,
-    EXPECTED_CARRIER_WAVE,
+    EXPECTED_ISOLATED_PATCH,
+    EXPECTED_ISOLATED_SUBPATCH,
+    EXPECTED_ISOLATED_WAVE,
+    EXPECTED_LEGACY_CARRIER_DESC,
+    EXPECTED_LEGACY_CARRIER_EVENT_TRACK,
+    EXPECTED_LEGACY_CARRIER_PATCH,
+    EXPECTED_LEGACY_CARRIER_SUBPATCH,
+    EXPECTED_LEGACY_CARRIER_WAVE,
     EXPECTED_LINE_A,
     EXPECTED_LINE_B,
+    EXPECTED_TEMPLE_EVENT_A,
+    EXPECTED_TEMPLE_EVENT_AUDIO2,
+    EXPECTED_TEMPLE_EVENT_B,
+    ISOLATED_PATCH_ROM,
+    ISOLATED_PRED_ROM,
+    ISOLATED_SUBPATCH_ROM,
+    ISOLATED_WAVE_ROM,
+    LEGACY_CARRIER_DESC_ROM,
+    LEGACY_CARRIER_EVENT_TRACK_ROM,
+    LEGACY_CARRIER_PATCH_ROM,
+    LEGACY_CARRIER_SUBPATCH_ROM,
+    LEGACY_CARRIER_WAVE_ROM,
     TEMPLE_AUDIO2_IMM_ROM,
+    TEMPLE_EVENT_A_ROM,
+    TEMPLE_EVENT_AUDIO2_ROM,
+    TEMPLE_EVENT_B_ROM,
     TEMPLE_LINE_A_IMM_ROM,
     TEMPLE_LINE_B_IMM_ROM,
     TEMPLE_SAMPLE_LIMIT,
@@ -73,22 +85,70 @@ def _fake_rom(monkeypatch: pytest.MonkeyPatch) -> RomImage:
     data[TEMPLE_LINE_A_IMM_ROM:TEMPLE_LINE_A_IMM_ROM + 4] = EXPECTED_LINE_A
     data[TEMPLE_LINE_B_IMM_ROM:TEMPLE_LINE_B_IMM_ROM + 4] = EXPECTED_LINE_B
     data[TEMPLE_AUDIO2_IMM_ROM:TEMPLE_AUDIO2_IMM_ROM + 4] = EXPECTED_AUDIO2
-    data[CARRIER_DESC_ROM:CARRIER_DESC_ROM + len(EXPECTED_CARRIER_DESC)] = EXPECTED_CARRIER_DESC
+    data[TEMPLE_EVENT_A_ROM:TEMPLE_EVENT_A_ROM + 32] = EXPECTED_TEMPLE_EVENT_A
+    data[TEMPLE_EVENT_B_ROM:TEMPLE_EVENT_B_ROM + 32] = EXPECTED_TEMPLE_EVENT_B
+    data[TEMPLE_EVENT_AUDIO2_ROM:TEMPLE_EVENT_AUDIO2_ROM + 32] = EXPECTED_TEMPLE_EVENT_AUDIO2
+    data[ISOLATED_PATCH_ROM:ISOLATED_PATCH_ROM + 4] = EXPECTED_ISOLATED_PATCH
+    data[ISOLATED_SUBPATCH_ROM:ISOLATED_SUBPATCH_ROM + 20] = EXPECTED_ISOLATED_SUBPATCH
+    data[ISOLATED_WAVE_ROM:ISOLATED_WAVE_ROM + 24] = EXPECTED_ISOLATED_WAVE
+    data[ISOLATED_PRED_ROM:ISOLATED_PRED_ROM + 264] = bytes(264)
     data[
-        CARRIER_EVENT_TRACK_ROM:CARRIER_EVENT_TRACK_ROM + len(EXPECTED_CARRIER_EVENT_TRACK)
-    ] = EXPECTED_CARRIER_EVENT_TRACK
-    data[CARRIER_PATCH_ROM:CARRIER_PATCH_ROM + 4] = EXPECTED_CARRIER_PATCH
-    data[CARRIER_SUBPATCH_ROM:CARRIER_SUBPATCH_ROM + 20] = EXPECTED_CARRIER_SUBPATCH
-    data[CARRIER_WAVE_ROM:CARRIER_WAVE_ROM + 24] = EXPECTED_CARRIER_WAVE
-    data[CARRIER_PRED_ROM:CARRIER_PRED_ROM + 264] = bytes(264)
+        LEGACY_CARRIER_DESC_ROM:
+        LEGACY_CARRIER_DESC_ROM + len(EXPECTED_LEGACY_CARRIER_DESC)
+    ] = EXPECTED_LEGACY_CARRIER_DESC
+    data[
+        LEGACY_CARRIER_EVENT_TRACK_ROM:
+        LEGACY_CARRIER_EVENT_TRACK_ROM + len(EXPECTED_LEGACY_CARRIER_EVENT_TRACK)
+    ] = EXPECTED_LEGACY_CARRIER_EVENT_TRACK
+    data[LEGACY_CARRIER_PATCH_ROM:LEGACY_CARRIER_PATCH_ROM + 4] = EXPECTED_LEGACY_CARRIER_PATCH
+    data[
+        LEGACY_CARRIER_SUBPATCH_ROM:
+        LEGACY_CARRIER_SUBPATCH_ROM + 20
+    ] = EXPECTED_LEGACY_CARRIER_SUBPATCH
+    data[LEGACY_CARRIER_WAVE_ROM:LEGACY_CARRIER_WAVE_ROM + 24] = EXPECTED_LEGACY_CARRIER_WAVE
     data[TEMPLE_SAMPLE_ROM:TEMPLE_SAMPLE_LIMIT] = b"\xFF" * (
         TEMPLE_SAMPLE_LIMIT - TEMPLE_SAMPLE_ROM
     )
     monkeypatch.setattr(
-        "mkmszr.patches.temple_intro_audio.EXPECTED_CARRIER_PRED_SHA256",
+        "mkmszr.patches.temple_intro_audio.EXPECTED_ISOLATED_PRED_SHA256",
         hashlib.sha256(bytes(264)).hexdigest(),
     )
     return RomImage(data=data, _original=bytes(data))
+
+
+
+
+def _assert_legacy_carrier_stock(rom: RomImage) -> None:
+    assert (
+        bytes(
+            rom.data[
+                LEGACY_CARRIER_DESC_ROM:
+                LEGACY_CARRIER_DESC_ROM + len(EXPECTED_LEGACY_CARRIER_DESC)
+            ]
+        )
+        == EXPECTED_LEGACY_CARRIER_DESC
+    )
+    assert (
+        bytes(
+            rom.data[
+                LEGACY_CARRIER_EVENT_TRACK_ROM:
+                LEGACY_CARRIER_EVENT_TRACK_ROM + len(EXPECTED_LEGACY_CARRIER_EVENT_TRACK)
+            ]
+        )
+        == EXPECTED_LEGACY_CARRIER_EVENT_TRACK
+    )
+    assert (
+        bytes(rom.data[LEGACY_CARRIER_PATCH_ROM:LEGACY_CARRIER_PATCH_ROM + 4])
+        == EXPECTED_LEGACY_CARRIER_PATCH
+    )
+    assert (
+        bytes(rom.data[LEGACY_CARRIER_SUBPATCH_ROM:LEGACY_CARRIER_SUBPATCH_ROM + 20])
+        == EXPECTED_LEGACY_CARRIER_SUBPATCH
+    )
+    assert (
+        bytes(rom.data[LEGACY_CARRIER_WAVE_ROM:LEGACY_CARRIER_WAVE_ROM + 24])
+        == EXPECTED_LEGACY_CARRIER_WAVE
+    )
 
 
 def test_pools_match_approved_product_contract() -> None:
@@ -139,21 +199,35 @@ def test_audio1_seed_replaces_both_line_branches_and_preserves_audio2(
     rom = _fake_rom(monkeypatch)
     TempleIntroAudioPatch(_fake_assets()).apply(rom, PatchContext(seed=seed))
 
-    carrier = bytes.fromhex("2404020a")
-    assert bytes(rom.data[TEMPLE_LINE_A_IMM_ROM:TEMPLE_LINE_A_IMM_ROM + 4]) == carrier
-    assert bytes(rom.data[TEMPLE_LINE_B_IMM_ROM:TEMPLE_LINE_B_IMM_ROM + 4]) == carrier
+    expected_event = bytearray(_fake_assets().clip(select_temple_intro_audio(seed)[1]).event_track)
+    expected_event[0:4] = (486).to_bytes(4, "big")
+    assert bytes(rom.data[TEMPLE_LINE_A_IMM_ROM:TEMPLE_LINE_A_IMM_ROM + 4]) == EXPECTED_LINE_A
+    assert bytes(rom.data[TEMPLE_LINE_B_IMM_ROM:TEMPLE_LINE_B_IMM_ROM + 4]) == EXPECTED_LINE_B
     assert bytes(rom.data[TEMPLE_AUDIO2_IMM_ROM:TEMPLE_AUDIO2_IMM_ROM + 4]) == EXPECTED_AUDIO2
+    assert bytes(rom.data[TEMPLE_EVENT_A_ROM:TEMPLE_EVENT_A_ROM + 32]) == bytes(expected_event)
+    assert bytes(rom.data[TEMPLE_EVENT_B_ROM:TEMPLE_EVENT_B_ROM + 32]) == bytes(expected_event)
+    assert (
+        bytes(rom.data[TEMPLE_EVENT_AUDIO2_ROM:TEMPLE_EVENT_AUDIO2_ROM + 32])
+        == EXPECTED_TEMPLE_EVENT_AUDIO2
+    )
+    _assert_legacy_carrier_stock(rom)
 
 
-def test_audio2_seed_preserves_stock_line_alternation_and_replaces_laugh(
+def test_audio2_seed_preserves_stock_line_alternation_and_replaces_laugh_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     seed = _seed_for_slot(2)
     rom = _fake_rom(monkeypatch)
     TempleIntroAudioPatch(_fake_assets()).apply(rom, PatchContext(seed=seed))
 
+    expected_event = bytearray(_fake_assets().clip(select_temple_intro_audio(seed)[1]).event_track)
+    expected_event[0:4] = (486).to_bytes(4, "big")
     assert bytes(rom.data[TEMPLE_LINE_A_IMM_ROM:TEMPLE_LINE_A_IMM_ROM + 4]) == EXPECTED_LINE_A
     assert bytes(rom.data[TEMPLE_LINE_B_IMM_ROM:TEMPLE_LINE_B_IMM_ROM + 4]) == EXPECTED_LINE_B
-    assert bytes(rom.data[TEMPLE_AUDIO2_IMM_ROM:TEMPLE_AUDIO2_IMM_ROM + 4]) == bytes.fromhex(
-        "2404020a"
+    assert bytes(rom.data[TEMPLE_AUDIO2_IMM_ROM:TEMPLE_AUDIO2_IMM_ROM + 4]) == EXPECTED_AUDIO2
+    assert bytes(rom.data[TEMPLE_EVENT_A_ROM:TEMPLE_EVENT_A_ROM + 32]) == EXPECTED_TEMPLE_EVENT_A
+    assert bytes(rom.data[TEMPLE_EVENT_B_ROM:TEMPLE_EVENT_B_ROM + 32]) == EXPECTED_TEMPLE_EVENT_B
+    assert bytes(rom.data[TEMPLE_EVENT_AUDIO2_ROM:TEMPLE_EVENT_AUDIO2_ROM + 32]) == bytes(
+        expected_event
     )
+    _assert_legacy_carrier_stock(rom)
