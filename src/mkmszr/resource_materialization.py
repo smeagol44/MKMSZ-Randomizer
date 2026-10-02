@@ -173,15 +173,18 @@ class StageResourcePlacement:
 
 @dataclass(frozen=True)
 class GlobalMaterializationPlan:
-    """Explicit assignments plus guarded ROM ownership supplied by the caller.
+    """Explicit 85-check assignments plus guarded ROM ownership.
 
-    The materializer deliberately does not discover "free" high-ROM space from
-    FF/padding bytes. The future global generator/allocator must supply concrete
-    non-overlapping placements whose ownership has already been established.
+    Ordinary destinations are represented in ``assignments``. The scripted
+    Temple Map location remains outside the 84 ordinary records and receives its
+    logical reward through ``temple_special_item_key``. The materializer never
+    discovers "free" ROM space; callers still supply explicit owned stage
+    resource placements.
     """
 
     assignments: tuple[MaterializationAssignment, ...]
     placements: tuple[StageResourcePlacement, ...]
+    temple_special_item_key: str | None = None
 
     def placement_for(self, stage_id: int) -> StageResourcePlacement:
         matches = [item for item in self.placements if item.stage_id == stage_id]
@@ -795,6 +798,7 @@ def portable_materialized_identity(
     power_upgrade_callback: int | None = None,
     activation_gate: bool = False,
     destination_action: int = DEST_NONE,
+    force_shared_award: bool = False,
 ) -> bytes:
     """Build a destination-safe identity for one supported logical reward.
 
@@ -838,7 +842,8 @@ def portable_materialized_identity(
                 f"{key}: canonical donor decodes as unexpected logical item {logical.key!r}"
             )
         use_shared_award = (
-            destination_action != DEST_NONE
+            force_shared_award
+            or destination_action != DEST_NONE
             or logical.native_callback is None
             or key == "strength-urn"
         )
