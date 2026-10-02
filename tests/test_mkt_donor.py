@@ -14,6 +14,7 @@ from mkmszr.donors.mkt_n64 import (
     validate_mkt_n64_rev2,
 )
 from mkmszr.errors import RomValidationError
+from mkmszr.patches.temple_intro_audio import TEMPLE_SAMPLE_LIMIT, TEMPLE_SAMPLE_ROM
 
 
 def test_mkt_rev2_identity_constants_are_exact() -> None:
@@ -97,3 +98,7 @@ def test_temple_audio_donor_profiles_match_approved_pools() -> None:
         "mk3-04075",
         "mk3-02200",
     )
+
+def test_temple_audio_profiles_fit_production_sample_reservation() -> None:
+    capacity = TEMPLE_SAMPLE_LIMIT - TEMPLE_SAMPLE_ROM
+    assert max(profile[8] for profile in TEMPLE_AUDIO_PROFILES.values()) <= capacity
