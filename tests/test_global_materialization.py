@@ -14,6 +14,8 @@ from mkmszr.patches.global_materialization import (
     GlobalItemMaterializationPatch,
 )
 from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
+from mkmszr.patches.progression_presentation import ProgressionPickupPresentationPatch
+from mkmszr.patches.xp_progression import XPProgressionPatch
 from mkmszr.resource_materialization import (
     DEST_EARTH_SQUARE,
     DEST_FIRE_TRIANGLE_DOWN,
@@ -161,11 +163,34 @@ def test_explicit_materialization_replaces_stage_local_patch_in_pipeline() -> No
     assert types.index(ControlsProductionPatch) < types.index(GlobalItemMaterializationPatch)
 
 
-def test_materialization_rejects_current_pickup_xp_overlay() -> None:
-    plan = _plan(MaterializationAssignment(5, 0, "wind-circle"))
-    try:
-        build_pipeline(RandomizerConfig(seed="GLOBAL-PROOF"), materialization_plan=plan)
-    except ValueError as exc:
-        assert "pickup-XP overlay" in str(exc)
-    else:
-        raise AssertionError("global materialization must not silently compose with stage-local XP placement")
+def test_materialization_composes_with_global_power_upgrade_runtime() -> None:
+    plan = _plan(MaterializationAssignment(5, 0, "power-upgrade"))
+    pipeline = build_pipeline(
+        RandomizerConfig(seed="GLOBAL-PROOF"),
+        materialization_plan=plan,
+    )
+
+    xp = next(patch for patch in pipeline.patches if isinstance(patch, XPProgressionPatch))
+    presentation = next(
+        patch
+        for patch in pipeline.patches
+        if isinstance(patch, ProgressionPickupPresentationPatch)
+    )
+    assert xp.global_mode
+    assert presentation.global_mode
+    assert any(isinstance(patch, GlobalItemMaterializationPatch) for patch in pipeline.patches)
+
+
+
+def test_power_upgrade_uses_herbs_visual_blue_presentation_and_shared_dispatcher() -> None:
+    identity = portable_materialized_identity(
+        "power-upgrade",
+        0x123C,
+        generic_inventory_callback=0xA01B2960,
+        power_upgrade_callback=0xA01B2160,
+        destination_action=DEST_FIRE_TRIANGLE_DOWN,
+    )
+    assert int.from_bytes(identity[0x04:0x08], "big") == 0x6C00
+    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B2960
+    assert int.from_bytes(identity[0x14:0x18], "big") == 0x123C
+    assert int.from_bytes(identity[0x18:0x1C], "big") == 0x800B1E68
