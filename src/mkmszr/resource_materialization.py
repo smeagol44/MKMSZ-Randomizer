@@ -90,6 +90,8 @@ CANONICAL_VISUAL_DONORS: dict[str, VisualDonorSpec] = {
     "crystal-jataaka": VisualDonorSpec(9, 1, 8),
     "crystal-kia": VisualDonorSpec(9, 0, 8),
     "crystal-sareena": VisualDonorSpec(9, 2, 8),
+    # Power Upgrade intentionally reuses the accepted Herbs model/resource.
+    "power-upgrade": VisualDonorSpec(2, 3, 8),
 }
 
 
@@ -754,6 +756,7 @@ CALLBACK_AWARD_MASK = 0x03
 AWARD_INVENTORY = 0
 AWARD_EXTRA_LIFE = 1
 AWARD_MANA = 2
+AWARD_POWER_UPGRADE = 3
 
 DEST_NONE = 0
 DEST_WIND_CIRCLE = 1
@@ -789,6 +792,7 @@ def portable_materialized_identity(
     selector: int,
     *,
     generic_inventory_callback: int,
+    power_upgrade_callback: int | None = None,
     activation_gate: bool = False,
     destination_action: int = DEST_NONE,
 ) -> bytes:
@@ -815,40 +819,51 @@ def portable_materialized_identity(
     stage = _stage_pickups(donor.stage_id)
     pickup = stage.records[donor.record_index]
     logical = logical_item_from_record(donor.stage_id, donor.record_index, pickup)
-    if logical.key != key:
-        raise PatchError(
-            f"{key}: canonical donor decodes as unexpected logical item {logical.key!r}"
-        )
 
     identity = bytearray(pickup.identity)
     identity[0x14:0x18] = selector.to_bytes(4, "big")
 
-    use_shared_award = (
-        destination_action != DEST_NONE
-        or logical.native_callback is None
-        or key == "strength-urn"
-    )
-    if use_shared_award:
-        if logical.award_kind == "inventory":
-            if logical.native_callback is None and key not in PORTABLE_INVENTORY_TOKENS:
-                raise PatchError(
-                    f"{key}: destination-safe logical award semantics are not established"
-                )
-            if logical.inventory_id is None:
-                raise PatchError(f"{key}: portable inventory reward has no inventory ID")
-            award_kind = AWARD_INVENTORY
-            payload = logical.inventory_id
-        elif key == "extra-life":
-            award_kind = AWARD_EXTRA_LIFE
-            payload = 0
-        elif key == "mana":
-            award_kind = AWARD_MANA
-            payload = 0
-        else:
+    if key == "power-upgrade":
+        if power_upgrade_callback is None:
+            raise PatchError("power-upgrade requires the shared progression callback")
+        # Keep the accepted Herbs model/collision shell but use the stock-resident
+        # Ice Blue presentation and the shared destination-aware dispatcher.
+        identity[0x18:0x1C] = (0x800B1E68).to_bytes(4, "big")
+        award_kind = AWARD_POWER_UPGRADE
+        payload = 0
+        use_shared_award = True
+    else:
+        if logical.key != key:
             raise PatchError(
-                f"{key}: native-effect reward cannot compose with destination wrapper"
+                f"{key}: canonical donor decodes as unexpected logical item {logical.key!r}"
             )
+        use_shared_award = (
+            destination_action != DEST_NONE
+            or logical.native_callback is None
+            or key == "strength-urn"
+        )
+        if use_shared_award:
+            if logical.award_kind == "inventory":
+                if logical.native_callback is None and key not in PORTABLE_INVENTORY_TOKENS:
+                    raise PatchError(
+                        f"{key}: destination-safe logical award semantics are not established"
+                    )
+                if logical.inventory_id is None:
+                    raise PatchError(f"{key}: portable inventory reward has no inventory ID")
+                award_kind = AWARD_INVENTORY
+                payload = logical.inventory_id
+            elif key == "extra-life":
+                award_kind = AWARD_EXTRA_LIFE
+                payload = 0
+            elif key == "mana":
+                award_kind = AWARD_MANA
+                payload = 0
+            else:
+                raise PatchError(
+                    f"{key}: native-effect reward cannot compose with destination wrapper"
+                )
 
+    if use_shared_award:
         parameter = (
             (payload & CALLBACK_ITEM_MASK)
             | ((destination_action & CALLBACK_ACTION_MASK) << CALLBACK_ACTION_SHIFT)
