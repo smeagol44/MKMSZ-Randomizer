@@ -51,7 +51,7 @@ These results are important feasibility evidence but are **not** normal browser/
 
 | Blocker | Current state |
 |---|---|
-| Production-safe global cross-stage item materialization | **Integration candidate runtime/CI green; merge pending.** Reward-vs-location ownership, immediate foreign-key masking, Fortress ordinary stress, Kia boss-trigger/reward separation, shared file-`0x1A` transport, and the post-Temple helper relocation are Runtime-confirmed on bounded routes. PR #126 implements guarded generalized emission with fail-closed unsupported semantics; v01's extra file-`0x19` stage-init transport remains Rejected. Normal seeded product generation remains stage-local until the global generator/solver is implemented. |
+| Production-safe global cross-stage item materialization | **Destination ownership closed; wrapper composition Runtime-confirmed bounded on PR #129.** PR #129 composes logical awards with researched Wind/Water/Earth/Fire/Prison destination actions, generic Bridge/Fortress activation gates, portable Strength semantics, immediate foreign-key re-mask, and Prison credential reconstruction after the stock reset. Current-main lifecycle v06 remains unchanged; the materializer occupies `0x801B2960..0x801B2EBF`. CI #1583 is green. First-item-swap v04 was manually validated successfully, directly confirming the exercised key-without-checkpoint / checkpoint-without-key / non-downgrade split. Global seeded generation/solver integration remains next. |
 | Deterministic global shuffle and retry model | **Pending.** Replace the interim eight stage-local pools with one deterministic global logical run and explicit deterministic retry attempts |
 | Whole-run solvability validation | **Pending.** Finalize current access rules and a completion predicate for both pickup and earned-XP modes using Vanilla / Custom / Seed required-power settings |
 | Native randomizer HUD | **Partial.** Native text and box state are proven; checks/progression/key/pickup run-state display is still required |
@@ -60,18 +60,12 @@ These results are important feasibility evidence but are **not** normal browser/
 
 ## Current priority order
 
-Current user direction is to close the remaining **materialization safety gates before starting the global shuffle/solver implementation**:
+Current user direction is to finish the **materializer safety gate before global shuffle/solver integration**:
 
-1. **Pause Water/Earth two-NOP checkpoint proofs.** Reconcile Wind v01 and choose/prove the corrected checkpoint architecture: preferably separate logical reward identity from destination physical-location/stage-state effects; alternatively prove a coherent full-stage restart-on-death policy. Do not globally freeze `0x802C18F8` or repeat the Wind selector suppression model. Bridge and stock Fortress crystal awards need no equivalent checkpoint patch.
-2. **Foreign-key masking gate is green on the bounded Fire -> Wind Circle v02 route.** Immediate acquisition now commits LIVE to authoritative backing and reconstructs stage-masked LIVE in the same pickup lifecycle; native-stage reveal/use and re-masking are Runtime-confirmed. Carry this contract into guarded production integration rather than repeating the proof.
-3. **Materializer shared-pipeline integration is Runtime-confirmed + Implementation/CI-confirmed in PR #126.** v03 validates the post-Temple helper relocation at `0x801B0970` in the requested co-resident composition. Preserve the fail-closed destination/source semantics and do not reuse rejected v01 file-`0x19` stage-init transport. PR #126 is ready for explicit merge approval.
-4. Once PR #126 is merged, replace the interim stage-local generation with the deterministic global shuffle plus whole-run solver, explicit deterministic retries, the selected Vanilla / Custom / Seed required-power setting and its pickup/earned-XP source, and the approved optional deterministic constrained nine-slot power-order shuffle.
-5. Build the native randomizer HUD around the finalized global-run state.
-6. Temple-specific mechanism is closed. When the global generator is integrated, feed its assigned logical reward/materializer result into the already-separated special-check seam; do not reopen Temple progression/persistence architecture. Then close HP/lives/continues lifecycle, Game Over/new-run reset, and the Very Hard invariant.
-7. Run the final representative full-seed 1.0 validation.
-8. Post-1.0: ordinary-enemy randomization/resource compatibility, imported-enemy death/despawn work, and donor-move/Sektor expansion.
-
-This order follows the current user direction and the materializer dependency chain; it does not promote proof-only TEST LAB allocations or presentation compromises into production behavior.
+1. **Promote the Runtime-confirmed destination-wrapper / Prison-reconstruction composition from PR #129 while preserving lifecycle-v06 allocation and fail-closed guards.**
+2. Replace the interim stage-local generation with the deterministic global shuffle + whole-run solver, explicit deterministic retries, and the approved Vanilla / Custom / Seed required-power behavior.
+3. Build the native randomizer HUD around finalized global-run state.
+4. Run the representative full-seed 1.0 gate across global items, solver, HUD, progression, and lifecycle.
 
 ## Current evidence notes
 
@@ -98,3 +92,5 @@ This order follows the current user direction and the materializer dependency ch
 - PS1 addresses and platform behavior do not transfer to N64 without demonstrated compatibility.
 - Disposable proof ROM patches, proof caves, and archive handoffs are not silently part of the production pipeline.
 - Runtime confirmation is always limited to the documented route; CI/static success does not imply exhaustive gameplay validation.
+
+- **First-item-swap v04 validation correction (2026-10-02):** v03's coordinate clustering is superseded. v04 returns to v02's exact wrapper/Safe-Stage-Select base and swaps logical/visual identities only: Wind first Herbs <-> Circle, Water first Mana <-> Triangle, Earth first Formula <-> Square, Fire starting Potion <-> Triangle Up, and Prison first Herbs <-> L1 key. Each moved key therefore awards from a non-checkpoint destination, while its original physical key location now holds the mundane first-stage reward but retains the researched destination wrapper. This directly tests key-without-checkpoint, checkpoint-without-key, and late revisit/non-downgrade behavior. Runtime status remains Pending.

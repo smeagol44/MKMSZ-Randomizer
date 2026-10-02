@@ -1,7 +1,10 @@
 import hashlib
 
 from mkmszr.patches.base import PatchContext
-from mkmszr.patches.global_materialization import MATERIALIZER_HELPER_END_ROM
+from mkmszr.patches.global_materialization import (
+    MATERIALIZER_HELPER_END_ROM,
+    MATERIALIZER_HELPER_ROM,
+)
 from mkmszr.patches.run_lifecycle import (
     CONFIG_ROM,
     EXPECTED_CONFIG,
@@ -49,7 +52,8 @@ def test_runtime_confirmed_v06_blob_and_allocation_are_exact() -> None:
     assert len(LIFECYCLE_MODULE) == 0x594
     assert LIFECYCLE_MODULE_SIZE == 0x594
     assert hashlib.sha256(LIFECYCLE_MODULE).hexdigest() == LIFECYCLE_MODULE_SHA256
-    assert MATERIALIZER_HELPER_END_ROM == LIFECYCLE_MODULE_ROM
+    assert LIFECYCLE_MODULE_END_ROM < MATERIALIZER_HELPER_ROM
+    assert MATERIALIZER_HELPER_ROM < MATERIALIZER_HELPER_END_ROM
     assert LIFECYCLE_MODULE_END_ROM == 0x00F697D4
     assert LIFECYCLE_MODULE_END_ROM + 0x0C == TOASTY_ROM
 

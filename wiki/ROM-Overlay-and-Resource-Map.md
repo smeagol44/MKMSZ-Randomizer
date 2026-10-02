@@ -127,6 +127,8 @@ One concrete source mapping is now **Static-confirmed** for the supported N64 RO
 |---|---:|---:|---:|---|
 | Earth | `0x9C` | `[0x000D8B90,0x000E1B80)` | `0x802ECE30` | File-table entry is raw flag `0`; the mapping independently resolves the known Earth key callback `0x802F52B0` to its matching ROM body and Earth boss routine `0x802EDF50` into the same overlay. This does not infer mappings for other stages. |
 | Prison | `0x9F` | `[0x000C4C70,0x000CA510)` | `0x802ECE30` | Static-confirmed from file-table entry ROM `0xA5784` and permanent loader call `0x80065D64(0x9F,0x802ECE30)` at VA `0x800100CC` / ROM `0x10CCC`. The ordinary Prison records at `0xCA030/60/90` lie inside this raw file. This mapping rejects file `0xA2` as Prison evidence. |
+| Bridge | `0x9B` | `[0x000BAF60,0x000C0330)` | `0x802ECE30` | Static-confirmed from the clean file-table entry and normal Bridge loader. The range contains award-only callback `0x802EF178`, scene-trigger dispatcher `0x802ED888`, the Bridge ordinary records at `0xBFFD8..0xC0188`, and the direct selector-writer census used by the Bridge destination-ownership closure. |
+| Fortress | `0x9E` | `[0x000C0330,0x000C4C70)` | `0x802ECE30` | Static-confirmed from clean file-table entry `0xA5778`. The range contains Fortress assassin/reward manager `0x802EFDB0`, crystal-progression dispatcher `0x802EF30C`, ordinary reward records `0xC4834..0xC49B4`, and the direct selector-writer census used by the final destination-ownership closure. |
 
 Any overlay finding must include at least:
 

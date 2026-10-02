@@ -11,7 +11,7 @@
 | `+0x08` | 4 | Z position | No |
 | `+0x0C` | 4 | Location metadata | No |
 | `+0x10` | 4 | Type/behavior | Yes |
-| `+0x14` | 4 | Callback parameter/flags | Yes |
+| `+0x14` | 4 | Callback parameter/flags. Low 15 bits are passed to the callback; bit `0x8000` is a destination-record activation gate consumed by the pickup manager and masked before callback dispatch. | Yes |
 | `+0x18` | 4 | Native award callback | Yes |
 | `+0x1C` | 4 | Collision extent A | Yes |
 | `+0x20` | 4 | Collision extent B | Yes |
@@ -20,6 +20,8 @@
 | `+0x2C` | 4 | Collected flag | No; persisted separately |
 
 The production identity is the contiguous 28-byte slice `+0x10..+0x2B`. Copying only callback/type is insufficient for correct art and behavior. There are exactly 84 ordinary records: Temple 4, Wind 6, Water 9, Earth 20, Prison 10, Fire 16, Bridge 10, Fortress 9.
+
+**Bit-15 ownership (Static-confirmed, 2026-10-01):** pickup-manager setup reads raw `+0x14 & 0x8000` before actor activation, while callback dispatch at `0x800393BC..0x800393D0` masks the parameter with `0x7FFF`. Bridge stage scripts later clear this bit on dynamically activated Omega/Rings/Arrow/Health records, and Fortress boss reward activation uses the same record-level mechanism. Therefore bit 15 belongs to the **physical destination record**, not to the logical reward callback. A cross-stage materializer must preserve the destination's stock bit-15 state independently of the assigned reward.
 
 ## Persistence state V2 (`0x50` bytes)
 

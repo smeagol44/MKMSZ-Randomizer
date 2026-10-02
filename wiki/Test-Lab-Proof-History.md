@@ -198,3 +198,29 @@ The TEST LAB line changes the implementation guidance for the global materialize
 - [Stage catalog — Fire](Stage-Catalog-Fire) and [Stage catalog — Earth](Stage-Catalog-Earth) — stage-specific selector/resource facts.
 - [Experiments, failures and superseded findings](Experiments-Failures-and-Superseded-Findings) — rejected approaches index.
 - [Runtime validation status](Runtime-Validation-Status) — concise evidence matrix.
+
+
+## Remaining-key no-checkpoint proof v01 — Runtime-confirmed
+
+This bounded proof was added after the 1.0 key policy was clarified explicitly: **collecting a key/icon/crystal must not create a checkpoint**.
+
+Nine pickups were instantiated in the stable TEST LAB harness, left to right:
+
+1. Water Triangle
+2. Water Three Bars
+3. Water Moon
+4. Earth Square
+5. Earth Four Squares
+6. Earth Triangle
+7. Prison Level 1 Key
+8. Prison Level 2 Key
+9. Prison Level 3 Key
+
+Each record used one destination-safe callback that inserted the intended inventory ID through `0x80075448` and played normal pickup sound `0x3B`. The callback deliberately did not request checkpoint presentation through `0x80062D60` and did not write the respawn selector `0x802C18F8`.
+
+**Runtime result:** the user reported that no key created a checkpoint and that everything looked correct in inventory.
+
+ROM SHA-256: `d6b9fa9bb8db645968faca1243337fe94b33258efd9351eac89648a415c9016a`  
+CRC1/CRC2: `F1DF1662 / 130E7BDD`
+
+Scope: this closes checkpoint-free **logical award** behavior for the nine tested Water/Earth/Prison rewards. It does not synthesize Prison's native acquired/door bits inside TEST LAB; those remain destination/progression semantics to preserve separately in production wrappers. Native Prison L1 v08 remains the positive control that its credential bit can coexist with checkpoint suppression.

@@ -83,6 +83,10 @@ def sh(rt: str, offset: int, base: str) -> int:
     return (0x29 << 26) | (_reg(base) << 21) | (_reg(rt) << 16) | (offset & 0xFFFF)
 
 
+def sb(rt: str, offset: int, base: str) -> int:
+    return (0x28 << 26) | (_reg(base) << 21) | (_reg(rt) << 16) | (offset & 0xFFFF)
+
+
 def addu(rd: str, rs: str, rt: str) -> int:
     return (_reg(rs) << 21) | (_reg(rt) << 16) | (_reg(rd) << 11) | 0x21
 
