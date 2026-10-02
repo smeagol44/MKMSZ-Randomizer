@@ -6,7 +6,7 @@
 
 ## Current conclusion
 
-MKMSZR 1.0 requires one deterministic logical ordinary-item pool across the eight main stages, followed by a destination-stage materialization pass and a whole-run solvability check. The logical assignment and the physical representation are deliberately separate concerns.
+MKMSZR 1.0 requires one deterministic global logical pool across **85 shuffled checks**: the 84 ordinary pickup records plus the scripted Temple special check. Logical Map item `0x0D` is excluded from the reward pool. The assignment is followed by destination-stage materialization and a whole-run solvability check; logical assignment and physical representation remain deliberately separate concerns.
 
 Cross-stage feasibility is **Runtime-confirmed in bounded proofs**, including extension selectors, embedded foreign resources, external-to-embedded conversion, and five simultaneous imported visuals in Prison. Fortress five-import composed stress validation is Runtime-confirmed on a bounded route, and Kia -> Potion Runtime-confirms that a Fortress boss-defeat trigger can retain ownership of activation while the spawned reward identity/resource changes to a non-crystal item. PR #126 now connects the pure planner to the shared patch pipeline through an explicit fail-closed `GlobalMaterializationPlan`; the representative v03 co-resident Temple/materializer composition is Runtime-confirmed and CI-green. Normal seeded product generation still remains stage-local until the deterministic global generator/solver supplies complete assignments and production-owned stage-resource placements.
 
@@ -446,19 +446,19 @@ This is **Runtime-confirmed feasibility evidence only**. Those exact ROM/callbac
 
 ## Deterministic global shuffle
 
-The legacy Lua prototype already had the high-level shape of a global shuffle:
+**PR #137 v2 (2026-10-02) is the current native logical model and supersedes PR #80's earlier 84-location/postselected-Herbs prototype.** The current invariant is:
 
-1. flatten locations across all eight stages;
-2. flatten the logical item multiset;
-3. place nine progression rewards only when Powers as pickups is ON; otherwise model earnable XP;
-4. shuffle globally;
-5. assign back to locations;
-6. simulate reachable checks to a fixed point;
-7. accept only a layout that satisfies the completion predicate.
+1. build **85 stable destinations**: 84 ordinary records plus the scripted Temple special check;
+2. build **85 logical rewards**: the 84 stock ordinary rewards plus the accepted non-Map Herbs representative for the Temple special check;
+3. exclude logical Map item `0x0D`;
+4. when Powers as pickups is ON, convert nine stable Herbs entries in that reward multiset into nine explicit `Power Upgrade` rewards **before** shuffling; OFF leaves those entries as Herbs;
+5. Fisher-Yates the 85 reward indices using the isolated `MKMSZR:PICKUPS:GLOBAL:V2` SHA-256 domain plus explicit retry attempt index;
+6. split the accepted result into 84 ordinary materializer assignments plus one Temple-special assigned reward;
+7. simulate reachable checks to a fixed point and evaluate an explicit caller-owned completion policy.
 
-That shape is useful, but the Lua implementation is **not** authoritative for 1.0. Its access rules are stale relative to current catalogs/research, it intentionally substituted some native item semantics, and its final beatability predicate was narrow.
+This preserves the useful high-level fixed-point idea from the legacy Lua while rejecting its stale access rules, item substitutions, narrow final predicate, and retry/reseeding behavior. Power Upgrade placement is now part of the global permutation itself rather than a post-layout destination-selection overlay.
 
-The global implementation should retain MKMSZR's current deterministic SHA-256 namespace model rather than Lua `math.random`.
+PR #137 also makes the physical seams explicit: ordinary Power Upgrades reuse the accepted Herbs visual resource + Ice Blue presentation + progression callback while still composing with destination checkpoint/state wrappers; the Temple special check can receive an arbitrary assigned logical reward through its dedicated persistence/elevator seam. CI **#1614** is green. Normal product generation remains stage-local until production-owned backing for expanded stage resource files and the final completion policy are approved.
 
 ## Deterministic retry attempts
 
@@ -480,7 +480,7 @@ The attempt index must be isolated from unrelated deterministic namespaces, incl
 - progression-reward selection details;
 - required-Power-Upgrades target generation.
 
-The interim stage-local implementation's 1,000-attempt ceiling is **not** automatically the global 1.0 retry limit. No final global retry ceiling is currently established.
+The interim stage-local implementation's 1,000-attempt ceiling is **not** automatically the global 1.0 retry limit. PR #137 keeps the ceiling caller-supplied while making every candidate a pure function of the original seed + explicit attempt index. No final product retry ceiling is currently established.
 
 ## Whole-run solvability verifier
 
@@ -511,7 +511,7 @@ The legacy Lua predicate required its chosen Power-Upgrades count plus the three
 
 ## Required Power Upgrades
 
-With **Powers as pickups** ON (the default), exactly **nine progression rewards exist in the world**. With it OFF, those nine generated Herbs retain their ordinary award and powers are earned from stock XP instead. The required number of powers remains an independent build setting in either mode; the whole-run solver must model the correct reward/XP source for the chosen mode.
+With **Powers as pickups** ON (the default), exactly **nine explicit Power Upgrade logical rewards exist in the 85-item shuffled pool**. They are created by replacing nine Herbs entries in the source reward multiset before Fisher-Yates, not by selecting nine destinations afterward. With it OFF, those nine source entries remain Herbs and powers are earned from stock XP instead. The required number of powers remains an independent build setting in either mode; the whole-run solver must model the correct reward/XP source for the chosen mode.
 
 The required count must:
 
@@ -588,19 +588,15 @@ These findings remain part of the canonical design history because they prevent 
 
 ## Current integration gates
 
-The following remain unresolved before global item materialization/solvability can become normal product behavior:
+The destination-wrapper/credential architecture is Runtime-confirmed bounded on current `main`, and PR #137 now has an Implementation/CI-confirmed 85-check generator/solver/materializer seam. The remaining gates before normal product enablement are:
 
-- complete the pending Fortress destination-stage composed stress proof;
-- implement and runtime-validate a generic destination-safe key/crystal award path that preserves required progression/door state while suppressing pickup-created checkpoint/respawn relocation;
-- compose the materializer with production ROM allocation/file-table ownership and runtime arena bounds, including actor/texture/render allocations rather than treating resource-file bytes as the whole budget;
-- integrate the Runtime-confirmed foreign-key acquisition/reconstruction mask contract through guarded production ownership; the Fire -> Wind Circle v02 proof is green, but its proof-local hook is not yet normal browser/CLI composition;
-- finalize the logical materializer schema and deterministic deduplication/capacity rules across the complete item pool;
-- implement the deterministic global shuffle and explicit retry sequence;
-- finalize the whole-run progression graph and completion predicate;
-- integrate the selected required-power mode and both XP sources into the final solver/HUD;
-- resolve the Temple Map 85th-check / trigger-reward / persistence policy;
-- build a guarded disposable production-composition proof before enabling the new path in browser/CLI;
-- perform representative full-seed runtime validation after integration.
+- **production stage-resource ROM backing:** `GlobalMaterializationPlan` deliberately requires explicit owned placements. The current Memory Map exposes no reusable `confirmed-free` interval inside the stock 16 MiB image, so PR #137 does not guess one from FF/padding;
+- **final completion policy:** fixed-point reachability is implemented, but product policy must still decide the accepted completion predicate (for example, all checks reachable versus a narrower beat-the-game requirement) and the global retry ceiling;
+- **mode-aware earned-XP solver behavior when Powers as pickups is OFF;**
+- **guarded disposable production-composition proof** once resource backing is approved;
+- **normal browser/CLI integration**, then representative full-seed runtime validation and HUD integration.
+
+The old PR #80 84-location/post-shuffle progression-location model is superseded by PR #137 v2.
 
 ## Related pages
 
