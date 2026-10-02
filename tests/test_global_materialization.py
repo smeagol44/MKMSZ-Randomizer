@@ -82,6 +82,24 @@ def test_activation_gate_composes_with_generic_inventory_award() -> None:
     assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B0900
 
 
+def test_fortress_crystal_logical_award_separates_source_and_destination_gate() -> None:
+    ordinary_identity = portable_materialized_identity(
+        "crystal-kia",
+        0x0D8B,
+        generic_inventory_callback=0xA01B0900,
+    )
+    boss_identity = portable_materialized_identity(
+        "crystal-kia",
+        0x0D8B,
+        generic_inventory_callback=0xA01B0900,
+        activation_gate=True,
+    )
+    assert int.from_bytes(ordinary_identity[0x04:0x08], "big") == 0x21
+    assert int.from_bytes(ordinary_identity[0x08:0x0C], "big") == 0xA01B0900
+    assert int.from_bytes(boss_identity[0x04:0x08], "big") == 0x8021
+    assert int.from_bytes(boss_identity[0x08:0x0C], "big") == 0xA01B0900
+
+
 def test_prison_key_fails_closed_without_destination_safe_credential_wrapper() -> None:
     try:
         portable_materialized_identity(
