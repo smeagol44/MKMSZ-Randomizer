@@ -80,13 +80,6 @@ def build_pipeline(
     if config.game_settings.run_auto:
         settings_state |= RUN_AUTO_STATE_MASK
 
-    if materialization_plan is not None and config.powers_as_pickups:
-        raise ValueError(
-            "explicit global materialization is not yet composable with the current "
-            "pickup-XP overlay; global progression placement must be supplied by the "
-            "future global generator/solver"
-        )
-
     patches = [
         SafeStageSelectorPatch(),
         ArenaReservationPatch(),
@@ -99,7 +92,9 @@ def build_pipeline(
     if config.powers_as_pickups:
         # Only pickup mode replaces the four-box resume tail. The other mode
         # keeps stock XP stores/caps and ordinary Herbs callbacks.
-        patches.append(XPProgressionPatch())
+        patches.append(
+            XPProgressionPatch(global_mode=materialization_plan is not None)
+        )
     patches.extend(
         [
             GameSettingsTurnPatch(),
@@ -161,7 +156,11 @@ def build_pipeline(
     if config.powers_as_pickups:
         # Presentation is installed late so its shared file-0x1A allocation
         # composes with optional Toasty and all earlier runtime owners.
-        patches.append(ProgressionPickupPresentationPatch())
+        patches.append(
+            ProgressionPickupPresentationPatch(
+                global_mode=materialization_plan is not None
+            )
+        )
     # Controls production deliberately verifies the stock Slide/Super Slide
     # gates before installing helpers that call those recognizers. Apply the
     # optional order remap afterwards so both safety guards and shuffled tiers
