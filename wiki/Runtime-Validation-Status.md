@@ -85,9 +85,11 @@ This page no longer owns version-by-version proof diaries.
 ## Destination-wrapper all-stage proof v01 — Runtime Pending (2026-10-02)
 
 - **Implementation/CI-confirmed:** PR #129 implements the researched Wind/Water/Earth/Fire/Prison destination actions, generic Bridge/Fortress activation gates, portable Strength award separation, and Prison credential reconstruction after the stock reset. Current-main lifecycle v06 is unchanged. CI run **#1583 passed**.
-- **Static-built proof:** `MKMSZR_destination-wrappers_all-proof_v02.z64`, SHA-256 `78de56e90491e90c14f4db3290598daf00057a12037c6b0f1fa95f16090e9223`, CRC1/CRC2 `1891F0E7 / 6D421098`.
+- **Static-built proof:** `MKMSZR_destination-wrappers_first-item-swap-proof_v04.z64`, SHA-256 `c7df1ca9798d6532783a80205b123a11e5c7655cda069342e6c60b4ab75547ee`, CRC1/CRC2 `59037DDA / 4BACE8C6`.
 - **Allocation:** materializer helper runtime `0x801B2960..0x801B2EBF`, ROM `0x00F6B140..0x00F6B69F`; lifecycle v06 remains `0x801B0A60..0x801B0FF3`.
 - **Proof scope:** stock reward visuals isolate wrapper/state behavior; foreign-resource visual conversion is not re-tested. Prison uses proof-only backing-box mirroring after key award so the exact entry reconstruction helper can be tested without the full four-box frontend.
 - **Runtime status:** **Pending user manual validation.** No emulator was run by the assistant.
 
 - **Proof packaging correction (2026-10-02):** v01 is superseded as a validation package because it omitted Safe Stage Select. v02 adds only the Runtime-confirmed compact eight-stage selector presentation plus its selector-specific one-shot auto-save bypass; the destination-wrapper helper/pickup test payload is unchanged. Runtime status remains Pending.
+
+- **First-item-swap v04 validation correction (2026-10-02):** v03's coordinate clustering is superseded. v04 returns to v02's exact wrapper/Safe-Stage-Select base and swaps logical/visual identities only: Wind first Herbs <-> Circle, Water first Mana <-> Triangle, Earth first Formula <-> Square, Fire starting Potion <-> Triangle Up, and Prison first Herbs <-> L1 key. Each moved key therefore awards from a non-checkpoint destination, while its original physical key location now holds the mundane first-stage reward but retains the researched destination wrapper. This directly tests key-without-checkpoint, checkpoint-without-key, and late revisit/non-downgrade behavior. Runtime status remains Pending.
