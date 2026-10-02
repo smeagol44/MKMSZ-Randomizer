@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 DifficultyMode = Literal["very_easy", "easy", "medium", "hard", "very_hard"]
+CompletionMode = Literal["all_checks", "beatable"]
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,7 @@ class RandomizerConfig:
     powers_as_pickups: bool = True
     required_powers_mode: Literal["vanilla", "custom", "seed"] = "vanilla"
     custom_required_powers: int | None = None
+    completion_mode: CompletionMode = "all_checks"
     difficulty: DifficultyMode = "very_hard"
     lives: int = 5
     continues: int = 3
@@ -55,6 +57,8 @@ class RandomizerConfig:
             raise ValueError("persist_hp must be a boolean")
         if self.required_powers_mode not in ("vanilla", "custom", "seed"):
             raise ValueError("required powers mode must be vanilla, custom, or seed")
+        if self.completion_mode not in ("all_checks", "beatable"):
+            raise ValueError("completion mode must be all_checks or beatable")
         if self.required_powers_mode == "custom":
             value = self.custom_required_powers
             if type(value) is not int or not 0 <= value <= 9:
