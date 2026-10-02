@@ -141,6 +141,33 @@ def build_global_locations() -> tuple[GlobalLocation, ...]:
 
 GLOBAL_LOCATIONS = build_global_locations()
 
+ALL_PROGRESSION_TOKENS = frozenset(
+    item.progression_token
+    for item in build_global_logical_pool(powers_as_pickups=False)
+    if item.progression_token is not None
+)
+if len(ALL_PROGRESSION_TOKENS) != 21:
+    raise AssertionError(
+        f"progression-token catalog drifted: {len(ALL_PROGRESSION_TOKENS)} != 21"
+    )
+
+
+def build_completion_policy(mode: str, required_powers: int) -> CompletionPolicy:
+    """Resolve the user-facing seed acceptance rule."""
+
+    if mode == "all_85":
+        return CompletionPolicy(
+            required_powers=required_powers,
+            require_all_locations=True,
+        )
+    if mode == "game_beatable":
+        return CompletionPolicy(
+            required_powers=required_powers,
+            required_tokens=ALL_PROGRESSION_TOKENS,
+            require_all_locations=False,
+        )
+    raise ValueError("completion mode must be all_85 or game_beatable")
+
 
 def _validate_attempt_index(attempt_index: int) -> None:
     if not 0 <= attempt_index <= 0xFFFFFFFF:
