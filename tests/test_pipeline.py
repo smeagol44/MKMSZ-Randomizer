@@ -1,5 +1,9 @@
 from mkmszr.config import OutfitConfig, RandomizerConfig
-from mkmszr.patcher import build_pipeline
+from mkmszr.patcher import (
+    _build_production_global_plan,
+    _pickup_mode_required_count,
+    build_pipeline,
+)
 from mkmszr.patches.arena import ArenaReservationPatch
 from mkmszr.patches.controls_production import ControlsProductionPatch
 from mkmszr.patches.enemy_randomization import EnemyRandomizationPatch
@@ -133,3 +137,30 @@ def test_temple_special_check_runs_after_controls_and_optional_rainbow() -> None
     types = [type(patch) for patch in rainbow.patches]
     assert types.index(ControlsProductionPatch) < types.index(RainbowPalettePatch)
     assert types.index(RainbowPalettePatch) < types.index(TempleSpecialCheckPatch)
+
+
+
+def test_vanilla_fortress_gate_requires_eight_pickup_tiers() -> None:
+    assert _pickup_mode_required_count(None, 5100) == 8
+
+
+def test_normal_product_global_plan_is_complete_and_deterministic() -> None:
+    config = RandomizerConfig(seed="GLOBAL85-V01")
+    first_plan, first_run = _build_production_global_plan(
+        config,
+        required_count=None,
+        required_xp=5100,
+    )
+    second_plan, second_run = _build_production_global_plan(
+        config,
+        required_count=None,
+        required_xp=5100,
+    )
+
+    assert first_run == second_run
+    assert first_plan == second_plan
+    assert first_run.candidate.attempt_index == 0
+    assert len(first_plan.assignments) == 84
+    assert len(first_plan.placements) == 8
+    assert first_plan.temple_special_item_key == "mana"
+    assert len(first_run.power_locations) == 9

@@ -36,6 +36,7 @@ from ..errors import PatchError
 from ..mips import (
     Emitter,
     addiu,
+    address_words,
     addu,
     andi,
     jal,
@@ -45,6 +46,7 @@ from ..mips import (
     lui,
     lw,
     or_,
+    ori,
     sb,
     sh,
     sllv,
@@ -57,6 +59,7 @@ from ..resource_materialization import (
     AWARD_EXTRA_LIFE,
     AWARD_INVENTORY,
     AWARD_MANA,
+    AWARD_POWER_UPGRADE,
     CALLBACK_ACTION_MASK,
     CALLBACK_ACTION_SHIFT,
     CALLBACK_AWARD_MASK,
@@ -81,6 +84,7 @@ from ..resource_materialization import (
     DEST_WIND_TRIANGLE,
     GlobalMaterializationPlan,
     apply_stage_resource_plan,
+    bind_materialized_visual_to_stock_selector,
     plan_stage_resources,
     portable_materialized_identity,
 )
@@ -94,6 +98,16 @@ from .inventory_boxes import (
     LOAD_MASK_WRAPPER_VA,
 )
 from .native_payload import kseg1_alias
+from .progression_presentation import PROGRESSION_FLASH_CALLBACK_ENTRY
+from .temple_special_check import (
+    AWARD_HELPER_VA as TEMPLE_BASE_AWARD_HELPER_VA,
+)
+from .temple_special_check import (
+    LEGACY_MAP_FLAG_VA,
+    MAP_AWARD_CALL_ROM,
+    STATE_FLAGS_VA,
+    TEMPLE_SPECIAL_CHECK_STATE_MASK,
+)
 from .toasty_constants import MODULE_K0 as TOASTY_K0
 
 NOP = 0
@@ -116,6 +130,20 @@ EARTH_TRIANGLE_STATE_VA = 0x802F5E22
 PRISON_RESET_VA = 0x802ED538
 PRISON_RESET_CALL_ROM = 0x00010E64
 PRISON_RESET_CALL_EXPECTED = jal(PRISON_RESET_VA)
+
+TEMPLE_SPECIAL_SELECTOR = 1
+TEMPLE_PRESENTATION_HI_ROM = 0x000CC368
+TEMPLE_PRESENTATION_LO_ROM = 0x000CC36C
+TEMPLE_SELECTOR_A0_ROM = 0x000CC3A8
+TEMPLE_SELECTOR_S0_ROM = 0x000CC428
+TEMPLE_AWARD_ARG_ROM = MAP_AWARD_CALL_ROM + 4
+
+TEMPLE_POST_PATCH_PRESENTATION_HI = 0x3C04800B
+TEMPLE_POST_PATCH_PRESENTATION_LO = 0x24841D3C
+TEMPLE_POST_PATCH_SELECTOR_A0 = 0x2604003C
+TEMPLE_POST_PATCH_SELECTOR_S0 = 0x8E10003C
+TEMPLE_POST_PATCH_AWARD_CALL = jal(TEMPLE_BASE_AWARD_HELPER_VA)
+TEMPLE_POST_PATCH_AWARD_ARG = 0x24040004
 
 ACQUISITION_HOOK_ROM = 0x00039FD4
 ACQUISITION_DISPLACED_0 = 0x00121040  # sll v0,s2,1
@@ -225,9 +253,17 @@ def build_generic_inventory_award() -> bytes:
 
     e.label("award_mana")
     e.emit(addiu("t1", "zero", AWARD_MANA))
-    e.bne("t0", "t1", "dispatch_action")
+    e.bne("t0", "t1", "award_power")
     e.emit(0)
     e.emit(jal(MANA_CALLBACK_VA), 0)
+    e.beq("zero", "zero", "dispatch_action")
+    e.emit(0)
+
+    e.label("award_power")
+    e.emit(addiu("t1", "zero", AWARD_POWER_UPGRADE))
+    e.bne("t0", "t1", "dispatch_action")
+    e.emit(0)
+    e.emit(jal(PROGRESSION_FLASH_CALLBACK_ENTRY), 0)
 
     # Destination-owned stage/location action.
     e.label("dispatch_action")
@@ -327,6 +363,7 @@ def build_generic_inventory_award() -> bytes:
 
 
 GENERIC_AWARD = build_generic_inventory_award()
+GENERIC_AWARD_K0 = MATERIALIZER_HELPER_K0 + GENERIC_AWARD_OFFSET
 
 ACQUISITION_REMASK_OFFSET = _align(len(GENERIC_AWARD), 0x40)
 ACQUISITION_REMASK_K0 = MATERIALIZER_HELPER_K0 + ACQUISITION_REMASK_OFFSET
@@ -402,8 +439,45 @@ def build_prison_reconstruct_wrapper() -> bytes:
 
 
 PRISON_RECONSTRUCT = build_prison_reconstruct_wrapper()
+TEMPLE_AWARD_OFFSET = _align(
+    PRISON_RECONSTRUCT_OFFSET + len(PRISON_RECONSTRUCT), 0x40
+)
+TEMPLE_AWARD_K0 = MATERIALIZER_HELPER_K0 + TEMPLE_AWARD_OFFSET
+
+
+def build_temple_award_wrapper() -> bytes:
+    """Award the 85th shuffled reward, then persist the Temple special check."""
+
+    e = Emitter()
+    e.emit(
+        addiu("sp", "sp", -0x20),
+        sw("ra", 0x1C, "sp"),
+        jal(GENERIC_AWARD_K0),
+        0,
+        # The scripted check bypasses the ordinary pickup-manager post-award
+        # hook, so explicitly commit LIVE to backing and reconstruct stage mask.
+        jal(LOAD_DEFAULT_VA),
+        0,
+        jal(LOAD_MASK_WRAPPER_VA),
+        0,
+        *address_words("t0", STATE_FLAGS_VA),
+        lw("t1", 0, "t0"),
+        ori("t1", "t1", TEMPLE_SPECIAL_CHECK_STATE_MASK),
+        sw("t1", 0, "t0"),
+        *address_words("t0", LEGACY_MAP_FLAG_VA),
+        addiu("t1", "zero", 0x0100),
+        sw("t1", 0, "t0"),
+        lw("ra", 0x1C, "sp"),
+        addiu("sp", "sp", 0x20),
+        jr("ra"),
+        0,
+    )
+    return e.finish()
+
+
+TEMPLE_AWARD = build_temple_award_wrapper()
 MATERIALIZER_HELPER_SIZE = _align(
-    PRISON_RECONSTRUCT_OFFSET + len(PRISON_RECONSTRUCT), 0x10
+    TEMPLE_AWARD_OFFSET + len(TEMPLE_AWARD), 0x10
 )
 MATERIALIZER_HELPER_END_K0 = MATERIALIZER_HELPER_K0 + MATERIALIZER_HELPER_SIZE
 MATERIALIZER_HELPER_END_ROM = MATERIALIZER_HELPER_ROM + MATERIALIZER_HELPER_SIZE
@@ -426,6 +500,9 @@ MATERIALIZER_HELPER[
     PRISON_RECONSTRUCT_OFFSET :
     PRISON_RECONSTRUCT_OFFSET + len(PRISON_RECONSTRUCT)
 ] = PRISON_RECONSTRUCT
+MATERIALIZER_HELPER[
+    TEMPLE_AWARD_OFFSET : TEMPLE_AWARD_OFFSET + len(TEMPLE_AWARD)
+] = TEMPLE_AWARD
 MATERIALIZER_HELPER = bytes(MATERIALIZER_HELPER)
 
 
@@ -563,8 +640,8 @@ class GlobalItemMaterializationPatch:
     name = "global-item-materialization"
 
     def __init__(self, plan: GlobalMaterializationPlan):
-        if not plan.assignments:
-            raise ValueError("global materialization plan must contain assignments")
+        if not plan.assignments and plan.temple_special_item_key is None:
+            raise ValueError("global materialization plan must contain an assignment")
         self.plan = plan
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
@@ -605,17 +682,41 @@ class GlobalItemMaterializationPatch:
                 )
             assignments_by_stage[assignment.stage_id].append(assignment)
 
+        temple_special_key = self.plan.temple_special_item_key
+        if (
+            temple_special_key is not None
+            and temple_special_key not in CANONICAL_VISUAL_DONORS
+        ):
+            raise PatchError(
+                f"no canonical visual donor registered for {temple_special_key!r}"
+            )
+
         # Build every stage plan before any write so failures are atomic.
         baseline = bytes(rom.data)
         stage_plans = {}
-        for stage_id, assignments in assignments_by_stage.items():
+        stage_ids = set(assignments_by_stage)
+        if temple_special_key is not None:
+            stage_ids.add(0)
+
+        for stage_id in sorted(stage_ids):
+            assignments = assignments_by_stage.get(stage_id, [])
             placement = self.plan.placement_for(stage_id)
-            stage_plans[stage_id] = plan_stage_resources(
+            item_keys = [assignment.item_key for assignment in assignments]
+            if stage_id == 0 and temple_special_key is not None:
+                item_keys.append(temple_special_key)
+            stage_plan = plan_stage_resources(
                 baseline,
                 stage_id,
-                (assignment.item_key for assignment in assignments),
+                item_keys,
                 max_size=placement.capacity,
             )
+            if stage_id == 0 and temple_special_key is not None:
+                stage_plan = bind_materialized_visual_to_stock_selector(
+                    stage_plan,
+                    temple_special_key,
+                    TEMPLE_SPECIAL_SELECTOR,
+                )
+            stage_plans[stage_id] = stage_plan
 
         _validate_placements(
             rom,
@@ -639,12 +740,38 @@ class GlobalItemMaterializationPatch:
                         assignment.item_key,
                         selector,
                         generic_inventory_callback=GENERIC_AWARD_K1,
+                        power_upgrade_callback=PROGRESSION_FLASH_CALLBACK_ENTRY,
                         activation_gate=_destination_activation_gate(target),
                         destination_action=_destination_action(
                             assignment.stage_id, assignment.destination_index
                         ),
                     )
                 )
+
+        temple_special_identity: bytes | None = None
+        if temple_special_key is not None:
+            stage_plan = stage_plans[0]
+            temple_special_identity = portable_materialized_identity(
+                temple_special_key,
+                TEMPLE_SPECIAL_SELECTOR,
+                generic_inventory_callback=GENERIC_AWARD_K1,
+                power_upgrade_callback=PROGRESSION_FLASH_CALLBACK_ENTRY,
+                force_shared_award=True,
+            )
+            rom.expect_u32(
+                TEMPLE_PRESENTATION_HI_ROM, TEMPLE_POST_PATCH_PRESENTATION_HI
+            )
+            rom.expect_u32(
+                TEMPLE_PRESENTATION_LO_ROM, TEMPLE_POST_PATCH_PRESENTATION_LO
+            )
+            rom.expect_u32(
+                TEMPLE_SELECTOR_A0_ROM, TEMPLE_POST_PATCH_SELECTOR_A0
+            )
+            rom.expect_u32(
+                TEMPLE_SELECTOR_S0_ROM, TEMPLE_POST_PATCH_SELECTOR_S0
+            )
+            rom.expect_u32(MAP_AWARD_CALL_ROM, TEMPLE_POST_PATCH_AWARD_CALL)
+            rom.expect_u32(TEMPLE_AWARD_ARG_ROM, TEMPLE_POST_PATCH_AWARD_ARG)
 
         # Install runtime helpers through existing shared file 0x1A.
         rom.write_bytes(MATERIALIZER_HELPER_ROM, MATERIALIZER_HELPER)
@@ -668,8 +795,36 @@ class GlobalItemMaterializationPatch:
                 f"stage {stage_id}: 0x{start:08X}..0x{end - 1:08X}"
             )
 
-        # Finally publish destination reward identities after all resources and
-        # helper code are resident.
+        # Publish the scripted Temple special reward after stage-0 resources are
+        # resident. The proven Temple progression/persistence owner remains in
+        # place; only visual selector/presentation and logical award are changed.
+        if temple_special_identity is not None:
+            presentation = int.from_bytes(
+                temple_special_identity[0x18:0x1C], "big"
+            ) + 4
+            present_words = address_words("a0", presentation)
+            rom.write_u32(TEMPLE_PRESENTATION_HI_ROM, present_words[0])
+            rom.write_u32(TEMPLE_PRESENTATION_LO_ROM, present_words[1])
+            selector_offset = TEMPLE_SPECIAL_SELECTOR * 4
+            rom.write_u32(
+                TEMPLE_SELECTOR_A0_ROM,
+                addiu("a0", "s0", selector_offset),
+            )
+            rom.write_u32(
+                TEMPLE_SELECTOR_S0_ROM,
+                lw("s0", selector_offset, "s0"),
+            )
+            encoded_award = int.from_bytes(
+                temple_special_identity[0x04:0x08], "big"
+            ) & 0x7FFF
+            rom.write_u32(MAP_AWARD_CALL_ROM, jal(TEMPLE_AWARD_K0))
+            rom.write_u32(
+                TEMPLE_AWARD_ARG_ROM,
+                ori("a1", "zero", encoded_award),
+            )
+
+        # Finally publish ordinary destination reward identities after all
+        # resources and helper code are resident.
         for stage_id, assignments in assignments_by_stage.items():
             stage = _stage_by_id(stage_id)
             for assignment in assignments:
@@ -690,5 +845,9 @@ class GlobalItemMaterializationPatch:
             "destination checkpoint/state wrappers compose independently of logical rewards",
             "Prison acquired bits rebuild after the stock reset from authoritative backing inventory",
             "stock destination bit-15 activation gates are preserved independently of reward identity",
+            (
+                "Temple special check reward="
+                + (temple_special_key if temple_special_key is not None else "interim Herbs")
+            ),
             "resource placements: " + ", ".join(resource_notes),
         )

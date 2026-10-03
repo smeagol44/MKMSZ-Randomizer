@@ -15,6 +15,7 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
         "enemyRandomization",
         "powersAsPickups",
         "requiredPowersMode",
+        "globalCompletionMode",
         "customRequiredPowers",
         "difficulty",
         "startingLives",
@@ -38,6 +39,9 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
     assert 'id="powersAsPickups" type="checkbox" checked' in html
     assert "powers_as_pickups=bool(web_powers_as_pickups)" in app
     assert "required_powers_mode=str(web_required_powers_mode)" in app
+    assert "global_completion_mode=str(web_global_completion_mode)" in app
+    assert '<option value="all_85" selected>All 85 available</option>' in html
+    assert '<option value="game_beatable">Game beatable</option>' in html
     assert "custom_required_powers=int(web_custom_required_powers)" in app
     assert "resultRequiredPowers.textContent" in app
     assert 'id="difficulty"' in html

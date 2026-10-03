@@ -1,14 +1,14 @@
-# Pickups and stage-local randomization
+# Pickups and item randomization
 
-> **Scope:** This page is the canonical owner for the **current production ordinary-pickup behavior and stage-local seeded randomization**. It deliberately does not own the 1.0 cross-stage materializer, global logical shuffle, deterministic global retry contract, whole-run solver, required-Power-Upgrades policy, or Temple Map 85th-check question; those belong to [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
+> **Scope:** This page is the canonical owner for the **ordinary-pickup behavior and historical stage-local seeded randomization**. It deliberately does not own the 1.0 cross-stage materializer, global logical shuffle, deterministic global retry contract, whole-run solver, required-Power-Upgrades policy, or Temple Map 85th-check question; those belong to [Global item materialization and solvability](Global-Item-Materialization-and-Solvability).
 
 ## Current conclusion
 
-MKMSZR currently randomizes the 84 ordinary pickup records **within each stage**. The production mode is deterministic, preserves each destination location and collected flag, moves the complete ordinary-item identity slice, and rejects stage-local layouts that violate the current modeled access requirements. Consequently, a production proof can still keep all three Fire keys inside Fire; that is expected `STAGE-LOCAL:V1` behavior and must not be mistaken for the pending 1.0 global shuffle.
+PR #137 replaces the stage-local product shuffle with a deterministic **85-check global pool**, including the scripted Temple special check. The global generator, destination materializer, fixed-point solver, retry policy, and independent required-power settings belong to [Global item materialization and solvability](Global-Item-Materialization-and-Solvability). The stage-local details below document the superseded `STAGE-LOCAL:V1` implementation and its bounded proofs.
 
-This is a real production system, but it is intentionally an **interim 1.0 mode**. The final 1.0 design requires one cross-stage logical pool plus a destination resource materializer and whole-run solvability verifier. Those are separate systems because a resource selector that is valid in one stage is not automatically meaningful in another.
+The former stage-local product mode was an interim implementation. Its complete-tuple semantics must not be read as the global materializer contract: resource selectors are stage-local, while reward identity and destination-owned stage actions are composed separately by the current global path.
 
-**Known Wind ownership risk (Static-confirmed, 2026-09-30):** the current stage-local implementation moves the complete `+0x10..+0x2B` tuple, so Wind callback `0x802F2CB4` and its parameter move with the shuffled reward. The focused Wind trace now shows that callback parameters 0/1 also inject physical stage/checkpoint selector steps `3/5`, and parameter 2 writes live Wind-local state `0x802F60A0`. Therefore the complete tuple is not purely logical reward identity in Wind. A different reward placed at a stock Wind key location can remove that location's native stage-state action, while a Wind key moved elsewhere can carry that action to the wrong physical location. This is an architectural risk established by static code/implementation comparison; no claim is made that a particular production seed has runtime-failed from it. The current stage-local system remains interim and must not be used as the template for 1.0 global award semantics.
+**Known Wind ownership risk (Static-confirmed, 2026-09-30):** the historical stage-local implementation moves the complete `+0x10..+0x2B` tuple, so Wind callback `0x802F2CB4` and its parameter move with the shuffled reward. The focused Wind trace now shows that callback parameters 0/1 also inject physical stage/checkpoint selector steps `3/5`, and parameter 2 writes live Wind-local state `0x802F60A0`. Therefore the complete tuple is not purely logical reward identity in Wind. A different reward placed at a stock Wind key location can remove that location's native stage-state action, while a Wind key moved elsewhere can carry that action to the wrong physical location. This is an architectural risk established by static code/implementation comparison; no claim is made that a particular production seed has runtime-failed from it. The historical stage-local system is superseded and must not be used as the template for 1.0 global award semantics.
 
 ## Ordinary pickup behavior and identity semantics
 
@@ -35,7 +35,7 @@ A bounded 2026-10-02 placement experiment established a reusable authoring workf
 
 The reusable diagnostic is `tools/build_pickup_placement_probe.py`. Full proof mechanics, rejected probe variants, and the separate post-1.0 Ice Blast -> Pickup cancel are recorded in [Pickup placement and Ice-Blast cancel proofs](Pickup-Placement-and-Action-Cancel-Proofs).
 
-## Current stage-local production shuffle
+## Historical stage-local production shuffle
 
 For each stage, the generator uses a stable SHA-256-based Fisher-Yates shuffle with domain:
 

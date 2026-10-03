@@ -2,6 +2,10 @@ from mkmszr.errors import PatchError
 from mkmszr.global_items import build_stock_logical_pool
 from mkmszr.resource_materialization import (
     CANONICAL_VISUAL_DONORS,
+    GLOBAL_OUTPUT_SIZE,
+    GLOBAL_RESOURCE_REGION_END,
+    GLOBAL_RESOURCE_REGION_START,
+    GLOBAL_RESOURCE_SLOT_SIZE,
     STAGE_RESOURCES,
     VisualBundle,
     VisualFrame,
@@ -9,12 +13,13 @@ from mkmszr.resource_materialization import (
     decode_type4,
     encode_type4_literals,
     portable_fixed_callback_identity,
+    production_global_resource_placements,
 )
 
 
-def test_canonical_visual_registry_covers_every_stock_logical_key() -> None:
+def test_canonical_visual_registry_covers_stock_keys_and_power_upgrade() -> None:
     keys = {item.key for item in build_stock_logical_pool()}
-    assert keys == set(CANONICAL_VISUAL_DONORS)
+    assert set(CANONICAL_VISUAL_DONORS) == keys | {"power-upgrade"}
 
 
 
@@ -127,3 +132,15 @@ def test_stage_bound_token_identity_fails_closed() -> None:
         assert "destination-safe token wrapper required" in str(exc)
     else:
         raise AssertionError("stage-bound token callback should not be emitted")
+
+
+
+def test_production_global_resource_slots_live_only_in_appended_rom() -> None:
+    placements = production_global_resource_placements()
+
+    assert len(placements) == 8
+    assert placements[0].rom_start == GLOBAL_RESOURCE_REGION_START == 0x01000000
+    assert placements[-1].rom_end_exclusive == GLOBAL_RESOURCE_REGION_END == 0x01800000
+    assert GLOBAL_RESOURCE_REGION_END < GLOBAL_OUTPUT_SIZE == 0x02000000
+    assert all(item.capacity == GLOBAL_RESOURCE_SLOT_SIZE == 0x00100000 for item in placements)
+    assert [item.stage_id for item in placements] == [0, 1, 2, 3, 4, 5, 8, 9]

@@ -46,6 +46,28 @@ STAGE_RESOURCES: dict[int, StageResourceSpec] = {
     9: StageResourceSpec(9, 0x000A5334, 0x003B9700, 0x003BCD20),
 }
 
+GLOBAL_OUTPUT_SIZE = 32 * 1024 * 1024
+GLOBAL_RESOURCE_REGION_START = 0x01000000
+GLOBAL_RESOURCE_SLOT_SIZE = 0x00100000
+GLOBAL_RESOURCE_STAGE_ORDER = (0, 1, 2, 3, 4, 5, 8, 9)
+GLOBAL_RESOURCE_REGION_END = (
+    GLOBAL_RESOURCE_REGION_START
+    + GLOBAL_RESOURCE_SLOT_SIZE * len(GLOBAL_RESOURCE_STAGE_ORDER)
+)
+
+
+def production_global_resource_placements() -> tuple[StageResourcePlacement, ...]:
+    """Return the approved appended-ROM ownership for global stage resources."""
+
+    return tuple(
+        StageResourcePlacement(
+            stage_id=stage_id,
+            rom_start=GLOBAL_RESOURCE_REGION_START + index * GLOBAL_RESOURCE_SLOT_SIZE,
+            capacity=GLOBAL_RESOURCE_SLOT_SIZE,
+        )
+        for index, stage_id in enumerate(GLOBAL_RESOURCE_STAGE_ORDER)
+    )
+
 
 @dataclass(frozen=True)
 class VisualDonorSpec:
@@ -90,6 +112,8 @@ CANONICAL_VISUAL_DONORS: dict[str, VisualDonorSpec] = {
     "crystal-jataaka": VisualDonorSpec(9, 1, 8),
     "crystal-kia": VisualDonorSpec(9, 0, 8),
     "crystal-sareena": VisualDonorSpec(9, 2, 8),
+    # Power Upgrade intentionally reuses the accepted Herbs model/resource.
+    "power-upgrade": VisualDonorSpec(2, 3, 8),
 }
 
 
@@ -171,15 +195,18 @@ class StageResourcePlacement:
 
 @dataclass(frozen=True)
 class GlobalMaterializationPlan:
-    """Explicit assignments plus guarded ROM ownership supplied by the caller.
+    """Explicit 85-check assignments plus guarded ROM ownership.
 
-    The materializer deliberately does not discover "free" high-ROM space from
-    FF/padding bytes. The future global generator/allocator must supply concrete
-    non-overlapping placements whose ownership has already been established.
+    Ordinary destinations are represented in ``assignments``. The scripted
+    Temple Map location remains outside the 84 ordinary records and receives its
+    logical reward through ``temple_special_item_key``. The materializer never
+    discovers "free" ROM space; callers still supply explicit owned stage
+    resource placements.
     """
 
     assignments: tuple[MaterializationAssignment, ...]
     placements: tuple[StageResourcePlacement, ...]
+    temple_special_item_key: str | None = None
 
     def placement_for(self, stage_id: int) -> StageResourcePlacement:
         matches = [item for item in self.placements if item.stage_id == stage_id]
@@ -675,6 +702,43 @@ def plan_stage_resources(
     )
 
 
+def bind_materialized_visual_to_stock_selector(
+    plan: StageResourcePlan,
+    key: str,
+    selector: int,
+) -> StageResourcePlan:
+    """Bind one appended visual descriptor to an existing empty stock selector.
+
+    This is used by the scripted Temple special check, whose actor path uses a
+    small signed immediate rather than the ordinary pickup manager selector
+    lookup. The caller must choose a statically established empty stock slot.
+    """
+
+    if selector < 0:
+        raise PatchError("stock selector must be non-negative")
+    entry_offset = selector * 4
+    if entry_offset + 4 > plan.stock_size:
+        raise PatchError(
+            f"stage {plan.stage_id}: stock selector {selector} is out of range"
+        )
+
+    visual = next((item for item in plan.visuals if item.key == key), None)
+    if visual is None:
+        raise PatchError(f"{key}: visual is not present in stage resource plan")
+
+    output = bytearray(plan.resource_file)
+    if _be32(output, entry_offset) != 0:
+        raise PatchError(
+            f"stage {plan.stage_id}: stock selector {selector} is not empty"
+        )
+    _write_be32(output, entry_offset, visual.descriptor_offset)
+    return StageResourcePlan(
+        stage_id=plan.stage_id,
+        stock_size=plan.stock_size,
+        resource_file=bytes(output),
+        visuals=plan.visuals,
+    )
+
 def apply_stage_resource_plan(
     rom: bytearray,
     plan: StageResourcePlan,
@@ -754,6 +818,7 @@ CALLBACK_AWARD_MASK = 0x03
 AWARD_INVENTORY = 0
 AWARD_EXTRA_LIFE = 1
 AWARD_MANA = 2
+AWARD_POWER_UPGRADE = 3
 
 DEST_NONE = 0
 DEST_WIND_CIRCLE = 1
@@ -789,8 +854,10 @@ def portable_materialized_identity(
     selector: int,
     *,
     generic_inventory_callback: int,
+    power_upgrade_callback: int | None = None,
     activation_gate: bool = False,
     destination_action: int = DEST_NONE,
+    force_shared_award: bool = False,
 ) -> bytes:
     """Build a destination-safe identity for one supported logical reward.
 
@@ -815,40 +882,52 @@ def portable_materialized_identity(
     stage = _stage_pickups(donor.stage_id)
     pickup = stage.records[donor.record_index]
     logical = logical_item_from_record(donor.stage_id, donor.record_index, pickup)
-    if logical.key != key:
-        raise PatchError(
-            f"{key}: canonical donor decodes as unexpected logical item {logical.key!r}"
-        )
 
     identity = bytearray(pickup.identity)
     identity[0x14:0x18] = selector.to_bytes(4, "big")
 
-    use_shared_award = (
-        destination_action != DEST_NONE
-        or logical.native_callback is None
-        or key == "strength-urn"
-    )
-    if use_shared_award:
-        if logical.award_kind == "inventory":
-            if logical.native_callback is None and key not in PORTABLE_INVENTORY_TOKENS:
-                raise PatchError(
-                    f"{key}: destination-safe logical award semantics are not established"
-                )
-            if logical.inventory_id is None:
-                raise PatchError(f"{key}: portable inventory reward has no inventory ID")
-            award_kind = AWARD_INVENTORY
-            payload = logical.inventory_id
-        elif key == "extra-life":
-            award_kind = AWARD_EXTRA_LIFE
-            payload = 0
-        elif key == "mana":
-            award_kind = AWARD_MANA
-            payload = 0
-        else:
+    if key == "power-upgrade":
+        if power_upgrade_callback is None:
+            raise PatchError("power-upgrade requires the shared progression callback")
+        # Keep the accepted Herbs model/collision shell but use the stock-resident
+        # Ice Blue presentation and the shared destination-aware dispatcher.
+        identity[0x18:0x1C] = (0x800B1E68).to_bytes(4, "big")
+        award_kind = AWARD_POWER_UPGRADE
+        payload = 0
+        use_shared_award = True
+    else:
+        if logical.key != key:
             raise PatchError(
-                f"{key}: native-effect reward cannot compose with destination wrapper"
+                f"{key}: canonical donor decodes as unexpected logical item {logical.key!r}"
             )
+        use_shared_award = (
+            force_shared_award
+            or destination_action != DEST_NONE
+            or logical.native_callback is None
+            or key == "strength-urn"
+        )
+        if use_shared_award:
+            if logical.award_kind == "inventory":
+                if logical.native_callback is None and key not in PORTABLE_INVENTORY_TOKENS:
+                    raise PatchError(
+                        f"{key}: destination-safe logical award semantics are not established"
+                    )
+                if logical.inventory_id is None:
+                    raise PatchError(f"{key}: portable inventory reward has no inventory ID")
+                award_kind = AWARD_INVENTORY
+                payload = logical.inventory_id
+            elif key == "extra-life":
+                award_kind = AWARD_EXTRA_LIFE
+                payload = 0
+            elif key == "mana":
+                award_kind = AWARD_MANA
+                payload = 0
+            else:
+                raise PatchError(
+                    f"{key}: native-effect reward cannot compose with destination wrapper"
+                )
 
+    if use_shared_award:
         parameter = (
             (payload & CALLBACK_ITEM_MASK)
             | ((destination_action & CALLBACK_ACTION_MASK) << CALLBACK_ACTION_SHIFT)

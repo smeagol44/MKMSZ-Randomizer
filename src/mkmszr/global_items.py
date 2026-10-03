@@ -148,3 +148,53 @@ POWER_UPGRADE = LogicalItem(
     source_stage_id=-1,
     source_record_index=-1,
 )
+
+# The scripted Temple Map location is the 85th shuffled check, but logical Map
+# 0x0D is excluded from the pool. The accepted Temple special-check production
+# baseline already replaces that stock Map award with Herbs, so one additional
+# Herbs logical reward balances the 85-location pool.
+TEMPLE_SPECIAL_BASE_REWARD = logical_item_from_record(
+    0,
+    0,
+    next(stage for stage in STAGE_PICKUPS if stage.stage_id == 0).records[0],
+)
+
+TOTAL_GLOBAL_REWARDS = 85
+TOTAL_POWER_UPGRADES = 9
+
+
+def build_global_logical_pool(*, powers_as_pickups: bool) -> tuple[LogicalItem, ...]:
+    """Return the exact 85-reward 1.0 global logical multiset.
+
+    The 84 ordinary stock rewards remain the source baseline. The scripted
+    Temple Map check contributes one non-Map Herbs reward, producing 85 rewards
+    for 85 locations. With Powers-as-pickups enabled, nine stable Herbs entries
+    are converted to explicit synthetic Power Upgrade rewards *before* the
+    global shuffle. OFF leaves those nine entries as ordinary Herbs.
+    """
+
+    result = list(build_stock_logical_pool())
+    result.append(TEMPLE_SPECIAL_BASE_REWARD)
+    if len(result) != TOTAL_GLOBAL_REWARDS:
+        raise AssertionError(
+            f"global reward pool drifted: {len(result)} != {TOTAL_GLOBAL_REWARDS}"
+        )
+
+    if powers_as_pickups:
+        herb_indices = [
+            index for index, item in enumerate(result) if item.key == "herbs"
+        ]
+        if len(herb_indices) < TOTAL_POWER_UPGRADES:
+            raise AssertionError(
+                f"global pool has only {len(herb_indices)} Herbs; "
+                f"need {TOTAL_POWER_UPGRADES} for progression rewards"
+            )
+        for index in herb_indices[:TOTAL_POWER_UPGRADES]:
+            result[index] = POWER_UPGRADE
+
+    if sum(item.key == "power-upgrade" for item in result) != (
+        TOTAL_POWER_UPGRADES if powers_as_pickups else 0
+    ):
+        raise AssertionError("global Power Upgrade count drifted")
+
+    return tuple(result)

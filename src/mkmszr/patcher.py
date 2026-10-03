@@ -4,6 +4,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .config import RandomizerConfig
+from .errors import PatchError
+from .global_generation import (
+    GlobalRunPlan,
+    build_completion_policy,
+    build_global_run_plan,
+    materialization_plan_from_run,
+)
 from .patches import (
     PICKUP_PERSISTENCE_PAYLOAD,
     ArenaReservationPatch,
@@ -42,9 +49,17 @@ from .patches.inventory_boxes import (
     SPECIALS_MODERN_STATE_MASK,
     TURN_LOCK_STATE_MASK,
 )
-from .patches.required_powers import RequiredPowersPatch, resolve_required_powers
+from .patches.required_powers import (
+    RequiredPowersPatch,
+    resolve_required_powers,
+)
 from .patches.toasty_codegen import pack_toasty_module
-from .resource_materialization import GlobalMaterializationPlan
+from .patches.xp_progression import XP_THRESHOLDS
+from .resource_materialization import (
+    GLOBAL_OUTPUT_SIZE,
+    GlobalMaterializationPlan,
+    production_global_resource_placements,
+)
 from .rom import RomImage
 
 
@@ -58,6 +73,62 @@ class BuildResult:
     patches: tuple[PatchResult, ...]
     required_powers_count: int | None
     required_powers_xp: int
+    global_attempt_index: int | None
+    global_completion_mode: str | None
+
+
+GLOBAL_MAX_ATTEMPTS = 10_000
+
+
+def _pickup_mode_required_count(required_count: int | None, required_xp: int) -> int:
+    """Convert the Fortress XP gate into the minimum pickup-tier count."""
+
+    if required_count is not None:
+        return required_count
+    for count, threshold in enumerate(XP_THRESHOLDS, start=1):
+        if threshold >= required_xp:
+            return count
+    raise PatchError(
+        f"Fortress XP requirement {required_xp} exceeds the ninth Power Upgrade"
+    )
+
+
+def _build_production_global_plan(
+    config: RandomizerConfig,
+    *,
+    required_count: int | None,
+    required_xp: int,
+) -> tuple[GlobalMaterializationPlan, GlobalRunPlan]:
+    if not config.seed:
+        raise PatchError("global item generation requires a non-empty seed")
+
+    if config.powers_as_pickups:
+        solver_required_powers = _pickup_mode_required_count(
+            required_count,
+            required_xp,
+        )
+    else:
+        # Stock-XP mode has no Power Upgrade items in the 85-reward pool.
+        # Zero here means required shuffled upgrades, not the Fortress XP gate.
+        # OFF retains vanilla earned XP without additional solver accounting.
+        # RequiredPowersPatch independently preserves or sets the selected gate.
+        solver_required_powers = 0
+
+    policy = build_completion_policy(
+        config.global_completion_mode,
+        solver_required_powers,
+    )
+    run = build_global_run_plan(
+        config.seed,
+        powers_as_pickups=config.powers_as_pickups,
+        policy=policy,
+        max_attempts=GLOBAL_MAX_ATTEMPTS,
+    )
+    plan = materialization_plan_from_run(
+        run,
+        production_global_resource_placements(),
+    )
+    return plan, run
 
 
 def build_pipeline(
@@ -80,13 +151,6 @@ def build_pipeline(
     if config.game_settings.run_auto:
         settings_state |= RUN_AUTO_STATE_MASK
 
-    if materialization_plan is not None and config.powers_as_pickups:
-        raise ValueError(
-            "explicit global materialization is not yet composable with the current "
-            "pickup-XP overlay; global progression placement must be supplied by the "
-            "future global generator/solver"
-        )
-
     patches = [
         SafeStageSelectorPatch(),
         ArenaReservationPatch(),
@@ -99,7 +163,9 @@ def build_pipeline(
     if config.powers_as_pickups:
         # Only pickup mode replaces the four-box resume tail. The other mode
         # keeps stock XP stores/caps and ordinary Herbs callbacks.
-        patches.append(XPProgressionPatch())
+        patches.append(
+            XPProgressionPatch(global_mode=materialization_plan is not None)
+        )
     patches.extend(
         [
             GameSettingsTurnPatch(),
@@ -161,7 +227,11 @@ def build_pipeline(
     if config.powers_as_pickups:
         # Presentation is installed late so its shared file-0x1A allocation
         # composes with optional Toasty and all earlier runtime owners.
-        patches.append(ProgressionPickupPresentationPatch())
+        patches.append(
+            ProgressionPickupPresentationPatch(
+                global_mode=materialization_plan is not None
+            )
+        )
     # Controls production deliberately verifies the stock Slide/Super Slide
     # gates before installing helpers that call those recognizers. Apply the
     # optional order remap afterwards so both safety guards and shuffled tiers
@@ -189,16 +259,34 @@ def patch_bytes(
     materialization_plan: GlobalMaterializationPlan | None = None,
 ) -> BuildResult:
     rom = RomImage.from_bytes(source, require_clean=True)
+    required_count, required_xp = resolve_required_powers(
+        config.required_powers_mode, config.custom_required_powers, config.seed
+    )
+
+    global_run: GlobalRunPlan | None = None
+    effective_plan = materialization_plan
+    if effective_plan is None:
+        effective_plan, global_run = _build_production_global_plan(
+            config,
+            required_count=required_count,
+            required_xp=required_xp,
+        )
+        rom.expand_output(GLOBAL_OUTPUT_SIZE)
+    elif any(
+        placement.rom_end_exclusive > len(rom.data)
+        for placement in effective_plan.placements
+    ):
+        rom.expand_output(
+            max(placement.rom_end_exclusive for placement in effective_plan.placements)
+        )
+
     results = build_pipeline(
         config,
         toasty_assets=toasty_assets,
         temple_intro_audio_assets=temple_intro_audio_assets,
         toasty_probability_per_thousand=toasty_probability_per_thousand,
-        materialization_plan=materialization_plan,
+        materialization_plan=effective_plan,
     ).apply(rom, PatchContext(seed=config.seed))
-    required_count, required_xp = resolve_required_powers(
-        config.required_powers_mode, config.custom_required_powers, config.seed
-    )
     crc1, crc2 = rom.update_header_crc()
     return BuildResult(
         data=rom.to_bytes(),
@@ -209,6 +297,12 @@ def patch_bytes(
         patches=results,
         required_powers_count=required_count,
         required_powers_xp=required_xp,
+        global_attempt_index=(
+            global_run.candidate.attempt_index if global_run is not None else None
+        ),
+        global_completion_mode=(
+            config.global_completion_mode if global_run is not None else None
+        ),
     )
 
 

@@ -17,6 +17,7 @@ const shufflePowerProgression = document.querySelector("#shufflePowerProgression
 const enemyRandomization = document.querySelector("#enemyRandomization");
 const powersAsPickups = document.querySelector("#powersAsPickups");
 const requiredPowersMode = document.querySelector("#requiredPowersMode");
+const globalCompletionMode = document.querySelector("#globalCompletionMode");
 const customRequiredPowersField = document.querySelector("#customRequiredPowersField");
 const customRequiredPowers = document.querySelector("#customRequiredPowers");
 const difficulty = document.querySelector("#difficulty");
@@ -190,6 +191,7 @@ async function patchRom() {
     pyodide.globals.set("web_enemy_randomization", enemyRandomization.checked);
     pyodide.globals.set("web_powers_as_pickups", powersAsPickups.checked);
     pyodide.globals.set("web_required_powers_mode", requiredPowersMode.value);
+    pyodide.globals.set("web_global_completion_mode", globalCompletionMode.value);
     pyodide.globals.set("web_custom_required_powers", requiredPowersMode.value === "custom" ? customPowerCount : 0);
     pyodide.globals.set("web_difficulty", difficulty.value);
     pyodide.globals.set("web_lives", livesValue);
@@ -217,6 +219,7 @@ _config = RandomizerConfig(
     enemy_randomization=bool(web_enemy_randomization),
     powers_as_pickups=bool(web_powers_as_pickups),
     required_powers_mode=str(web_required_powers_mode),
+    global_completion_mode=str(web_global_completion_mode),
     custom_required_powers=int(web_custom_required_powers) if str(web_required_powers_mode) == "custom" else None,
     difficulty=str(web_difficulty),
     lives=int(web_lives),

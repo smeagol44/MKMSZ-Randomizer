@@ -92,6 +92,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Fortress final XP requirement (default: stock threshold)",
     )
     parser.add_argument(
+        "--global-completion",
+        choices=("all_85", "game_beatable"),
+        default="all_85",
+        help="global seed acceptance rule (default: all_85)",
+    )
+    parser.add_argument(
         "--custom-required-powers",
         type=int,
         metavar="0..9",
@@ -128,6 +134,7 @@ def main(argv: list[str] | None = None) -> int:
         enemy_randomization=args.enemy_randomization,
         powers_as_pickups=not args.no_powers_as_pickups,
         required_powers_mode=args.required_powers,
+        global_completion_mode=args.global_completion,
         custom_required_powers=args.custom_required_powers,
         difficulty=args.difficulty,
         lives=args.lives,
