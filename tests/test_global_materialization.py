@@ -7,14 +7,21 @@ from mkmszr.patches.global_materialization import (
     GENERIC_AWARD,
     MATERIALIZER_HELPER,
     MATERIALIZER_HELPER_END_K0,
+    MATERIALIZER_HELPER_END_ROM,
     MATERIALIZER_HELPER_K0,
+    MATERIALIZER_HELPER_ROM,
     MATERIALIZER_RUNTIME_LIMIT,
     PRISON_RECONSTRUCT,
     PRISON_RECONSTRUCT_K0,
     GlobalItemMaterializationPatch,
 )
 from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
-from mkmszr.patches.progression_presentation import ProgressionPickupPresentationPatch
+from mkmszr.patches.progression_presentation import (
+    FLASH_MODULE_END_K0,
+    FLASH_MODULE_END_ROM,
+    ProgressionPickupPresentationPatch,
+)
+from mkmszr.patches.toasty_constants import TOASTY_AUDIO_ROM
 from mkmszr.patches.xp_progression import XPProgressionPatch
 from mkmszr.resource_materialization import (
     DEST_EARTH_SQUARE,
@@ -44,8 +51,11 @@ def _plan(*assignments: MaterializationAssignment) -> GlobalMaterializationPlan:
     )
 
 
-def test_materializer_helper_fits_controls_to_toasty_gap() -> None:
-    assert MATERIALIZER_HELPER_K0 == 0x801B2960
+def test_materializer_helper_fits_progression_to_audio_gap() -> None:
+    assert MATERIALIZER_HELPER_ROM == FLASH_MODULE_END_ROM == 0x00F6AAF0
+    assert MATERIALIZER_HELPER_K0 == FLASH_MODULE_END_K0 == 0x801B2310
+    assert MATERIALIZER_HELPER_END_ROM == 0x00F6B0D0
+    assert MATERIALIZER_HELPER_END_ROM <= TOASTY_AUDIO_ROM == 0x00F6B5D0
     assert MATERIALIZER_HELPER_END_K0 <= MATERIALIZER_RUNTIME_LIMIT == 0x801B3420
     assert len(GENERIC_AWARD) > 0
     assert len(ACQUISITION_REMASK) > 0
@@ -189,12 +199,12 @@ def test_power_upgrade_uses_herbs_visual_blue_presentation_and_shared_dispatcher
     identity = portable_materialized_identity(
         "power-upgrade",
         0x123C,
-        generic_inventory_callback=0xA01B2960,
+        generic_inventory_callback=0xA01B2310,
         power_upgrade_callback=0xA01B2160,
         destination_action=DEST_FIRE_TRIANGLE_DOWN,
     )
     assert int.from_bytes(identity[0x04:0x08], "big") == 0x6C00
-    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B2960
+    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B2310
     assert int.from_bytes(identity[0x14:0x18], "big") == 0x123C
     assert int.from_bytes(identity[0x18:0x1C], "big") == 0x800B1E68
 
@@ -204,12 +214,12 @@ def test_temple_special_fixed_reward_can_force_shared_dispatcher() -> None:
     identity = portable_materialized_identity(
         "potion",
         1,
-        generic_inventory_callback=0xA01B2960,
+        generic_inventory_callback=0xA01B2310,
         power_upgrade_callback=0xA01B2160,
         force_shared_award=True,
     )
     assert int.from_bytes(identity[0x04:0x08], "big") == 0x01
-    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B2960
+    assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B2310
 
 
 def test_temple_special_can_alias_appended_visual_to_empty_stock_selector() -> None:

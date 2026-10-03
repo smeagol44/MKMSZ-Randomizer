@@ -98,7 +98,11 @@ from .inventory_boxes import (
     LOAD_MASK_WRAPPER_VA,
 )
 from .native_payload import kseg1_alias
-from .progression_presentation import PROGRESSION_FLASH_CALLBACK_ENTRY
+from .progression_presentation import (
+    FLASH_MODULE_END_K0,
+    FLASH_MODULE_END_ROM,
+    PROGRESSION_FLASH_CALLBACK_ENTRY,
+)
 from .temple_special_check import (
     AWARD_HELPER_VA as TEMPLE_BASE_AWARD_HELPER_VA,
 )
@@ -109,6 +113,7 @@ from .temple_special_check import (
     TEMPLE_SPECIAL_CHECK_STATE_MASK,
 )
 from .toasty_constants import MODULE_K0 as TOASTY_K0
+from .toasty_constants import TOASTY_AUDIO_ROM
 
 NOP = 0
 FILE_TABLE_COUNT = 0xAC
@@ -150,15 +155,14 @@ ACQUISITION_DISPLACED_0 = 0x00121040  # sll v0,s2,1
 ACQUISITION_DISPLACED_1 = 0x00521021  # addu v0,v0,s2
 
 # The original 0x801B0970 candidate was only 0xF0 bytes and immediately
-# preceded the now Runtime-confirmed lifecycle-v06 owner at 0x801B0A60.
-# Destination wrappers make the helper larger, so preserve lifecycle/Toasty
-# ownership and place this module in the high tail of the already-reserved
-# 16-KiB expansion pool.  ROM 0xF6B140 is beyond the current supported
-# Toasty module + voice footprint; if a future Toasty asset grows into this
-# range the expected-FF guard fails closed rather than silently overlapping.
-MATERIALIZER_HELPER_K0 = 0x801B2960
+# preceded the Runtime-confirmed lifecycle-v06 owner at 0x801B0A60.
+# The enlarged destination-aware helper needs 0x560 bytes. Anchor it directly
+# after the Runtime-confirmed progression-flash reservation instead of in the
+# later ROM/audio corridor. This keeps shared file 0x1A contiguous while ending
+# it before the fixed Toasty donor-audio sample at 0xF6B5D0.
+MATERIALIZER_HELPER_K0 = FLASH_MODULE_END_K0
 MATERIALIZER_HELPER_K1 = kseg1_alias(MATERIALIZER_HELPER_K0)
-MATERIALIZER_HELPER_ROM = 0x00F6B140
+MATERIALIZER_HELPER_ROM = FLASH_MODULE_END_ROM
 MATERIALIZER_RUNTIME_LIMIT = EXPANSION_POOL_END_EXCLUSIVE
 
 GENERIC_AWARD_OFFSET = 0x00
@@ -487,6 +491,8 @@ if MATERIALIZER_HELPER_K0 < TOASTY_K0:
     raise AssertionError("materializer helper must remain after Toasty runtime base")
 if MATERIALIZER_HELPER_END_K0 > MATERIALIZER_RUNTIME_LIMIT:
     raise AssertionError("materializer helper exceeds the reserved expansion pool")
+if MATERIALIZER_HELPER_END_ROM > TOASTY_AUDIO_ROM:
+    raise AssertionError("materializer helper overlaps fixed Toasty audio sample")
 
 MATERIALIZER_HELPER = bytearray(MATERIALIZER_HELPER_SIZE)
 MATERIALIZER_HELPER[
