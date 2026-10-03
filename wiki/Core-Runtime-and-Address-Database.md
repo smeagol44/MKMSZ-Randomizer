@@ -6,7 +6,7 @@
 
 ## Clean target and invariants
 
-Only the 16 MiB USA Rev. 0 big-endian ROM is supported: SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`. Every stock edit uses an expected-byte guard. A patch failure stops the build before output, and the clean input is never modified in place.
+Only the 16 MiB USA Rev. 0 ROM content is supported. Input may use standard `.z64`, `.v64`, or `.n64` byte order, but it is normalized first; the canonical big-endian image must then have SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`. Every stock edit uses an expected-byte guard. A patch failure stops the build before output, and the clean input is never modified in place.
 
 ## Arena reservation mechanism
 
