@@ -142,7 +142,10 @@ See [Core runtime and native payload](Core-Runtime-and-Address-Database) and [Me
 - **Byte** — an 8-bit value.
 - **u16 / u32** — unsigned 16-bit / 32-bit integer.
 - **Signed immediate** — a small integer encoded in an instruction whose high bit changes its signed interpretation.
-- **Endianness** — byte order. The supported N64 ROM is big-endian `.z64`; multi-byte reads/writes must preserve target byte order.
+- **Endianness** — byte order. MKMSZR accepts standard N64 `.z64`, `.v64`, and `.n64` serializations, normalizes them to big-endian `.z64`, and performs all multi-byte reads/writes in that canonical form.
+- **N64 ROM magic / format marker** — the first four bytes used to identify standard N64 byte order: `80 37 12 40` for `.z64`, `37 80 40 12` for `.v64`, and `40 12 37 80` for `.n64`. This is sometimes informally called a signature, but it is not a cryptographic signature.
+- **ROM internal header** — the game-owned N64 header at the start of the canonical ROM image; it is part of the ROM and includes fields such as the boot/header checksum area and game identification metadata.
+- **Copier/external header** — extra bytes prepended by some dumping/copier formats outside the canonical ROM image. MKMSZR does not currently auto-strip unknown external headers; unsupported prefixed images fail closed rather than being guessed at.
 - **JAL** — MIPS “jump and link”; calls a function and stores a return address.
 - **JALR** — “jump and link register”; indirect function call through a register.
 - **JR** — jump register, commonly used for function return via `ra`.

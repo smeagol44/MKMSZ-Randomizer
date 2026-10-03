@@ -2,7 +2,7 @@
 
 ## Supported target and patcher safety
 
-The supported target is the USA Rev. 0 big-endian `.z64` ROM:
+The supported target is the USA Rev. 0 ROM. The patcher accepts the three standard N64 byte-order serializations — `.z64` (`80 37 12 40`), `.v64` (`37 80 40 12`), and `.n64` (`40 12 37 80`) — then normalizes to canonical big-endian `.z64` before validation. The filename extension is not authoritative:
 
 | Hash | Value |
 |---|---|

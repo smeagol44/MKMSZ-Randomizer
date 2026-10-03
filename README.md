@@ -2,7 +2,7 @@
 
 Development repository for the native-ROM version of the **Mortal Kombat Mythologies: Sub-Zero** randomizer.
 
-The codebase is built around a modular Python patching core. ROMs are never stored in this repository; users must supply their own clean USA `.z64` image.
+The codebase is built around a modular Python patching core. ROMs are never stored in this repository; users must supply their own clean USA Rev. 0 image. Standard N64 `.z64`, `.v64`, and `.n64` byte orders are accepted and normalized internally to canonical big-endian `.z64` before validation and patching.
 
 ## Current development goals
 

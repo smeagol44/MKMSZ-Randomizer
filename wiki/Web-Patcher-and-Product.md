@@ -14,7 +14,7 @@ The web patcher is organized around an explicit **patch target**, not a list of 
 
 Current supported web target:
 
-- **Nintendo 64** — clean MKMSZ USA Rev. 0 big-endian `.z64` is the patch target.
+- **Nintendo 64** — clean MKMSZ USA Rev. 0 is the patch target. Standard `.z64` (big-endian), `.v64` (byte-swapped), and `.n64` (little-endian 32-bit-word) serializations are accepted. Detection uses the first four ROM bytes rather than the filename extension; input is normalized to canonical big-endian `.z64` before the existing clean-ROM SHA-256 and patch guards run. Generated output remains canonical `.z64`.
 - **MKT N64 donor** — Mortal Kombat Trilogy (USA) Rev. 2 big-endian `.z64` is optional. When supplied, it is read locally as a donor source for supported donor-backed features; the donor itself is never patched.
 - **PlayStation** — shown only as a planned target. There is no PS1 file picker until a PS1 patch pipeline exists; future labels use **ISO**, not ROM.
 

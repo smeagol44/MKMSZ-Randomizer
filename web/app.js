@@ -77,7 +77,7 @@ function generateSeed() {
 }
 
 function outputFilename(inputName, mode, seedValue) {
-  const stem = inputName.replace(/\.z64$/i, "");
+  const stem = inputName.replace(/\.(?:z64|v64|n64)$/i, "");
   let suffix = mode === "vanilla" ? "mkmszr" : `mkmszr-${mode}`;
   const safeSeed = seedValue.replace(/[^a-z0-9_-]/gi, "").slice(0, 24);
   if (safeSeed) suffix += `-${safeSeed}`;
