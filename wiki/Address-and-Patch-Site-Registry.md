@@ -234,7 +234,7 @@ The earlier proof carrier descriptor `0x220` / event `0x1B8` is **not a producti
 | Site | Ownership / edit | Evidence |
 |---|---|---|
 | ROM `0x00010E64` | Stock Prison-entry JAL to `0x802ED538` is replaced by a JAL to the PR #129 reconstruction wrapper. The wrapper calls stock `0x802ED538` first, then rebuilds `0x802C0D54` bits 0..2 from authoritative four-box IDs `0x1A..0x1C`. | Implementation/CI-confirmed (#1583); Runtime Pending |
-| ROM `0x00F6B140..0x00F6B69F` / RDRAM `0x801B2960..0x801B2EBF` | Shared file-`0x1A` materializer helper containing logical-award dispatcher, destination actions, immediate re-mask helper, and Prison reconstruction. | Implementation/CI-confirmed (#1583); Runtime Pending |
+| ROM `0x00F6AAF0..0x00F6B04F` / RDRAM `0x801B2310..0x801B286F` | Shared file-`0x1A` materializer helper containing logical-award dispatcher, destination actions, immediate re-mask helper, and Prison reconstruction. | Implementation/CI-confirmed (#1583); Runtime Pending |
 | Ordinary pickup record `+0x14` | Low 15 bits encode logical award + destination action for wrapper-owned locations; raw bit `0x8000` remains destination activation state and is masked before callback dispatch. | Static-confirmed ownership; Implementation/CI-confirmed emission |
 
 Native per-stage selector writer sites are not globally NOPed or rewritten by this integration. Destination wrappers invoke only the separately researched location-owned transition/state effects.
