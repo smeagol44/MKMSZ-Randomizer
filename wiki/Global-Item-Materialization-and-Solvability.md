@@ -1,14 +1,14 @@
 # Global item materialization and solvability
 
-> **Scope:** This page is the canonical technical owner for the **planned 1.0 global logical item model, cross-stage destination materializer, deterministic global retry contract, and whole-run solvability verifier**, including the bounded proofs and rejected materialization approaches that constrain that design.
+> **Scope:** This page is the canonical technical owner for the **1.0 global logical item model, cross-stage destination materializer, deterministic global retry contract, and whole-run solvability verifier**, including the bounded proofs and rejected materialization approaches that constrain that design.
 >
-> The current production shuffle remains stage-local and is documented in [Pickups and stage-local randomization](Pickups-and-Item-Randomization). Nothing on this page turns a disposable proof, proof allocation, or pipeline-disconnected planner into production behavior.
+> PR #137 connects the 85-check global generator, solver, and destination materializer to the shared product path. Ordinary pickup mechanics and the superseded stage-local model are documented in [Pickups and item randomization](Pickups-and-Item-Randomization). Disposable proof allocations remain distinct from production ownership.
 
 ## Current conclusion
 
 MKMSZR 1.0 requires one deterministic global logical pool across **85 shuffled checks**: the 84 ordinary pickup records plus the scripted Temple special check. Logical Map item `0x0D` is excluded from the reward pool. The assignment is followed by destination-stage materialization and a whole-run solvability check; logical assignment and physical representation remain deliberately separate concerns.
 
-Cross-stage feasibility is **Runtime-confirmed in bounded proofs**, including extension selectors, embedded foreign resources, external-to-embedded conversion, and five simultaneous imported visuals in Prison. Fortress five-import composed stress validation is Runtime-confirmed on a bounded route, and Kia -> Potion Runtime-confirms that a Fortress boss-defeat trigger can retain ownership of activation while the spawned reward identity/resource changes to a non-crystal item. PR #126 now connects the pure planner to the shared patch pipeline through an explicit fail-closed `GlobalMaterializationPlan`; the representative v03 co-resident Temple/materializer composition is Runtime-confirmed and CI-green. Normal seeded product generation still remains stage-local until the deterministic global generator/solver supplies complete assignments and production-owned stage-resource placements.
+Cross-stage feasibility is **Runtime-confirmed in bounded proofs**, including extension selectors, embedded foreign resources, external-to-embedded conversion, and five simultaneous imported visuals in Prison. Fortress five-import composed stress validation is Runtime-confirmed on a bounded route, and Kia -> Potion Runtime-confirms that a Fortress boss-defeat trigger can retain ownership of activation while the spawned reward identity/resource changes to a non-crystal item. PR #126 now connects the pure planner to the shared patch pipeline through an explicit fail-closed `GlobalMaterializationPlan`; the representative v03 co-resident Temple/materializer composition is Runtime-confirmed and CI-green. PR #137 now supplies the complete accepted global assignments and explicit appended resource ownership to the normal product path.
 
 The normative 1.0 acceptance requirements remain owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap). This page owns the technical mechanism, evidence, limits, and unresolved design questions.
 
@@ -398,7 +398,7 @@ A production planner therefore needs to track at least:
 - runtime arena/headroom implications;
 - duplicate logical items that can share one imported destination bundle.
 
-The current pure planner supports deterministic deduplicated extension-selector tables and self-contained imported visual bundles, but it remains **pipeline-disconnected**.
+The planner supports deterministic deduplicated extension-selector tables and self-contained imported visual bundles. PR #126 connected it to the shared pipeline; PR #137 now supplies accepted global assignments and owned appended resource placements.
 
 Stage-specific source records and capacities remain in the stage catalogs. There is intentionally no second global resource-bundle catalog yet.
 
@@ -458,7 +458,7 @@ This is **Runtime-confirmed feasibility evidence only**. Those exact ROM/callbac
 
 This preserves the useful high-level fixed-point idea from the legacy Lua while rejecting its stale access rules, item substitutions, narrow final predicate, and retry/reseeding behavior. Power Upgrade placement is now part of the global permutation itself rather than a post-layout destination-selection overlay.
 
-PR #137 also makes the physical seams explicit: ordinary Power Upgrades reuse the accepted Herbs visual resource + Ice Blue presentation + progression callback while still composing with destination checkpoint/state wrappers; the Temple special check can receive an arbitrary assigned logical reward through its dedicated persistence/elevator seam. CI **#1614** is green. Normal product generation remains stage-local until production-owned backing for expanded stage resource files and the final completion policy are approved.
+PR #137 connects these physical seams to normal browser/CLI generation: ordinary Power Upgrades reuse the accepted Herbs resource, Ice Blue presentation, and progression callback while preserving destination wrappers; the Temple special check receives its assigned logical reward through the established persistence/elevator seam. The maintainer approved promotion after bounded global-v2 gameplay. Full eight-stage/full-seed runtime coverage is not claimed.
 
 ## Deterministic retry attempts
 
@@ -480,7 +480,7 @@ The attempt index must be isolated from unrelated deterministic namespaces, incl
 - progression-reward selection details;
 - required-Power-Upgrades target generation.
 
-The interim stage-local implementation's 1,000-attempt ceiling is **not** automatically the global 1.0 retry limit. PR #137 keeps the ceiling caller-supplied while making every candidate a pure function of the original seed + explicit attempt index. No final product retry ceiling is currently established.
+The historical stage-local implementation used a 1,000-attempt ceiling. The global planner accepts a caller-supplied ceiling; the shared product path uses `GLOBAL_MAX_ATTEMPTS = 10_000`. Every candidate remains a pure function of the original seed and explicit attempt index.
 
 ## Whole-run solvability verifier
 
@@ -495,7 +495,7 @@ The intended algorithmic shape is a fixed-point reachability simulation:
 5. repeat until no new check becomes reachable;
 6. evaluate the final completion predicate.
 
-The **current stage-local** access model is useful input, but it is not a complete whole-run graph. The native global verifier must use the finalized current stage/location requirements rather than the legacy Lua tables.
+PR #137 uses the current 85-check native graph and researched stage/location requirements. The historical stage-local model and legacy Lua tables are design references, not the authoritative global verifier.
 
 ### Progression graph ownership
 
@@ -505,23 +505,23 @@ The final graph still needs to resolve any access rules that are incomplete or o
 
 ### Completion predicate
 
-The final 1.0 completion predicate is still **Pending**. At minimum it must include the selected Vanilla / Custom / Seed required-power condition described below and all finalized progression conditions needed to complete the run.
+The implemented completion policies are **All 85 available** (every check reachable, default) and **Game beatable** (all 21 credentials and the required shuffled upgrades when pickup mode is ON). OFF retains vanilla XP and the independently configured Fortress gate; it adds no earned-XP simulation gate. These policies are Implementation/CI-confirmed; the final full-seed runtime release pass remains Pending.
 
 The legacy Lua predicate required its chosen Power-Upgrades count plus the three Fortress crystals. That is historical design evidence only; it must not be copied as the authoritative native predicate without reconciling the current stage graph and completion route.
 
 ## Required Power Upgrades
 
-With **Powers as pickups** ON (the default), exactly **nine explicit Power Upgrade logical rewards exist in the 85-item shuffled pool**. They are created by replacing nine Herbs entries in the source reward multiset before Fisher-Yates, not by selecting nine destinations afterward. With it OFF, those nine source entries remain Herbs and powers are earned from stock XP instead. The required number of powers remains an independent build setting in either mode; the whole-run solver must model the correct reward/XP source for the chosen mode.
+With **Powers as pickups** ON (the default), exactly **nine explicit Power Upgrade logical rewards exist in the 85-item shuffled pool**. They are created by replacing nine Herbs entries in the source reward multiset before Fisher-Yates, not by selecting nine destinations afterward. With it OFF, those nine source entries remain Herbs and powers are earned from stock XP instead. The required number of powers remains an independent build setting in either mode; the solver counts shuffled upgrades only when ON; OFF retains vanilla earned XP without an additional accounting requirement.
 
 The required count must:
 
 - use Vanilla (stock Fortress XP gate `5100`, not an exact normal-XP tier count), Custom (`0..9`), or Seed (`0..9` from an independent deterministic RNG namespace);
 - be independent of how many global layout candidates were rejected;
-- be part of the whole-run solver's completion predicate;
+- be enforced as a shuffled-upgrade count in the solver when pickup mode is ON, while the native Fortress gate remains independently configured in both modes;
 - be displayed by the randomizer HUD;
-- preserve native thresholds for pickup-driven rewards and use earnable XP/tier state when pickups are OFF.
+- preserve native thresholds for pickup-driven rewards and vanilla earned-XP behavior when pickups are OFF.
 
-The build-time range for Custom/Seed is `0..9`. Global mode-aware solver reachability and the final HUD remain Pending; an OFF-mode seed cannot be declared beatable merely because the Fortress gate patch is valid.
+The build-time range for Custom/Seed is `0..9`. **Powers as pickups** and **Required powers** are independent. OFF retains vanilla earned XP; no additional earned-XP simulation or validation gate is required. The solver requires zero shuffled Power Upgrade items in OFF mode because none exist in that pool. This does not change the Fortress gate: Vanilla retains the stock 5100-XP check, and Custom/Seed still apply their selected XP threshold in either mode. The broader native randomizer HUD remains Pending.
 
 Native progression mechanics and current runtime evidence through XP 85/258 belong to [XP and progression](XP-and-Progression).
 
@@ -571,7 +571,7 @@ The Temple-specific architecture is now closed around the validated ownership sp
 4. materialize the assigned visual/reward independently from those location-owned effects;
 5. keep this state outside the eight ordinary pickup bitset words.
 
-The first promoted product implementation uses the Runtime-confirmed Herbs representative presentation/reward. This is intentionally **not** a claim that the still-Pending global shuffle already assigns arbitrary rewards. When the global item generator/materializer is connected, it should feed the selected logical reward into this established special-check seam rather than redesigning Temple progression or persistence.
+The initial promoted Temple implementation used the Runtime-confirmed Herbs representative. PR #137 feeds the globally assigned logical reward into that established special-check seam, preserving Temple progression and persistence.
 
 ## Rejected, failed, and superseded materialization approaches
 
@@ -586,15 +586,14 @@ These findings remain part of the canonical design history because they prevent 
 - **Literal port of the legacy Lua global solver — Rejected as an implementation plan.** Its high-level fixed-point idea is useful, but its access rules, item substitutions, narrow final predicate, and retry/reseeding behavior are not current 1.0 truth.
 - **Reusing proof allocations as production allocations — Rejected.** Runtime success of a disposable cave/file placement does not establish production ownership or composition safety.
 
-## Current integration gates
+## Production integration and remaining release coverage
 
-The destination-wrapper/credential architecture is Runtime-confirmed bounded on current `main`, and PR #137 now has an Implementation/CI-confirmed 85-check generator/solver/materializer seam. The remaining gates before normal product enablement are:
+The destination-wrapper/credential architecture is Runtime-confirmed bounded, and PR #137 connects the Implementation/CI-confirmed 85-check generator/solver/materializer to the shared product path. Promotion is approved. Current ownership and remaining limits are:
 
 - **production stage-resource ROM backing:** user-approved design keeps the clean input at 16 MiB but expands generated output to **32 MiB**. PR #137 reserves appended `[0x01000000,0x01800000)` as eight explicit 1 MiB stage-resource slots in stage order `0,1,2,3,4,5,8,9`; `[0x01800000,0x02000000)` remains unassigned. The bounded Temple stock-resource relocation proof is **Runtime-confirmed**: the unchanged Temple resource loads normally from above `0x01000000`, and ordinary Herbs behavior remained normal. This closes the appended-ROM loader assumption; full eight-stage global composition remains Runtime Pending;
-- **completion policy:** user-approved selectable modes are now implemented: **All 85 available** (default) requires all destinations reachable; **Game beatable** requires all 21 progression tokens plus the selected Power requirement while optional mundane checks may remain unreachable. The global retry ceiling remains Pending;
-- **mode-aware earned-XP solver behavior when Powers as pickups is OFF;**
-- **guarded disposable production-composition proof** once resource backing is approved;
-- **normal browser/CLI integration**, then representative full-seed runtime validation and HUD integration.
+- **completion policy:** user-approved selectable modes are now implemented: **All 85 available** (default) requires all destinations reachable; **Game beatable** requires all 21 progression tokens plus the selected Power requirement while optional mundane checks may remain unreachable. The product retry ceiling is 10,000 attempts;
+- **independent progression settings:** **Powers as pickups** and **Required powers** are independent. OFF retains vanilla earned XP; no additional earned-XP simulation or validation gate is required. The solver requires zero shuffled Power Upgrade items in OFF mode because none exist in that pool. This does not change the Fortress gate: Vanilla retains the stock 5100-XP check, and Custom/Seed still apply their selected XP threshold in either mode.
+- **remaining release coverage:** the broader native HUD and representative full-seed/all-tier runtime validation remain Pending. The FX-only audio investigation is deferred without an established global-generation root cause.
 
 The old PR #80 84-location/post-shuffle progression-location model is superseded by PR #137 v2.
 

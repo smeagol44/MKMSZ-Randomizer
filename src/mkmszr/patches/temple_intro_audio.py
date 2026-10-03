@@ -35,38 +35,73 @@ EXPECTED_LINE_A = bytes.fromhex("24040041")
 EXPECTED_LINE_B = bytes.fromhex("24040042")
 EXPECTED_AUDIO2 = bytes.fromhex("24040043")
 
-# Production carrier selected after clean-ROM liveness/ownership audit.
-# Descriptor/event 0x20A/0x1A6 have no direct immediate references in the
-# supported clean ROM. The full event->patch->subpatch->wave chain is unique.
-CARRIER_DESCRIPTOR_ID = 0x20A
-CARRIER_EVENT_ID = 0x1A6
-CARRIER_PATCH_ID = 579
-CARRIER_SUBPATCH_ID = 422
-CARRIER_WAVE_ID = 412
+# Temple owns stock descriptors 0x41/0x42/0x43 and their one-shot SSEQ
+# events 123/124/125. Keep the descriptor IDs stock and replace only the
+# selected Temple event(s), so unrelated gameplay that reaches other
+# descriptors cannot be hijacked by this feature.
+TEMPLE_EVENT_A_ID = 123
+TEMPLE_EVENT_B_ID = 124
+TEMPLE_EVENT_AUDIO2_ID = 125
+TEMPLE_EVENT_A_ROM = 0x0097A200
+TEMPLE_EVENT_B_ROM = 0x0097A220
+TEMPLE_EVENT_AUDIO2_ROM = 0x0097A240
+EXPECTED_TEMPLE_EVENT_A = bytes.fromhex(
+    "0000011800007f4000000078007800000000000c00113c7f8170123c00227820"
+)
+EXPECTED_TEMPLE_EVENT_B = bytes.fromhex(
+    "0000011900007f4000000078007800000000000c00113c7f8229123c00227820"
+)
+EXPECTED_TEMPLE_EVENT_AUDIO2 = bytes.fromhex(
+    "0000011a00007f4000000078007800000000000c00113c7f8347123c00227820"
+)
 
-DESC_BASE_ROM = 0x000A2330
-CARRIER_DESC_ROM = DESC_BASE_ROM + CARRIER_DESCRIPTOR_ID * 10
-CARRIER_EVENT_TRACK_ROM = 0x0097C7D8
+# Isolated metadata host established by the full stock-SSEQ liveness audit.
+# Event 329 has no descriptor owner. Across all 590 SSEQ entries / 882 tracks,
+# patch 486 appears only as event 329's initial patch and never in an in-stream
+# program change. Patch 486 uniquely owns subpatch 329, which uniquely owns
+# waveform 319. Production reuses only this dead metadata chain.
+ISOLATED_EVENT_ID = 329
+ISOLATED_PATCH_ID = 486
+ISOLATED_SUBPATCH_ID = 329
+ISOLATED_WAVE_ID = 319
+
 PATCH_BASE_ROM = 0x00947CB8
 SUBPATCH_BASE_ROM = 0x00948768
 WAVE_BASE_ROM = 0x0094C138
 PRED_BASE_ROM = 0x00950490
-CARRIER_PATCH_ROM = PATCH_BASE_ROM + CARRIER_PATCH_ID * 4
-CARRIER_SUBPATCH_ROM = SUBPATCH_BASE_ROM + CARRIER_SUBPATCH_ID * 20
-CARRIER_WAVE_ROM = WAVE_BASE_ROM + CARRIER_WAVE_ID * 24
-CARRIER_PRED_ROM = PRED_BASE_ROM + CARRIER_WAVE_ID * 264
+ISOLATED_PATCH_ROM = PATCH_BASE_ROM + ISOLATED_PATCH_ID * 4
+ISOLATED_SUBPATCH_ROM = SUBPATCH_BASE_ROM + ISOLATED_SUBPATCH_ID * 20
+ISOLATED_WAVE_ROM = WAVE_BASE_ROM + ISOLATED_WAVE_ID * 24
+ISOLATED_PRED_ROM = PRED_BASE_ROM + ISOLATED_WAVE_ID * 264
 
-EXPECTED_CARRIER_DESC = bytes.fromhex("01a6007f000000000000")
-EXPECTED_CARRIER_EVENT_TRACK = bytes.fromhex(
+EXPECTED_ISOLATED_PATCH = bytes.fromhex("01000149")
+EXPECTED_ISOLATED_SUBPATCH = bytes.fromhex(
+    "647340003c00007f0505013f00017d00000a7f7f"
+)
+EXPECTED_ISOLATED_WAVE = bytes.fromhex(
+    "00183232000019aa00000000fffffb50ffffffff00000000"
+)
+EXPECTED_ISOLATED_PRED_SHA256 = (
+    "53b481faa8d55595a2496ef453c41cff02ec4ca793b7597972d56ccdf100136d"
+)
+
+# Superseded global carrier. These constants are retained only for regression
+# tests proving that the Bridge/Prison-reachable stock route remains untouched.
+LEGACY_CARRIER_DESC_ROM = 0x000A3794
+LEGACY_CARRIER_EVENT_TRACK_ROM = 0x0097C7D8
+LEGACY_CARRIER_PATCH_ROM = 0x009485C4
+LEGACY_CARRIER_SUBPATCH_ROM = 0x0094A860
+LEGACY_CARRIER_WAVE_ROM = 0x0094E7D8
+EXPECTED_LEGACY_CARRIER_DESC = bytes.fromhex("01a6007f000000000000")
+EXPECTED_LEGACY_CARRIER_EVENT_TRACK = bytes.fromhex(
     "0000024300007f4000000078007800000000000c00113c7f8159123c00227820"
 )
-EXPECTED_CARRIER_PATCH = bytes.fromhex("010001a6")
-EXPECTED_CARRIER_SUBPATCH = bytes.fromhex("647340004000007f0505019c00017d00000a7f7f")
-EXPECTED_CARRIER_WAVE = bytes.fromhex(
-    "001f31a20000115600000000fffffb50ffffffff00000000"
+EXPECTED_LEGACY_CARRIER_PATCH = bytes.fromhex("010001a6")
+EXPECTED_LEGACY_CARRIER_SUBPATCH = bytes.fromhex(
+    "647340004000007f0505019c00017d00000a7f7f"
 )
-EXPECTED_CARRIER_PRED_SHA256 = (
-    "fb2d86d5a34de06e8f585aa196b7cd6aabca5cf9c6a57084246667d5f582db5a"
+EXPECTED_LEGACY_CARRIER_WAVE = bytes.fromhex(
+    "001f31a20000115600000000fffffb50ffffffff00000000"
 )
 
 MKMSZ_TBL_BASE = 0x009B0650
@@ -136,14 +171,15 @@ class TempleIntroAudioPatch:
         rom.expect_bytes(TEMPLE_LINE_A_IMM_ROM, EXPECTED_LINE_A)
         rom.expect_bytes(TEMPLE_LINE_B_IMM_ROM, EXPECTED_LINE_B)
         rom.expect_bytes(TEMPLE_AUDIO2_IMM_ROM, EXPECTED_AUDIO2)
-        rom.expect_bytes(CARRIER_DESC_ROM, EXPECTED_CARRIER_DESC)
-        rom.expect_bytes(CARRIER_EVENT_TRACK_ROM, EXPECTED_CARRIER_EVENT_TRACK)
-        rom.expect_bytes(CARRIER_PATCH_ROM, EXPECTED_CARRIER_PATCH)
-        rom.expect_bytes(CARRIER_SUBPATCH_ROM, EXPECTED_CARRIER_SUBPATCH)
-        rom.expect_bytes(CARRIER_WAVE_ROM, EXPECTED_CARRIER_WAVE)
-        pred = bytes(rom.data[CARRIER_PRED_ROM:CARRIER_PRED_ROM + 264])
-        if hashlib.sha256(pred).hexdigest() != EXPECTED_CARRIER_PRED_SHA256:
-            raise PatchError("Temple intro audio carrier predictor guard failed")
+        rom.expect_bytes(TEMPLE_EVENT_A_ROM, EXPECTED_TEMPLE_EVENT_A)
+        rom.expect_bytes(TEMPLE_EVENT_B_ROM, EXPECTED_TEMPLE_EVENT_B)
+        rom.expect_bytes(TEMPLE_EVENT_AUDIO2_ROM, EXPECTED_TEMPLE_EVENT_AUDIO2)
+        rom.expect_bytes(ISOLATED_PATCH_ROM, EXPECTED_ISOLATED_PATCH)
+        rom.expect_bytes(ISOLATED_SUBPATCH_ROM, EXPECTED_ISOLATED_SUBPATCH)
+        rom.expect_bytes(ISOLATED_WAVE_ROM, EXPECTED_ISOLATED_WAVE)
+        pred = bytes(rom.data[ISOLATED_PRED_ROM:ISOLATED_PRED_ROM + 264])
+        if hashlib.sha256(pred).hexdigest() != EXPECTED_ISOLATED_PRED_SHA256:
+            raise PatchError("Temple intro audio isolated-host predictor guard failed")
 
         sample_end = TEMPLE_SAMPLE_ROM + len(clip.sample)
         if sample_end > TEMPLE_SAMPLE_LIMIT:
@@ -164,40 +200,38 @@ class TempleIntroAudioPatch:
                 )
 
         donor_event = bytearray(clip.event_track)
-        if len(donor_event) != len(EXPECTED_CARRIER_EVENT_TRACK):
-            raise PatchError("Temple intro donor event track does not fit carrier")
-        donor_event[0:4] = CARRIER_PATCH_ID.to_bytes(4, "big")
+        if len(donor_event) != len(EXPECTED_TEMPLE_EVENT_A):
+            raise PatchError("Temple intro donor event track does not fit Temple event")
+        donor_event[0:4] = ISOLATED_PATCH_ID.to_bytes(4, "big")
 
         donor_subpatch = bytearray(clip.subpatch)
         if len(donor_subpatch) != 20:
             raise PatchError("Temple intro donor subpatch has unexpected size")
-        donor_subpatch[0x0A:0x0C] = CARRIER_WAVE_ID.to_bytes(2, "big")
+        donor_subpatch[0x0A:0x0C] = ISOLATED_WAVE_ID.to_bytes(2, "big")
 
         donor_wave = bytearray(clip.wave)
         if len(donor_wave) != 24 or len(clip.predictor) != 264:
             raise PatchError("Temple intro donor waveform metadata has unexpected size")
         donor_wave[0:4] = (TEMPLE_SAMPLE_ROM - MKMSZ_TBL_BASE).to_bytes(4, "big")
 
-        rom.write_bytes(CARRIER_EVENT_TRACK_ROM, bytes(donor_event))
-        rom.write_bytes(CARRIER_SUBPATCH_ROM, bytes(donor_subpatch))
-        rom.write_bytes(CARRIER_WAVE_ROM, bytes(donor_wave))
-        rom.write_bytes(CARRIER_PRED_ROM, clip.predictor)
+        rom.write_bytes(ISOLATED_SUBPATCH_ROM, bytes(donor_subpatch))
+        rom.write_bytes(ISOLATED_WAVE_ROM, bytes(donor_wave))
+        rom.write_bytes(ISOLATED_PRED_ROM, clip.predictor)
         rom.write_bytes(TEMPLE_SAMPLE_ROM, clip.sample)
 
-        carrier_imm = (0x24040000 | CARRIER_DESCRIPTOR_ID).to_bytes(4, "big")
         if slot == 1:
-            rom.write_bytes(TEMPLE_LINE_A_IMM_ROM, carrier_imm)
-            rom.write_bytes(TEMPLE_LINE_B_IMM_ROM, carrier_imm)
-            untouched = "audio-2 stock descriptor 0x43 retained"
+            rom.write_bytes(TEMPLE_EVENT_A_ROM, bytes(donor_event))
+            rom.write_bytes(TEMPLE_EVENT_B_ROM, bytes(donor_event))
+            untouched = "audio-2 stock descriptor 0x43 / event 125 retained"
         else:
-            rom.write_bytes(TEMPLE_AUDIO2_IMM_ROM, carrier_imm)
-            untouched = "audio-1 stock 0x41/0x42 alternation retained"
+            rom.write_bytes(TEMPLE_EVENT_AUDIO2_ROM, bytes(donor_event))
+            untouched = "audio-1 stock descriptors 0x41/0x42 / events 123/124 retained"
 
         return (
             f"seeded Temple audio-{slot}: {key}",
             untouched,
             (
                 f"selected donor sample ROM 0x{TEMPLE_SAMPLE_ROM:08X}.."
-                f"0x{sample_end - 1:08X}; no runtime RNG"
+                f"0x{sample_end - 1:08X}; isolated host 486 -> 329 -> 319"
             ),
         )

@@ -109,9 +109,9 @@ def _build_production_global_plan(
         )
     else:
         # Stock-XP mode has no Power Upgrade items in the 85-reward pool.
-        # Its XP gate is independent of item placement. Keep the item solver
-        # focused on credential/check reachability; runtime XP sufficiency is
-        # tracked as a separate validation gate before PR #137 promotion.
+        # Zero here means required shuffled upgrades, not the Fortress XP gate.
+        # OFF retains vanilla earned XP without additional solver accounting.
+        # RequiredPowersPatch independently preserves or sets the selected gate.
         solver_required_powers = 0
 
     policy = build_completion_policy(

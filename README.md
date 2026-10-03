@@ -15,7 +15,7 @@ The codebase is built around a modular Python patching core. ROMs are never stor
 - skip only the Safe Stage Select automatic stage-entry save prompt while preserving normal later/manual saves;
 - reserve the runtime-tested 16 KiB MKMSZR native memory block in every patched ROM;
 - persist all 84 catalogued ordinary pickup locations across the eight main stages;
-- deterministically randomize the 84 ordinary pickup records from the run seed;
+- deterministically randomize and solve 85 global checks, including 84 ordinary records and the scripted Temple special check;
 - provide four native 10-slot inventory boxes with remapping-aware switching and title-menu transition persistence;
 - show the active inventory box through the native gameplay text path;
 - brand the boot/legal screen as MKMSZR with the configured character edition, seeded joke text, `BY SMEAG`, and `NOT LICENSED BY NINTENDO`;
@@ -27,41 +27,29 @@ The codebase is built around a modular Python patching core. ROMs are never stor
 
 ## Native pickup randomization milestone
 
-The browser/CLI patcher now performs the first native item-randomization mode.
+The shared browser/CLI patcher generates a deterministic global layout across
+**85 checks**: 84 ordinary pickups plus the scripted Temple special check.
+Logical Map is excluded. Powers as pickups ON converts nine Herbs rewards into
+explicit Power Upgrades before shuffling; OFF retains vanilla earned XP.
+Required powers remains an independent Fortress XP-gate setting in both modes.
 
-For each main stage, the complete native pickup identity tuple at record
-`+0x10..+0x2B` is shuffled among that stage's ordinary pickup locations.
-This moves the pickup behavior, award callback, callback parameter, collision
-extents, stage-local model/resource selector, and presentation descriptor
-together while leaving the destination position and collected flag intact.
+A fixed-point solver accepts layouts under **All 85 available** (default) or
+**Game beatable** (all 21 progression credentials plus required shuffled upgrades
+when pickup mode is ON). Rejected layouts retry deterministically, with a
+10,000-attempt ceiling. Destination materialization preserves native location,
+checkpoint, activation, and persistence behavior separately from reward identity.
 
-The layout is deterministic from the run seed and uses a dedicated pickup RNG
-namespace, so unrelated seeded features do not consume its random state.
-The legacy randomizer's Wind, Earth, Water, and Prison access rules are ported
-into the generator and layouts that fail that model are deterministically
-rejected before the ROM is written. Those access rules still need a native
-runtime playthrough validation in this implementation.
-
-Current scope is intentionally conservative:
-
-- all **84 ordinary pickup records** are covered;
-- item pools are preserved **within each stage**;
-- the scripted Temple Map is excluded;
-- scripted/special mechanisms are excluded;
-- global cross-stage item placement is not enabled yet because pickup resource
-  selectors are stage-local and foreign resources need a production import
-  planner;
-- native mana pickups remain native mana rather than using the legacy Lua
-  workaround that substituted Herbs.
-
-Seed `TEST153` has now provided the first bounded runtime validation of this production mode: Fire's first ordinary location became the predicted Shield and behaved normally. A complete seeded run and broader arbitrary-layout coverage are still pending.
+Supported clean input remains 16 MiB. Generated output is 32 MiB with eight
+explicit 1 MiB stage-resource slots. Loader and gameplay evidence are bounded;
+representative full-seed/all-tier release validation and the broader native HUD
+remain pending. See the [public Wiki](https://github.com/smeagol44/MKMSZ-Randomizer/wiki/Global-Item-Materialization-and-Solvability)
+for current evidence and limitations.
 
 ## Development status
 
 Beta. The browser patcher now includes native seeded ordinary-pickup
 randomization plus the established persistence, four-box inventory, stage
-selector, presentation, and palette features. Broader cross-stage item
-randomization, enemy planning, lifecycle polish, and other randomizer systems
-are still expanding.
+selector, presentation, and palette features. The broader native randomizer
+HUD, runtime coverage, and other randomizer systems are still expanding.
 
 The original Lua implementation is preserved under `legacy/` for reference only.

@@ -30,7 +30,7 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 
 | Option | Behavior |
 |---|---|
-| Seed | Drives stage-local pickup layouts, boot phrase, seeded palette, and donor-backed Temple intro audio through isolated namespaces |
+| Seed | Drives global pickup layouts, boot phrase, seeded palette, and donor-backed Temple intro audio through isolated namespaces |
 | Outfit `vanilla` | Leaves source clothing TLUT and the accepted icy-blue title palette unchanged |
 | Presets / red / green | Applies fixed hue behavior |
 | `rainbow` | Runtime-confirmed 64-phase clothing hue cycle; fixed five-hue title word/edition treatment (the title itself does not animate) |
@@ -43,7 +43,7 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 | Lives | Total starting lives, integer **1..10**. Default **5**. Game Over/new-run reset uses the same configured value. |
 | Continues | Starting continues, integer **0..5**. Default **3**. Game Over/new-run reset uses the same configured value. |
 | Persistent HP | Default **on**. On: damaged HP survives living stage exit/re-entry. Off: living re-entry receives full HP; ordinary death/Continue always receive full replacement HP in either mode. |
-| Seed completion rule | PR #137 global-generation option: **All 85 available** (default) or **Game beatable**. All 85 requires every shuffled check reachable; Game beatable requires all 21 progression credentials plus the selected Power requirement while optional mundane checks may remain unreachable. This setting becomes active with the global item path; current `main` remains stage-local until the approved 32 MiB resource-backing proof passes and PR #137 is promoted. |
+| Seed completion rule | **All 85 available** (default) or **Game beatable** in the shared global item path. All 85 requires every shuffled check reachable; Game beatable requires all 21 progression credentials plus the selected shuffled-upgrade count when pickup mode is ON. OFF retains stock XP with its independent Fortress gate. Generated output is 32 MiB; supported clean input remains 16 MiB. |
 
 Core features such as selector, persistence, pickup shuffle, pickup-driven XP progression, four-box inventory, indicator, branding, and flow bypasses are always installed. Progression adds exactly nine deterministic generated-Herbs rewards and uses the runtime-confirmed Diagnostic B stage-restore behavior. There is not yet a user-facing toggle for global item pooling or enemies because those systems are not production-ready.
 
@@ -74,4 +74,4 @@ This separation matters: product deployment does not package research artifacts,
 
 This is a **non-exhaustive product-facing summary**. The canonical complete 1.0 requirements, acceptance criteria, blockers/non-blockers, dependency order, and final release gates are owned by [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap).
 
-The current `main` stage-local pickup mode is not the final 1.0 randomizer. PR #137 prepares the 85-check global path and its configurable completion rule, but remains gated on the bounded 32 MiB appended-resource runtime proof. Run lifecycle is now integrated and the browser/CLI expose configurable difficulty, starting lives/continues, and HP persistence; the exact Very Hard / 9 / 5 / HP-ON v06 baseline is Runtime-confirmed, while other value combinations are Implementation/CI-confirmed pending representative runtime coverage. The major unresolved 1.0 work is now the global cross-stage item model and solvability validation, the broader native randomizer HUD, and final full-seed validation. Refer to the Roadmap for the authoritative and complete requirement set.
+PR #137 integrates the 85-check global item path and configurable fixed-point completion rule into the normal browser/CLI build. The maintainer approved promotion after bounded global-v2 gameplay; exhaustive runtime coverage is not claimed. Run lifecycle remains integrated, with the Very Hard / 9 / 5 / HP-ON v06 baseline Runtime-confirmed and other configurations pending representative sampling. Remaining 1.0 work includes the broader native randomizer HUD and final representative full-seed validation. See the Roadmap for release requirements.
