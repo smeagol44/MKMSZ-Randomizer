@@ -11,7 +11,59 @@ from .errors import PatchError, RomValidationError
 
 CLEAN_SHA256 = "9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6"
 EXPECTED_SIZE = 16 * 1024 * 1024
-EXPECTED_MAGIC = 0x80371240
+
+N64_Z64_MAGIC = 0x80371240
+N64_V64_MAGIC = 0x37804012
+N64_N64_MAGIC = 0x40123780
+
+# Backward-compatible name for code/tests that refer to the canonical magic.
+EXPECTED_MAGIC = N64_Z64_MAGIC
+
+
+def normalize_n64_byte_order(source: bytes) -> tuple[bytes, str]:
+    """Return canonical big-endian .z64 bytes plus detected input format.
+
+    N64 ROM dumps commonly appear in three byte-order serializations:
+
+    - .z64: big-endian bytes, magic 80 37 12 40;
+    - .v64: adjacent-byte-swapped, magic 37 80 40 12;
+    - .n64: little-endian 32-bit words, magic 40 12 37 80.
+
+    The filename extension is deliberately ignored. Detection is based only on
+    the first four bytes, and all patching continues against canonical .z64
+    bytes.
+    """
+
+    if len(source) < 4:
+        raise RomValidationError("ROM is too small to contain an N64 header")
+
+    magic = int.from_bytes(source[:4], "big")
+    if magic == N64_Z64_MAGIC:
+        return source, "z64"
+
+    if magic == N64_V64_MAGIC:
+        if len(source) % 2:
+            raise RomValidationError("byte-swapped N64 ROM length is not divisible by 2")
+        normalized = bytearray(len(source))
+        normalized[0::2] = source[1::2]
+        normalized[1::2] = source[0::2]
+        return bytes(normalized), "v64"
+
+    if magic == N64_N64_MAGIC:
+        if len(source) % 4:
+            raise RomValidationError("little-endian N64 ROM length is not divisible by 4")
+        normalized = bytearray(len(source))
+        normalized[0::4] = source[3::4]
+        normalized[1::4] = source[2::4]
+        normalized[2::4] = source[1::4]
+        normalized[3::4] = source[0::4]
+        return bytes(normalized), "n64"
+
+    raise RomValidationError(
+        "unrecognized N64 ROM byte order: expected header magic "
+        "80 37 12 40 (.z64), 37 80 40 12 (.v64), or 40 12 37 80 (.n64); "
+        f"got {source[:4].hex(' ').upper()}"
+    )
 
 
 def _changed_spans(before: bytes, after: bytes | bytearray) -> tuple[tuple[int, int], ...]:
@@ -44,17 +96,15 @@ class RomImage:
             raise RomValidationError(
                 f"expected a {EXPECTED_SIZE}-byte ROM, got {len(source)} bytes"
             )
-        magic = int.from_bytes(source[:4], "big")
-        if magic != EXPECTED_MAGIC:
-            raise RomValidationError(
-                f"expected big-endian .z64 magic 0x{EXPECTED_MAGIC:08X}, got 0x{magic:08X}"
-            )
-        digest = hashlib.sha256(source).hexdigest()
+
+        normalized, _input_format = normalize_n64_byte_order(source)
+        digest = hashlib.sha256(normalized).hexdigest()
         if require_clean and digest != CLEAN_SHA256:
             raise RomValidationError(
-                "unsupported ROM: expected clean MKMSZ USA Rev. 0 SHA-256 " + CLEAN_SHA256
+                "unsupported ROM: expected clean MKMSZ USA Rev. 0 after N64 "
+                "byte-order normalization, SHA-256 " + CLEAN_SHA256
             )
-        return cls(bytearray(source), source)
+        return cls(bytearray(normalized), normalized)
 
     @classmethod
     def load(cls, path: Path, *, require_clean: bool = True) -> RomImage:
