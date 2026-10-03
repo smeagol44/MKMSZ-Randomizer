@@ -54,7 +54,7 @@ def _plan(*assignments: MaterializationAssignment) -> GlobalMaterializationPlan:
 def test_materializer_helper_fits_progression_to_audio_gap() -> None:
     assert MATERIALIZER_HELPER_ROM == FLASH_MODULE_END_ROM == 0x00F6AAF0
     assert MATERIALIZER_HELPER_K0 == FLASH_MODULE_END_K0 == 0x801B2310
-    assert MATERIALIZER_HELPER_END_ROM == 0x00F6B050
+    assert MATERIALIZER_HELPER_END_ROM == 0x00F6B0D0
     assert MATERIALIZER_HELPER_END_ROM <= TOASTY_AUDIO_ROM == 0x00F6B5D0
     assert MATERIALIZER_HELPER_END_K0 <= MATERIALIZER_RUNTIME_LIMIT == 0x801B3420
     assert len(GENERIC_AWARD) > 0
