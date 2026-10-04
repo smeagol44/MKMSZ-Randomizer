@@ -8,6 +8,8 @@ The shared patch core now always installs the Runtime-confirmed complete native 
 
 The browser build compiles the Python package to a wheel and serves it with the static `web/` application. The user supplies the ROM locally; the repository and deployed site do not contain copyrighted ROM data.
 
+The browser runs Pyodide inside a dedicated Web Worker so the page remains responsive while the CPU-heavy patch pipeline executes. Selecting the MKMSZ target immediately sends the file to that worker for the same Python `RomImage.from_bytes(..., require_clean=True)` validation used by the shared core; the worker keeps the validated canonical source image in memory. Patching then starts from a fresh copy of that already-validated image, avoiding a second clean-ROM SHA-256/byte-order pass in the browser while leaving the CLI validation path unchanged. The optional MKT Rev. 2 donor is likewise validated and cached on selection.
+
 ## Inputs and output guarantees
 
 The web patcher is organized around an explicit **patch target**, not a list of every research or donor image the project may someday use.
@@ -22,6 +24,8 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 
 - Clean USA Rev. 0 big-endian `.z64` target only.
 - A new output is produced; the CLI refuses in-place patching and existing-output overwrite.
+- Browser target/donor validation begins immediately on file selection and displays the validated SHA-256 before patching can start.
+- During a browser build, an indeterminate progress bar stays animated on the main thread while six non-repeating messages are sampled from a deliberately silly MKMSZR/Mortal Kombat/gaming message pool. These messages are presentation only; failures still surface the actual Python/worker diagnostic text and stack trace.
 - Seed is trimmed; absent seed becomes a random 64-bit hex value.
 - CLI output reports applied modules, notes, CRC1/CRC2, and SHA-256. The browser completion panel intentionally stays product-facing and reports only target, seed, SHA-256, and CRC1/CRC2 rather than enumerating internal patch modules or discovery-oriented features.
 - Pickup layout, progression-reward selection, optional power-order shuffle, boot phrase, and seeded palette use independent deterministic domains.
@@ -65,7 +69,7 @@ The underlying planner/materializer has bounded Runtime-confirmed representative
 
 ## Deployment
 
-`.github/workflows/pages.yml` runs on `main`, first compiles `src/mkmszr` with Python's `compileall`, then builds the wheel, copies the static frontend to `_site`, substitutes the run number into the displayed version, and deploys GitHub Pages. The compile gate was added after a 2026-09-22 title-branding packaging regression in which a malformed source header containing literal `\\n` escapes was packaged into a syntactically invalid wheel; Pyodide then failed before patching. A follow-up browser failure showed that reusing the same wheel URL could still serve the stale malformed package from cache even after the source was fixed. Pages now rewrites the wheel to a unique PEP 440 dev version per deployment (for example `mkmszr-0.1.0.dev371-py3-none-any.whl`) and cache-busts `app.js` with the same run number. The deployment artifact was manually inspected and `mkmszr.patcher` imported successfully from the unique wheel. `.github/workflows/wiki.yml` independently mirrors `wiki/` to the GitHub Wiki.
+`.github/workflows/pages.yml` runs on `main`, first compiles `src/mkmszr` with Python's `compileall`, then builds the wheel, copies the static frontend to `_site`, substitutes the run number into the displayed version, and deploys GitHub Pages. The compile gate was added after a 2026-09-22 title-branding packaging regression in which a malformed source header containing literal `\\n` escapes was packaged into a syntactically invalid wheel; Pyodide then failed before patching. A follow-up browser failure showed that reusing the same wheel URL could still serve the stale malformed package from cache even after the source was fixed. Pages now rewrites the wheel to a unique PEP 440 dev version per deployment (for example `mkmszr-0.1.0.dev371-py3-none-any.whl`) and cache-busts `app.js` with the same run number. The app passes that deployment query string to `patch-worker.js`, so the worker cannot remain stale across Pages releases. The deployment artifact was manually inspected and `mkmszr.patcher` imported successfully from the unique wheel. `.github/workflows/wiki.yml` independently mirrors `wiki/` to the GitHub Wiki.
 
 This separation matters: product deployment does not package research artifacts, ROMs, proof patches, or emulator state.
 
