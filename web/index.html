@@ -61,7 +61,10 @@
             </div>
             <p class="hint">Clean <strong>Mortal Kombat Mythologies: Sub-Zero (USA) Rev. 0</strong> in <code>.z64</code>, <code>.v64</code>, or <code>.n64</code> byte order. The format is detected from the ROM header; the filename extension is not trusted.</p>
           </div>
-          <input id="romFile" type="file" accept=".z64,.v64,.n64,application/octet-stream">
+          <div class="file-control">
+            <input id="romFile" type="file" accept=".z64,.v64,.n64,application/octet-stream">
+            <p id="romValidation" class="file-validation" data-state="idle"></p>
+          </div>
         </div>
 
         <div class="file-row">
@@ -72,7 +75,10 @@
             </div>
             <p class="hint"><strong>Mortal Kombat Trilogy (USA) Rev. 2</strong> <code>.z64</code>. Optional source for additional art, audio, and game data used by supported features; this ROM is never patched.</p>
           </div>
-          <input id="mktN64File" type="file" accept=".z64,application/octet-stream">
+          <div class="file-control">
+            <input id="mktN64File" type="file" accept=".z64,application/octet-stream">
+            <p id="mktValidation" class="file-validation" data-state="idle"></p>
+          </div>
         </div>
       </div>
 
@@ -285,6 +291,13 @@
 
       <button id="patchButton" class="primary-action" type="button" disabled>Patch MKMSZ N64</button>
 
+      <div id="buildProgress" class="build-progress" role="status" aria-live="polite" hidden>
+        <div class="progress-track" aria-hidden="true">
+          <div class="progress-bar"></div>
+        </div>
+        <p id="buildMessage"></p>
+      </div>
+
       <div id="result" class="result" hidden>
         <h2>Patch complete</h2>
         <dl>
@@ -306,7 +319,6 @@
     </footer>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
