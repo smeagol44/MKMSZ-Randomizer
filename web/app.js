@@ -1,6 +1,8 @@
 const runtimeStatus = document.querySelector("#runtimeStatus");
 const romFile = document.querySelector("#romFile");
 const mktN64File = document.querySelector("#mktN64File");
+const romValidation = document.querySelector("#romValidation");
+const mktValidation = document.querySelector("#mktValidation");
 const outfitMode = document.querySelector("#outfitMode");
 const editionName = document.querySelector("#editionName");
 const seed = document.querySelector("#seed");
@@ -25,6 +27,8 @@ const startingLives = document.querySelector("#startingLives");
 const startingContinues = document.querySelector("#startingContinues");
 const persistHp = document.querySelector("#persistHp");
 const patchButton = document.querySelector("#patchButton");
+const buildProgress = document.querySelector("#buildProgress");
+const buildMessage = document.querySelector("#buildMessage");
 const resultPanel = document.querySelector("#result");
 const resultSeed = document.querySelector("#resultSeed");
 const resultRequiredPowers = document.querySelector("#resultRequiredPowers");
@@ -33,14 +37,68 @@ const outputCrc = document.querySelector("#outputCrc");
 const downloadButton = document.querySelector("#downloadButton");
 const log = document.querySelector("#log");
 
-let pyodide;
+const SILLY_MESSAGES = [
+  "Cooling down...",
+  "Shaving monks' heads...",
+  "Randomizing random randomness...",
+  "Doing pushups...",
+  "Promoting Lin Kuei to Grandmaster...",
+  "Assembling bits...",
+  "Activating Temple traps...",
+  "Worshiping Raiden...",
+  "Making Richard Divizio look fabulous...",
+  "Pulling the Master Sword...",
+  "Playing the Ocarina...",
+  "Chasing MIPS...",
+  "Claiming the high ground...",
+  "Making the Force be with us...",
+  "Doing, doing not, and not trying...",
+  "Hello there!",
+  "Eating cheese...",
+  "Shuffling the deck of cards...",
+  "Escaping the cyborgs...",
+  "Placing random encounters...",
+  "Deactivating DLSS and raytracing...",
+  "Turning off Lumen...",
+  "Unloading the framebuffer...",
+  "Making sure ice is cold...",
+  "Getting over here...",
+  "Dressing up Lia...",
+  "Learning Kung-Fu...",
+  "Consulting the Elder Gods...",
+  "Polishing the Dragon Medallion...",
+  "Convincing Fujin to stop blowing things around...",
+  "Checking Quan Chi's pockets...",
+  "Recounting skulls...",
+  "Freezing the loading screen...",
+  "Unfreezing the loading screen...",
+  "Hiding secret fights...",
+  "Counting polygons...",
+  "Asking Scorpion to chill...",
+  "Looking for Noob...",
+  "Feeding the portal...",
+  "Rewinding the cartridge..."
+];
+
+let patchWorker = null;
 let runtimeReady = false;
+let isBuilding = false;
 let outputBytes = null;
 let outputName = "MKMSZR-patched.z64";
+let activeBuild = null;
+let sillyTimer = null;
+
+const targetValidation = { token: 0, state: "idle" };
+const donorValidation = { token: 0, state: "idle" };
 
 function setLog(message, error = false) {
   log.textContent = message;
   log.style.color = error ? "#ffaaaa" : "";
+}
+
+function setFileValidation(element, state, message) {
+  element.dataset.state = state;
+  element.textContent = message;
 }
 
 function updateModeUi() {
@@ -48,8 +106,15 @@ function updateModeUi() {
   seedField.style.opacity = "1";
 }
 
+function donorIsUsable() {
+  return donorValidation.state === "idle" || donorValidation.state === "valid";
+}
+
 function updatePatchButton() {
-  patchButton.disabled = !runtimeReady;
+  patchButton.disabled = !runtimeReady ||
+    isBuilding ||
+    targetValidation.state !== "valid" ||
+    !donorIsUsable();
 }
 
 function updateGameSettingsUi() {
@@ -78,44 +143,266 @@ function generateSeed() {
 
 function outputFilename(inputName, mode, seedValue) {
   const stem = inputName.replace(/\.(?:z64|v64|n64)$/i, "");
-  let suffix = mode === "vanilla" ? "mkmszr" : `mkmszr-${mode}`;
+  let suffix = mode === "vanilla" ? "mkmszr" : "mkmszr-" + mode;
   const safeSeed = seedValue.replace(/[^a-z0-9_-]/gi, "").slice(0, 24);
-  if (safeSeed) suffix += `-${safeSeed}`;
-  return `${stem}-${suffix}.z64`;
+  if (safeSeed) suffix += "-" + safeSeed;
+  return stem + "-" + suffix + ".z64";
 }
 
-async function bootRuntime() {
+function chooseSillyMessages(count) {
+  const shuffled = [...SILLY_MESSAGES];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled.slice(0, count);
+}
+
+function startSillyProgress() {
+  const messages = chooseSillyMessages(6);
+  let index = 0;
+  buildProgress.hidden = false;
+  buildMessage.textContent = messages[index];
+
+  clearInterval(sillyTimer);
+  sillyTimer = setInterval(() => {
+    index += 1;
+    if (index >= messages.length) {
+      clearInterval(sillyTimer);
+      sillyTimer = null;
+      return;
+    }
+    buildMessage.textContent = messages[index];
+  }, 1600);
+}
+
+function stopSillyProgress() {
+  clearInterval(sillyTimer);
+  sillyTimer = null;
+  buildProgress.hidden = true;
+}
+
+function friendlyValidationError(raw) {
+  const lines = String(raw || "Validation failed.")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const last = lines.at(-1) || "Validation failed.";
+  return last.replace(/^[A-Za-z_][A-Za-z0-9_.]*:\s*/, "");
+}
+
+async function validateTargetSelection() {
+  const token = ++targetValidation.token;
+  const file = romFile.files?.[0];
+
+  if (!file) {
+    targetValidation.state = "idle";
+    setFileValidation(romValidation, "idle", "No target ROM selected.");
+    patchWorker?.postMessage({ type: "clear-target" });
+    updatePatchButton();
+    return;
+  }
+
+  targetValidation.state = "validating";
+  setFileValidation(romValidation, "validating", "Checking target ROM...");
+  updatePatchButton();
+
   try {
-    runtimeStatus.textContent = "Loading Pyodide…";
-    pyodide = await loadPyodide();
+    const bytes = await file.arrayBuffer();
+    if (token !== targetValidation.token) return;
+    patchWorker.postMessage(
+      { type: "validate-target", token, bytes },
+      [bytes]
+    );
+  } catch (error) {
+    if (token !== targetValidation.token) return;
+    targetValidation.state = "invalid";
+    setFileValidation(
+      romValidation,
+      "invalid",
+      "Could not read target ROM: " + (error.message ?? error)
+    );
+    updatePatchButton();
+  }
+}
 
-    runtimeStatus.textContent = "Loading MKMSZR core…";
-    await pyodide.loadPackage("micropip");
-    const wheelNameResponse = await fetch("./wheel-name.txt", { cache: "no-store" });
-    if (!wheelNameResponse.ok) {
-      throw new Error(`Could not resolve MKMSZR wheel name (HTTP ${wheelNameResponse.status})`);
-    }
-    const wheelName = (await wheelNameResponse.text()).trim();
-    if (!wheelName.endsWith(".whl")) {
-      throw new Error(`Invalid MKMSZR wheel manifest: ${wheelName || "(empty)"}`);
-    }
-    const wheelUrl = new URL(`./${wheelName}`, window.location.href).href;
-    pyodide.globals.set("web_wheel_url", wheelUrl);
-    await pyodide.runPythonAsync(`
-import micropip
-await micropip.install(str(web_wheel_url))
-`);
+async function validateDonorSelection() {
+  const token = ++donorValidation.token;
+  const file = mktN64File.files?.[0];
 
+  if (!file) {
+    donorValidation.state = "idle";
+    setFileValidation(mktValidation, "idle", "Optional donor not selected.");
+    patchWorker?.postMessage({ type: "clear-donor" });
+    updatePatchButton();
+    return;
+  }
+
+  donorValidation.state = "validating";
+  setFileValidation(mktValidation, "validating", "Checking MKT donor...");
+  updatePatchButton();
+
+  try {
+    const bytes = await file.arrayBuffer();
+    if (token !== donorValidation.token) return;
+    patchWorker.postMessage(
+      { type: "validate-donor", token, bytes },
+      [bytes]
+    );
+  } catch (error) {
+    if (token !== donorValidation.token) return;
+    donorValidation.state = "invalid";
+    setFileValidation(
+      mktValidation,
+      "invalid",
+      "Could not read MKT donor: " + (error.message ?? error)
+    );
+    updatePatchButton();
+  }
+}
+
+function handleValidationResult(message) {
+  if (message.kind === "target") {
+    if (message.token !== targetValidation.token) return;
+    if (message.ok) {
+      targetValidation.state = "valid";
+      setFileValidation(
+        romValidation,
+        "valid",
+        "✓ Valid MKMSZ USA Rev. 0 · SHA-256 " + message.sha256
+      );
+    } else {
+      targetValidation.state = "invalid";
+      setFileValidation(
+        romValidation,
+        "invalid",
+        "✗ " + friendlyValidationError(message.error)
+      );
+    }
+  } else if (message.kind === "donor") {
+    if (message.token !== donorValidation.token) return;
+    if (message.ok) {
+      donorValidation.state = "valid";
+      setFileValidation(
+        mktValidation,
+        "valid",
+        "✓ Valid MKT USA Rev. 2 donor · SHA-256 " + message.sha256
+      );
+    } else {
+      donorValidation.state = "invalid";
+      setFileValidation(
+        mktValidation,
+        "invalid",
+        "✗ " + friendlyValidationError(message.error)
+      );
+    }
+  }
+  updatePatchButton();
+}
+
+function handleBuildComplete(message) {
+  const metadata = message.metadata;
+  outputBytes = new Uint8Array(message.output);
+  outputName = outputFilename(
+    activeBuild.inputName,
+    activeBuild.mode,
+    metadata.seed
+  );
+
+  resultSeed.textContent = metadata.seed;
+  resultRequiredPowers.textContent = metadata.required_powers === null
+    ? "Vanilla (stock XP " + metadata.required_xp + ")"
+    : metadata.required_powers +
+      " (XP " + metadata.required_xp + "; " +
+      activeBuild.requiredPowersMode + ")";
+  outputSha.textContent = metadata.sha256;
+  outputCrc.textContent = metadata.crc1 + " / " + metadata.crc2;
+  resultPanel.hidden = false;
+
+  isBuilding = false;
+  stopSillyProgress();
+  patchButton.textContent = "Patch MKMSZ N64";
+  setLog(
+    "Success. Patched " +
+    (outputBytes.byteLength / 1024 / 1024).toFixed(1) +
+    " MiB locally; no ROM data was uploaded."
+  );
+  activeBuild = null;
+  updatePatchButton();
+}
+
+function handleBuildError(message) {
+  console.error("MKMSZR patch failed:", message.error, message.stack || "");
+  isBuilding = false;
+  stopSillyProgress();
+  patchButton.textContent = "Patch MKMSZ N64";
+
+  const details = [message.error, message.stack]
+    .filter(Boolean)
+    .join("\n\n");
+  setLog(details.replace(/^PythonError:\s*/, ""), true);
+  activeBuild = null;
+  updatePatchButton();
+}
+
+function handleWorkerMessage(event) {
+  const message = event.data || {};
+
+  if (message.type === "runtime-status") {
+    runtimeStatus.textContent = message.message;
+    return;
+  }
+
+  if (message.type === "runtime-ready") {
     runtimeReady = true;
     runtimeStatus.dataset.state = "ready";
     runtimeStatus.textContent = "Patcher ready";
     updatePatchButton();
-  } catch (error) {
-    console.error(error);
+    return;
+  }
+
+  if (message.type === "runtime-error") {
+    runtimeReady = false;
     runtimeStatus.dataset.state = "error";
     runtimeStatus.textContent = "Runtime failed";
-    setLog(`Could not initialize browser patcher: ${error.message ?? error}`, true);
+    setLog(
+      "Could not initialize browser patcher: " +
+      (message.error || "unknown error"),
+      true
+    );
+    updatePatchButton();
+    return;
   }
+
+  if (message.type === "validation-result") {
+    handleValidationResult(message);
+    return;
+  }
+
+  if (message.type === "build-complete") {
+    handleBuildComplete(message);
+    return;
+  }
+
+  if (message.type === "build-error") {
+    handleBuildError(message);
+  }
+}
+
+function initWorker() {
+  const workerUrl = new URL("./patch-worker.js", import.meta.url);
+  workerUrl.search = import.meta.url.search;
+  patchWorker = new Worker(workerUrl, { name: "mkmszr-patcher" });
+  patchWorker.addEventListener("message", handleWorkerMessage);
+  patchWorker.addEventListener("error", (event) => {
+    console.error(event);
+    runtimeReady = false;
+    runtimeStatus.dataset.state = "error";
+    runtimeStatus.textContent = "Runtime failed";
+    setLog("Browser patch worker crashed: " + event.message, true);
+    updatePatchButton();
+  });
+  patchWorker.postMessage({ type: "init" });
 }
 
 async function patchRom() {
@@ -124,35 +411,44 @@ async function patchRom() {
 
   const targetFile = romFile.files?.[0];
   const donorFile = mktN64File.files?.[0];
-  if (!targetFile) {
-    setLog("Choose the clean MKMSZ N64 target ROM first.", true);
+  if (!targetFile || targetValidation.state !== "valid") {
+    setLog("Choose and validate the clean MKMSZ N64 target ROM first.", true);
+    return;
+  }
+  if (donorFile && donorValidation.state !== "valid") {
+    setLog("The selected MKT donor must validate before patching.", true);
     return;
   }
 
   const customPowerText = customRequiredPowers.value.trim();
   const customPowerCount = Number(customPowerText);
   if (requiredPowersMode.value === "custom" &&
-      (!customPowerText || !Number.isInteger(customPowerCount) || customPowerCount < 0 || customPowerCount > 9)) {
+      (!customPowerText || !Number.isInteger(customPowerCount) ||
+       customPowerCount < 0 || customPowerCount > 9)) {
     setLog("Custom required powers must be a whole number from 0 to 9.", true);
     return;
   }
 
   const livesText = startingLives.value.trim();
   const livesValue = Number(livesText);
-  if (!livesText || !Number.isInteger(livesValue) || livesValue < 1 || livesValue > 10) {
+  if (!livesText || !Number.isInteger(livesValue) ||
+      livesValue < 1 || livesValue > 10) {
     setLog("Lives must be a whole number from 1 to 10.", true);
     return;
   }
 
   const continuesText = startingContinues.value.trim();
   const continuesValue = Number(continuesText);
-  if (!continuesText || !Number.isInteger(continuesValue) || continuesValue < 0 || continuesValue > 5) {
+  if (!continuesText || !Number.isInteger(continuesValue) ||
+      continuesValue < 0 || continuesValue > 5) {
     setLog("Continues must be a whole number from 0 to 5.", true);
     return;
   }
 
   const mode = outfitMode.value;
-  let editionValue = normalizeEditionName(editionName.value).trim().replace(/\s+/g, " ");
+  let editionValue = normalizeEditionName(editionName.value)
+    .trim()
+    .replace(/\s+/g, " ");
   if (!editionValue) editionValue = "SUB-ZERO";
   editionName.value = editionValue;
 
@@ -162,125 +458,44 @@ async function patchRom() {
     seed.value = seedValue;
   }
 
-  patchButton.disabled = true;
+  activeBuild = {
+    inputName: targetFile.name,
+    mode,
+    requiredPowersMode: requiredPowersMode.value
+  };
+
+  isBuilding = true;
   patchButton.textContent = "Patching…";
-  setLog("Reading game files locally…");
+  setLog("");
+  startSillyProgress();
+  updatePatchButton();
 
-  try {
-    const targetBytes = await targetFile.arrayBuffer();
-    pyodide.FS.writeFile("/tmp/input.z64", new Uint8Array(targetBytes));
-    try { pyodide.FS.unlink("/tmp/mkt.z64"); } catch (_) {}
-    if (donorFile) {
-      const donorBytes = await donorFile.arrayBuffer();
-      pyodide.FS.writeFile("/tmp/mkt.z64", new Uint8Array(donorBytes));
+  patchWorker.postMessage({
+    type: "patch",
+    hasDonor: Boolean(donorFile),
+    config: {
+      outfitMode: mode,
+      seed: seedValue,
+      rgb: customColor.value,
+      editionName: editionValue,
+      turnLock: turnLock.checked,
+      attackModern: attackModern.checked,
+      specialsModern: specialsModern.checked,
+      jumpButton: jumpButton.checked,
+      runAuto: runAuto.checked,
+      shufflePowerProgression: shufflePowerProgression.checked,
+      enemyRandomization: enemyRandomization.checked,
+      powersAsPickups: powersAsPickups.checked,
+      requiredPowersMode: requiredPowersMode.value,
+      globalCompletionMode: globalCompletionMode.value,
+      customRequiredPowers:
+        requiredPowersMode.value === "custom" ? customPowerCount : 0,
+      difficulty: difficulty.value,
+      lives: livesValue,
+      continues: continuesValue,
+      persistHp: persistHp.checked
     }
-
-    try { pyodide.FS.unlink("/tmp/output.z64"); } catch (_) {}
-
-    pyodide.globals.set("web_has_mkt_donor", Boolean(donorFile));
-    pyodide.globals.set("web_outfit_mode", mode);
-    pyodide.globals.set("web_seed", seedValue);
-    pyodide.globals.set("web_rgb", customColor.value);
-    pyodide.globals.set("web_edition_name", editionValue);
-    pyodide.globals.set("web_turn_lock", turnLock.checked);
-    pyodide.globals.set("web_attack_modern", attackModern.checked);
-    pyodide.globals.set("web_specials_modern", specialsModern.checked);
-    pyodide.globals.set("web_jump_button", jumpButton.checked);
-    pyodide.globals.set("web_run_auto", runAuto.checked);
-    pyodide.globals.set("web_shuffle_power_progression", shufflePowerProgression.checked);
-    pyodide.globals.set("web_enemy_randomization", enemyRandomization.checked);
-    pyodide.globals.set("web_powers_as_pickups", powersAsPickups.checked);
-    pyodide.globals.set("web_required_powers_mode", requiredPowersMode.value);
-    pyodide.globals.set("web_global_completion_mode", globalCompletionMode.value);
-    pyodide.globals.set("web_custom_required_powers", requiredPowersMode.value === "custom" ? customPowerCount : 0);
-    pyodide.globals.set("web_difficulty", difficulty.value);
-    pyodide.globals.set("web_lives", livesValue);
-    pyodide.globals.set("web_continues", continuesValue);
-    pyodide.globals.set("web_persist_hp", persistHp.checked);
-
-    setLog("Validating game files and applying patches…");
-
-    await pyodide.runPythonAsync(`
-from pathlib import Path
-from mkmszr.config import GameSettingsConfig, OutfitConfig, RandomizerConfig
-from mkmszr.donors import extract_temple_intro_audio_assets, extract_toasty_assets
-from mkmszr.patcher import patch_file
-
-_mode = str(web_outfit_mode)
-_seed = str(web_seed)
-_rgb_hex = str(web_rgb).lstrip("#")
-_rgb = tuple(int(_rgb_hex[i:i+2], 16) for i in (0, 2, 4))
-_edition_name = str(web_edition_name)
-_config = RandomizerConfig(
-    seed=_seed,
-    outfit=OutfitConfig(mode=_mode, rgb=_rgb if _mode == "rgb" else None),
-    edition_name=_edition_name,
-    shuffle_power_progression=bool(web_shuffle_power_progression),
-    enemy_randomization=bool(web_enemy_randomization),
-    powers_as_pickups=bool(web_powers_as_pickups),
-    required_powers_mode=str(web_required_powers_mode),
-    global_completion_mode=str(web_global_completion_mode),
-    custom_required_powers=int(web_custom_required_powers) if str(web_required_powers_mode) == "custom" else None,
-    difficulty=str(web_difficulty),
-    lives=int(web_lives),
-    continues=int(web_continues),
-    persist_hp=bool(web_persist_hp),
-    game_settings=GameSettingsConfig(
-        turn_lock=bool(web_turn_lock),
-        attack_modern=bool(web_attack_modern),
-        specials_modern=bool(web_specials_modern),
-        jump_button=bool(web_jump_button),
-        run_auto=bool(web_run_auto),
-    ),
-)
-_mkt_bytes = Path("/tmp/mkt.z64").read_bytes() if bool(web_has_mkt_donor) else None
-_toasty_assets = extract_toasty_assets(_mkt_bytes) if _mkt_bytes is not None else None
-_temple_intro_audio_assets = (
-    extract_temple_intro_audio_assets(_mkt_bytes) if _mkt_bytes is not None else None
-)
-_result = patch_file(
-    Path("/tmp/input.z64"),
-    Path("/tmp/output.z64"),
-    _config,
-    toasty_assets=_toasty_assets,
-    temple_intro_audio_assets=_temple_intro_audio_assets,
-)
-web_patch_result = {
-    "seed": _seed,
-    "crc1": f"{_result.crc1:08X}",
-    "crc2": f"{_result.crc2:08X}",
-    "sha256": _result.output_sha256,
-    "required_powers": _result.required_powers_count,
-    "required_xp": _result.required_powers_xp,
-    "enemy_randomization": bool(web_enemy_randomization),
-}
-`);
-
-    const proxy = pyodide.globals.get("web_patch_result");
-    const metadata = proxy.toJs({ dict_converter: Object.fromEntries });
-    proxy.destroy();
-
-    outputBytes = pyodide.FS.readFile("/tmp/output.z64");
-    outputName = outputFilename(targetFile.name, mode, metadata.seed);
-
-    resultSeed.textContent = metadata.seed;
-    resultRequiredPowers.textContent = metadata.required_powers === null
-      ? `Vanilla (stock XP ${metadata.required_xp})`
-      : `${metadata.required_powers} (XP ${metadata.required_xp}; ${requiredPowersMode.value})`;
-    outputSha.textContent = metadata.sha256;
-    outputCrc.textContent = `${metadata.crc1} / ${metadata.crc2}`;
-    resultPanel.hidden = false;
-    setLog(
-      `Success. Patched ${(outputBytes.byteLength / 1024 / 1024).toFixed(1)} MiB locally; no ROM data was uploaded.`
-    );
-  } catch (error) {
-    console.error(error);
-    const message = error.message ?? String(error);
-    setLog(message.replace(/^PythonError:\s*/, ""), true);
-  } finally {
-    updatePatchButton();
-    patchButton.textContent = "Patch MKMSZ N64";
-  }
+  });
 }
 
 function downloadOutput() {
@@ -296,11 +511,15 @@ function downloadOutput() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+romFile.addEventListener("change", validateTargetSelection);
+mktN64File.addEventListener("change", validateDonorSelection);
 outfitMode.addEventListener("change", updateModeUi);
 attackModern.addEventListener("change", updateGameSettingsUi);
 specialsModern.addEventListener("change", updateGameSettingsUi);
 requiredPowersMode.addEventListener("change", updateRequiredPowersUi);
-customColor.addEventListener("input", () => { colorValue.value = customColor.value.toUpperCase(); });
+customColor.addEventListener("input", () => {
+  colorValue.value = customColor.value.toUpperCase();
+});
 editionName.addEventListener("input", () => {
   const normalized = normalizeEditionName(editionName.value);
   if (editionName.value !== normalized) editionName.value = normalized;
@@ -308,7 +527,10 @@ editionName.addEventListener("input", () => {
 patchButton.addEventListener("click", patchRom);
 downloadButton.addEventListener("click", downloadOutput);
 
+setFileValidation(romValidation, "idle", "No target ROM selected.");
+setFileValidation(mktValidation, "idle", "Optional donor not selected.");
 updateModeUi();
 updateGameSettingsUi();
 updateRequiredPowersUi();
-bootRuntime();
+updatePatchButton();
+initWorker();
