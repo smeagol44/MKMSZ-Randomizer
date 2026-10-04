@@ -16,6 +16,10 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
       - run: ruff check .
+      - name: Check browser JavaScript syntax
+        run: |
+          node --input-type=module --check < web/app.js
+          node --check web/patch-worker.js
       - run: pytest
       - name: Build proof wheel
         if: github.event_name == 'pull_request'
