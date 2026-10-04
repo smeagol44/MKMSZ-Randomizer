@@ -9,18 +9,36 @@ The ROM never leaves the browser:
 local file picker
       |
       v
+browser Web Worker
+      |
+      +--> validate/cache selected ROM SHA immediately
+      |
+      v
 Pyodide virtual filesystem
       |
       v
 mkmszr Python core
       |
       v
-patched bytes -> local browser download
+patched bytes -> main thread -> local browser download
 ```
 
 The Pages workflow builds a pure-Python wheel, publishes it next to the static web
-assets, and installs that wheel inside Pyodide at page load. No patch logic is
+assets, and installs that wheel inside Pyodide at page load. Pyodide itself lives in
+`web/patch-worker.js`, keeping the page responsive while patching. No patch logic is
 duplicated in JavaScript.
+
+When a target ROM is selected, the worker immediately runs the normal Python clean-ROM
+validation and reports the canonical SHA-256 to the page. The validated `RomImage` is
+kept in the worker and the patch build starts from `fresh_copy()`, so browser patching
+does not repeat the clean-ROM SHA/byte-order validation pass. The CLI still enters
+through `patch_file()` / `patch_bytes()` and therefore retains its normal validation.
+
+The optional MKT Rev. 2 donor follows the same selection-time validate/cache flow. While
+a build runs, the page shows an indeterminate animated progress bar and cycles through
+six randomly selected non-repeating flavor messages. Those messages deliberately do
+not claim technical build phases; failures still report the real worker/Python
+diagnostics and stack trace.
 
 ## Always-applied patches
 
