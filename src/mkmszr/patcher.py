@@ -249,8 +249,8 @@ def build_pipeline(
     return PatchPipeline(patches)
 
 
-def patch_bytes(
-    source: bytes,
+def patch_rom(
+    rom: RomImage,
     config: RandomizerConfig,
     *,
     toasty_assets: ToastyAssets | None = None,
@@ -258,7 +258,7 @@ def patch_bytes(
     toasty_probability_per_thousand: int = 80,
     materialization_plan: GlobalMaterializationPlan | None = None,
 ) -> BuildResult:
-    rom = RomImage.from_bytes(source, require_clean=True)
+    """Patch an already-validated ROM image without re-hashing its source."""
     required_count, required_xp = resolve_required_powers(
         config.required_powers_mode, config.custom_required_powers, config.seed
     )
@@ -303,6 +303,26 @@ def patch_bytes(
         global_completion_mode=(
             config.global_completion_mode if global_run is not None else None
         ),
+    )
+
+
+def patch_bytes(
+    source: bytes,
+    config: RandomizerConfig,
+    *,
+    toasty_assets: ToastyAssets | None = None,
+    temple_intro_audio_assets: TempleIntroAudioAssets | None = None,
+    toasty_probability_per_thousand: int = 80,
+    materialization_plan: GlobalMaterializationPlan | None = None,
+) -> BuildResult:
+    rom = RomImage.from_bytes(source, require_clean=True)
+    return patch_rom(
+        rom,
+        config,
+        toasty_assets=toasty_assets,
+        temple_intro_audio_assets=temple_intro_audio_assets,
+        toasty_probability_per_thousand=toasty_probability_per_thousand,
+        materialization_plan=materialization_plan,
     )
 
 
