@@ -91,3 +91,18 @@ def test_rom_validation_rejects_unknown_byte_order() -> None:
 
     with pytest.raises(RomValidationError, match="unrecognized N64 ROM byte order"):
         RomImage.from_bytes(bytes(source), require_clean=False)
+
+
+def test_fresh_copy_restores_canonical_source_snapshot() -> None:
+    source = bytearray(EXPECTED_SIZE)
+    source[:4] = N64_Z64_MAGIC.to_bytes(4, "big")
+    original = bytes(source)
+    rom = RomImage(bytearray(source), original)
+
+    rom.write_u32(0x100, 0xDEADBEEF)
+    fresh = rom.fresh_copy()
+
+    assert fresh.to_bytes() == original
+    assert fresh.changed_spans() == ()
+    assert rom.read_u32(0x100) == 0xDEADBEEF
+    assert fresh.read_u32(0x100) == 0
