@@ -166,12 +166,7 @@ function startSillyProgress() {
 
   clearInterval(sillyTimer);
   sillyTimer = setInterval(() => {
-    index += 1;
-    if (index >= messages.length) {
-      clearInterval(sillyTimer);
-      sillyTimer = null;
-      return;
-    }
+    index = (index + 1) % messages.length;
     buildMessage.textContent = messages[index];
   }, 1600);
 }
