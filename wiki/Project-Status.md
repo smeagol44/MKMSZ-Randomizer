@@ -1,5 +1,7 @@
 # Project status
 
+**Focused inventory-HUD update (2026-10-05):** exact v16 Runtime-confirmed TEST LAB entry plus immediate Inventory hang before the later isolated pickup manager/resources. Static closure identified the v14-compacted HUD first-load branch passing a string pointer as allocation size. **v20 changes only the missing `a0=0x1200` initialization at ROM `0x00074F08` and Runtime-confirms the TEST LAB Inventory hang is fixed on the bounded route.** This remains disposable HUD proof work; broader HUD coverage and an independent ordinary-item font/palette forwarding defect are still Pending. See [TEST LAB Inventory diagnosis](Test-Lab-Inventory-Hang-Static-Diagnosis).
+
 Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-10-03.
 
 **PR #137 global-v2 promotion approved:** the shared browser/CLI path now generates, solves, and materializes an 85-check global layout. The maintainer reports the global-v2 proof functioning correctly and has approved merging it. Runtime evidence remains bounded; an exhaustive eight-stage/full-seed pass is not claimed. The persistent FX-crunch investigation is deferred and has no established attribution to global generation.
