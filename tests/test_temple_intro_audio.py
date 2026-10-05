@@ -159,6 +159,14 @@ def test_pools_match_approved_product_contract() -> None:
         "superb",
         "well-done",
         "liu-bike",
+        "mk3-04070",
+        "mk3-04270",
+        "mk3-05205",
+        "mk3-05220",
+        "mk3-21135",
+        "mk3-21140",
+        "mk3-02205",
+        "mk3-07015",
     )
     assert "friendship-alt" not in AUDIO1_POOL
     assert AUDIO2_POOL == (
@@ -167,8 +175,10 @@ def test_pools_match_approved_product_contract() -> None:
         "raiden-ttt",
         "robot-run",
         "shao-laugh",
+        "mk3-04025",
+        "mk3-04075",
+        "mk3-02200",
     )
-
 
 @pytest.mark.parametrize("slot", (1, 2))
 def test_seed_selection_is_deterministic_and_stays_in_slot_pool(slot: int) -> None:
