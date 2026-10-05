@@ -118,6 +118,10 @@ class RomImage:
     def output_sha256(self) -> str:
         return hashlib.sha256(self.data).hexdigest()
 
+    def fresh_copy(self) -> RomImage:
+        """Return a fresh mutable image of the canonical source snapshot."""
+        return RomImage(bytearray(self._original), self._original)
+
     def read_u16(self, offset: int) -> int:
         return int.from_bytes(self.data[offset : offset + 2], "big")
 
