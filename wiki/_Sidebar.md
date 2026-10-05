@@ -66,4 +66,5 @@
 - [Experiments, failures and superseded findings](Experiments-Failures-and-Superseded-Findings)
 - [Milestone timeline](Milestone-Timeline)
 - [TEST LAB proof history](Test-Lab-Proof-History)
+- [TEST LAB Inventory static diagnosis](Test-Lab-Inventory-Hang-Static-Diagnosis)
 - [Library artifact index](Library-Artifact-Index)
