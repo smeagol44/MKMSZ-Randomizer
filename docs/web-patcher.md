@@ -36,9 +36,10 @@ through `patch_file()` / `patch_bytes()` and therefore retains its normal valida
 
 The optional MKT Rev. 2 donor follows the same selection-time validate/cache flow. While
 a build runs, the page shows an indeterminate animated progress bar and cycles through
-six randomly selected non-repeating flavor messages. Those messages deliberately do
-not claim technical build phases; failures still report the real worker/Python
-diagnostics and stack trace.
+an 80-message shuffled flavor deck at 3.6 seconds per message. Every message in the deck
+is shown once before the deck is reshuffled; a reshuffle is guarded against repeating
+the previous message immediately. Those messages deliberately do not claim technical
+build phases; failures still report the real worker/Python diagnostics and stack trace.
 
 ## Always-applied patches
 
@@ -56,11 +57,12 @@ These are implementation infrastructure for the randomizer, not user-facing opti
 
 - vanilla / red / green outfit;
 - purple / orange / yellow / cyan / pink named colors;
-- seed-derived outfit color;
+- seed-derived outfit color (browser default);
 - custom RGB tint;
 - Powers as pickups (on by default; off retains stock XP awards and ordinary Herbs);
-- required powers: Vanilla (stock Fortress XP 5100), Custom (0–9), or Seed (deterministic 0–9), with the effective requirement shown after patching;
-- Shuffle Power Progression, independently of the XP source;
+- required powers: Seed (browser default), Vanilla, or Custom (0–9), with the effective requirement shown after patching;
+- Shuffle Power Progression (on by default in the browser), independently of the XP source;
+- Enemy Randomization (on by default in the browser);
 
 All currently exposed recolor modes have been visually validated in BizHawk through
 ROMs produced by the browser patcher. Custom RGB mode has been validated as a mode;

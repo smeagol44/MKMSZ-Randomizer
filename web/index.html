@@ -110,7 +110,7 @@
             <option value="cyan">Cyan</option>
             <option value="pink">Pink</option>
             <option value="rainbow">Rainbow</option>
-            <option value="seeded">Random from seed</option>
+            <option value="seeded" selected>Random from seed</option>
             <option value="rgb">Custom color</option>
           </select>
         </div>
@@ -156,7 +156,7 @@
               <strong>Shuffle Power Progression</strong>
               <small>Randomize the nine Power Up unlock tiers. Ice Shatter is kept after at least one freezing power.</small>
             </span>
-            <input id="shufflePowerProgression" type="checkbox">
+            <input id="shufflePowerProgression" type="checkbox" checked>
             <span class="toggle-switch" aria-hidden="true"></span>
           </label>
           <label class="setting-toggle" for="enemyRandomization">
@@ -164,7 +164,7 @@
               <strong>Enemy Randomization</strong>
               <small>Randomize ordinary enemy placements using deterministic, resource-safe profiles. Bosses and gated special encounters stay fixed.</small>
             </span>
-            <input id="enemyRandomization" type="checkbox">
+            <input id="enemyRandomization" type="checkbox" checked>
             <span class="toggle-switch" aria-hidden="true"></span>
           </label>
         </div>
@@ -172,9 +172,9 @@
           <div class="field">
             <label for="requiredPowersMode">Required powers for Fortress</label>
             <select id="requiredPowersMode">
-              <option value="vanilla">Vanilla (stock XP gate)</option>
-              <option value="custom">Custom (0–9)</option>
-              <option value="seed">Seed (0–9)</option>
+              <option value="seed" selected>Seed</option>
+              <option value="vanilla">Vanilla</option>
+              <option value="custom">Custom</option>
             </select>
             <p class="hint">Controls the XP gate before the final Fortress fight in either progression mode. Seed chooses a repeatable count for this seed.</p>
           </div>

@@ -25,7 +25,7 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 - Clean USA Rev. 0 big-endian `.z64` target only.
 - A new output is produced; the CLI refuses in-place patching and existing-output overwrite.
 - Browser target/donor validation begins immediately on file selection and displays the validated SHA-256 before patching can start.
-- During a browser build, an indeterminate progress bar stays animated on the main thread while six non-repeating messages are sampled from a deliberately silly MKMSZR/Mortal Kombat/gaming message pool. These messages are presentation only; failures still surface the actual Python/worker diagnostic text and stack trace.
+- During a browser build, an indeterminate progress bar stays animated on the main thread while an 80-message MKMSZR/Mortal Kombat/gaming flavor deck is shuffled and consumed without repeats; messages advance every 3.6 seconds, and only after all 80 are used is the deck reshuffled. These messages are presentation only; failures still surface the actual Python/worker diagnostic text and stack trace.
 - Seed is trimmed; absent seed becomes a random 64-bit hex value.
 - CLI output reports applied modules, notes, CRC1/CRC2, and SHA-256. The browser completion panel intentionally stays product-facing and reports only target, seed, SHA-256, and CRC1/CRC2 rather than enumerating internal patch modules or discovery-oriented features.
 - Pickup layout, progression-reward selection, optional power-order shuffle, boot phrase, and seeded palette use independent deterministic domains.
@@ -38,14 +38,15 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 | Outfit `vanilla` | Leaves source clothing TLUT and the accepted icy-blue title palette unchanged |
 | Presets / red / green | Applies fixed hue behavior |
 | `rainbow` | Runtime-confirmed 64-phase clothing hue cycle; fixed five-hue title word/edition treatment (the title itself does not animate) |
-| `seeded` | Deterministic seed-derived clothing color |
+| `seeded` | Deterministic seed-derived clothing color; **browser default** |
 | `hue` | Requires explicit degrees |
 | `rgb` | Requires `RRGGBB` or `#RRGGBB` |
 | Title character | Temporary freeform uppercase name, default `SUB-ZERO`, max 12 characters; patcher appends ` EDITION` and rasterizes it into the typeset CI8 title. Its 16-color palette follows every non-vanilla outfit color option, including the same seed-derived hue for `seeded`; `rainbow` uses a fixed multicolor title. See [Presentation and branding](Presentation-and-Branding). |
-| Shuffle Power Progression | Default **off**. When enabled, deterministically shuffles the nine native Power Up slots while preserving the single Ice Shatter prerequisite rule; Slide and Super Slide are independent. The same generated order drives gameplay gates and native Power Ups icon/help presentation. |
+| Shuffle Power Progression | **Browser default on**. When enabled, deterministically shuffles the nine native Power Up slots while preserving the single Ice Shatter prerequisite rule; Slide and Super Slide are independent. The shared configuration still permits disabling it. |
 | Difficulty | Build-time run setting: Very Easy / Easy / Medium / Hard / Very Hard. Default **Very Hard**. The lifecycle patch restores the selected value on fresh-run/reset boundaries. |
 | Lives | Total starting lives, integer **1..10**. Default **5**. Game Over/new-run reset uses the same configured value. |
 | Continues | Starting continues, integer **0..5**. Default **3**. Game Over/new-run reset uses the same configured value. |
+| Required powers for Fortress | Browser default **Seed**; user-selectable `Seed`, `Vanilla`, or `Custom`. Seed chooses a deterministic 0..9 requirement from its independent namespace. |
 | Persistent HP | Default **on**. On: damaged HP survives living stage exit/re-entry. Off: living re-entry receives full HP; ordinary death/Continue always receive full replacement HP in either mode. |
 | Seed completion rule | **All 85 available** (default) or **Game beatable** in the shared global item path. All 85 requires every shuffled check reachable; Game beatable requires all 21 progression credentials plus the selected shuffled-upgrade count when pickup mode is ON. OFF retains stock XP with its independent Fortress gate. Generated output is 32 MiB; supported clean input remains 16 MiB. |
 
@@ -55,9 +56,9 @@ The shared patch core includes donor-backed production features without embeddin
 
 ## Enemy Randomization option
 
-The shared product configuration now exposes **Enemy Randomization** as a default-OFF seeded option in both browser and CLI.
+The shared product configuration exposes **Enemy Randomization** as a seeded option in both browser and CLI. The browser now defaults this option **ON**; the underlying shared configuration/CLI behavior remains user-selectable and is not redefined by the browser default.
 
-- Browser: `Randomizer Features -> Enemy Randomization`.
+- Browser: `Randomizer Features -> Enemy Randomization`, default **ON**.
 - CLI: `--enemy-randomization`.
 - Both surfaces set the same `RandomizerConfig.enemy_randomization` field and therefore use the same shared patch pipeline.
 - Enabling the option invokes the guarded `EnemyRandomizationPatch`, which consumes the deterministic 104-record planner/materializer and remains fail-closed to registered materializable profiles.
