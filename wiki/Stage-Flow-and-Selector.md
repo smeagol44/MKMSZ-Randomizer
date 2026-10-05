@@ -1,5 +1,7 @@
 # Stage flow and selector
 
+**Inventory-HUD TEST LAB closure (2026-10-05):** exact v16 enters TEST LAB but immediately hangs on Inventory before later pickup-manager additions. Static review identified the independent v14 HUD first-load size bug; **v20 Runtime-confirms the one-word size initialization correction removes the hang on the bounded route.** See [TEST LAB Inventory diagnosis](Test-Lab-Inventory-Hang-Static-Diagnosis).
+
 **Lifecycle ownership (2026-10-01):** [Static death/Continue/constructor/terminal trace and unbuilt v05](Lifecycle-Static-Closure-v05). Ordinary remaining-life respawn schedules `0x80016080` after the decrement at `0x80035CA0`; accepted Continue alone reloads configured lives at `0x80035C8C`. Frontend `0x8000D260 -> 0x80016B10` is a separate configured-resource reload. Do not restore saved lives on all stage entries, or add lifecycle calls to Mission Objective/progression restore. The native constructor consumes HP before the pickup-manager restore; living re-entry requires an explicit constructor-local token.
 
 > **Scope:** This page is the canonical owner for the safe stage selector, compact-to-native stage mapping, the title/frontend route used to enter the selector, the post-legal company/logo bypass, the selector-specific automatic-save bypass, rejected broad flow-bypass approaches, and the relevant bounded runtime evidence.
@@ -78,7 +80,7 @@ The exact guard sequence and replacement instruction belong to the [Address and 
 
 ## Selector-specific automatic-save bypass
 
-The relocated compact-stage mapper also writes nonzero byte `0x15` to `0x80291C0C` when returning a selector choice. Stock stage-entry code already recognizes this byte as a one-shot bypass for the immediate automatic stage-entry save prompt.
+The relocated compact-stage mapper also writes nonzero byte `0x15` to `0x80291C0C` when returning a selector choice. Static executable inspection shows that, while armed, the native one-shot path skips both the immediate `0x8000E000(0x19)` stage-entry save setup and the following `0x800798A8` automatic-save call. Later/manual save flows are not generalized from this bypass.
 
 This is deliberately selector-specific:
 

@@ -1,5 +1,7 @@
 # Native HUD and UI
 
+**Inventory-HUD proof-line correction (2026-10-05):** v16/v18/v19 share a concrete first-load allocation bug at `0x80074304`: the null branch skips `a0=0x1200` and calls `0x8006643C` with the incoming label pointer. v14 introduced this while compacting the reclaimed description span. v20 sets the size in delay slot `0x80074308`; **Runtime-confirmed bounded:** the user reports TEST LAB Inventory now opens instead of hanging. The ordinary-item row also fails to forward its fifth font/palette argument, a separate broader-HUD follow-up excluded from v20 and still Pending. See [exact calls, ownership, and proof](Test-Lab-Inventory-Hang-Static-Diagnosis).
+
 > **Scope:** This page is the canonical owner for the gameplay HUD hook, native gameplay text, render-node usage, the production box indicator, generic renderer conclusions, and 1.0 randomizer-HUD implementation/reference material.
 >
 > Stable render-node structure grammar remains canonical in [Data structures and encodings](Data-Structures-and-Encodings). Title/legal branding belongs to [Presentation and branding](Presentation-and-Branding). The full Toasty visual diagnostic chronology belongs to [Toasty visual research](Toasty-Visual-Research).

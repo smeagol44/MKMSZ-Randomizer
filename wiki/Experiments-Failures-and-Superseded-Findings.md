@@ -1,5 +1,7 @@
 # Experiments, failures, and superseded findings
 
+**Inventory-HUD independent failures (2026-10-05):** v09 synchronous TEST LAB pickup bootstrap caused startup failure; v13 added a stale call into reclaimed `0x800742E0`; v14 repaired that trampoline but introduced a separate first-load size bug in compacted HUD ensure. v16 disables startup setup and Runtime-confirms Inventory still hangs. v17 misinterpreted the signed stage-resource offset; v18 fixed it and showed nine pickups; v19 count 9→2 still hung. **v20 Runtime-confirms the one-word HUD allocation-size correction removes the Inventory hang on the bounded TEST LAB route.** Do not reattribute this older Inventory failure to later pickup-manager/resource pressure. Earth horizontal wall spikes are difficulty-gated, not broken; earlier HUD proofs accidentally used difficulty 2 instead of the project Very Hard baseline. See [TEST LAB Inventory diagnosis](Test-Lab-Inventory-Hang-Static-Diagnosis).
+
 > **Scope:** This page is the cross-domain index of durable **Rejected / failed** and superseded findings. It records only enough detail to identify the attempted path, observed failure, reusable lesson, and canonical page containing the full evidence.
 >
 > It is **not** a proof-history page. Version chronology, artifact hashes, complete routes, and extended diagnostics stay with the owning domain.

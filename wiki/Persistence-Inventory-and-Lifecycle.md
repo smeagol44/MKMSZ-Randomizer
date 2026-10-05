@@ -1,5 +1,7 @@
 # Persistence, inventory, and lifecycle
 
+**Inventory-HUD TEST LAB closure (2026-10-05):** exact v16 enters TEST LAB but immediately hangs on Inventory, before v18/v19 isolated pickup additions. Static review identified the independent v14 first-load HUD size bug; **v20 Runtime-confirms its one-word correction removes the hang on the bounded TEST LAB route.** The pickup-manager parent-field preservation and Fire resource composition were not required causes. See [TEST LAB Inventory diagnosis](Test-Lab-Inventory-Hang-Static-Diagnosis).
+
 ## Ordinary-pickup persistence
 
 The native game reconstructs stage pickup records, so a per-location runtime bitset is the production authority for randomizer collection state. Production state V2 lives at `0x801AF7D0..0x801AF81F`, begins with `MKSV`, and assigns one 32-bit word to each main stage. The exact header and word layout are in [Data structures and encodings](Data-Structures-and-Encodings).
