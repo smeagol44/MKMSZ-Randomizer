@@ -100,3 +100,43 @@ def test_web_progress_flavor_uses_full_deck_before_repeating() -> None:
     assert "lastSillyMessage" in app
     assert "}, 3600);" in app
     assert "chooseSillyMessages(6)" not in app
+
+
+def test_web_polish_controls_and_summaries_are_wired() -> None:
+    html = Path("web/index.html").read_text(encoding="utf-8")
+    app = Path("web/app.js").read_text(encoding="utf-8")
+    css = Path("web/style.css").read_text(encoding="utf-8")
+
+    for element_id in (
+        "romDropZone",
+        "mktDropZone",
+        "donorExtrasStatus",
+        "randomSeedButton",
+        "copySeedButton",
+        "randomizerFeaturesSummary",
+        "runSettingsSummary",
+        "gameSettingsSummary",
+        "buildSummary",
+        "buildSummarySeed",
+        "buildSummaryText",
+        "buildSummaryRun",
+        "copyResultSeedButton",
+        "changeSettingsButton",
+    ):
+        assert f'id="{element_id}"' in html
+        assert f'querySelector("#{element_id}")' in app
+
+    assert '<details class="settings-group" id="randomizerFeaturesGroup" open>' in html
+    assert '<details class="settings-group" id="runSettingsGroup">' in html
+    assert '<details class="settings-group" id="gameSettingsGroup">' in html
+    assert "TURN: TOGGLE" in html
+    assert '"TURN: " + (turnLock.checked ? "LOCK" : "TOGGLE")' in app
+    assert "function updateSummaries()" in app
+    assert "function wireDropZone(zone, input)" in app
+    assert "navigator.clipboard.writeText" in app
+    assert "Toasty + Temple intro extras enabled" in app
+    assert "Donor extras disabled" in html
+    assert "Randomized ROM ready" in html
+    assert "Technical details" in html
+    assert ".setting-toggle:has(input:checked)" in css
+    assert "body::before" in css
