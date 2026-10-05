@@ -1,6 +1,6 @@
 # Project status
 
-**Focused inventory-HUD update (2026-10-05):** exact v16 Runtime-confirmed TEST LAB entry plus immediate Inventory hang before the later isolated pickup manager/resources. Static closure identified the v14-compacted HUD first-load branch passing a string pointer as allocation size. **v20 changes only the missing `a0=0x1200` initialization at ROM `0x00074F08` and Runtime-confirms the TEST LAB Inventory hang is fixed on the bounded route.** This remains disposable HUD proof work; broader HUD coverage and an independent ordinary-item font/palette forwarding defect are still Pending. See [TEST LAB Inventory diagnosis](Test-Lab-Inventory-Hang-Static-Diagnosis).
+**Native Inventory HUD closure (2026-10-05):** v20 Runtime-confirmed the first-load `0x1200` allocation correction; v21 then Runtime-confirmed the completed TEST LAB Inventory presentation with all nine Power pickups, colored `STG#` credential labels, real paper titles, streamed portraits, ordinary-row font/palette forwarding, `REQUIRED POWERS X/Y`, and right-aligned `XX/85`. A dense debug layout exposed a separate rapid-Power lifecycle edge: v22 proved the white-flash wrapper's synchronous sleeps were causal, and **v23 Runtime-confirms the accepted correction: award synchronously, run the three 2-tick white pulses in one guarded child process, and allow later rapid Power pickups to award immediately.** The shared browser/CLI integration now promotes this architecture without adding a new flash allocation. Final representative full-seed production-composition runtime validation remains the release gate.
 
 Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-10-03.
 
@@ -61,17 +61,17 @@ These results are important feasibility evidence but are **not** normal browser/
 | Production-safe global cross-stage item materialization | **Destination ownership closed; wrapper composition Runtime-confirmed bounded on PR #129.** PR #129 composes logical awards with researched Wind/Water/Earth/Fire/Prison destination actions, generic Bridge/Fortress activation gates, portable Strength semantics, immediate foreign-key re-mask, and Prison credential reconstruction after the stock reset. Current-main lifecycle v06 remains unchanged. The former high-tail materializer placement overlapped fixed Toasty audio and is rejected; the corrected helper occupies `0x801B2310..0x801B28EF`, immediately after progression flash and before Toasty audio. Wrapper semantics remain unchanged; corrected composition is Implementation/CI-confirmed pending representative runtime. First-item-swap v04 was manually validated successfully, directly confirming the exercised key-without-checkpoint / checkpoint-without-key / non-downgrade split. PR #137 now connects the global generator/solver to this materializer; promotion is approved. |
 | Deterministic global shuffle and retry model | **Implemented in PR #137; promotion approved.** All 85 checks participate, Map `0x0D` is excluded, and nine Herbs become explicit Power Upgrade rewards before shuffling when pickup mode is ON. Attempts are deterministic and capped at 10,000. The approved 32 MiB output owns eight 1 MiB resource slots at `0x01000000..0x017FFFFF`; clean input remains 16 MiB. |
 | Whole-run solvability validation | **Implementation/CI-confirmed in PR #137.** All 85 available requires every check reachable; Game beatable requires all 21 credentials plus the required shuffled Power Upgrades when ON. OFF retains vanilla XP and the independent Required powers Fortress gate; additional earned-XP accounting is not a blocker. Broader full-run runtime validation remains Pending. |
-| Native randomizer HUD | **Partial.** Native text and box state are proven; checks/progression/key/pickup run-state display is still required |
+| Native randomizer HUD | **Production beta / bounded Runtime-confirmed architecture.** v21 confirms the completed TEST LAB presentation and v23 confirms nonblocking Power feedback; shared browser/CLI integration is guarded/CI-targeted. Final representative full-seed production-composition runtime validation remains Pending. |
 | Run lifecycle invariants | **Runtime-confirmed baseline and configurable integration.** v06 confirms the Very Hard / 9-lives / 5-continues / HP-ON reference behavior. Browser/CLI now expose difficulty, 1..10 starting lives, 0..5 continues, and HP persistence; Game Over/new run reuses those configured defaults. Other combinations preserve the same guarded control flow and are Implementation/CI-confirmed pending runtime sampling. |
 | Final production-composition runtime gate | **Pending.** Run a representative full global seed after the above are integrated, including all nine progression tiers and the major lifecycle boundaries |
 
 ## Current priority order
 
-Current user direction is to promote PR #137, then continue the broader HUD and representative full-seed release work. The FX-crunch investigation is deferred.
+Current user direction is to promote the completed native Inventory HUD / asynchronous Power feedback, then continue the representative full-seed release work. The FX-crunch investigation is deferred.
 
-1. Complete the approved PR #137 promotion and verify shared browser/CLI deployment.
-2. Build the native randomizer HUD around the integrated global-run state.
-3. Run the representative full-seed 1.0 gate across global items, solver, HUD, progression, and lifecycle.
+1. Merge and verify the native Inventory HUD / asynchronous Power-feedback production integration.
+2. Run the representative full-seed 1.0 gate across global items, solver, HUD, progression, and lifecycle.
+3. Close only defects exposed by that final composed route; do not reopen already accepted proof lines without new evidence.
 
 ## Current evidence notes
 
