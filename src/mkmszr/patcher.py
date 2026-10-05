@@ -22,7 +22,6 @@ from .patches import (
     GameSettingsTurnPatch,
     GlobalItemMaterializationPatch,
     InventoryHudPatch,
-    InventoryHudPatch,
     NativePayloadPatch,
     NativePayloadSpec,
     PickupPersistencePatch,
@@ -246,12 +245,6 @@ def build_pipeline(
                 config.required_powers_mode, config.custom_required_powers
             )
         )
-    patches.append(
-        InventoryHudPatch(
-            config.required_powers_mode,
-            config.custom_required_powers,
-        )
-    )
     if materialization_plan is not None:
         # The native randomizer HUD owns the fixed materializer->Toasty tail
         # and generated-output portrait/data slots. Apply it after progression
