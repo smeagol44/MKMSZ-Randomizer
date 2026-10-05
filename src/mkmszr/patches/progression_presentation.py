@@ -18,7 +18,6 @@ from __future__ import annotations
 from ..data.addresses import EXPANSION_POOL_START
 from ..data.pickups import IDENTITY_OFFSET, STAGE_PICKUPS
 from ..errors import PatchError
-from ..mips import words_blob
 from ..rom import RomImage
 from .base import PatchContext
 from .native_payload import kseg1_alias
