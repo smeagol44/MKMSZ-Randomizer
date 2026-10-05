@@ -65,9 +65,9 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x000AE40C..0x000AE413` | stock item-name text | Foreign-key placeholder label | `GLASS\0\0\0` | `SEALED\0\0`; native item identity remains `0x08` and its inert-use dispatch remains unchanged. |
 | generated progression records `+0x28` | ordinary pickup presentation pointer | Power Upgrade Herbs visual | stock Herbs `0x800B1D38` | `0x800B1E68`, a stock-resident 16-color Ice Blue descriptor; stage-local Herbs resource/model selector remains unchanged. |
 | `0x000B2A68..0x000B2A8B` / VA `0x800B1E68` | stock resident palette descriptor | Power Upgrade Herbs palette source | guarded retail 16-color descriptor | Read-only reuse; no palette bytes or allocation changed. |
-| generated progression records `+0x18` | ordinary pickup callback pointer | Power Upgrade pickup feedback | existing progression callback `0xA01AF620` | production wrapper `0xA01B21E0`; wrapper calls the existing progression award first, then performs the Runtime-confirmed three 2-tick white pulses and returns. |
+| generated progression records `+0x18` | ordinary pickup callback pointer | Power Upgrade pickup feedback | existing progression callback `0xA01AF620` | production wrapper `0xA01B21E0`; wrapper awards synchronously, starts one guarded class-`0x100` visual child when idle, and returns without sleeping. v23 Runtime-confirms the nonblocking architecture under rapid adjacent collection. |
 | `0x00615A14..0x00615A93` | Water resource palette data | Eel white-flash source | transparent index 0 + 63×`0x7FFF` white | Guarded read-only source copied into MKMSZR file-`0x1A`; no Water overlay code/state is imported. |
-| `0x00F6A940..0x00F6AAEF` / runtime `0x801B2160..0x801B230F` | shared file `0x1A` | Power Upgrade flash module | clean ROM `0xFF` guarded suballocation inside reserved expansion pool | 128-byte white palette + 304-byte accepted v02 visual helper; no damage/stun/input-lock semantics. |
+| `0x00F6A940..0x00F6AAEF` / runtime `0x801B2160..0x801B230F` | shared file `0x1A` | Power Upgrade flash module | clean ROM `0xFF` guarded suballocation inside reserved expansion pool | 128-byte white palette; async helper `0x801B21E0..0x801B230B`; active flag `0x801B230C`. Allocation boundary unchanged; no damage/stun/input-lock semantics. |
 | `0x000AF998..0x000AFA23` | boot strings | Branding | guarded legal-text storage | Product title, spaced RANDOMIZER, configurable `<CHAR> EDITION`, 2026 credit, seeded joke, author |
 | `0x000AFA24..0x000AFA97` | `0x800AEE24..` | Box indicator | guarded legal-text region | Native wrapper and `BOX 1 OF 4` text |
 | `0x000AFA98..0x000AFABB` | boot strings | Branding | guarded license text | `NOT LICENSED BY NINTENDO` |
@@ -82,6 +82,8 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x000A5478` | file entry `0x5E` | Title branding | guarded stock file-table entry | Repoint title package to generated high-ROM copy |
 | `0x000A5664` | file entry `0x87` | Rainbow outfit | stock `0x00748920..0x0078E300`, raw flag `0` | Compact rainbow deliberately leaves this entry unchanged; guards verify retail ownership |
 | `0x000B3364` palette base | `0x800B2764` | Title branding | selected guarded Candidate-B-unused CI8 entries | Replace 15 entries with the shared dark-to-light icy-blue art/edition ramp; index `0xFF` stays the stock background |
+
+| ROM `0x00074E68`, `0x00073C98`, `0x000759E0`, `0x00075B88`; retired span `0x00074EB8..0x00074FA7` | Native Inventory presentation | Randomizer HUD labels/portraits/paper/status | guarded stock text/preview/description paths | Shared row/preview/HUD dispatch plus paper trampoline and exact first-load `0x1200` data allocator. v20 closes first-load size bug; v21 closes ordinary-row fifth-argument forwarding and final status presentation. |
 
 Boot string pointer instructions live at ROM `0x7A22C`, `0x7A250`, `0x7A274`, `0x7A298`, `0x7A2BC`, `0x7A2E0`, `0x7A304`, `0x7A328`, `0x7A34C`, `0x7A370`, and `0x7A394`; every instruction is guarded before replacement.
 

@@ -4,6 +4,12 @@ XP progression is a production feature built from the runtime-confirmed Temple p
 
 **Lifecycle proof update (2026-10-01):** XP/powers persistence across Pause -> Quit is Runtime-confirmed in lifecycle v04, whose whole composition is nevertheless **Rejected / unsafe composition** because of intermittent music acceleration. Its extra nested lifecycle restore must not be promoted. The [v05 static design](Lifecycle-Static-Closure-v05) leaves production `_build_restore()` and its existing inventory reconstruction call byte-for-byte unchanged; only the already-confirmed Pause-Quit current-XP save may be retained if necessary. HP/resource work belongs at direct teardown/constructor seams. No evaluator or lifecycle calls are added to Mission Objective/stage-init progression restoration.
 
+## Nonblocking Power Upgrade pickup feedback — v22/v23 closure
+
+**Runtime-confirmed bounded (2026-10-05).** Dense TEST LAB placement exposed that the earlier white-flash wrapper slept/yielded inside the native pickup callback. After rapidly collecting two or three adjacent Power Upgrades, the player could become unable to collect later items. v22 changed only those Power records to the direct non-yielding progression award callback; the user reported rapid pickup working normally, isolating the synchronous flash wrapper.
+
+v23 keeps the accepted Ice Blue pickup presentation and three 2-tick white pulses but changes lifecycle ownership: the progression award completes synchronously, then one guarded class-`0x100` child process owns the visual sleeps. While a flash child is active, later Power pickups still award immediately and simply do not start an overlapping flash. The child restores the original palette, releases its acquired palette handle, clears the active flag, and exits. The user reported v23 **“worked perfectly.”** Production preserves the existing `0x1B0` flash-module allocation; no new ROM/RDRAM allocation is introduced for this correction.
+
 ## Native XP system
 
 | Purpose | Address |

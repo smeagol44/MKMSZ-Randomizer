@@ -21,6 +21,7 @@ from .patches import (
     FourBoxInventoryPatch,
     GameSettingsTurnPatch,
     GlobalItemMaterializationPatch,
+    InventoryHudPatch,
     NativePayloadPatch,
     NativePayloadSpec,
     PickupPersistencePatch,
@@ -242,6 +243,17 @@ def build_pipeline(
         patches.append(
             RequiredPowersPatch(
                 config.required_powers_mode, config.custom_required_powers
+            )
+        )
+    if materialization_plan is not None:
+        # The native randomizer HUD owns the fixed materializer->Toasty tail
+        # and generated-output portrait/data slots. Apply it after progression
+        # presentation and Required Powers so its guards see final upstream
+        # file-0x1A ownership and its display matches the selected gate.
+        patches.append(
+            InventoryHudPatch(
+                config.required_powers_mode,
+                config.custom_required_powers,
             )
         )
     if config.enemy_randomization:

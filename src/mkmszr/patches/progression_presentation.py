@@ -1,15 +1,16 @@
 """Runtime-confirmed Power Upgrade pickup presentation.
 
-The accepted TEST LAB v02 proof established the visual-only player flash:
-three 2-tick white pulses alternating with the player's original palette.
-This production patch reuses that exact helper loop and the stock Water-eel
-all-white 64-color palette while changing only two proof-specific inputs:
+The accepted v23 TEST LAB proof closes the rapid-pickup lifecycle edge exposed
+by dense debug placement: progression is awarded synchronously and the pickup
+callback returns immediately, while the accepted three 2-tick white pulses run
+in one guarded class-0x100 child process. Additional Power pickups collected
+while that visual child is active still award normally and do not spawn a
+second overlapping flash.
 
-- the wrapped callback is the existing pickup-progression award callback;
-- the white palette lives in the global shared file-0x1A module instead of
-  Water-stage resource memory.
-
-No damage, reaction, stun, input lock, or Water-overlay state is imported.
+Production keeps the exact existing 0x1B0-byte file-0x1A allocation. The white
+palette remains the stock Water-eel 64-color palette; the async helper occupies
+0x12C bytes and the final module word is its active flag. No damage, reaction,
+stun, input lock, or Water-overlay state is imported.
 """
 
 from __future__ import annotations
@@ -17,7 +18,6 @@ from __future__ import annotations
 from ..data.addresses import EXPANSION_POOL_START
 from ..data.pickups import IDENTITY_OFFSET, STAGE_PICKUPS
 from ..errors import PatchError
-from ..mips import address_words, words_blob
 from ..rom import RomImage
 from .base import PatchContext
 from .native_payload import kseg1_alias
@@ -44,46 +44,37 @@ FLASH_HELPER_ROM = FLASH_MODULE_ROM + FLASH_HELPER_OFFSET
 FLASH_HELPER_K0 = FLASH_MODULE_K0 + FLASH_HELPER_OFFSET
 FLASH_HELPER_K1 = kseg1_alias(FLASH_HELPER_K0)
 
-FLASH_HELPER_SIZE = 0x130
-FLASH_MODULE_SIZE = FLASH_HELPER_OFFSET + FLASH_HELPER_SIZE
+# v23 architecture fits the existing allocation exactly:
+# 0x80 white palette + 0x12C helper + 4-byte active flag = 0x1B0.
+FLASH_HELPER_SIZE = 0x12C
+FLASH_ACTIVE_FLAG_OFFSET = 0x1AC
+FLASH_MODULE_SIZE = 0x1B0
 FLASH_MODULE_END_ROM = FLASH_MODULE_ROM + FLASH_MODULE_SIZE
 FLASH_MODULE_END_K0 = FLASH_MODULE_K0 + FLASH_MODULE_SIZE
+FLASH_ACTIVE_FLAG_ROM = FLASH_MODULE_ROM + FLASH_ACTIVE_FLAG_OFFSET
+FLASH_ACTIVE_FLAG_K0 = FLASH_MODULE_K0 + FLASH_ACTIVE_FLAG_OFFSET
+FLASH_ACTIVE_FLAG_K1 = kseg1_alias(FLASH_ACTIVE_FLAG_K0)
+
+if FLASH_HELPER_OFFSET + FLASH_HELPER_SIZE != FLASH_ACTIVE_FLAG_OFFSET:
+    raise AssertionError("async flash helper must end immediately before active flag")
+if FLASH_ACTIVE_FLAG_OFFSET + 4 != FLASH_MODULE_SIZE:
+    raise AssertionError("async flash flag must occupy the final module word")
 
 # Exact stock Water-eel white palette: transparent index 0 + 63 white entries.
 WATER_EEL_WHITE_PALETTE_ROM = 0x00615A14
 WHITE_FLASH_PALETTE = b"\x00\x00" + b"\x7F\xFF" * 63
 
-# Runtime-confirmed TEST LAB v02 helper. Production changes only:
-#   0x20..0x27: stock Herbs callback -> progression callback
-#   0x50..0x5B: Water-resource palette lookup -> fixed white palette pointer
-TESTLAB_FLASH_HELPER = bytes.fromhex(
-    "27bdffd0afbf002cafb00028afb10024afb20020afb3001cafb40018afb50014"
-    "3c198004273989bc0320f809000000003c08802c8d081ac01100002b00000000"
-    "8d1006e012000028000000008611009e3c04802f8c8482b82484259024050100"
-    "000030213c1980022739c5280320f809000000000440001c0000000000409021"
-    "2453ff80241400033c15800326b58794026020210411001e0000000024040002"
-    "02a0f809000000000220202104110018000000002694ffff1280000600000000"
-    "2404000202a0f809000000001000fff000000000024020213c1980022739c64c"
-    "0320f809000000008fb500148fb400188fb3001c8fb200208fb100248fb00028"
-    "8fbf002c27bd003003e0000800000000a604009e000440c03c09802901284821"
-    "95280a02a608008003e0000800000000"
+# Runtime-confirmed v23 architecture translated to the fixed production
+# allocation. Wrapper entry 0xA01B21E0 awards synchronously. Child entry
+# 0xA01B2224 owns every sleep/yield and exits through 0x80028564.
+PRODUCTION_FLASH_HELPER = bytes.fromhex(
+    "27bdffe8afbf00100c06bd88000000003c08a01b8d09230c152000063c05a01b24a5222424090001ad09230c0c00a0c3240401008fbf001027bd001803e00008000000003c15800326b587943c08802c8d081ac011000027000000008d1006e012000024000000008611009e3c04801b2484216024050100000030213c16800226d9c5280320f809000000000440001900000000004090212453ff80241400030260202104110019000000002404000202a0f809000000000220202104110013000000002694ffff12800006000000002404000202a0f809000000001000fff0000000000240202126d9c64c0320f809000000003c08a01bad00230c26b9fdd00320f8090000000000000000a604009e000440c03c0980290128482195280a02a608008003e0000800000000"
 )
-if len(TESTLAB_FLASH_HELPER) != FLASH_HELPER_SIZE:
-    raise AssertionError("accepted flash helper size drifted")
+FLASH_CHILD_CALLBACK_ENTRY = 0xA01B2224
 
+if len(PRODUCTION_FLASH_HELPER) != FLASH_HELPER_SIZE:
+    raise AssertionError("async flash helper size drifted")
 
-def build_production_flash_helper() -> bytes:
-    """Return the accepted v02 loop with only production inputs substituted."""
-
-    data = bytearray(TESTLAB_FLASH_HELPER)
-    data[0x20:0x28] = words_blob(address_words("t9", PROGRESSION_CALLBACK_ENTRY))
-    data[0x50:0x5C] = words_blob(
-        (*address_words("a0", WHITE_PALETTE_K0), 0)
-    )
-    return bytes(data)
-
-
-PRODUCTION_FLASH_HELPER = build_production_flash_helper()
 PROGRESSION_FLASH_CALLBACK_ENTRY = FLASH_HELPER_K1
 
 
@@ -140,6 +131,7 @@ class ProgressionPickupPresentationPatch:
 
         rom.write_bytes(WHITE_PALETTE_ROM, WHITE_FLASH_PALETTE)
         rom.write_bytes(FLASH_HELPER_ROM, PRODUCTION_FLASH_HELPER)
+        rom.write_u32(FLASH_ACTIVE_FLAG_ROM, 0)
         if file_end < FLASH_MODULE_END_ROM:
             rom.write_u32(EXPANSION_FILE_ENTRY_ROM + 4, FLASH_MODULE_END_ROM)
 
@@ -154,7 +146,9 @@ class ProgressionPickupPresentationPatch:
 
         return (
             "Power Upgrade Herbs retain Ice Blue pickup presentation",
-            "pickup callback wraps existing progression award with three 2-tick white pulses",
+            "progression award completes synchronously; pickup callback performs no sleep/yield",
+            "one guarded class-0x100 child owns the accepted three 2-tick white pulses",
+            "rapid Power pickups still award while an existing flash child is active",
             "white palette is the exact stock Water-eel 64-color flash palette",
             "flash adds no damage, reaction, stun, or input-lock semantics",
             (

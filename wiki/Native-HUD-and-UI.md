@@ -1,6 +1,8 @@
 # Native HUD and UI
 
-**Inventory-HUD proof-line correction (2026-10-05):** v16/v18/v19 share a concrete first-load allocation bug at `0x80074304`: the null branch skips `a0=0x1200` and calls `0x8006643C` with the incoming label pointer. v14 introduced this while compacting the reclaimed description span. v20 sets the size in delay slot `0x80074308`; **Runtime-confirmed bounded:** the user reports TEST LAB Inventory now opens instead of hanging. The ordinary-item row also fails to forward its fifth font/palette argument, a separate broader-HUD follow-up excluded from v20 and still Pending. See [exact calls, ownership, and proof](Test-Lab-Inventory-Hang-Static-Diagnosis).
+**Inventory-HUD accepted closure (2026-10-05):** v21 is Runtime-confirmed on the bounded TEST LAB route with all nine Power pickups and the completed Inventory presentation: colored short credential labels, native/real paper titles, selected credential portraits, the eight-stage `STG CHECKS KEYS` table, ordinary-row native font/palette forwarding, `REQUIRED POWERS X/Y`, and right-aligned `XX/85`. It preserves the v20 first-load `0x1200` allocation correction. v23 then Runtime-confirms that Power feedback remains healthy under rapid adjacent pickup when progression awards synchronously and the white pulses run in a guarded child process. The production module derives portrait/font data from the clean ROM at build time, owns one fixed `0x500` file-`0x1A` tail plus generated-output atlas/package/data slots, and keeps the lazy HUD data request exactly `0x1200` bytes.
+
+**Inventory-HUD proof-line correction (2026-10-05):** v16/v18/v19 share a concrete first-load allocation bug at `0x80074304`: the null branch skips `a0=0x1200` and calls `0x8006643C` with the incoming label pointer. v14 introduced this while compacting the reclaimed description span. v20 sets the size in delay slot `0x80074308`; **Runtime-confirmed bounded:** the user reports TEST LAB Inventory now opens instead of hanging. That proof also exposed an ordinary-item fifth font/palette forwarding defect; v21 corrects it and Runtime-confirms the completed presentation. See [exact calls, ownership, and proof](Test-Lab-Inventory-Hang-Static-Diagnosis).
 
 > **Scope:** This page is the canonical owner for the gameplay HUD hook, native gameplay text, render-node usage, the production box indicator, generic renderer conclusions, and 1.0 randomizer-HUD implementation/reference material.
 >
@@ -8,7 +10,7 @@
 
 ## Current conclusion
 
-The normal gameplay HUD path at `0x8005BFB0`, native text renderer `0x80073E74`, and the production `BOX n OF 4` indicator are **Runtime-confirmed**. The complete 1.0 randomizer HUD is still **Pending**.
+The normal gameplay HUD path at `0x8005BFB0`, native text renderer `0x80073E74`, and `BOX n OF 4` remain **Runtime-confirmed**. The complete Inventory-side 1.0 randomizer presentation is now **Runtime-confirmed bounded in v21 and integrated as Production beta**; the final global-seed production-composition route remains Pending.
 
 The generic renderer boundary is now narrower and better established than the earlier mixed page implied: the `0x80073CEC -> 0x8001E578` family is real but context-specific, while the actual gameplay-HUD queue can accept MKMSZR-owned additional textured nodes. Toasty diagnostics v08-v16 are the proof source for those reusable conclusions; their version-by-version evidence and rejected controls are canonical in [Toasty visual research](Toasty-Visual-Research).
 

@@ -1,7 +1,10 @@
 from mkmszr.data.pickups import IDENTITY_OFFSET, STAGE_PICKUPS
-from mkmszr.mips import address_words, words_blob
+from mkmszr.mips import jal
 from mkmszr.patches.base import PatchContext
 from mkmszr.patches.progression_presentation import (
+    FLASH_ACTIVE_FLAG_OFFSET,
+    FLASH_ACTIVE_FLAG_ROM,
+    FLASH_CHILD_CALLBACK_ENTRY,
     FLASH_HELPER_OFFSET,
     FLASH_HELPER_ROM,
     FLASH_HELPER_SIZE,
@@ -11,10 +14,8 @@ from mkmszr.patches.progression_presentation import (
     FLASH_MODULE_SIZE,
     PRODUCTION_FLASH_HELPER,
     PROGRESSION_FLASH_CALLBACK_ENTRY,
-    TESTLAB_FLASH_HELPER,
     WATER_EEL_WHITE_PALETTE_ROM,
     WHITE_FLASH_PALETTE,
-    WHITE_PALETTE_K0,
     WHITE_PALETTE_ROM,
     ProgressionPickupPresentationPatch,
 )
@@ -76,24 +77,18 @@ def _post_progression_shape(seed: str) -> RomImage:
     return RomImage(data=data, _original=bytes(data))
 
 
-def test_production_helper_is_exact_testlab_loop_with_two_input_changes() -> None:
-    assert len(TESTLAB_FLASH_HELPER) == FLASH_HELPER_SIZE == 0x130
-    assert len(PRODUCTION_FLASH_HELPER) == FLASH_HELPER_SIZE
-
-    changed_words = [
-        offset
-        for offset in range(0, FLASH_HELPER_SIZE, 4)
-        if TESTLAB_FLASH_HELPER[offset:offset + 4]
-        != PRODUCTION_FLASH_HELPER[offset:offset + 4]
+def test_async_wrapper_awards_before_spawning_and_contains_no_direct_sleep_jal() -> None:
+    words = [
+        int.from_bytes(PRODUCTION_FLASH_HELPER[offset:offset + 4], "big")
+        for offset in range(0, len(PRODUCTION_FLASH_HELPER), 4)
     ]
-    assert changed_words == [0x20, 0x24, 0x50, 0x54, 0x58]
-
-    assert PRODUCTION_FLASH_HELPER[0x20:0x28] == words_blob(
-        address_words("t9", PROGRESSION_CALLBACK_ENTRY)
-    )
-    assert PRODUCTION_FLASH_HELPER[0x50:0x5C] == words_blob(
-        (*address_words("a0", WHITE_PALETTE_K0), 0)
-    )
+    assert jal(PROGRESSION_CALLBACK_ENTRY) in words
+    assert jal(0x8002830C) in words
+    assert words.index(jal(PROGRESSION_CALLBACK_ENTRY)) < words.index(jal(0x8002830C))
+    child_offset = FLASH_CHILD_CALLBACK_ENTRY - PROGRESSION_FLASH_CALLBACK_ENTRY
+    assert child_offset > 0
+    wrapper_words = words[: child_offset // 4]
+    assert jal(0x80028794) not in wrapper_words
 
 
 def test_flash_module_fits_reserved_expansion_pool() -> None:
@@ -101,6 +96,9 @@ def test_flash_module_fits_reserved_expansion_pool() -> None:
     assert FLASH_MODULE_K0 == 0x801B2160
     assert FLASH_MODULE_SIZE == 0x1B0
     assert FLASH_HELPER_ROM == FLASH_MODULE_ROM + FLASH_HELPER_OFFSET
+    assert FLASH_HELPER_SIZE == 0x12C
+    assert FLASH_ACTIVE_FLAG_OFFSET == 0x1AC
+    assert FLASH_ACTIVE_FLAG_ROM == FLASH_MODULE_END_ROM - 4
     assert FLASH_MODULE_END_ROM == 0x00F6AAF0
     assert FLASH_MODULE_K0 + FLASH_MODULE_SIZE == 0x801B2310
     assert FLASH_MODULE_K0 + FLASH_MODULE_SIZE < 0x801B3420
@@ -131,6 +129,7 @@ def test_patch_installs_flash_and_wraps_exactly_nine_progression_pickups() -> No
         rom.data[FLASH_HELPER_ROM:FLASH_HELPER_ROM + FLASH_HELPER_SIZE]
         == PRODUCTION_FLASH_HELPER
     )
+    assert rom.read_u32(FLASH_ACTIVE_FLAG_ROM) == 0
 
     changed = 0
     for stage_id, destination in selected:
