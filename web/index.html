@@ -62,7 +62,14 @@
             <p class="hint">Clean <strong>Mortal Kombat Mythologies: Sub-Zero (USA) Rev. 0</strong> in <code>.z64</code>, <code>.v64</code>, or <code>.n64</code> byte order. The format is detected from the ROM header; the filename extension is not trusted.</p>
           </div>
           <div class="file-control">
-            <input id="romFile" type="file" accept=".z64,.v64,.n64,application/octet-stream">
+            <label class="drop-zone" id="romDropZone" for="romFile" tabindex="0">
+              <input id="romFile" type="file" accept=".z64,.v64,.n64,application/octet-stream">
+              <span class="drop-zone-icon" aria-hidden="true">❄</span>
+              <span class="drop-zone-copy">
+                <strong id="romFileName">Drop MKMSZ ROM here</strong>
+                <small>or click to browse</small>
+              </span>
+            </label>
             <p id="romValidation" class="file-validation" data-state="idle"></p>
           </div>
         </div>
@@ -76,15 +83,23 @@
             <p class="hint"><strong>Mortal Kombat Trilogy (USA) Rev. 2</strong> <code>.z64</code>. Optional source for additional art, audio, and game data used by supported features; this ROM is never patched.</p>
           </div>
           <div class="file-control">
-            <input id="mktN64File" type="file" accept=".z64,application/octet-stream">
+            <label class="drop-zone donor-drop-zone" id="mktDropZone" for="mktN64File" tabindex="0">
+              <input id="mktN64File" type="file" accept=".z64,application/octet-stream">
+              <span class="drop-zone-icon" aria-hidden="true">◇</span>
+              <span class="drop-zone-copy">
+                <strong id="mktFileName">Drop MKT donor here</strong>
+                <small>or click to browse</small>
+              </span>
+            </label>
             <p id="mktValidation" class="file-validation" data-state="idle"></p>
           </div>
         </div>
       </div>
 
-      <div class="feature-note">
+      <div class="feature-note donor-benefits">
         <strong>Why MKT?</strong>
-        <span>The optional donor lets MKMSZR use compatible art, audio, and game data from MKT for supported features. It is read locally and never modified.</span>
+        <span>The optional donor is read locally and never modified. When validated, it enables donor-backed <b>Toasty visual/audio</b> and <b>seeded Temple intro audio</b>.</span>
+        <span id="donorExtrasStatus" class="donor-extras-status">Donor extras disabled</span>
       </div>
     </section>
 
@@ -124,8 +139,12 @@
 
         <div class="field" id="seedField">
           <label for="seed">Seed</label>
-          <input id="seed" type="text" autocomplete="off" spellcheck="false"
-                 placeholder="Leave blank for a random seed">
+          <div class="seed-control">
+            <input id="seed" type="text" autocomplete="off" spellcheck="false"
+                   placeholder="Leave blank for a random seed">
+            <button id="randomSeedButton" class="secondary-action compact-action" type="button">Randomize</button>
+            <button id="copySeedButton" class="secondary-action compact-action" type="button">Copy</button>
+          </div>
         </div>
 
         <div class="field color-field" id="colorField" hidden>
@@ -137,9 +156,15 @@
         </div>
       </div>
 
-      <div class="settings-defaults">
+      <details class="settings-group" id="randomizerFeaturesGroup" open>
+        <summary>
+          <span>
+            <strong>Randomizer Features</strong>
+            <small id="randomizerFeaturesSummary">Powers: pickups + shuffled · Enemies: random · Fortress: seed</small>
+          </span>
+        </summary>
+        <div class="settings-group-body">
         <div class="settings-defaults-copy">
-          <h3>Randomizer Features</h3>
           <p>Choose power rewards, order, and the final Fortress requirement for this build.</p>
         </div>
         <div class="toggle-grid">
@@ -191,11 +216,18 @@
             <input id="customRequiredPowers" type="number" min="0" max="9" step="1" value="8">
           </div>
         </div>
-      </div>
+        </div>
+      </details>
 
-      <div class="settings-defaults">
+      <details class="settings-group" id="runSettingsGroup">
+        <summary>
+          <span>
+            <strong>Run Settings</strong>
+            <small id="runSettingsSummary">Very Hard · 5 Lives · 3 Continues · Persistent HP</small>
+          </span>
+        </summary>
+        <div class="settings-group-body">
         <div class="settings-defaults-copy">
-          <h3>Run Settings</h3>
           <p>Choose the starting resources and difficulty for each new run.</p>
         </div>
         <div class="grid requirement-grid">
@@ -228,11 +260,18 @@
             <span class="toggle-switch" aria-hidden="true"></span>
           </label>
         </div>
-      </div>
+        </div>
+      </details>
 
-      <div class="settings-defaults">
+      <details class="settings-group" id="gameSettingsGroup">
+        <summary>
+          <span>
+            <strong>Default Game Settings</strong>
+            <small id="gameSettingsSummary">TURN: TOGGLE · ATTACK: CLASSIC · SPECIALS: CLASSIC · JUMP: DPAD · RUN: HOLD</small>
+          </span>
+        </summary>
+        <div class="settings-group-body">
         <div class="settings-defaults-copy">
-          <h3>Default Game Settings</h3>
           <p>Choose how the generated ROM starts. You can still change these later from the in-game GAME SETTINGS menu.</p>
         </div>
         <div class="toggle-grid">
@@ -277,7 +316,8 @@
             <span class="toggle-switch" aria-hidden="true"></span>
           </label>
         </div>
-      </div>
+        </div>
+      </details>
     </section>
 
     <section class="panel build-panel">
@@ -289,6 +329,14 @@
         </div>
       </header>
 
+      <div id="buildSummary" class="build-summary" aria-live="polite">
+        <div class="build-summary-heading">
+          <strong>Build summary</strong>
+          <span id="buildSummarySeed">Seed: random on patch</span>
+        </div>
+        <p id="buildSummaryText"></p>
+      </div>
+
       <button id="patchButton" class="primary-action" type="button" disabled>Patch MKMSZ N64</button>
 
       <div id="buildProgress" class="build-progress" role="status" aria-live="polite" hidden>
@@ -298,16 +346,32 @@
         <p id="buildMessage"></p>
       </div>
 
-      <div id="result" class="result" hidden>
-        <h2>Patch complete</h2>
-        <dl>
-          <div><dt>Target</dt><dd>Nintendo 64</dd></div>
-          <div><dt>Seed</dt><dd id="resultSeed"></dd></div>
-          <div><dt>Required powers</dt><dd id="resultRequiredPowers"></dd></div>
-          <div><dt>Output SHA-256</dt><dd id="outputSha"></dd></div>
-          <div><dt>CRC1 / CRC2</dt><dd id="outputCrc"></dd></div>
-        </dl>
-        <button id="downloadButton" type="button">Save patched ROM</button>
+      <div id="result" class="result success-card" hidden>
+        <div class="success-heading">
+          <span class="success-mark" aria-hidden="true">✓</span>
+          <div>
+            <h2>Randomized ROM ready</h2>
+            <p>Your patched ROM was built locally and is ready to save.</p>
+          </div>
+        </div>
+        <div class="result-seed-row">
+          <span>Seed</span>
+          <strong id="resultSeed"></strong>
+          <button id="copyResultSeedButton" class="secondary-action compact-action" type="button">Copy</button>
+        </div>
+        <div class="result-actions">
+          <button id="downloadButton" class="primary-action" type="button">Save patched ROM</button>
+          <button id="changeSettingsButton" class="secondary-action" type="button">Change settings</button>
+        </div>
+        <details class="technical-details">
+          <summary>Technical details</summary>
+          <dl>
+            <div><dt>Target</dt><dd>Nintendo 64</dd></div>
+            <div><dt>Required powers</dt><dd id="resultRequiredPowers"></dd></div>
+            <div><dt>Output SHA-256</dt><dd id="outputSha"></dd></div>
+            <div><dt>CRC1 / CRC2</dt><dd id="outputCrc"></dd></div>
+          </dl>
+        </details>
       </div>
 
       <pre id="log" class="log" aria-live="polite"></pre>
