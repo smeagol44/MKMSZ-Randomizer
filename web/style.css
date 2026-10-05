@@ -649,3 +649,9 @@ body::before {
   .result-seed-row { grid-template-columns: 1fr auto; }
   .result-seed-row > span { grid-column: 1 / -1; }
 }
+
+.build-summary-secondary {
+  margin-top: .28rem !important;
+  color: #7f8ba1 !important;
+  font-size: .74rem !important;
+}
