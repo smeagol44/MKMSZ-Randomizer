@@ -1,5 +1,7 @@
 # Address and patch-site registry
 
+**Inventory-HUD v20 guard (2026-10-05):** exact v19 SHA `aafcc7e26ecd77b04a3882cee9569161f8059d92af1fce003ac3e68e08406277`; ROM `0x00074F08` / VA `0x80074308` / alias `0xA0074308`: expected `00000000` → `24041200` (`addiu a0,zero,0x1200`). This initializes the first-load HUD allocation size in the null-branch delay slot without changing allocation ownership. Exact v20 SHA `3461ed86540d51881f5f7d1b45c17dee9113484889370c8af750b819a11b1daa`; CRC1/CRC2 `479EDF13 / E1BE6C34`. **Runtime-confirmed bounded:** the user reports the TEST LAB Inventory hang is fixed on v20. See [TEST LAB Inventory diagnosis](Test-Lab-Inventory-Hang-Static-Diagnosis).
+
 **2026-10-01 lifecycle production:** accepted v06 promotes the static-closure sites at ROM `0x172CC`, `0x36178`, `0x36934`, `0x36B38`, `0x36BC0`, `0x2F984`, and `0x367B4`, plus the HP overwrite suppression at `0x2FA44` and fresh-run configuration words at `0xA6BA8..0xA6BAD`. Exact four-word guards and the Runtime-confirmed helper blob are enforced by `run_lifecycle.py` and tests. ROM `0x364EC` remains prohibited for reset. Production XP/Mission Objective restoration and the four-box default-loader replacement retain their existing owners.
 
 > **Scope:** This page is the canonical owner for **exact guarded ROM edits**: patch location, expected/original bytes or guard condition, replacement/effect, and the feature that performs the edit.
