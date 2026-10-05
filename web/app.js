@@ -77,7 +77,47 @@ const SILLY_MESSAGES = [
   "Asking Scorpion to chill...",
   "Looking for Noob...",
   "Feeding the portal...",
-  "Rewinding the cartridge..."
+  "Rewinding the cartridge...",
+  "Testing our might...",
+  "Consulting the Lin Kuei handbook...",
+  "Defrosting Sub-Zero...",
+  "Refreezing Sub-Zero...",
+  "Looking for the missing Temple Map...",
+  "Pretending Quan Chi can be trusted...",
+  "Asking Shinnok nicely...",
+  "Avoiding suspiciously placed spikes...",
+  "Counting monks...",
+  "Misplacing the Fortress keys...",
+  "Finding the Fortress keys again...",
+  "Teaching Scorpion basic geography...",
+  "Repainting the ninjas...",
+  "Checking if Smoke is actually smoke...",
+  "Installing more ice...",
+  "Removing unnecessary fire...",
+  "Giving Fujin a fan...",
+  "Repairing the Earth Temple...",
+  "Draining the Water Temple...",
+  "Turning the Wind Temple down a notch...",
+  "Asking the Fire Temple to calm down...",
+  "Putting the Mythologies back in order...",
+  "Rolling for initiative...",
+  "Blaming RNG...",
+  "Praising RNG...",
+  "Sacrificing a controller to RNG...",
+  "Rolling a natural 1...",
+  "Rolling a natural 20...",
+  "Searching behind the waterfall...",
+  "Checking every suspicious wall...",
+  "Blowing into the cartridge...",
+  "Expanding the pak...",
+  "Polishing the polygons...",
+  "Feeding the RSP...",
+  "Asking the RDP what it did...",
+  "Finding one more code cave...",
+  "Pretending undefined behavior is a feature...",
+  "Making the checksum feel important...",
+  "Putting the bits back where we found them...",
+  "Wondering why this actually works..."
 ];
 
 let patchWorker = null;
@@ -87,6 +127,8 @@ let outputBytes = null;
 let outputName = "MKMSZR-patched.z64";
 let activeBuild = null;
 let sillyTimer = null;
+let sillyDeck = [];
+let lastSillyMessage = null;
 
 const targetValidation = { token: 0, state: "idle" };
 const donorValidation = { token: 0, state: "idle" };
@@ -149,31 +191,46 @@ function outputFilename(inputName, mode, seedValue) {
   return stem + "-" + suffix + ".z64";
 }
 
-function chooseSillyMessages(count) {
-  const shuffled = [...SILLY_MESSAGES];
+function shuffleMessages(messages) {
+  const shuffled = [...messages];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(Math.random() * (index + 1));
     [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
   }
-  return shuffled.slice(0, count);
+  return shuffled;
+}
+
+function refillSillyDeck() {
+  sillyDeck = shuffleMessages(SILLY_MESSAGES);
+  if (lastSillyMessage && sillyDeck.length > 1 &&
+      sillyDeck[0] === lastSillyMessage) {
+    [sillyDeck[0], sillyDeck[1]] = [sillyDeck[1], sillyDeck[0]];
+  }
+}
+
+function nextSillyMessage() {
+  if (!sillyDeck.length) refillSillyDeck();
+  lastSillyMessage = sillyDeck.shift();
+  return lastSillyMessage;
 }
 
 function startSillyProgress() {
-  const messages = chooseSillyMessages(6);
-  let index = 0;
+  sillyDeck = [];
+  lastSillyMessage = null;
   buildProgress.hidden = false;
-  buildMessage.textContent = messages[index];
+  buildMessage.textContent = nextSillyMessage();
 
   clearInterval(sillyTimer);
   sillyTimer = setInterval(() => {
-    index = (index + 1) % messages.length;
-    buildMessage.textContent = messages[index];
-  }, 1600);
+    buildMessage.textContent = nextSillyMessage();
+  }, 3600);
 }
 
 function stopSillyProgress() {
   clearInterval(sillyTimer);
   sillyTimer = null;
+  sillyDeck = [];
+  lastSillyMessage = null;
   buildProgress.hidden = true;
 }
 
