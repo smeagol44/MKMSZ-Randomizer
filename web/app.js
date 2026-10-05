@@ -38,6 +38,7 @@ const runSettingsSummary = document.querySelector("#runSettingsSummary");
 const gameSettingsSummary = document.querySelector("#gameSettingsSummary");
 const buildSummarySeed = document.querySelector("#buildSummarySeed");
 const buildSummaryText = document.querySelector("#buildSummaryText");
+const buildSummaryRun = document.querySelector("#buildSummaryRun");
 const patchButton = document.querySelector("#patchButton");
 const buildProgress = document.querySelector("#buildProgress");
 const buildMessage = document.querySelector("#buildMessage");
@@ -251,6 +252,13 @@ function updateSummaries() {
     "Enemies: " + (enemyRandomization.checked ? "random" : "vanilla"),
     "Fortress: " + fortressSummary(),
     "Completion: " + selectedText(globalCompletionMode)
+  ].join(" · ");
+
+  buildSummaryRun.textContent = [
+    "Run: " + selectedText(difficulty) + " / " + startingLives.value +
+      " lives / " + startingContinues.value + " continues / " +
+      (persistHp.checked ? "persistent HP" : "full HP re-entry"),
+    gameSettingsSummary.textContent
   ].join(" · ");
 }
 
