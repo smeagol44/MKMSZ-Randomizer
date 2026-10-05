@@ -34,12 +34,27 @@ kept in the worker and the patch build starts from `fresh_copy()`, so browser pa
 does not repeat the clean-ROM SHA/byte-order validation pass. The CLI still enters
 through `patch_file()` / `patch_bytes()` and therefore retains its normal validation.
 
-The optional MKT Rev. 2 donor follows the same selection-time validate/cache flow. While
-a build runs, the page shows an indeterminate animated progress bar and cycles through
+The optional MKT Rev. 2 donor follows the same selection-time validate/cache flow. The
+file controls are accessible click/browse + drag/drop zones, and a validated MKT donor
+explicitly reports that donor-backed Toasty visual/audio and seeded Temple intro audio
+are enabled.
+
+The settings surface uses collapsible Randomizer Features, Run Settings, and Default
+Game Settings groups with live summaries. The Game Settings summary uses the actual
+native labels, including `TURN: TOGGLE` when Turn Lock is disabled. A live Build Summary
+collects the selected seed/outfit/randomizer/run/control choices before patching, and the
+seed field provides Randomize and Copy actions.
+
+While a build runs, the page shows an indeterminate animated progress bar and cycles through
 an 80-message shuffled flavor deck at 3.6 seconds per message. Every message in the deck
 is shown once before the deck is reshuffled; a reshuffle is guarded against repeating
 the previous message immediately. Those messages deliberately do not claim technical
 build phases; failures still report the real worker/Python diagnostics and stack trace.
+
+After success, the browser presents a dedicated completion card with the seed, Copy
+action, primary Save patched ROM action, Change settings action, and collapsible
+technical SHA/CRC details. The visual treatment keeps the existing restrained dark UI
+while adding subtle icy accents and clearer full-card active states for enabled toggles.
 
 ## Always-applied patches
 

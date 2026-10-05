@@ -3,10 +3,17 @@ const romFile = document.querySelector("#romFile");
 const mktN64File = document.querySelector("#mktN64File");
 const romValidation = document.querySelector("#romValidation");
 const mktValidation = document.querySelector("#mktValidation");
+const romDropZone = document.querySelector("#romDropZone");
+const mktDropZone = document.querySelector("#mktDropZone");
+const romFileName = document.querySelector("#romFileName");
+const mktFileName = document.querySelector("#mktFileName");
+const donorExtrasStatus = document.querySelector("#donorExtrasStatus");
 const outfitMode = document.querySelector("#outfitMode");
 const editionName = document.querySelector("#editionName");
 const seed = document.querySelector("#seed");
 const seedField = document.querySelector("#seedField");
+const randomSeedButton = document.querySelector("#randomSeedButton");
+const copySeedButton = document.querySelector("#copySeedButton");
 const colorField = document.querySelector("#colorField");
 const customColor = document.querySelector("#customColor");
 const colorValue = document.querySelector("#colorValue");
@@ -26,6 +33,12 @@ const difficulty = document.querySelector("#difficulty");
 const startingLives = document.querySelector("#startingLives");
 const startingContinues = document.querySelector("#startingContinues");
 const persistHp = document.querySelector("#persistHp");
+const randomizerFeaturesSummary = document.querySelector("#randomizerFeaturesSummary");
+const runSettingsSummary = document.querySelector("#runSettingsSummary");
+const gameSettingsSummary = document.querySelector("#gameSettingsSummary");
+const buildSummarySeed = document.querySelector("#buildSummarySeed");
+const buildSummaryText = document.querySelector("#buildSummaryText");
+const buildSummaryRun = document.querySelector("#buildSummaryRun");
 const patchButton = document.querySelector("#patchButton");
 const buildProgress = document.querySelector("#buildProgress");
 const buildMessage = document.querySelector("#buildMessage");
@@ -35,6 +48,8 @@ const resultRequiredPowers = document.querySelector("#resultRequiredPowers");
 const outputSha = document.querySelector("#outputSha");
 const outputCrc = document.querySelector("#outputCrc");
 const downloadButton = document.querySelector("#downloadButton");
+const copyResultSeedButton = document.querySelector("#copyResultSeedButton");
+const changeSettingsButton = document.querySelector("#changeSettingsButton");
 const log = document.querySelector("#log");
 
 const SILLY_MESSAGES = [
@@ -146,6 +161,7 @@ function setFileValidation(element, state, message) {
 function updateModeUi() {
   colorField.hidden = outfitMode.value !== "rgb";
   seedField.style.opacity = "1";
+  updateSummaries();
 }
 
 function donorIsUsable() {
@@ -163,12 +179,14 @@ function updateGameSettingsUi() {
   const jumpAvailable = attackModern.checked && specialsModern.checked;
   if (!jumpAvailable) jumpButton.checked = false;
   jumpButton.disabled = !jumpAvailable;
+  updateSummaries();
 }
 
 function updateRequiredPowersUi() {
   const isCustom = requiredPowersMode.value === "custom";
   customRequiredPowersField.hidden = !isCustom;
   customRequiredPowers.disabled = !isCustom;
+  updateSummaries();
 }
 
 function normalizeEditionName(value) {
@@ -181,6 +199,111 @@ function generateSeed() {
   return Array.from(words, (value) => value.toString(16).padStart(8, "0"))
     .join("")
     .toUpperCase();
+}
+
+function selectedText(select) {
+  return select.options[select.selectedIndex]?.textContent ?? select.value;
+}
+
+function formatMode(value) {
+  if (value === "seeded") return "Seeded";
+  if (value === "rgb") return "Custom";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function fortressSummary() {
+  if (requiredPowersMode.value === "custom") {
+    return "Custom " + customRequiredPowers.value;
+  }
+  return selectedText(requiredPowersMode);
+}
+
+function updateSummaries() {
+  randomizerFeaturesSummary.textContent = [
+    "Powers: " + (powersAsPickups.checked ? "pickups" : "XP"),
+    shufflePowerProgression.checked ? "shuffled" : "vanilla order",
+    "Enemies: " + (enemyRandomization.checked ? "random" : "vanilla"),
+    "Fortress: " + fortressSummary()
+  ].join(" · ");
+
+  runSettingsSummary.textContent = [
+    selectedText(difficulty),
+    startingLives.value + " Lives",
+    startingContinues.value + " Continues",
+    persistHp.checked ? "Persistent HP" : "Full HP on re-entry"
+  ].join(" · ");
+
+  gameSettingsSummary.textContent = [
+    "TURN: " + (turnLock.checked ? "LOCK" : "TOGGLE"),
+    "ATTACK: " + (attackModern.checked ? "MODERN" : "CLASSIC"),
+    "SPECIALS: " + (specialsModern.checked ? "MODERN" : "CLASSIC"),
+    "JUMP: " + (jumpButton.checked ? "BUTTON" : "DPAD"),
+    "RUN: " + (runAuto.checked ? "AUTO" : "HOLD")
+  ].join(" · ");
+
+  const seedValue = seed.value.trim();
+  buildSummarySeed.textContent = seedValue
+    ? "Seed: " + seedValue
+    : "Seed: random on patch";
+  buildSummaryText.textContent = [
+    "Outfit: " + formatMode(outfitMode.value),
+    "Powers: " + (powersAsPickups.checked ? "pickups" : "XP") +
+      (shufflePowerProgression.checked ? " + shuffled" : ""),
+    "Enemies: " + (enemyRandomization.checked ? "random" : "vanilla"),
+    "Fortress: " + fortressSummary(),
+    "Completion: " + selectedText(globalCompletionMode)
+  ].join(" · ");
+
+  buildSummaryRun.textContent = [
+    "Run: " + selectedText(difficulty) + " / " + startingLives.value +
+      " lives / " + startingContinues.value + " continues / " +
+      (persistHp.checked ? "persistent HP" : "full HP re-entry"),
+    gameSettingsSummary.textContent
+  ].join(" · ");
+}
+
+async function copyText(value, button) {
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    const original = button.textContent;
+    button.textContent = "Copied";
+    setTimeout(() => { button.textContent = original; }, 1200);
+  } catch (error) {
+    setLog("Could not copy to clipboard: " + (error.message ?? error), true);
+  }
+}
+
+function assignDroppedFile(input, file) {
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  input.files = transfer.files;
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function wireDropZone(zone, input) {
+  zone.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      input.click();
+    }
+  });
+  for (const eventName of ["dragenter", "dragover"]) {
+    zone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      zone.classList.add("dragging");
+    });
+  }
+  for (const eventName of ["dragleave", "drop"]) {
+    zone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      zone.classList.remove("dragging");
+    });
+  }
+  zone.addEventListener("drop", (event) => {
+    const file = event.dataTransfer?.files?.[0];
+    if (file) assignDroppedFile(input, file);
+  });
 }
 
 function outputFilename(inputName, mode, seedValue) {
@@ -249,6 +372,8 @@ async function validateTargetSelection() {
 
   if (!file) {
     targetValidation.state = "idle";
+    romFileName.textContent = "Drop MKMSZ ROM here";
+    romDropZone.dataset.state = "idle";
     setFileValidation(romValidation, "idle", "No target ROM selected.");
     patchWorker?.postMessage({ type: "clear-target" });
     updatePatchButton();
@@ -256,6 +381,8 @@ async function validateTargetSelection() {
   }
 
   targetValidation.state = "validating";
+  romFileName.textContent = file.name;
+  romDropZone.dataset.state = "validating";
   setFileValidation(romValidation, "validating", "Checking target ROM...");
   updatePatchButton();
 
@@ -269,6 +396,7 @@ async function validateTargetSelection() {
   } catch (error) {
     if (token !== targetValidation.token) return;
     targetValidation.state = "invalid";
+    romDropZone.dataset.state = "invalid";
     setFileValidation(
       romValidation,
       "invalid",
@@ -284,6 +412,10 @@ async function validateDonorSelection() {
 
   if (!file) {
     donorValidation.state = "idle";
+    mktFileName.textContent = "Drop MKT donor here";
+    mktDropZone.dataset.state = "idle";
+    donorExtrasStatus.textContent = "Donor extras disabled";
+    donorExtrasStatus.dataset.state = "idle";
     setFileValidation(mktValidation, "idle", "Optional donor not selected.");
     patchWorker?.postMessage({ type: "clear-donor" });
     updatePatchButton();
@@ -291,6 +423,10 @@ async function validateDonorSelection() {
   }
 
   donorValidation.state = "validating";
+  mktFileName.textContent = file.name;
+  mktDropZone.dataset.state = "validating";
+  donorExtrasStatus.textContent = "Checking donor extras…";
+  donorExtrasStatus.dataset.state = "validating";
   setFileValidation(mktValidation, "validating", "Checking MKT donor...");
   updatePatchButton();
 
@@ -304,6 +440,9 @@ async function validateDonorSelection() {
   } catch (error) {
     if (token !== donorValidation.token) return;
     donorValidation.state = "invalid";
+    mktDropZone.dataset.state = "invalid";
+    donorExtrasStatus.textContent = "Donor extras disabled";
+    donorExtrasStatus.dataset.state = "invalid";
     setFileValidation(
       mktValidation,
       "invalid",
@@ -318,6 +457,7 @@ function handleValidationResult(message) {
     if (message.token !== targetValidation.token) return;
     if (message.ok) {
       targetValidation.state = "valid";
+      romDropZone.dataset.state = "valid";
       setFileValidation(
         romValidation,
         "valid",
@@ -325,6 +465,7 @@ function handleValidationResult(message) {
       );
     } else {
       targetValidation.state = "invalid";
+      romDropZone.dataset.state = "invalid";
       setFileValidation(
         romValidation,
         "invalid",
@@ -335,6 +476,9 @@ function handleValidationResult(message) {
     if (message.token !== donorValidation.token) return;
     if (message.ok) {
       donorValidation.state = "valid";
+      mktDropZone.dataset.state = "valid";
+      donorExtrasStatus.textContent = "Toasty + Temple intro extras enabled";
+      donorExtrasStatus.dataset.state = "valid";
       setFileValidation(
         mktValidation,
         "valid",
@@ -342,6 +486,9 @@ function handleValidationResult(message) {
       );
     } else {
       donorValidation.state = "invalid";
+      mktDropZone.dataset.state = "invalid";
+      donorExtrasStatus.textContent = "Donor extras disabled";
+      donorExtrasStatus.dataset.state = "invalid";
       setFileValidation(
         mktValidation,
         "invalid",
@@ -508,6 +655,7 @@ async function patchRom() {
   if (!seedValue) {
     seedValue = generateSeed();
     seed.value = seedValue;
+    updateSummaries();
   }
 
   activeBuild = {
@@ -565,9 +713,33 @@ function downloadOutput() {
 
 romFile.addEventListener("change", validateTargetSelection);
 mktN64File.addEventListener("change", validateDonorSelection);
+wireDropZone(romDropZone, romFile);
+wireDropZone(mktDropZone, mktN64File);
+randomSeedButton.addEventListener("click", () => {
+  seed.value = generateSeed();
+  updateSummaries();
+});
+copySeedButton.addEventListener("click", () => copyText(seed.value.trim(), copySeedButton));
+copyResultSeedButton.addEventListener("click", () => copyText(resultSeed.textContent, copyResultSeedButton));
+changeSettingsButton.addEventListener("click", () => {
+  document.querySelector("#outfitMode").scrollIntoView({ behavior: "smooth", block: "center" });
+});
 outfitMode.addEventListener("change", updateModeUi);
 attackModern.addEventListener("change", updateGameSettingsUi);
 specialsModern.addEventListener("change", updateGameSettingsUi);
+turnLock.addEventListener("change", updateSummaries);
+jumpButton.addEventListener("change", updateSummaries);
+runAuto.addEventListener("change", updateSummaries);
+shufflePowerProgression.addEventListener("change", updateSummaries);
+enemyRandomization.addEventListener("change", updateSummaries);
+powersAsPickups.addEventListener("change", updateSummaries);
+difficulty.addEventListener("change", updateSummaries);
+startingLives.addEventListener("input", updateSummaries);
+startingContinues.addEventListener("input", updateSummaries);
+persistHp.addEventListener("change", updateSummaries);
+globalCompletionMode.addEventListener("change", updateSummaries);
+customRequiredPowers.addEventListener("input", updateSummaries);
+seed.addEventListener("input", updateSummaries);
 requiredPowersMode.addEventListener("change", updateRequiredPowersUi);
 customColor.addEventListener("input", () => {
   colorValue.value = customColor.value.toUpperCase();
@@ -584,5 +756,6 @@ setFileValidation(mktValidation, "idle", "Optional donor not selected.");
 updateModeUi();
 updateGameSettingsUi();
 updateRequiredPowersUi();
+updateSummaries();
 updatePatchButton();
 initWorker();
