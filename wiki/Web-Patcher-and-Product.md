@@ -24,8 +24,11 @@ The default web workflow requires only the MKMSZ N64 target. The MKT N64 donor i
 
 - Clean USA Rev. 0 big-endian `.z64` target only.
 - A new output is produced; the CLI refuses in-place patching and existing-output overwrite.
-- Browser target/donor validation begins immediately on file selection and displays the validated SHA-256 before patching can start.
+- Browser target/donor validation begins immediately on file selection and displays the validated SHA-256 before patching can start. Both file controls support click/browse and drag/drop presentation; validated MKT donors explicitly show that donor-backed Toasty visual/audio and seeded Temple intro audio are enabled.
+- The browser settings surface uses collapsible Randomizer Features, Run Settings, and Default Game Settings groups with live summaries. The Game Settings summary uses the native label `TURN: TOGGLE` whenever Turn Lock is disabled.
+- A live Build Summary reflects seed, outfit, randomizer features, run settings, and initial GAME SETTINGS before patching; the seed field also exposes Randomize and Copy actions.
 - During a browser build, an indeterminate progress bar stays animated on the main thread while an 80-message MKMSZR/Mortal Kombat/gaming flavor deck is shuffled and consumed without repeats; messages advance every 3.6 seconds, and only after all 80 are used is the deck reshuffled. These messages are presentation only; failures still surface the actual Python/worker diagnostic text and stack trace.
+- Successful builds present a dedicated completion card with seed copy, primary ROM-save action, return-to-settings action, and collapsible technical SHA/CRC details. The current visual language remains the restrained dark UI with subtle ice accents and full-card highlighting for enabled toggles.
 - Seed is trimmed; absent seed becomes a random 64-bit hex value.
 - CLI output reports applied modules, notes, CRC1/CRC2, and SHA-256. The browser completion panel intentionally stays product-facing and reports only target, seed, SHA-256, and CRC1/CRC2 rather than enumerating internal patch modules or discovery-oriented features.
 - Pickup layout, progression-reward selection, optional power-order shuffle, boot phrase, and seeded palette use independent deterministic domains.
