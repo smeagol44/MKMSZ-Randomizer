@@ -116,7 +116,6 @@ def test_web_polish_controls_and_summaries_are_wired() -> None:
         "randomizerFeaturesSummary",
         "runSettingsSummary",
         "gameSettingsSummary",
-        "buildSummary",
         "buildSummarySeed",
         "buildSummaryText",
         "buildSummaryRun",
@@ -126,6 +125,7 @@ def test_web_polish_controls_and_summaries_are_wired() -> None:
         assert f'id="{element_id}"' in html
         assert f'querySelector("#{element_id}")' in app
 
+    assert 'id="buildSummary" class="build-summary"' in html
     assert '<details class="settings-group" id="randomizerFeaturesGroup" open>' in html
     assert '<details class="settings-group" id="runSettingsGroup">' in html
     assert '<details class="settings-group" id="gameSettingsGroup">' in html
