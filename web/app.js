@@ -210,12 +210,19 @@ function formatMode(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function fortressSummary() {
+  if (requiredPowersMode.value === "custom") {
+    return "Custom " + customRequiredPowers.value;
+  }
+  return selectedText(requiredPowersMode);
+}
+
 function updateSummaries() {
   randomizerFeaturesSummary.textContent = [
     "Powers: " + (powersAsPickups.checked ? "pickups" : "XP"),
     shufflePowerProgression.checked ? "shuffled" : "vanilla order",
     "Enemies: " + (enemyRandomization.checked ? "random" : "vanilla"),
-    "Fortress: " + selectedText(requiredPowersMode)
+    "Fortress: " + fortressSummary()
   ].join(" · ");
 
   runSettingsSummary.textContent = [
@@ -242,7 +249,7 @@ function updateSummaries() {
     "Powers: " + (powersAsPickups.checked ? "pickups" : "XP") +
       (shufflePowerProgression.checked ? " + shuffled" : ""),
     "Enemies: " + (enemyRandomization.checked ? "random" : "vanilla"),
-    "Fortress: " + selectedText(requiredPowersMode),
+    "Fortress: " + fortressSummary(),
     "Completion: " + selectedText(globalCompletionMode)
   ].join(" · ");
 }
@@ -381,6 +388,7 @@ async function validateTargetSelection() {
   } catch (error) {
     if (token !== targetValidation.token) return;
     targetValidation.state = "invalid";
+    romDropZone.dataset.state = "invalid";
     setFileValidation(
       romValidation,
       "invalid",
@@ -424,6 +432,9 @@ async function validateDonorSelection() {
   } catch (error) {
     if (token !== donorValidation.token) return;
     donorValidation.state = "invalid";
+    mktDropZone.dataset.state = "invalid";
+    donorExtrasStatus.textContent = "Donor extras disabled";
+    donorExtrasStatus.dataset.state = "invalid";
     setFileValidation(
       mktValidation,
       "invalid",
@@ -636,6 +647,7 @@ async function patchRom() {
   if (!seedValue) {
     seedValue = generateSeed();
     seed.value = seedValue;
+    updateSummaries();
   }
 
   activeBuild = {
