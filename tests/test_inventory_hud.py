@@ -1,11 +1,12 @@
 import hashlib
 import struct
 
-from mkmszr.mips import addiu, jal, lw, sw, words_blob
 from mkmszr.config import RandomizerConfig
+from mkmszr.mips import addiu, jal, lw, sw, words_blob
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.global_materialization import GlobalItemMaterializationPatch
 from mkmszr.patches.inventory_hud import (
+    ARENA_ALLOC_VA,
     COMMON_PACKAGE_CAPACITY,
     COMMON_PACKAGE_ROM,
     CRYSTAL_SOURCE_WORDS,
@@ -29,12 +30,10 @@ from mkmszr.patches.inventory_hud import (
     _build_hud_data,
     _build_runtime,
     _compress_resource_package,
+    _ensure_data_code,
     _image_records,
     _native_palette,
-    _ensure_data_code,
     _row_code,
-    ARENA_ALLOC_VA,
-    HUD_DATA_SIZE,
 )
 from mkmszr.patches.progression_presentation import ProgressionPickupPresentationPatch
 from mkmszr.patches.required_powers import RequiredPowersPatch
