@@ -9,7 +9,6 @@ from mkmszr.patches.controls_production import ControlsProductionPatch
 from mkmszr.patches.enemy_randomization import EnemyRandomizationPatch
 from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
 from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
-from mkmszr.patches.inventory_hud import InventoryHudPatch
 from mkmszr.patches.native_payload import NativePayloadPatch
 from mkmszr.patches.pickup_persistence import PickupPersistencePatch
 from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
@@ -94,13 +93,11 @@ def test_powers_as_pickups_and_required_count_are_independent() -> None:
         assert XPProgressionPatch not in types
         assert FourBoxInventoryPatch in types
         assert (PowerOrderPatch in types) is shuffle
-        assert types.index(RequiredPowersPatch) < types.index(InventoryHudPatch)
+        assert types[-1] is RequiredPowersPatch
 
-    vanilla_types = [
+    assert RequiredPowersPatch not in [
         type(patch) for patch in build_pipeline(RandomizerConfig(seed="POWER")).patches
     ]
-    assert RequiredPowersPatch not in vanilla_types
-    assert InventoryHudPatch in vanilla_types
 
 
 def test_enemy_randomization_is_default_off_and_optional_in_shared_pipeline() -> None:
@@ -167,14 +164,3 @@ def test_normal_product_global_plan_is_complete_and_deterministic() -> None:
     assert len(first_plan.placements) == 8
     assert first_plan.temple_special_item_key == "mana"
     assert len(first_run.power_locations) == 9
-
-
-def test_inventory_hud_is_always_last_ui_patch_before_optional_enemy_randomization() -> None:
-    normal = build_pipeline(RandomizerConfig(seed="HUD"))
-    types = [type(patch) for patch in normal.patches]
-    assert InventoryHudPatch in types
-    assert types[-1] is InventoryHudPatch
-
-    enemy = build_pipeline(RandomizerConfig(seed="HUD", enemy_randomization=True))
-    types = [type(patch) for patch in enemy.patches]
-    assert types.index(InventoryHudPatch) < types.index(EnemyRandomizationPatch)
