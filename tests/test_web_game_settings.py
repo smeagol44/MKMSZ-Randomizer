@@ -58,8 +58,13 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
     assert "shuffle_power_progression=bool(web_shuffle_power_progression)" in worker
     assert "web_enemy_randomization" in worker
     assert "enemy_randomization=bool(web_enemy_randomization)" in worker
-    assert 'id="enemyRandomization" type="checkbox"' in html
+    assert 'id="enemyRandomization" type="checkbox" checked' in html
+    assert 'id="shufflePowerProgression" type="checkbox" checked' in html
     assert 'id="powersAsPickups" type="checkbox" checked' in html
+    assert '<option value="seeded" selected>Random from seed</option>' in html
+    assert '<option value="seed" selected>Seed</option>' in html
+    assert '<option value="vanilla">Vanilla</option>' in html
+    assert '<option value="custom">Custom</option>' in html
     assert "powers_as_pickups=bool(web_powers_as_pickups)" in worker
     assert "required_powers_mode=str(web_required_powers_mode)" in worker
     assert "global_completion_mode=str(web_global_completion_mode)" in worker
@@ -82,3 +87,16 @@ def test_web_jump_button_dependency_is_enforced_in_ui() -> None:
     app = Path("web/app.js").read_text(encoding="utf-8")
     assert "attackModern.checked && specialsModern.checked" in app
     assert "jumpButton.disabled = !jumpAvailable" in app
+
+
+def test_web_progress_flavor_uses_full_deck_before_repeating() -> None:
+    app = Path("web/app.js").read_text(encoding="utf-8")
+
+    assert app.count('..."') >= 80
+    assert "let sillyDeck = [];" in app
+    assert "function refillSillyDeck()" in app
+    assert "function nextSillyMessage()" in app
+    assert "sillyDeck = shuffleMessages(SILLY_MESSAGES)" in app
+    assert "lastSillyMessage" in app
+    assert "}, 3600);" in app
+    assert "chooseSillyMessages(6)" not in app
