@@ -13,6 +13,7 @@ from mkmszr.patches.progression_presentation import (
     FLASH_MODULE_ROM,
     FLASH_MODULE_SIZE,
     PRODUCTION_FLASH_HELPER,
+    PRODUCTION_FLASH_HELPER_SHA256,
     PROGRESSION_FLASH_CALLBACK_ENTRY,
     WATER_EEL_WHITE_PALETTE_ROM,
     WHITE_FLASH_PALETTE,
@@ -78,6 +79,9 @@ def _post_progression_shape(seed: str) -> RomImage:
 
 
 def test_async_wrapper_awards_before_spawning_and_contains_no_direct_sleep_jal() -> None:
+    import hashlib
+
+    assert hashlib.sha256(PRODUCTION_FLASH_HELPER).hexdigest() == PRODUCTION_FLASH_HELPER_SHA256
     words = [
         int.from_bytes(PRODUCTION_FLASH_HELPER[offset:offset + 4], "big")
         for offset in range(0, len(PRODUCTION_FLASH_HELPER), 4)
