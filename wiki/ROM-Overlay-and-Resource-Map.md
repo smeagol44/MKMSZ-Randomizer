@@ -40,7 +40,7 @@ Each of the eight main gameplay stages has its own resource file and runtime-loa
 
 This page intentionally does **not** duplicate the former eight-stage range/slot table. Stage-relative facts should be updated once, in the relevant stage catalog.
 
-The current stage resource-file base used by the ordinary-pickup path is held at `0x802F82B8`. Stage-loading code writes the current loader/allocator result there before ordinary resource lookup consumes it. The pointed-to address and extent are dynamic and stage-dependent; their allocation classification belongs to the Memory Map.
+The current stage resource-file base used by the ordinary-pickup path is held at `0x802E82B8`. Stage-loading code writes the current loader/allocator result there before ordinary resource lookup consumes it. The pointed-to address and extent are dynamic and stage-dependent; their allocation classification belongs to the Memory Map.
 
 ## Outer selector table grammar
 
