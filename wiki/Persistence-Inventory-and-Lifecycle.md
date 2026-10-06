@@ -20,6 +20,9 @@ Runtime testing collected and restored at least one ordinary pickup in every mai
 
 Progression state is separate: V2 state `+0x40` stores the number of progression rewards acquired and `+0x44` stores persistent XP. Diagnostic B runtime-confirmed XP 258 and two unlocked moves surviving Temple -> Wind and title-menu -> Fire.
 
+**Powers-as-pickups OFF correction (2026-10-06): Implementation/static-confirmed, runtime Pending.** OFF mode retains stock XP acquisition while playing, but the previous pipeline did not populate/restore the persistent `+0x44` word because the pickup-progression patch was absent. The fix reuses lifecycle v06 rather than creating a new lifecycle authority: its first five teardown/reconstruction hooks snapshot native current XP before entering their existing v06 helper, and the pickup-manager stage-init resume restores `+0x44` before the established four-box load/mask reconstruction. Constructor and final Game Over reset remain unchanged; final reset already clears both MKSV progression state and native XP.
+
+
 At the pickup-manager stage-init boundary, the progression restore helper writes only persistent XP before continuing into the established four-box reconstruction. It does not call the native tier evaluator. Calling that evaluator at this boundary is rejected because it caused the pre-gameplay hang in the first production attempt.
 
 Game Over/new-game reset behavior is Runtime-confirmed in lifecycle v06 on the accepted bounded route: classified final Game Over clears MKMSZR run state and inventory/progression authority while preserving all five GAME SETTINGS preferences; the next run returns to Very Hard, nine total lives, five continues, full HP, and starter inventory.
