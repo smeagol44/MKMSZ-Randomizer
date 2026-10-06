@@ -21,6 +21,7 @@ from ..mips import (
     addiu,
     address_words,
     andi,
+    jal,
     jalr,
     jr,
     lui,
@@ -37,11 +38,12 @@ from .inventory_boxes import STATE_VA
 from .inventory_menu_switch import (
     EXPANSION_FILE_ID,
     INVENTORY_MENU_SWITCH_MODULE,
-    MODULE_K0 as SWITCH_MODULE_K0,
     TRANSPORT_END_ROM,
     TRANSPORT_ROM,
 )
-from .temple_special_check import EXPANSION_FILE_ENTRY_ROM
+from .inventory_menu_switch import (
+    MODULE_K0 as SWITCH_MODULE_K0,
+)
 
 NOP = 0
 
