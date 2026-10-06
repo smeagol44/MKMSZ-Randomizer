@@ -94,6 +94,19 @@ INERT_USE_STUB_VA = 0x80071F50
 KEY_FIRST = 0x0D
 KEY_LAST = 0x22
 
+# Fire and Bridge both use native "all three present" handlers which stock-scan
+# only the ten-word LIVE inventory window. MKMSZR's authoritative ownership is
+# the four contiguous ten-word backing boxes, so those two scans are widened in
+# place: start at BOX0_VA and iterate 40 words. No helper/allocation is needed.
+BRIDGE_GATE_SCAN_BASE_ROM = 0x00072C10
+BRIDGE_GATE_SCAN_LIMIT_ROM = 0x00072C28
+FIRE_GATE_SCAN_BASE_ROM = 0x00072C94
+FIRE_GATE_SCAN_LIMIT_ROM = 0x00072CAC
+EXPECTED_GATE_SCAN_BASE = 0x2463600C  # addiu v1,v1,0x600C (LIVE_INV_VA)
+PATCHED_GATE_SCAN_BASE = 0x24636048   # addiu v1,v1,0x6048 (BOX0_VA)
+EXPECTED_GATE_SCAN_LIMIT = 0x2882000A # slti v0,a0,10
+PATCHED_GATE_SCAN_LIMIT = 0x28820028  # slti v0,a0,40
+
 # Native key IDs 0x0D..0x22 -> the one stage where each key is exposed.
 # Temple's Map is explicitly stage 0; the legacy Lua omitted that entry even
 # though the accepted native rule is "originating stage only".
@@ -504,6 +517,10 @@ class FourBoxInventoryPatch:
         )
         rom.expect_u32(GLASS_USE_ENTRY_ROM, CONSUME_USE_STUB_VA)
         rom.expect_bytes(MASK_ITEM_NAME_ROM, EXPECTED_MASK_ITEM_NAME)
+        for scan_rom in (BRIDGE_GATE_SCAN_BASE_ROM, FIRE_GATE_SCAN_BASE_ROM):
+            rom.expect_u32(scan_rom, EXPECTED_GATE_SCAN_BASE)
+        for scan_rom in (BRIDGE_GATE_SCAN_LIMIT_ROM, FIRE_GATE_SCAN_LIMIT_ROM):
+            rom.expect_u32(scan_rom, EXPECTED_GATE_SCAN_LIMIT)
 
         rom.write_bytes(RELOCATED_MAPPER_ROM, RELOCATED_MAPPER)
         rom.write_u32(SELECTION_LOAD_ROM, jal(RELOCATED_MAPPER_VA))
@@ -550,12 +567,21 @@ class FourBoxInventoryPatch:
         rom.write_u32(GLASS_USE_ENTRY_ROM, INERT_USE_STUB_VA)
         rom.write_bytes(MASK_ITEM_NAME_ROM, MASK_ITEM_NAME)
 
+        # Native Fire/Bridge completion should treat all four backing boxes as
+        # one logical inventory. The stock handlers keep their stage gates and
+        # completion actions; only their ownership scan window changes.
+        for scan_rom in (BRIDGE_GATE_SCAN_BASE_ROM, FIRE_GATE_SCAN_BASE_ROM):
+            rom.write_u32(scan_rom, PATCHED_GATE_SCAN_BASE)
+        for scan_rom in (BRIDGE_GATE_SCAN_LIMIT_ROM, FIRE_GATE_SCAN_LIMIT_ROM):
+            rom.write_u32(scan_rom, PATCHED_GATE_SCAN_LIMIT)
+
         return (
             "4 native boxes x 10 slots; backing boxes remain authoritative",
             "Block + Use + Right/Left cycles using remapped actions",
             "switching is rejected while the inventory menu is open",
             "SEALED (stock item 0x08 / Glass identity) masks keys outside their originating stage",
             "stage transitions and box loads reconstruct masked LIVE from backing state",
+            "Fire/Bridge all-three credential USE checks scan all 40 authoritative backing slots",
         )
 
 
