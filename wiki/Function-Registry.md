@@ -134,6 +134,9 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8006643C` | Main arena bump allocator | Static-confirmed | Aligns request to 8 bytes, returns `old_cursor + 8`, advances the live cursor, and writes 8-byte allocation bookkeeping at the new cursor. No bounds check is performed internally. |
 | `0x80066478` | Arena rewind helper | Static-confirmed | Sets live cursor to `pointer - 8`; rewinds the arena to the state before the referenced allocation/checkpoint |
 | `0x8006648C` | Top-allocation rewind/reallocate helper | Static-confirmed | Rewinds with `0x80066478` and immediately allocates again through `0x8006643C`; no copy is performed |
+| `0x80073588` | Native Inventory process / input loop | Static-confirmed; in-Inventory box-switch composition Runtime-confirmed bounded | Owns Inventory lifetime, Items/Power-Ups mode, Use/Combine/R/close dispatch, native frame selection locals, and the loop seam at `0x80073724`. Production box switching stays inside this process and must not rerun suspend/restore/termination. |
+| `0x800741B4` | Native ten-slot LIVE Inventory count | Static-confirmed; exercised by Runtime-confirmed switch path | Counts non-`0xFFFFFFFF` words in the active LIVE window; production menu switching reuses it after masked reconstruction. |
+| `0x80075320` | Native first-occupied Inventory-slot finder | Static-confirmed; exercised by Runtime-confirmed switch path | Given a physical-slot pointer, selects the first occupied LIVE slot. Production menu switching calls it only when count is positive and resets visible row to zero. |
 | `0x80071500` | Ordinary-enemy command interpreter | Static-confirmed | Stream pointer from `0x800C11E4` |
 | `0x800719F0` | Enemy spawn-parameter helper | Static-confirmed | Receives spawn index and type |
 | `0x80071B20` | Shared enemy/fighter constructor | Static/runtime-confirmed | Uses resource slot table `0x800B14C0` |
