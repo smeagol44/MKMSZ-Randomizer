@@ -36,7 +36,7 @@ from .temple_special_check import TempleSpecialCheckPatch
 from .title_branding import TitleBrandingPatch
 from .toasty import ToastyProductionCompositionPatch
 from .toasty_constants import ToastyAssets
-from .xp_progression import XPProgressionPatch
+from .xp_progression import EarnedXPPersistencePatch, XPProgressionPatch
 
 __all__ = [
     "PICKUP_PERSISTENCE_PAYLOAD",
@@ -45,6 +45,7 @@ __all__ = [
     "BootLogoBypassPatch",
     "BoxIndicatorPatch",
     "EnemyRandomizationPatch",
+    "EarnedXPPersistencePatch",
     "FourBoxInventoryPatch",
     "GameSettingsTurnPatch",
     "GlobalItemMaterializationPatch",

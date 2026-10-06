@@ -20,9 +20,17 @@ from mkmszr.patches.inventory_boxes import (
     PERSISTENCE_RESUME_ROM,
 )
 from mkmszr.patches.pickup_randomization import build_stage_assignment
-from mkmszr.patches.runtime_v2 import CODE_SIZE
+from mkmszr.patches.run_lifecycle import HOOKS
+from mkmszr.patches.runtime_v2 import CODE_SIZE, STATE_UNCACHED_BASE
 from mkmszr.patches.xp_progression import (
     CALLBACK_OFFSET_WITHIN_IDENTITY,
+    EARNED_XP_EXTENSION,
+    EARNED_XP_EXTENSION_ROM,
+    EARNED_XP_EXTENSION_SIZE,
+    EARNED_XP_LIFECYCLE_HOOK_PATCHES,
+    EARNED_XP_RESUME_PATCH,
+    EARNED_XP_RESTORE_OFFSET,
+    PROGRESSION_EXTENSION_UNCACHED_VA,
     HERBS_CALLBACK_VA,
     HERBS_PRESENTATION_VA,
     PRESENTATION_OFFSET_WITHIN_IDENTITY,
@@ -38,6 +46,7 @@ from mkmszr.patches.xp_progression import (
     PROGRESSION_XP_OFFSET,
     THRESHOLD_TABLE_OFFSET,
     XP_THRESHOLDS,
+    EarnedXPPersistencePatch,
     XPProgressionPatch,
     build_progression_locations,
 )
@@ -120,6 +129,82 @@ def test_stage_restore_does_not_call_unsafe_tier_evaluator() -> None:
     restore = PROGRESSION_EXTENSION[PROGRESSION_RESTORE_OFFSET:]
     assert words_blob(address_words("t9", XP_TIER_EVALUATOR_VA)) not in restore
     assert words_blob(address_words("t9", LOAD_MASK_WRAPPER_UNCACHED_VA)) in restore
+
+
+
+def _post_lifecycle_off_shape(seed: str = "EARNED-XP-OFF") -> RomImage:
+    rom = _post_four_box_shape(seed)
+    for offset, _expected, replacement, _label in HOOKS:
+        rom.data[offset : offset + len(replacement)] = replacement
+    return rom
+
+
+def test_earned_xp_extension_fits_without_touching_optional_runtime_tail() -> None:
+    assert EARNED_XP_EXTENSION_SIZE == 0xE0
+    assert len(EARNED_XP_EXTENSION) == 0xE0
+    assert 0 < EARNED_XP_RESTORE_OFFSET < EARNED_XP_EXTENSION_SIZE
+    assert (
+        EARNED_XP_EXTENSION_ROM + EARNED_XP_EXTENSION_SIZE
+        == PROGRESSION_EXTENSION_ROM + 0xE0
+    )
+
+
+def test_earned_xp_restore_reuses_safe_stage_init_path() -> None:
+    restore = EARNED_XP_EXTENSION[EARNED_XP_RESTORE_OFFSET:]
+    assert words_blob(address_words("t9", XP_TIER_EVALUATOR_VA)) not in restore
+    assert words_blob(address_words("t9", LOAD_MASK_WRAPPER_UNCACHED_VA)) in restore
+
+
+def test_earned_xp_off_preserves_stock_awards_and_wraps_lifecycle_v06() -> None:
+    rom = _post_lifecycle_off_shape()
+    stock_awards = {
+        offset: rom.read_u32(offset) for offset in XP_AWARD_STORE_SITES
+    }
+    stock_caps = {
+        stage_id: rom.read_u16(XP_CAP_TABLE_ROM + stage_id * 2)
+        for stage_id in XP_MAIN_STAGE_CAPS
+    }
+
+    EarnedXPPersistencePatch().apply(rom, PatchContext(seed="EARNED-XP-OFF"))
+
+    assert (
+        rom.data[
+            EARNED_XP_EXTENSION_ROM :
+            EARNED_XP_EXTENSION_ROM + EARNED_XP_EXTENSION_SIZE
+        ]
+        == EARNED_XP_EXTENSION
+    )
+    assert (
+        rom.data[
+            PERSISTENCE_RESUME_ROM :
+            PERSISTENCE_RESUME_ROM + len(EARNED_XP_RESUME_PATCH)
+        ]
+        == EARNED_XP_RESUME_PATCH
+    )
+    for offset, _expected, patched, _label in EARNED_XP_LIFECYCLE_HOOK_PATCHES:
+        assert rom.data[offset : offset + len(patched)] == patched
+    for offset, _expected, replacement, _label in HOOKS[5:]:
+        assert rom.data[offset : offset + len(replacement)] == replacement
+
+    assert {offset: rom.read_u32(offset) for offset in XP_AWARD_STORE_SITES} == stock_awards
+    assert {
+        stage_id: rom.read_u16(XP_CAP_TABLE_ROM + stage_id * 2)
+        for stage_id in XP_MAIN_STAGE_CAPS
+    } == stock_caps
+
+    # The wrappers must address both the native current-XP word and MKSV state.
+    current_xp_words = words_blob(address_words("t0", 0x8011200C))
+    state_words = words_blob(address_words("t0", STATE_UNCACHED_BASE))
+    assert current_xp_words in EARNED_XP_EXTENSION
+    assert state_words in EARNED_XP_EXTENSION
+
+
+def test_earned_xp_off_guards_lifecycle_v06_composition() -> None:
+    rom = _post_lifecycle_off_shape()
+    offset, _expected, _replacement, _label = HOOKS[0]
+    rom.data[offset] ^= 1
+    with pytest.raises(PatchError, match="guard failed"):
+        EarnedXPPersistencePatch().apply(rom, PatchContext(seed="EARNED-XP-OFF"))
 
 
 def test_patch_disables_xp_caps_and_converts_exactly_nine_callbacks() -> None:
