@@ -23,6 +23,7 @@ from .patches import (
     GameSettingsTurnPatch,
     GlobalItemMaterializationPatch,
     InventoryHudPatch,
+    InventoryLegendPatch,
     InventoryMenuSwitchPatch,
     NativePayloadPatch,
     NativePayloadSpec,
@@ -264,6 +265,7 @@ def build_pipeline(
             )
         )
         patches.append(InventoryMenuSwitchPatch())
+        patches.append(InventoryLegendPatch())
     if config.enemy_randomization:
         patches.append(EnemyRandomizationPatch())
     return PatchPipeline(patches)
