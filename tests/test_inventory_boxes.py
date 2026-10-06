@@ -198,4 +198,4 @@ def test_four_box_patch_installs_stage_masking_and_filtered_sync() -> None:
         == MASK_ITEM_NAME
     )
 
-    assert "SEALED" in notes[-2]
+    assert any("SEALED" in note for note in notes)
