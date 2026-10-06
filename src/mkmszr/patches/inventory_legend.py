@@ -125,7 +125,7 @@ def _build_main(draw_helper_k1: int, strings: dict[str, int]) -> bytes:
 
     e.emit(lui("t0", 0x424F), ori("t0", "t0", 0x5820), sw("t0", 0x20, "sp"))
     e.emit(lui("t0", 0x3120), ori("t0", "t0", 0x4F46), sw("t0", 0x24, "sp"))
-    e.emit(lui("t0", 0x2034), sw("t0", 0x28, "sp"))
+    e.emit(lui("t0", 0x2034), ori("t0", "t0", 0), sw("t0", 0x28, "sp"))
     e.emit(
         lui("t0", 0x800A),
         lw("t1", STATE_VA - 0x800A0000, "t0"),
