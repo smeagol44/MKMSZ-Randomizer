@@ -550,10 +550,10 @@ def _build_hud_data(rom: RomImage, *, required_count: int | None) -> tuple[bytes
 
     requirement = cursor
     if required_count is None:
-        requirement_text = f"REQUIRED XP {VANILLA_XP_REQUIREMENT}\0".encode("ascii")
+        requirement_text = f"REQ. XP {VANILLA_XP_REQUIREMENT}\0".encode("ascii")
         requirement_exact = 0
     else:
-        requirement_text = f"REQUIRED POWERS 0/{required_count}\0".encode("ascii")
+        requirement_text = f"REQ. POWERS 0-{required_count}\0".encode("ascii")
         requirement_exact = 1
     if len(requirement_text) > 0x18:
         raise AssertionError("native requirement HUD text exceeds fixed slot")
@@ -561,7 +561,7 @@ def _build_hud_data(rom: RomImage, *, required_count: int | None) -> tuple[bytes
     cursor += 0x18
 
     check = cursor
-    data[cursor : cursor + len(b"00/85\0")] = b"00/85\0"
+    data[cursor : cursor + len(b"CHKS 00-85\0")] = b"CHKS 00-85\0"
     cursor += 0x18
 
     for index, offset in enumerate(label_offsets):
@@ -957,7 +957,7 @@ def _hud_code(data_layout: dict[str, int]) -> bytes:
             lw("t3", 0x18, "sp"),
             addiu("t3", "t3", data_layout["requirement"]),
             addiu("t1", "t1", 0x30),
-            sb("t1", 16, "t3"),
+            sb("t1", 12, "t3"),
         )
     else:
         e.emit(lw("t3", 0x18, "sp"), addiu("t3", "t3", data_layout["requirement"]))
@@ -1000,9 +1000,9 @@ def _hud_code(data_layout: dict[str, int]) -> bytes:
         _mflo("v1"),
         _mfhi("t9"),
         addiu("t8", "v1", 0x30),
-        sb("t8", 0, "t6"),
+        sb("t8", 5, "t6"),
         addiu("t9", "t9", 0x30),
-        sb("t9", 1, "t6"),
+        sb("t9", 6, "t6"),
         _move("a0", "t6"),
         addiu("a1", "zero", 1),
         jal(TEXT_WIDTH_VA),
@@ -1226,6 +1226,6 @@ class InventoryHudPatch:
                 f"HUD runtime tail K0 0x{HUD_CODE_K0:08X}..0x{HUD_CODE_END_K0 - 1:08X}; "
                 f"helper bytes used 0x{runtime_layout['used']:X}"
             ),
-            f"native HUD requirement display: {requirement_note}; right-aligned XX/85 uses persistent check state",
+            f"native HUD requirement display: {requirement_note}; right-aligned CHKS XX-85 uses persistent check state",
             "HUD read-only data uses one lazy 0x1200-byte main-arena allocation per stage lifecycle",
         )
