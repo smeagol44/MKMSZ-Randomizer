@@ -1,5 +1,7 @@
 # Runtime validation status
 
+**Native Inventory legend (2026-10-06): Runtime-confirmed bounded.** The maintainer manually accepted focused legend v01 and reported it works perfectly. The proof preserves the production in-Inventory switch path and native panel, adds dynamic `BOX n OF 4`, uses `LEFT-RIGHT BOX / A USE / B COMBINE / R POWERS` in Items mode, and the intentionally sparse `L-R POWER / R ITEMS` layout in Power Ups. This evidence is presentation-only and does not resolve the separately reproduced Inventory/loading hang.
+
 **In-Inventory four-box switching (2026-10-06): Runtime-confirmed bounded, full production composition.** The maintainer reports production-composition v03 works perfectly. Items-mode Left/Right cycles all four authoritative boxes with wraparound without closing Inventory; empty-box traversal is healthy, selected-row state refreshes coherently, stage masking/SEALED behavior remains intact, and the existing gameplay box shortcut and Inventory HUD coexist. Power Ups retains stock horizontal navigation. Proof SHA-256 `14feee5d6a0a79a20359781364eb6a9ef77ffffad3f2c0bee94760b9c2074f7e`. This does not replace the final representative full-seed/lifecycle release gate.
 
 

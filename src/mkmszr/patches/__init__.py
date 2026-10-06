@@ -9,6 +9,7 @@ from .game_settings_turn import GameSettingsTurnPatch
 from .global_materialization import GlobalItemMaterializationPatch
 from .inventory_boxes import FourBoxInventoryPatch
 from .inventory_hud import InventoryHudPatch
+from .inventory_legend import InventoryLegendPatch
 from .inventory_menu_switch import InventoryMenuSwitchPatch
 from .manager_persistence import (
     ManagerPersistenceFirePatch,
@@ -50,6 +51,7 @@ __all__ = [
     "GameSettingsTurnPatch",
     "GlobalItemMaterializationPatch",
     "InventoryHudPatch",
+    "InventoryLegendPatch",
     "InventoryMenuSwitchPatch",
     "ManagerPersistenceFirePatch",
     "MktAudioClip",
