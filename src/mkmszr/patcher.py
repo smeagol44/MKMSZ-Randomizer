@@ -22,6 +22,7 @@ from .patches import (
     GameSettingsTurnPatch,
     GlobalItemMaterializationPatch,
     InventoryHudPatch,
+    InventoryMenuSwitchPatch,
     NativePayloadPatch,
     NativePayloadSpec,
     PickupPersistencePatch,
@@ -162,8 +163,6 @@ def build_pipeline(
         patches.append(PickupRandomizationPatch())
     patches.append(FourBoxInventoryPatch(initial_settings_state=settings_state))
     if config.powers_as_pickups:
-        # Only pickup mode replaces the four-box resume tail. The other mode
-        # keeps stock XP stores/caps and ordinary Herbs callbacks.
         patches.append(
             XPProgressionPatch(global_mode=materialization_plan is not None)
         )
@@ -203,20 +202,11 @@ def build_pipeline(
             ),
         )
     )
-    # Compact rainbow owns an optional wrapper in the guarded controls->Toasty
-    # expansion gap, so it must compose after ControlsProductionPatch.
     if outfit_mode == "rainbow":
         patches.append(RainbowPalettePatch())
-    # The scripted Temple check uses the production file-0x1A expansion
-    # transport and composes after the optional rainbow wrapper. Its validated
-    # location/progression/persistence behavior remains separate from the 84
-    # ordinary pickup records.
     patches.append(TempleSpecialCheckPatch())
     if materialization_plan is not None:
         patches.append(GlobalItemMaterializationPatch(materialization_plan))
-    # Runtime-confirmed lifecycle v06 owns the remaining shared file-0x1A gap
-    # after Temple/materializer composition and before Toasty. Apply it here so
-    # allocation guards see the final upstream helper ownership.
     patches.append(
         RunLifecyclePatch(
             difficulty=config.difficulty,
@@ -226,17 +216,11 @@ def build_pipeline(
         )
     )
     if config.powers_as_pickups:
-        # Presentation is installed late so its shared file-0x1A allocation
-        # composes with optional Toasty and all earlier runtime owners.
         patches.append(
             ProgressionPickupPresentationPatch(
                 global_mode=materialization_plan is not None
             )
         )
-    # Controls production deliberately verifies the stock Slide/Super Slide
-    # gates before installing helpers that call those recognizers. Apply the
-    # optional order remap afterwards so both safety guards and shuffled tiers
-    # remain authoritative.
     if config.shuffle_power_progression:
         patches.append(PowerOrderPatch())
     if config.required_powers_mode != "vanilla":
@@ -246,16 +230,13 @@ def build_pipeline(
             )
         )
     if materialization_plan is not None:
-        # The native randomizer HUD owns the fixed materializer->Toasty tail
-        # and generated-output portrait/data slots. Apply it after progression
-        # presentation and Required Powers so its guards see final upstream
-        # file-0x1A ownership and its display matches the selected gate.
         patches.append(
             InventoryHudPatch(
                 config.required_powers_mode,
                 config.custom_required_powers,
             )
         )
+        patches.append(InventoryMenuSwitchPatch())
     if config.enemy_randomization:
         patches.append(EnemyRandomizationPatch())
     return PatchPipeline(patches)
