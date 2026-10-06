@@ -50,6 +50,10 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x00066FE0` | `0x800663E0` | Bootstrap | guarded native sequence | Call native bootstrap stub |
 | `0x00066FE4..0x00066FEB` | second stock arena construction / bootstrap precondition | Arena reservation + bootstrap | `3C02801B 2442F420` | ArenaReservation guards the full pair and changes the low immediate to `0x3420`; the later bootstrap hook supersedes `0x66FE4` with its delay-slot NOP while the generated stub establishes the same `0x801B3420` floor |
 | `0x0007A3F4` | `0x800797F4` | Logo bypass | `0C01F113 00000000 0C01F143 00000000 0C018576 24040080` | first word `0x10000003` (`beq zero,zero,+3`); preserves fade/title |
+| `0x00072C10` | `0x80072010` / Bridge all-three ownership scan | Four-box inventory | `0x2463600C` (`addiu v1,v1,0x600C`) | `0x24636048`: preserve native Bridge use-site gate/completion path but start ownership scan at authoritative Box 1 |
+| `0x00072C28` | `0x80072028` / Bridge all-three ownership scan | Four-box inventory | `0x2882000A` (`slti v0,a0,10`) | `0x28820028`: scan 40 authoritative backing slots instead of ten LIVE slots |
+| `0x00072C94` | `0x80072094` / Fire all-three ownership scan | Four-box inventory | `0x2463600C` (`addiu v1,v1,0x600C`) | `0x24636048`: preserve native Fire use-site gate/completion path but start ownership scan at authoritative Box 1 |
+| `0x00072CAC` | `0x800720AC` / Fire all-three ownership scan | Four-box inventory | `0x2882000A` (`slti v0,a0,10`) | `0x28820028`: scan 40 authoritative backing slots instead of ten LIVE slots |
 | `0x0007B900..0x0007B94B` | `0x8007AD00` | Four-box mask | guarded stock sanitizer body | Replace with stage-local key mask-copy routine |
 | `0x0007B94C..0x0007B97F` | `0x8007AD4C` | Four-box filtered SAVE | guarded stock default-loader body | Commit non-Glass LIVE slots to the active authoritative backing box; LIVE reconstruction is the separately owned mask wrapper/sanitizer |
 | `0x0009B7DC` | `0x8009ABDC` | Stage selector | 12 stock pointers | Eight safe stage labels plus zeros |
