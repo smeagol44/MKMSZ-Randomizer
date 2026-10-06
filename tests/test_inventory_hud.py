@@ -2,7 +2,7 @@ import hashlib
 import struct
 
 from mkmszr.config import RandomizerConfig
-from mkmszr.mips import addiu, jal, lw, sw, words_blob
+from mkmszr.mips import addiu, jal, lw, sb, sw, words_blob
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.global_materialization import GlobalItemMaterializationPatch
 from mkmszr.patches.inventory_hud import (
@@ -31,6 +31,7 @@ from mkmszr.patches.inventory_hud import (
     _build_runtime,
     _compress_resource_package,
     _ensure_data_code,
+    _hud_code,
     _image_records,
     _native_palette,
     _row_code,
@@ -84,15 +85,25 @@ def test_hud_data_uses_exact_requirement_semantics() -> None:
     assert b"STG CHECKS KEYS\0" in exact
     assert b"TEM 00-05 ---\0" in exact
     assert b"FOR 00-09 0-3\0" in exact
-    assert b"REQUIRED POWERS 0/8\0" in exact
-    assert b"00/85\0" in exact
+    assert b"REQ. POWERS 0-8\0" in exact
+    assert b"CHKS 00-85\0" in exact
     assert exact_layout["requirement_exact"] == 1
 
-    assert b"REQUIRED XP 5100\0" in vanilla
-    assert b"REQUIRED POWERS" not in vanilla
+    assert b"REQ. XP 5100\0" in vanilla
+    assert b"REQ. POWERS" not in vanilla
     assert vanilla_layout["requirement_exact"] == 0
     assert exact_layout["used"] <= HUD_DATA_SIZE
     assert vanilla_layout["used"] <= HUD_DATA_SIZE
+
+
+def test_status_strings_use_native_font_safe_hyphen_forms() -> None:
+    rom = _font_rom()
+    _data, layout = _build_hud_data(rom, required_count=8)
+    helper = _hud_code(layout)
+
+    assert words_blob([sb("t1", 12, "t3")]) in helper
+    assert words_blob([sb("t8", 5, "t6")]) in helper
+    assert words_blob([sb("t9", 6, "t6")]) in helper
 
 
 def test_runtime_helpers_fit_exact_production_tail() -> None:
