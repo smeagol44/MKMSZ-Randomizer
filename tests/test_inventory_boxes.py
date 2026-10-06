@@ -6,13 +6,19 @@ from mkmszr.patches.inventory_boxes import (
     ACTION_ROUTINE_VA,
     BOX_DATA_ROM,
     BOX_DATA_SIZE,
+    BRIDGE_ALL_KEYS_SCAN_BASE_ROM,
+    BRIDGE_ALL_KEYS_SCAN_LIMIT_ROM,
     CONSUME_USE_STUB_VA,
     DEFAULT_INV,
     DEFAULT_INV_ROM,
+    EXPECTED_ALL_KEYS_SCAN_BASE,
+    EXPECTED_ALL_KEYS_SCAN_LIMIT,
     EXPECTED_DEFAULT_LOADER,
     EXPECTED_MASK_ITEM_NAME,
     EXPECTED_PERSISTENCE_RESUME,
     EXPECTED_SANITIZER,
+    FIRE_ALL_KEYS_SCAN_BASE_ROM,
+    FIRE_ALL_KEYS_SCAN_LIMIT_ROM,
     GLASS_USE_ENTRY_ROM,
     INERT_USE_STUB_VA,
     INITIAL_BOX_DATA,
@@ -26,6 +32,8 @@ from mkmszr.patches.inventory_boxes import (
     MASK_COPY_ROUTINE,
     MASK_ITEM_NAME,
     MASK_ITEM_NAME_ROM,
+    PATCHED_ALL_KEYS_SCAN_BASE,
+    PATCHED_ALL_KEYS_SCAN_LIMIT,
     PERSISTENCE_CODE_END_ROM,
     PERSISTENCE_RESUME_PATCH,
     PERSISTENCE_RESUME_ROM,
@@ -80,6 +88,10 @@ def _post_core_shape() -> RomImage:
     data[SANITIZE_ROM:SANITIZE_END] = EXPECTED_SANITIZER
     data[LOAD_DEFAULT_ROM:LOAD_DEFAULT_END] = EXPECTED_DEFAULT_LOADER
     data[GLASS_USE_ENTRY_ROM:GLASS_USE_ENTRY_ROM + 4] = CONSUME_USE_STUB_VA.to_bytes(4, "big")
+    for scan_rom in (BRIDGE_ALL_KEYS_SCAN_BASE_ROM, FIRE_ALL_KEYS_SCAN_BASE_ROM):
+        data[scan_rom : scan_rom + 4] = EXPECTED_ALL_KEYS_SCAN_BASE.to_bytes(4, "big")
+    for scan_rom in (BRIDGE_ALL_KEYS_SCAN_LIMIT_ROM, FIRE_ALL_KEYS_SCAN_LIMIT_ROM):
+        data[scan_rom : scan_rom + 4] = EXPECTED_ALL_KEYS_SCAN_LIMIT.to_bytes(4, "big")
     data[
         MASK_ITEM_NAME_ROM : MASK_ITEM_NAME_ROM + len(EXPECTED_MASK_ITEM_NAME)
     ] = EXPECTED_MASK_ITEM_NAME
@@ -129,6 +141,16 @@ def test_four_box_binary_layout_fits_confirmed_regions() -> None:
     assert int.from_bytes(INITIAL_BOX_DATA[164:168], "big") == MAGIC
     assert RAW_LIVE_INV[:12] == DEFAULT_INV[:12]
     assert RAW_LIVE_INV[12:] != DEFAULT_INV[12:]
+
+
+def test_fire_and_bridge_all_three_scans_cover_authoritative_backing() -> None:
+    rom = _post_core_shape()
+    FourBoxInventoryPatch().apply(rom, PatchContext())
+
+    for scan_rom in (BRIDGE_ALL_KEYS_SCAN_BASE_ROM, FIRE_ALL_KEYS_SCAN_BASE_ROM):
+        assert rom.read_u32(scan_rom) == PATCHED_ALL_KEYS_SCAN_BASE
+    for scan_rom in (BRIDGE_ALL_KEYS_SCAN_LIMIT_ROM, FIRE_ALL_KEYS_SCAN_LIMIT_ROM):
+        assert rom.read_u32(scan_rom) == PATCHED_ALL_KEYS_SCAN_LIMIT
 
 
 def test_four_box_patch_installs_stage_masking_and_filtered_sync() -> None:

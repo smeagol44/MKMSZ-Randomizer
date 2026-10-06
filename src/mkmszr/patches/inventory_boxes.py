@@ -10,8 +10,9 @@ in LIVE as item 0x08 (Glass), while the true item ID remains in the backing
 box. MKMSZR patches Glass's native USE dispatch from the consuming return-1
 stub to the inert return-0 stub, turning it into a dedicated safe placeholder.
 Saves ignore placeholder slots; loads reconstruct LIVE from the backing box
-and apply the current stage mask. This preserves the accepted
-no-spillover/no-global-scan design.
+and apply the current stage mask. General inventory operations still use only
+LIVE; the two native all-three credential gates (Fire and Bridge) are the
+intentional exception and scan the authoritative 40-word backing region.
 """
 
 from __future__ import annotations
@@ -93,6 +94,19 @@ CONSUME_USE_STUB_VA = 0x80071F58
 INERT_USE_STUB_VA = 0x80071F50
 KEY_FIRST = 0x0D
 KEY_LAST = 0x22
+
+# Fire and Bridge use one shared native pattern for "own all three" checks.
+# Stock scans only the 10-word LIVE window, which is incomplete under four-box
+# inventory. Production preserves each handler's physical use-site gate and
+# completion action, but redirects only the ownership scan to BOX0..BOX3.
+BRIDGE_ALL_KEYS_SCAN_BASE_ROM = 0x00072C10
+BRIDGE_ALL_KEYS_SCAN_LIMIT_ROM = 0x00072C28
+FIRE_ALL_KEYS_SCAN_BASE_ROM = 0x00072C94
+FIRE_ALL_KEYS_SCAN_LIMIT_ROM = 0x00072CAC
+EXPECTED_ALL_KEYS_SCAN_BASE = 0x2463600C  # addiu v1,v1,0x600C (LIVE)
+PATCHED_ALL_KEYS_SCAN_BASE = 0x24636048   # addiu v1,v1,0x6048 (BOX0)
+EXPECTED_ALL_KEYS_SCAN_LIMIT = 0x2882000A # slti v0,a0,10
+PATCHED_ALL_KEYS_SCAN_LIMIT = 0x28820028  # slti v0,a0,40
 
 # Native key IDs 0x0D..0x22 -> the one stage where each key is exposed.
 # Temple's Map is explicitly stage 0; the legacy Lua omitted that entry even
@@ -504,6 +518,10 @@ class FourBoxInventoryPatch:
         )
         rom.expect_u32(GLASS_USE_ENTRY_ROM, CONSUME_USE_STUB_VA)
         rom.expect_bytes(MASK_ITEM_NAME_ROM, EXPECTED_MASK_ITEM_NAME)
+        for scan_rom in (BRIDGE_ALL_KEYS_SCAN_BASE_ROM, FIRE_ALL_KEYS_SCAN_BASE_ROM):
+            rom.expect_u32(scan_rom, EXPECTED_ALL_KEYS_SCAN_BASE)
+        for scan_rom in (BRIDGE_ALL_KEYS_SCAN_LIMIT_ROM, FIRE_ALL_KEYS_SCAN_LIMIT_ROM):
+            rom.expect_u32(scan_rom, EXPECTED_ALL_KEYS_SCAN_LIMIT)
 
         rom.write_bytes(RELOCATED_MAPPER_ROM, RELOCATED_MAPPER)
         rom.write_u32(SELECTION_LOAD_ROM, jal(RELOCATED_MAPPER_VA))
@@ -544,6 +562,14 @@ class FourBoxInventoryPatch:
         # native manager resumes.
         rom.write_bytes(PERSISTENCE_RESUME_ROM, PERSISTENCE_RESUME_PATCH)
 
+        # Fire/Bridge completion checks are the only intentional cross-box
+        # inventory searches. Keep each native use-site gate and completion path,
+        # but scan the contiguous authoritative 40-word backing region.
+        for scan_rom in (BRIDGE_ALL_KEYS_SCAN_BASE_ROM, FIRE_ALL_KEYS_SCAN_BASE_ROM):
+            rom.write_u32(scan_rom, PATCHED_ALL_KEYS_SCAN_BASE)
+        for scan_rom in (BRIDGE_ALL_KEYS_SCAN_LIMIT_ROM, FIRE_ALL_KEYS_SCAN_LIMIT_ROM):
+            rom.write_u32(scan_rom, PATCHED_ALL_KEYS_SCAN_LIMIT)
+
         # Stock Glass is a cut/placeholder-like inventory entry but vanilla still
         # consumes it when USE returns 1. Redirect only item 0x08 to the game's
         # existing return-0 stub so the masked item cannot disappear.
@@ -556,6 +582,7 @@ class FourBoxInventoryPatch:
             "switching is rejected while the inventory menu is open",
             "SEALED (stock item 0x08 / Glass identity) masks keys outside their originating stage",
             "stage transitions and box loads reconstruct masked LIVE from backing state",
+            "Fire/Bridge all-three USE gates search all 40 authoritative backing slots",
         )
 
 
