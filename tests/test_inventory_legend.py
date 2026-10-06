@@ -16,9 +16,9 @@ from mkmszr.patches.inventory_legend import (
 )
 from mkmszr.patches.inventory_menu_switch import (
     EXPANSION_FILE_ENTRY_ROM,
-    InventoryMenuSwitchPatch,
     TRANSPORT_END_ROM,
     TRANSPORT_ROM,
+    InventoryMenuSwitchPatch,
 )
 from mkmszr.resource_materialization import GLOBAL_OUTPUT_SIZE, GlobalMaterializationPlan
 from mkmszr.rom import RomImage
