@@ -19,7 +19,7 @@ from mkmszr.patches.required_powers import RequiredPowersPatch
 from mkmszr.patches.run_lifecycle import RunLifecyclePatch
 from mkmszr.patches.stage_selector import SafeStageSelectorPatch
 from mkmszr.patches.temple_special_check import TempleSpecialCheckPatch
-from mkmszr.patches.xp_progression import XPProgressionPatch
+from mkmszr.patches.xp_progression import EarnedXPPersistencePatch, XPProgressionPatch
 
 
 def test_core_native_patches_are_always_first() -> None:
@@ -75,9 +75,12 @@ def test_progression_presentation_follows_lifecycle_only_in_pickup_mode() -> Non
     disabled = build_pipeline(
         RandomizerConfig(seed="POWER-FLASH", powers_as_pickups=False)
     )
-    assert ProgressionPickupPresentationPatch not in [
-        type(patch) for patch in disabled.patches
-    ]
+    disabled_types = [type(patch) for patch in disabled.patches]
+    assert ProgressionPickupPresentationPatch not in disabled_types
+    assert EarnedXPPersistencePatch in disabled_types
+    assert disabled_types.index(RunLifecyclePatch) < disabled_types.index(
+        EarnedXPPersistencePatch
+    )
 
 
 def test_powers_as_pickups_and_required_count_are_independent() -> None:
@@ -91,7 +94,9 @@ def test_powers_as_pickups_and_required_count_are_independent() -> None:
         )
         types = [type(patch) for patch in pipeline.patches]
         assert XPProgressionPatch not in types
+        assert EarnedXPPersistencePatch in types
         assert FourBoxInventoryPatch in types
+        assert types.index(RunLifecyclePatch) < types.index(EarnedXPPersistencePatch)
         assert (PowerOrderPatch in types) is shuffle
         assert types[-1] is RequiredPowersPatch
 
@@ -123,6 +128,17 @@ def test_lifecycle_v06_runs_after_temple_and_before_optional_power_order() -> No
     )
     types = [type(patch) for patch in shuffled.patches]
     assert types.index(RunLifecyclePatch) < types.index(PowerOrderPatch)
+
+    earned = build_pipeline(
+        RandomizerConfig(
+            seed="LIFECYCLE-V06-OFF",
+            powers_as_pickups=False,
+            shuffle_power_progression=True,
+        )
+    )
+    types = [type(patch) for patch in earned.patches]
+    assert types.index(RunLifecyclePatch) < types.index(EarnedXPPersistencePatch)
+    assert types.index(EarnedXPPersistencePatch) < types.index(PowerOrderPatch)
 
 
 def test_temple_special_check_runs_after_controls_and_optional_rainbow() -> None:

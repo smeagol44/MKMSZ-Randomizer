@@ -15,6 +15,8 @@
 
 **Lifecycle update (2026-10-01): lifecycle v06 is Runtime-confirmed on the bounded manual route and promoted to production.** The accepted build preserved damaged HP across Pause -> Quit -> re-entry, preserved lives/continues/XP/powers/four-box inventory, allowed repeated ordinary deaths below the former ×7 floor with full replacement-life HP, preserved run state across accepted Continue, and reset run progress on genuine final Game Over to Very Hard / 9 total lives / 5 continues / starter inventory while retaining all five GAME SETTINGS preferences. No music-speed corruption was reported on the accepted v06 route. v04 remains Rejected / unsafe composition.
 
+**Powers-as-pickups OFF earned-XP persistence (2026-10-06): Runtime-confirmed bounded.** PR #154's focused all-stage proof `MKMSZR_earned-xp-persistence_all-stages_proof_v01.z64` (SHA-256 `05c579ad5473a3f357b4cae45b660dbcbdd5b5aa66389eff3395a8e47bf8a550`) retained stock XP acquisition and used the OFF-only MKSV `+0x44` snapshot/restore path. The maintainer manually ran the requested earned-XP/power re-entry validation and reported that it worked. Scope is the tested OFF lifecycle route; this does not replace the final representative full global-seed release gate.
+
 > **Scope:** This page is the canonical summary of **runtime evidence scope** by subsystem. It records the narrowest runtime-confirmed claim, the relevant static/implementation-confirmed scope, and what remains unestablished. Detailed mechanisms and proof chronology belong to the owning domain pages.
 >
 > **Rule:** “Runtime-confirmed” is always bounded to the documented ROM/build, route, state, and lifecycle boundary. It does not mean exhaustive coverage.

@@ -50,6 +50,7 @@ from .inventory_boxes import (
 )
 from .native_payload import kseg1_alias
 from .pickup_randomization import build_stage_assignment
+from .run_lifecycle import HOOKS
 from .runtime_v2 import CODE_CACHED_BASE, CODE_SIZE, STATE_UNCACHED_BASE
 
 NOP = 0
@@ -226,6 +227,182 @@ PROGRESSION_RESUME_PATCH = words_blob(
 )
 if len(PROGRESSION_RESUME_PATCH) != len(PERSISTENCE_RESUME_PATCH):
     raise AssertionError("progression resume patch changed scanner size")
+
+
+
+# Powers-as-pickups OFF keeps the game's stock XP award stores/caps, but stock
+# stage reconstruction does not preserve CURRENT_XP_VA. Reuse the already-owned
+# XP payload/state instead of adding a second authority: snapshot native earned
+# XP at the established lifecycle-v06 teardown seams, then restore state +0x44
+# at the same pickup-manager stage-init boundary used by pickup progression.
+#
+# The last 0x20 bytes of the historical 0x100 progression extension belong to
+# the optional Runtime-V2 tail (rainbow in affected builds), so this late OFF
+# patch writes only the canonical 0xE0-byte XP payload owner.
+EARNED_XP_EXTENSION_SIZE = 0xE0
+EARNED_XP_EXTENSION_ROM = PROGRESSION_EXTENSION_ROM
+LIFECYCLE_PAUSE_ENTRY_UNCACHED_VA = 0xA01B0BC0
+LIFECYCLE_REASON_ENTRY_UNCACHED_VA = 0xA01B0C10
+JR_K0 = 0x03400008
+
+
+def _k0_jump_words(address: int, delay_slot: int = NOP) -> tuple[int, int, int, int]:
+    return (
+        0x3C1A0000 | ((address >> 16) & 0xFFFF),  # lui k0,hi
+        0x375A0000 | (address & 0xFFFF),          # ori k0,k0,lo
+        JR_K0,
+        delay_slot,
+    )
+
+
+def _build_earned_xp_save_wrapper(resume_va: int) -> bytes:
+    """Mirror native current XP to MKSV +0x44, then tail-enter lifecycle v06."""
+
+    e = Emitter()
+    e.emit(
+        addiu("sp", "sp", -0x10),
+        sw("t0", 0x00, "sp"),
+        sw("t1", 0x04, "sp"),
+    )
+    e.emit(*address_words("t0", CURRENT_XP_VA), lw("t1", 0, "t0"))
+    e.emit(
+        *address_words("t0", STATE_UNCACHED_BASE),
+        sw("t1", PROGRESSION_XP_OFFSET, "t0"),
+    )
+    e.emit(
+        lw("t0", 0x00, "sp"),
+        lw("t1", 0x04, "sp"),
+        addiu("sp", "sp", 0x10),
+    )
+    e.emit(*_k0_jump_words(resume_va))
+    return e.finish()
+
+
+def build_earned_xp_extension() -> tuple[bytes, int, int, int]:
+    pause = _build_earned_xp_save_wrapper(LIFECYCLE_PAUSE_ENTRY_UNCACHED_VA)
+    reason_offset = _align4(len(pause))
+    reason = _build_earned_xp_save_wrapper(LIFECYCLE_REASON_ENTRY_UNCACHED_VA)
+    restore_offset = _align4(reason_offset + len(reason))
+    restore = _build_restore()
+    end = restore_offset + len(restore)
+    if end > EARNED_XP_EXTENSION_SIZE:
+        raise AssertionError(
+            f"earned-XP persistence exceeds 0x{EARNED_XP_EXTENSION_SIZE:X} bytes: "
+            f"0x{end:X}"
+        )
+
+    blob = bytearray(EARNED_XP_EXTENSION_SIZE)
+    blob[: len(pause)] = pause
+    blob[reason_offset : reason_offset + len(reason)] = reason
+    blob[restore_offset : restore_offset + len(restore)] = restore
+    return bytes(blob), 0, reason_offset, restore_offset
+
+
+(
+    EARNED_XP_EXTENSION,
+    EARNED_XP_PAUSE_SAVE_OFFSET,
+    EARNED_XP_REASON_SAVE_OFFSET,
+    EARNED_XP_RESTORE_OFFSET,
+) = build_earned_xp_extension()
+EARNED_XP_PAUSE_SAVE_ENTRY = (
+    PROGRESSION_EXTENSION_UNCACHED_VA + EARNED_XP_PAUSE_SAVE_OFFSET
+)
+EARNED_XP_REASON_SAVE_ENTRY = (
+    PROGRESSION_EXTENSION_UNCACHED_VA + EARNED_XP_REASON_SAVE_OFFSET
+)
+EARNED_XP_RESTORE_ENTRY = PROGRESSION_EXTENSION_UNCACHED_VA + EARNED_XP_RESTORE_OFFSET
+
+EARNED_XP_RESUME_PATCH = words_blob(
+    [
+        jal(EARNED_XP_RESTORE_ENTRY),
+        0x3C03800A,  # displaced LUI v1, 0x800A
+        *address_words("t9", PICKUP_MANAGER_RESUME_VA),
+        jr("t9"),
+        0x8C63A910,  # displaced LW v1, -0x56F0(v1)
+    ]
+)
+if len(EARNED_XP_RESUME_PATCH) != len(PERSISTENCE_RESUME_PATCH):
+    raise AssertionError("earned-XP resume patch changed scanner size")
+
+
+def _lifecycle_hook_patch(entry: int, delay_slot: int) -> bytes:
+    return words_blob(_k0_jump_words(entry, delay_slot))
+
+
+# Fail loudly if lifecycle-v06's validated direct entries ever move. The OFF
+# composition retargets only the first five teardown hooks through XP snapshot
+# wrappers; constructor and final-Game-Over hooks remain byte-for-byte v06.
+if HOOKS[0][2] != _lifecycle_hook_patch(LIFECYCLE_PAUSE_ENTRY_UNCACHED_VA, NOP):
+    raise AssertionError("lifecycle-v06 Pause entry drifted")
+for reason, hook in enumerate(HOOKS[1:5], start=1):
+    if hook[2] != _lifecycle_hook_patch(
+        LIFECYCLE_REASON_ENTRY_UNCACHED_VA,
+        0x241B0000 | reason,  # addiu k1,zero,reason
+    ):
+        raise AssertionError(f"lifecycle-v06 reason entry {reason} drifted")
+
+EARNED_XP_LIFECYCLE_HOOK_PATCHES = tuple(
+    (
+        offset,
+        replacement,
+        _lifecycle_hook_patch(
+            EARNED_XP_PAUSE_SAVE_ENTRY if index == 0 else EARNED_XP_REASON_SAVE_ENTRY,
+            int.from_bytes(replacement[12:16], "big"),
+        ),
+        label,
+    )
+    for index, (offset, _expected, replacement, label) in enumerate(HOOKS[:5])
+)
+
+
+class EarnedXPPersistencePatch:
+    """Persist stock-earned XP when Powers as pickups is disabled."""
+
+    name = "earned-xp-persistence"
+
+    def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
+        del context
+
+        expected_end = PROVEN_PAYLOAD_ROM + CODE_SIZE
+        if (
+            rom.read_u32(MKMSZR_FILE_ENTRY_ROM) != PROVEN_PAYLOAD_ROM
+            or rom.read_u32(MKMSZR_FILE_ENTRY_ROM + 4) != expected_end
+            or rom.read_u32(MKMSZR_FILE_ENTRY_ROM + 8) != 0
+        ):
+            raise PatchError(
+                "earned-XP persistence requires the production V2 native payload first"
+            )
+
+        rom.expect_bytes(
+            EARNED_XP_EXTENSION_ROM,
+            bytes(EARNED_XP_EXTENSION_SIZE),
+        )
+        rom.expect_bytes(PERSISTENCE_RESUME_ROM, PERSISTENCE_RESUME_PATCH)
+
+        # OFF mode must retain all stock XP-producing behavior. These guards
+        # deliberately reject composing this path after pickup-mode XP edits.
+        for offset, expected in XP_AWARD_STORE_SITES.items():
+            rom.expect_u32(offset, expected)
+        for offset, expected in COMBO_EXPERIENCE_RENDER_SITES.items():
+            rom.expect_u32(offset, expected)
+        for stage_id, expected in XP_MAIN_STAGE_CAPS.items():
+            rom.expect_u16(XP_CAP_TABLE_ROM + stage_id * 2, expected)
+
+        for offset, expected, _patched, _label in EARNED_XP_LIFECYCLE_HOOK_PATCHES:
+            rom.expect_bytes(offset, expected)
+
+        rom.write_bytes(EARNED_XP_EXTENSION_ROM, EARNED_XP_EXTENSION)
+        rom.write_bytes(PERSISTENCE_RESUME_ROM, EARNED_XP_RESUME_PATCH)
+        for offset, _expected, patched, _label in EARNED_XP_LIFECYCLE_HOOK_PATCHES:
+            rom.write_bytes(offset, patched)
+
+        return (
+            "stock combat/award XP stores, combo XP UI, and stage caps remain untouched",
+            "native current XP is snapshotted to MKSV +0x44 before lifecycle-v06 teardown",
+            "stage init restores MKSV +0x44 before the existing four-box reconstruction",
+            "native tier evaluator remains absent from stage-init restore per Diagnostic B",
+            "lifecycle-v06 constructor and final Game Over/reset hooks remain unchanged",
+        )
 
 
 class XPProgressionPatch:

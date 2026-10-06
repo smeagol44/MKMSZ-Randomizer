@@ -17,6 +17,7 @@ from .patches import (
     BootBrandingPatch,
     BootLogoBypassPatch,
     BoxIndicatorPatch,
+    EarnedXPPersistencePatch,
     EnemyRandomizationPatch,
     FourBoxInventoryPatch,
     GameSettingsTurnPatch,
@@ -226,6 +227,11 @@ def build_pipeline(
             persist_hp=config.persist_hp,
         )
     )
+    if not config.powers_as_pickups:
+        # Stock XP remains authoritative while playing. Mirror it into the
+        # existing MKSV +0x44 slot at lifecycle boundaries and reuse the
+        # Diagnostic-B stage-entry restore so earned powers survive re-entry.
+        patches.append(EarnedXPPersistencePatch())
     if config.powers_as_pickups:
         # Presentation is installed late so its shared file-0x1A allocation
         # composes with optional Toasty and all earlier runtime owners.
