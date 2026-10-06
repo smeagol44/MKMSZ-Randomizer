@@ -24,6 +24,7 @@ from mkmszr.patches.inventory_hud import (
     MATERIALIZER_HELPER_END_ROM,
     PORTRAIT_ATLAS_ROM,
     PORTRAIT_ATLAS_SIZE,
+    PORTRAIT_DONORS,
     TOASTY_AUDIO_ROM,
     InventoryHudPatch,
     _append_image_record,
@@ -67,6 +68,10 @@ def test_inventory_hud_fixed_allocations_are_bounded_and_disjoint() -> None:
     assert HUD_DATA_END_ROM == HUD_DATA_ROM + HUD_DATA_SIZE
     assert HUD_DATA_END_ROM <= GLOBAL_OUTPUT_SIZE
 
+
+def test_water_portrait_donor_order_matches_water_labels() -> None:
+    # WATER1/2/3 are item IDs 0x14..0x16 and atlas emission preserves tuple order.
+    assert PORTRAIT_DONORS[2] == (0x73, (0x3AD, 0x3AE, 0x3AC))
 
 def test_native_palette_uses_static_confirmed_15_bit_bgr_source_layout() -> None:
     stock = bytearray(FONT_DESCRIPTOR_SIZE)
