@@ -5,20 +5,20 @@ from mkmszr.patches.base import PatchContext
 from mkmszr.patches.inventory_hud import InventoryHudPatch
 from mkmszr.patches.inventory_menu_switch import (
     EMPTY_BOX_R_GATE_ROM,
+    EXPANSION_FILE_ENTRY_ROM,
     EXPECTED_EMPTY_BOX_R_GATE,
     EXPECTED_FILE_END,
     EXPECTED_FILE_START,
     EXPECTED_INVENTORY_LOOP_HOOK,
-    EXPANSION_FILE_ENTRY_ROM,
     INVENTORY_LOOP_HOOK_ROM,
     INVENTORY_MENU_SWITCH_MODULE,
-    InventoryMenuSwitchPatch,
     MODULE_CAPACITY,
     MODULE_K1,
     NOP,
     TRANSPORT_CAPACITY,
     TRANSPORT_END_ROM,
     TRANSPORT_ROM,
+    InventoryMenuSwitchPatch,
 )
 from mkmszr.resource_materialization import GLOBAL_OUTPUT_SIZE, GlobalMaterializationPlan
 from mkmszr.rom import RomImage
