@@ -21,7 +21,7 @@ from ..mips import (
     addiu,
     address_words,
     andi,
-    jal,
+    jalr,
     jr,
     lui,
     lw,
@@ -86,7 +86,7 @@ if LEGEND_ROM - SWITCH_TRANSPORT_END_ROM != LEGEND_PAD:
 
 
 def _call_abs(emitter: Emitter, target: int) -> None:
-    emitter.emit(*address_words("t9", target), jal("t9"), NOP)
+    emitter.emit(*address_words("t9", target), jalr("t9"), NOP)
 
 
 def _jump_abs(emitter: Emitter, target: int) -> None:
