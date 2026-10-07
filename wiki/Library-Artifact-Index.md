@@ -20,6 +20,8 @@ Current technical facts are reproduced in this Wiki. The external `MKMSZR Resear
 | Specialist handoffs | Narrow chronological experiment detail, exact artifacts, failed branches, and supersession evidence | Owning domain plus [Experiments, failures and superseded findings](Experiments-Failures-and-Superseded-Findings) |
 | Ghidra N64 archive | Reconstructed clean-ROM analysis project and exact static-analysis provenance | Relevant function/address/structure owner; preserved project remains archive evidence rather than a substitute for current Wiki conclusions |
 
+The archived Ghidra project remains the preserved historical snapshot. The active, Git-versioned analysis-facing workspace is now [`smeagol44/MKMSZ-Ghidra`](https://github.com/smeagol44/MKMSZ-Ghidra): it stores ROM-free function/global metadata and Ghidra scripts that can be applied to a researcher's own clean ROM import. The current Wiki/registries remain authoritative for established technical conclusions and evidence scope; the Ghidra repository exists to make those conclusions—and still-unknown code around them—directly inspectable during future traces.
+
 ## Provenance and supersession rule
 
 The archive may contain older claims that are deliberately superseded by later evidence. Preserve those artifacts because they show how a conclusion was reached or corrected, but read the current Wiki owner first.
