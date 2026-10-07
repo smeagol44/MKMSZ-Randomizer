@@ -41,9 +41,11 @@ from mkmszr.patches.inventory_materialized import (
 from mkmszr.patches.inventory_menu_switch import (
     EXPANSION_FILE_ENTRY_ROM,
     INVENTORY_LOOP_HOOK_ROM,
-    MODULE_K1 as SWITCH_MODULE_K1,
     TRANSPORT_END_ROM,
     TRANSPORT_ROM,
+)
+from mkmszr.patches.inventory_menu_switch import (
+    MODULE_K1 as SWITCH_MODULE_K1,
 )
 from mkmszr.resource_materialization import GLOBAL_OUTPUT_SIZE, GlobalMaterializationPlan
 from mkmszr.rom import RomImage
