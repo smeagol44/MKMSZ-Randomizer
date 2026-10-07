@@ -27,7 +27,7 @@ At the pickup-manager stage-init boundary, the progression restore helper writes
 
 Game Over/new-game reset behavior is Runtime-confirmed in lifecycle v06 on the accepted bounded route: classified final Game Over clears MKMSZR run state and inventory/progression authority while preserving all five GAME SETTINGS preferences; the next run returns to Very Hard, nine total lives, five continues, full HP, and starter inventory.
 
-## Four-box inventory
+## Rich Inventory session materialization\n\n**Runtime-confirmed bounded (2026-10-07).** The accepted rich Inventory proof does not introduce a second inventory authority. Authoritative state remains LIVE/backing boxes, MKSV check/progression words and native Power state. On Inventory open, two derived display-validity words in the unused tail of the existing `0x1200` HUD allocation are cleared. The already-proven status/table code prepares mutable requirement/check and stage-table strings during the initial session frames; later redraws submit those prepared strings through the same native text renderer. Item rows, selected paper title and portraits continue resolving/drawing through the accepted production paths. Opening Inventory again invalidates the derived snapshot. No polling script or persistent gameplay state is added.\n\nThe same accepted composition closes the empty-active-box/Powers trap: when Powers is selected and LIVE is empty, a fresh pure Left/Right press calls the native LIVE counter; only the zero-count case switches back to Items semantics and tail-enters the existing four-box transaction. Nonempty Powers retains stock horizontal Power navigation.\n\n## Four-box inventory
 
 The game continues to see its stock ten-word live array at `0x800A600C`. Four backing arrays are authoritative:
 
