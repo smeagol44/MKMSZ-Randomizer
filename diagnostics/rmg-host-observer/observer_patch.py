@@ -107,9 +107,9 @@ def add_trace_header(path: Path, channel: str):
                   "host-audio": 131072}
     capacity = capacities[channel]
     replace_once(path, '#include <string.h>',
-                 '#include <string.h>\\n#define MKMSZR_TRACE_CAP '
-                 + str(capacity) + 'u\\n#define MKMSZR_TRACE_CHANNEL "'
-                 + channel + '"\\n#include "mkmszr_trace.h"')
+                 '#include <string.h>\n#define MKMSZR_TRACE_CAP '
+                 + str(capacity) + 'u\n#define MKMSZR_TRACE_CHANNEL "'
+                 + channel + '"\n#include "mkmszr_trace.h"')
 
 ai = CORE / "ai/ai_controller.c"
 add_trace_header(ai, "ai")
