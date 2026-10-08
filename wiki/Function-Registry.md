@@ -13,8 +13,8 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | Address | Function | Evidence | Notes |
 |---:|---|---|---|
 | `0x8007D3FC` | Native audio-frame work wrapper | Static-confirmed | Calls frame builder for the current AudioInfo, publishes lastInfo, rotates three output buffers, and swaps command lists for a produced task. The lower AI-enqueue failure does not stop this producer advance. See [bounded Inventory/audio investigation](Production-Rich-Inventory-Music-Static-Investigation). |
-| `0x8007D4A8` | Native audio-frame builder | Static-confirmed | Enqueues prior PCM through `0x8008A500`, ignores its return at `0x8007D4F0`, calculates frame samples and calls native synthesis `0x8008910C`. Permitted discard path is established; participation in tempo acceleration is Pending. |
-| `0x8008A500` | Native AI output-buffer enqueue | Static-confirmed | Checks full FIFO via `0x80092E90`; returns `-1` without AI address/length writes when full, zero when accepted. Saved full FIFO alone is not evidence that this call failed. |
+| `0x8007D4A8` | Native audio-frame builder | Static-confirmed | Enqueues prior PCM through `0x8008A500`, ignores its return at `0x8007D4F0`, calculates frame samples and calls native synthesis `0x8008910C`. Permitted discard path is established and recurring rejection is measured in paired states; upstream trigger and full audible accounting remain Pending. |
+| `0x8008A500` | Native AI output-buffer enqueue | Static-confirmed | Checks full FIFO via `0x80092E90`; returns `-1` without AI address/length writes when full, zero when accepted. Existing diagnostic logs 135 additional actual failures between paired states; saved FIFO state alone still does not recover chronology. |
 | `0x80083D38` | Native WESS sequencer tick | Static-confirmed | Advances 16.16 millisecond accumulator by `0x85555` and tick counter, then services queue/sequence engine when enabled. Synthesis callback `0x8007DA34` requests another tick after 8,333 microseconds. |
 | `0x8000D0B8` | Debug stage-select menu | Runtime-confirmed | Production A-button title route |
 | `0x8000322C` | Embedded image decompression dispatcher | Static-confirmed | Ordinary types come from header byte `+3`; exact header `0x05000000` is special-cased to fighter codec type 5. Type 4 dispatches to `0x80003428`; type 5 dispatches through internal switch arm `0x80003314` (Ghidra `switchD_80003278::caseD_5`, **not** a distinct function entry), which calls `0x80065E00` |
@@ -148,7 +148,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x800721D4`, `0x8007226C`, `0x80072220` | Wind per-icon native use handlers | Static-confirmed | Item-use table IDs `0x0E/0x0F/0x10` dispatch to the Circle / Three-Bars / Triangle handlers. They test gate bits `1/4/2` in `0x800C2406`, OR the corresponding bit into `0x802C0D54`, and call `0x8007EF30(0x801AF414)`. Native progression therefore has a use-time owner distinct from Wind pickup callback `0x802F2CB4`. |
 | `0x800722B8`, `0x80072304`, `0x80072350` | Water per-icon native use handlers | Static-confirmed | Item-use table IDs `0x14/0x15/0x16` dispatch here and test gate bits `1/2/4`; on success they OR the matching bit into `0x802C0D54` and call `0x8007EF30(0x801AF414)`. Native Water pickup callback parameter `0/1/2` awards IDs `0x14/0x15/0x16`; against the cataloged visuals this resolves Triangle=`0x14`, Three Bars=`0x15`, Moon=`0x16`. |
 | `0x8007239C`, `0x80072400`, `0x80072464` | Fortress crystal native use handlers | Static-confirmed | Item-use table IDs `0x20/0x21/0x22` dispatch to three player-position-gated handlers which commit crystal progression bits `0x08/0x10/0x20` into `0x802C0D54`; the third additionally requires the preceding crystal-bit state. These are separate from the boss-defeat reward-location activation path. |
-| `0x80073CEC` | Alternate renderer-family entry | Static-confirmed | Calls `0x8001E578`; not universal HUD path |
+| `0x80073CEC` | Native glyph draw | Static-confirmed | Per non-space glyph acquires `0x8001C528(font+4,0x100,0)` and builds nodes through `0x8001E578`; cached acquire does not upload. |
 | `0x80073E74` | Native text draw | Runtime-confirmed | Arbitrary custom RDRAM strings work |
 | `0x80074084` | Text-width helper | Static/runtime-confirmed | Native font at `0x800B1E20` |
 | `0x800741B4` | Inventory item count | Static-confirmed | Native ten-slot inventory |
@@ -227,3 +227,18 @@ See [N64–PS1 comparison](N64-PS1-Comparison) before transferring any concept b
 |---|---|---|---|
 | `0xA01B2310` (KSEG1 entry; cached `0x801B2310`) | PR #129 shared destination-aware award dispatcher | Implementation/CI-confirmed; Runtime Pending | Decodes logical award + destination-action fields from the masked callback parameter; awards inventory / Extra Life / Mana, immediately commits Prison key credential bits when stage 4 is live, and applies only the researched Wind/Water/Earth/Fire/Prison destination action. |
 | reconstruction entry inside `0x801B2310..0x801B28EF` | Prison post-reset credential reconstruction wrapper | Implementation/CI-confirmed; Runtime Pending | Calls stock `0x802ED538`, scans all four authoritative inventory boxes for IDs `0x1A..0x1C`, and writes acquired bits 0..2 to `0x802C0D54`. Permanent call site is ROM `0x00010E64`. |
+
+
+## Native audio release and RSP ownership (2026-10-08)
+
+| Address | Meaning | Evidence | Contract |
+|---|---|---|---|
+| `0x80000A70` | OS scheduler message loop | Static-confirmed | Queue `0x802C1970`, capacity 32; SP/DP/VI/software-dispatch/pre-NMI messages 1..5, priority 90. |
+| `0x80000E24` | Native VI service | Static-confirmed | Promotes fresh audio before producing next; `0x80000EF4` invokes `0x8007D3FC`, then input callback. One VI registration, no per-glyph audio callback. |
+| `0x80000F4C` | Audio-first RSP dispatcher | Static-confirmed | Queued→active audio, defers while active; requests graphics yield when needed. Single pointer slots, not unbounded queue. |
+| `0x80000B6C`, `0x80000C5C` | SP/yield and DP completion handlers | Static-confirmed | Completion/resume bookkeeping; earlier generation replacement remains unobserved. |
+| `0x800011F0` | Task writeback/load/start | Static-confirmed | Native RSP task submission. |
+| `0x8008910C` | Audio synthesis command builder | Static-confirmed | Advances ALSynth sample clock during command construction, before RSP completion/AI acceptance. |
+| `0x80015950` | Native VI/input callback | Static-confirmed | Increments `0x802E7DC0`; scheduler invokes after audio in captured configuration. |
+
+Full ownership/timeline evidence and limitations: [upstream report](Production-Rich-Inventory-Music-Static-Investigation).

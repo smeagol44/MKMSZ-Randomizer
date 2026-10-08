@@ -1,0 +1,643 @@
+{
+  "schema": "MKMSZR_inventory_audio_pair_v1",
+  "rom_sha256": "9b7c47758be500535ef10a4c0a063667e50cded66ab28a1b101f0182d4be3152",
+  "states": [
+    {
+      "state": "test_musicnormal(1).state",
+      "state_sha256": "43383279333a8820f0faf73a487c710dadd14c4b3b07b9af3f9b0470ef6271cc",
+      "permanent_code_exact": true,
+      "rejections": {
+        "count": 1,
+        "first_tick": 35580,
+        "last_tick": 35580,
+        "last_ai_status": "0xc0000000"
+      },
+      "clocks": {
+        "wess_ticks": 49754,
+        "milliseconds": 414616,
+        "fraction": 27106,
+        "player_samples": 9154736,
+        "synth_samples": 9154656,
+        "next_player_callback_sample": 9154736,
+        "audio_frames": 24873,
+        "vi_callbacks": 25152
+      },
+      "cpu": {
+        "count": 3248397648,
+        "pc": "0x80000180",
+        "epc": "0xa001c568",
+        "cause": "0x10000400"
+      },
+      "vi": {
+        "delay": 811092,
+        "deadline": 3249208738
+      },
+      "ai": {
+        "status": "0x40000000",
+        "busy": true,
+        "full": false,
+        "dram_last_written": "0x13b320",
+        "len_last_written": 1408,
+        "dacrate": 2207,
+        "bitrate": 15,
+        "head_duration": 775808,
+        "head_length": 1408,
+        "tail_duration_raw": 775808,
+        "tail_length_raw": 1408,
+        "tail_live": false,
+        "remaining_head_counts_mod32": 708126
+      },
+      "events": [
+        {
+          "type": 64,
+          "name": "AI",
+          "count": 3249105774
+        },
+        {
+          "type": 1,
+          "name": "VI",
+          "count": 3249208738
+        },
+        {
+          "type": 2,
+          "name": "COMPARE",
+          "count": 0
+        },
+        {
+          "type": 32,
+          "name": "SPECIAL",
+          "count": 0
+        }
+      ],
+      "rsp": {
+        "status": "0x243",
+        "pc": "0x8dc",
+        "core_tail_words": [
+          0,
+          0,
+          0
+        ]
+      },
+      "audio": {
+        "last_info": "0x8013be20",
+        "buffer_index": 0,
+        "infos": [
+          {
+            "pointer": "0x8013a780",
+            "pcm": "0x8013a7d0",
+            "samples": 352,
+            "task_type": 2,
+            "command_list": "0x8012a780",
+            "command_bytes": 2400
+          },
+          {
+            "pointer": "0x8013b2d0",
+            "pcm": "0x8013b320",
+            "samples": 352,
+            "task_type": 2,
+            "command_list": "0x80132780",
+            "command_bytes": 2400
+          },
+          {
+            "pointer": "0x8013be20",
+            "pcm": "0x8013be70",
+            "samples": 368,
+            "task_type": 2,
+            "command_list": "0x8012a780",
+            "command_bytes": 2400
+          }
+        ],
+        "fresh_task": "0x8013be28",
+        "queued_task": "0x0",
+        "active_task": "0x0",
+        "frame_samples": 368,
+        "minimum_samples": 352,
+        "maximum_samples": 704,
+        "extra_samples": 320
+      },
+      "scheduler_queue": {
+        "valid_count": 0,
+        "first_index": 23,
+        "capacity": 32
+      },
+      "inventory": {
+        "stage": 9,
+        "process_state": 22,
+        "live": [
+          "0xc",
+          "0x1",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0x5",
+          "0x8",
+          "0x4",
+          "0x8",
+          "0xffffffff"
+        ],
+        "backing": [
+          "0xc",
+          "0x1",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0x5",
+          "0x1b",
+          "0x4",
+          "0x10",
+          "0xffffffff",
+          "0x4",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff"
+        ],
+        "powers_count": 0
+      },
+      "memory": {
+        "arena_floor": "0x801b3420",
+        "arena_cursor": "0x8028c538",
+        "hud": "0x801feba0",
+        "hud_sha256": "239c4d2d44c1f6b236b11fdce11b26059f241321bf3a91b491c47773aedc5ca8",
+        "fortress_anchor": "0x801ffda8"
+      },
+      "render": {
+        "nodes_in_current_partial_frame": 180,
+        "cursor": "0x800c6730",
+        "bank_base": "0x800c2950",
+        "cursor_consistent": true,
+        "graphics_cursor": "0x803d9f38",
+        "texture_boundary": "0x803feec0",
+        "upload_queue": "0xffffffff",
+        "completed_display_list_bytes": [
+          46392,
+          46392
+        ]
+      },
+      "palettes": [
+        {
+          "index": "0xc0",
+          "source": "0x801f8c84",
+          "references": 21,
+          "handle": "0x140"
+        },
+        {
+          "index": "0xc1",
+          "source": "0x800b1bb0",
+          "references": 1,
+          "handle": "0x141"
+        },
+        {
+          "index": "0xc2",
+          "source": "0x800b1d3c",
+          "references": 6,
+          "handle": "0x142"
+        },
+        {
+          "index": "0xc3",
+          "source": "0x800b1c18",
+          "references": 1,
+          "handle": "0x143"
+        },
+        {
+          "index": "0xc4",
+          "source": "0x800b1e24",
+          "references": 42344,
+          "handle": "0x144"
+        },
+        {
+          "index": "0xc5",
+          "source": "0x800b15b4",
+          "references": 3591,
+          "handle": "0x145"
+        },
+        {
+          "index": "0xc6",
+          "source": "0x8026fbe8",
+          "references": 1,
+          "handle": "0x146"
+        },
+        {
+          "index": "0xc7",
+          "source": "0x800b1d84",
+          "references": 64658,
+          "handle": "0x147"
+        },
+        {
+          "index": "0xc8",
+          "source": "0xa01ff3b4",
+          "references": 6125,
+          "handle": "0x148"
+        },
+        {
+          "index": "0xc9",
+          "source": "0xa01feba4",
+          "references": 4375,
+          "handle": "0x149"
+        },
+        {
+          "index": "0xca",
+          "source": "0x800b1e90",
+          "references": 853,
+          "handle": "0x14a"
+        },
+        {
+          "index": "0xcb",
+          "source": "0x800b1e48",
+          "references": 21252,
+          "handle": "0x14b"
+        },
+        {
+          "index": "0xcc",
+          "source": "0x800b1dc8",
+          "references": 22152,
+          "handle": "0x14c"
+        },
+        {
+          "index": "0xcd",
+          "source": "0x8028c428",
+          "references": 9,
+          "handle": "0x14d"
+        },
+        {
+          "index": "0xce",
+          "source": "0x8027e670",
+          "references": 68,
+          "handle": "0x14e"
+        },
+        {
+          "index": "0xcf",
+          "source": "0x800b1e6c",
+          "references": 6640,
+          "handle": "0x14f"
+        },
+        {
+          "index": "0xd0",
+          "source": "0x8027e778",
+          "references": 1,
+          "handle": "0x150"
+        }
+      ]
+    },
+    {
+      "state": "test_musicspeedup(1).state",
+      "state_sha256": "db2f9358c9373c9d0079003ff91d5c18afddf99a44ea60c0d6d9994d18f5a66d",
+      "permanent_code_exact": true,
+      "rejections": {
+        "count": 136,
+        "first_tick": 35580,
+        "last_tick": 59874,
+        "last_ai_status": "0xc0000000"
+      },
+      "clocks": {
+        "wess_ticks": 59881,
+        "milliseconds": 499008,
+        "fraction": 1885,
+        "player_samples": 11018104,
+        "synth_samples": 11017984,
+        "next_player_callback_sample": 11018096,
+        "audio_frames": 29807,
+        "vi_callbacks": 30086
+      },
+      "cpu": {
+        "count": 2955358294,
+        "pc": "0x80000180",
+        "epc": "0x8001ecc8",
+        "cause": "0x10000400"
+      },
+      "vi": {
+        "delay": 811092,
+        "deadline": 2956169370
+      },
+      "ai": {
+        "status": "0x40000000",
+        "busy": true,
+        "full": false,
+        "dram_last_written": "0x13a7d0",
+        "len_last_written": 1664,
+        "dacrate": 2207,
+        "bitrate": 15,
+        "head_duration": 916864,
+        "head_length": 1664,
+        "tail_duration_raw": 916864,
+        "tail_length_raw": 1664,
+        "tail_live": false,
+        "remaining_head_counts_mod32": 854354
+      },
+      "events": [
+        {
+          "type": 1,
+          "name": "VI",
+          "count": 2956169370
+        },
+        {
+          "type": 64,
+          "name": "AI",
+          "count": 2956212648
+        },
+        {
+          "type": 2,
+          "name": "COMPARE",
+          "count": 0
+        },
+        {
+          "type": 32,
+          "name": "SPECIAL",
+          "count": 0
+        }
+      ],
+      "rsp": {
+        "status": "0x243",
+        "pc": "0x144",
+        "core_tail_words": [
+          0,
+          0,
+          0
+        ]
+      },
+      "audio": {
+        "last_info": "0x8013b2d0",
+        "buffer_index": 2,
+        "infos": [
+          {
+            "pointer": "0x8013a780",
+            "pcm": "0x8013a7d0",
+            "samples": 416,
+            "task_type": 2,
+            "command_list": "0x80132780",
+            "command_bytes": 2048
+          },
+          {
+            "pointer": "0x8013b2d0",
+            "pcm": "0x8013b320",
+            "samples": 368,
+            "task_type": 2,
+            "command_list": "0x8012a780",
+            "command_bytes": 1888
+          },
+          {
+            "pointer": "0x8013be20",
+            "pcm": "0x8013be70",
+            "samples": 416,
+            "task_type": 2,
+            "command_list": "0x8012a780",
+            "command_bytes": 2328
+          }
+        ],
+        "fresh_task": "0x8013b2d8",
+        "queued_task": "0x0",
+        "active_task": "0x0",
+        "frame_samples": 368,
+        "minimum_samples": 352,
+        "maximum_samples": 704,
+        "extra_samples": 320
+      },
+      "scheduler_queue": {
+        "valid_count": 0,
+        "first_index": 2,
+        "capacity": 32
+      },
+      "inventory": {
+        "stage": 9,
+        "process_state": 22,
+        "live": [
+          "0xc",
+          "0x1",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0x5",
+          "0x8",
+          "0x4",
+          "0x8",
+          "0xffffffff"
+        ],
+        "backing": [
+          "0xc",
+          "0x1",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0x5",
+          "0x1b",
+          "0x4",
+          "0x10",
+          "0xffffffff",
+          "0x4",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff",
+          "0xffffffff"
+        ],
+        "powers_count": 0
+      },
+      "memory": {
+        "arena_floor": "0x801b3420",
+        "arena_cursor": "0x8028c538",
+        "hud": "0x801feba0",
+        "hud_sha256": "239c4d2d44c1f6b236b11fdce11b26059f241321bf3a91b491c47773aedc5ca8",
+        "fortress_anchor": "0x801ffda8"
+      },
+      "render": {
+        "nodes_in_current_partial_frame": 377,
+        "cursor": "0x800caae8",
+        "bank_base": "0x800c2950",
+        "cursor_consistent": true,
+        "graphics_cursor": "0x803d9f38",
+        "texture_boundary": "0x803feec0",
+        "upload_queue": "0xffffffff",
+        "completed_display_list_bytes": [
+          46392,
+          46392
+        ]
+      },
+      "palettes": [
+        {
+          "index": "0xc0",
+          "source": "0x801f8c84",
+          "references": 21,
+          "handle": "0x140"
+        },
+        {
+          "index": "0xc1",
+          "source": "0x800b1bb0",
+          "references": 1,
+          "handle": "0x141"
+        },
+        {
+          "index": "0xc2",
+          "source": "0x800b1d3c",
+          "references": 6,
+          "handle": "0x142"
+        },
+        {
+          "index": "0xc3",
+          "source": "0x800b1c18",
+          "references": 1,
+          "handle": "0x143"
+        },
+        {
+          "index": "0xc4",
+          "source": "0x800b1e24",
+          "references": 60612,
+          "handle": "0x144"
+        },
+        {
+          "index": "0xc5",
+          "source": "0x800b15b4",
+          "references": 5163,
+          "handle": "0x145"
+        },
+        {
+          "index": "0xc6",
+          "source": "0x8026fbe8",
+          "references": 1,
+          "handle": "0x146"
+        },
+        {
+          "index": "0xc7",
+          "source": "0x800b1d84",
+          "references": 43648,
+          "handle": "0x147"
+        },
+        {
+          "index": "0xc8",
+          "source": "0xa01ff3b4",
+          "references": 17129,
+          "handle": "0x148"
+        },
+        {
+          "index": "0xc9",
+          "source": "0xa01feba4",
+          "references": 12235,
+          "handle": "0x149"
+        },
+        {
+          "index": "0xca",
+          "source": "0x800b1e90",
+          "references": 2426,
+          "handle": "0x14a"
+        },
+        {
+          "index": "0xcb",
+          "source": "0x800b1e48",
+          "references": 49053,
+          "handle": "0x14b"
+        },
+        {
+          "index": "0xcc",
+          "source": "0x800b1dc8",
+          "references": 59904,
+          "handle": "0x14c"
+        },
+        {
+          "index": "0xcd",
+          "source": "0x8028c428",
+          "references": 9,
+          "handle": "0x14d"
+        },
+        {
+          "index": "0xce",
+          "source": "0x8027e670",
+          "references": 68,
+          "handle": "0x14e"
+        },
+        {
+          "index": "0xcf",
+          "source": "0x800b1e6c",
+          "references": 6640,
+          "handle": "0x14f"
+        },
+        {
+          "index": "0xd0",
+          "source": "0x8027e778",
+          "references": 1,
+          "handle": "0x150"
+        }
+      ]
+    }
+  ],
+  "comparison": {
+    "delta": {
+      "wess_ticks": 10127,
+      "audio_frames": 4934,
+      "vi_callbacks": 4934,
+      "synth_samples": 1863328,
+      "player_samples": 1863368,
+      "rejections": 135
+    },
+    "nominal_synth_samples": 1815712,
+    "synth_surplus_over_nominal": 47616,
+    "extra_wess_ticks_over_two_per_frame": 259,
+    "vi_deadline_delta_mod32": 4001927928,
+    "cp0_count_delta_mod32": 4001927942,
+    "vi_periods_from_deadline_mod32": 4934.0,
+    "nominal_60hz_interval_seconds": 82.23333333333333,
+    "dac_integer_hz": 22047,
+    "conditional_rejected_sample_bounds": [
+      47520,
+      95040
+    ],
+    "conditional_rejected_duration_seconds": [
+      2.1553952918764456,
+      4.310790583752891
+    ],
+    "limitations": [
+      "Endpoints do not retain task generations, queue maxima, failure times, or wall time.",
+      "Count and deadlines are modulo 2^32; extra complete wraps cannot be recovered alone.",
+      "Lost-sample bounds assume fixed native limits, one attempt per frame, and no reset.",
+      "FIFO tail fields are stale whenever FULL is clear; AI_LEN register is the last write.",
+      "Partial render-node counts cannot be compared as complete-frame workload."
+    ]
+  }
+}
