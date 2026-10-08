@@ -1,6 +1,10 @@
 name: RMG host observer Flatpak (manual)
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'diagnostics/rmg-host-observer/**'
+      - '.github/workflows/rmg-host-observer.yml'
 
 permissions:
   contents: read
