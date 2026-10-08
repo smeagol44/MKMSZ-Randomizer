@@ -31,6 +31,14 @@ jobs:
             --install-deps-from=flathub --repo=flatpak-repo flatpak-build \
             org.mkmszr.RMGObserver.json
           flatpak build-bundle flatpak-repo RMG-Host-Observer-v0.9.0.flatpak org.mkmszr.RMGObserver
+      - name: Verify runtime linker paths and observer payload
+        working-directory: diagnostics/rmg-host-observer
+        run: |
+          test -f flatpak-build/files/lib/libRMG-Core.so
+          test -f flatpak-build/files/bin/RMG
+          readelf -d flatpak-build/files/bin/RMG | grep -E '(RPATH|RUNPATH)' | grep '/app/lib'
+          find flatpak-build/files/lib/RMG -maxdepth 4 -type f | head -30
+          test -s RMG-Host-Observer-v0.9.0.flatpak
       - name: Archive for independent review (not runtime validated)
         uses: actions/upload-artifact@v4
         with:
