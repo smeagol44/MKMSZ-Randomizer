@@ -18,6 +18,15 @@ rmg = next(m for m in manifest["modules"] if m["name"] == "RMG")
 source = next(s for s in rmg["sources"] if s.get("type") == "git")
 assert source["tag"] == "v0.9.0"
 assert source["commit"] == "453f6639734537908c4c2ca35244255bc5424e3d"
+# Recover relative patch inputs required by the pinned Flathub recipe.
+for module in manifest["modules"]:
+    for entry in module.get("sources", []):
+        if entry.get("type") == "patch":
+            patch_path = Path(entry["path"])
+            patch_path.parent.mkdir(parents=True, exist_ok=True)
+            patch_url = "https://raw.githubusercontent.com/flathub/com.github.Rosalie241.RMG/master/" + str(patch_path)
+            with urllib.request.urlopen(patch_url, timeout=30) as response:
+                patch_path.write_bytes(response.read())
 manifest["app-id"] = "org.mkmszr.RMGObserver"
 manifest["command"] = "RMG"
 manifest["finish-args"].extend([
