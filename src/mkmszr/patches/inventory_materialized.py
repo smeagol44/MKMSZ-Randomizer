@@ -585,10 +585,14 @@ class InventoryMaterializedHudPatch:
             rom.write_bytes(REQUIREMENT_GATE_ROM, _jump_trampoline(REQUIREMENT_K1))
             rom.write_bytes(CHECK_GATE_ROM, _jump_trampoline(CHECK_K1))
         else:
+            # Vanilla status body is 0x24 bytes shorter than Custom/Seed.
+            # Install its separately emitted continuation/draw targets;
+            # Custom/Seed helper jumps into unrelated native code here.
             rom.write_bytes(
                 VANILLA_CHECK_GATE_ROM,
                 _jump_trampoline(CHECK_K1),
             )
+            rom.write_bytes(CHECK_ROM, VANILLA_CHECK_GATE)
 
         if bytes(rom.data[TRANSPORT_ROM:LEGEND_PAYLOAD_END_ROM]) == prefix:
             raise AssertionError(
