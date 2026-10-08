@@ -187,6 +187,15 @@ def test_materialized_inventory_supports_vanilla_static_requirement_layout() -> 
         rom.data[VANILLA_CHECK_GATE_ROM : VANILLA_CHECK_GATE_ROM + 16]
     ) == words_blob([0x3C19A01B, 0x373932A0, 0x03200008, 0x00000000])
     assert len(VANILLA_CHECK_GATE) == len(CHECK_GATE)
+    # Vanilla helper must return 0x24 earlier than the Custom/Seed status body.
+    # The original CI-green production candidate incorrectly reused CHECK_GATE.
+    assert CHECK_GATE[0x1C:0x20] == bytes.fromhex("37392d5c")
+    assert VANILLA_CHECK_GATE[0x1C:0x20] == bytes.fromhex("37392d38")
+    assert CHECK_GATE[0x44:0x48] == bytes.fromhex("37392cf4")
+    assert VANILLA_CHECK_GATE[0x44:0x48] == bytes.fromhex("37392cd0")
+    assert bytes(
+        rom.data[0x01819A80 : 0x01819A80 + len(VANILLA_CHECK_GATE)]
+    ) == VANILLA_CHECK_GATE
 
 def test_pipeline_installs_materialized_inventory_after_legend() -> None:
     plan = GlobalMaterializationPlan(
