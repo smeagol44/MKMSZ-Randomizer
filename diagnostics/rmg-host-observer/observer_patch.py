@@ -17,7 +17,9 @@ HEADER = r"""
 #include <string.h>
 #include <time.h>
 
+#ifndef MKMSZR_TRACE_CAP
 #define MKMSZR_TRACE_CAP 32768u
+#endif
 #define MKMSZR_TRACE_VERSION 1u
 
 typedef struct {
@@ -101,9 +103,13 @@ def replace_once(path: Path, needle: str, replacement: str):
 
 def add_trace_header(path: Path, channel: str):
     (path.parent / "mkmszr_trace.h").write_text(HEADER)
+    capacities = {"ai": 262144, "vi": 131072, "rsp": 262144,
+                  "host-audio": 131072}
+    capacity = capacities[channel]
     replace_once(path, '#include <string.h>',
-                 '#include <string.h>\n#define MKMSZR_TRACE_CHANNEL "' + channel
-                 + '"\n#include "mkmszr_trace.h"')
+                 '#include <string.h>\\n#define MKMSZR_TRACE_CAP '
+                 + str(capacity) + 'u\\n#define MKMSZR_TRACE_CHANNEL "'
+                 + channel + '"\\n#include "mkmszr_trace.h"')
 
 ai = CORE / "ai/ai_controller.c"
 add_trace_header(ai, "ai")
@@ -164,13 +170,18 @@ rsp = CORE / "rsp/rsp_core.c"
 add_trace_header(rsp, "rsp")
 replace_once(rsp,
     '    uint32_t rsp_cycles = rsp.doRspCycles(sp->first_run) / 2;\n',
-    '    mkmszr_trace(0x30, r4300_cp0_regs(&sp->mi->r4300->cp0)[CP0_COUNT_REG],\n'
-    '        sp->regs[SP_STATUS_REG], sp->rsp_wait, sp->first_run,\n'
-    '        sp->mi->regs[MI_INTR_REG], 0, 0, 0, 0);\n'
+    '    /* First-run task boundary only; ParaLLEl emits millions of zero-cycle '
+    'polls. */\n'
+    '    uint32_t mkmszr_rsp_first = sp->first_run;\n'
+    '    if (mkmszr_rsp_first)\n'
+    '        mkmszr_trace(0x30, r4300_cp0_regs(&sp->mi->r4300->cp0)[CP0_COUNT_REG],\n'
+    '            sp->regs[SP_STATUS_REG], sp->rsp_wait, mkmszr_rsp_first,\n'
+    '            sp->mi->regs[MI_INTR_REG], 0, 0, 0, 0);\n'
     '    uint32_t rsp_cycles = rsp.doRspCycles(sp->first_run) / 2;\n'
-    '    mkmszr_trace(0x31, r4300_cp0_regs(&sp->mi->r4300->cp0)[CP0_COUNT_REG],\n'
-    '        sp->regs[SP_STATUS_REG], sp->rsp_wait, rsp_cycles,\n'
-    '        sp->mi->regs[MI_INTR_REG], 0, 0, 0, 0);\n')
+    '    if (mkmszr_rsp_first || (sp->regs[SP_STATUS_REG] & (SP_STATUS_HALT | SP_STATUS_BROKE)))\n'
+    '        mkmszr_trace(0x31, r4300_cp0_regs(&sp->mi->r4300->cp0)[CP0_COUNT_REG],\n'
+    '            sp->regs[SP_STATUS_REG], sp->rsp_wait, rsp_cycles,\n'
+    '            sp->mi->regs[MI_INTR_REG], 0, 0, 0, 0);\n')
 replace_once(rsp,
     'void rsp_interrupt_event(void* opaque)\n{\n    struct rsp_core* sp = (struct rsp_core*)opaque;\n',
     'void rsp_interrupt_event(void* opaque)\n{\n    struct rsp_core* sp = (struct rsp_core*)opaque;\n'
@@ -180,8 +191,9 @@ replace_once(rsp,
 replace_once(rsp,
     'void rsp_task_event(void* opaque)\n{\n    struct rsp_core* sp = (struct rsp_core*)opaque;\n',
     'void rsp_task_event(void* opaque)\n{\n    struct rsp_core* sp = (struct rsp_core*)opaque;\n'
-    '    mkmszr_trace(0x33, r4300_cp0_regs(&sp->mi->r4300->cp0)[CP0_COUNT_REG],\n'
-    '        sp->regs[SP_STATUS_REG], sp->rsp_wait, 0, 0, 0, 0, 0, 0);\n')
+    '    if (sp->rsp_wait)\n'
+    '        mkmszr_trace(0x33, r4300_cp0_regs(&sp->mi->r4300->cp0)[CP0_COUNT_REG],\n'
+    '            sp->regs[SP_STATUS_REG], sp->rsp_wait, 0, 0, 0, 0, 0, 0);\n')
 
 add_trace_header(AUDIO, "host-audio")
 replace_once(AUDIO,
