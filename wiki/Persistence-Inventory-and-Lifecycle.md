@@ -1,5 +1,7 @@
 # Persistence, inventory, and lifecycle
 
+**Inventory display-cache lifetime audit (2026-10-08): Static-confirmed invariant gap; audio attribution Pending.** Draft PR #156's open wrapper clears display-validity words through any nonzero HUD pointer before ownership validation. The existing ensure predicate (`cursor >= P+0x1200`) cannot distinguish a surviving allocation from rewind/refill reuse. The captured Fortress preload allocation actually survives below its resident anchor, so this state does not establish that stale writes caused accelerated music. A later repair must invalidate discarded ownership and account for pointer-keyed palette identities; another numerical range check is insufficient. See [exact path and counterexample](Production-Rich-Inventory-Music-Static-Investigation).
+
 **Inventory-HUD TEST LAB closure (2026-10-05):** exact v16 enters TEST LAB but immediately hangs on Inventory, before v18/v19 isolated pickup additions. Static review identified the independent v14 first-load HUD size bug; **v20 Runtime-confirms its one-word correction removes the hang on the bounded TEST LAB route.** The pickup-manager parent-field preservation and Fire resource composition were not required causes. See [TEST LAB Inventory diagnosis](Test-Lab-Inventory-Hang-Static-Diagnosis).
 
 ## Ordinary-pickup persistence

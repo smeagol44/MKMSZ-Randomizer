@@ -12,6 +12,10 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 
 | Address | Function | Evidence | Notes |
 |---:|---|---|---|
+| `0x8007D3FC` | Native audio-frame work wrapper | Static-confirmed | Calls frame builder for the current AudioInfo, publishes lastInfo, rotates three output buffers, and swaps command lists for a produced task. The lower AI-enqueue failure does not stop this producer advance. See [bounded Inventory/audio investigation](Production-Rich-Inventory-Music-Static-Investigation). |
+| `0x8007D4A8` | Native audio-frame builder | Static-confirmed | Enqueues prior PCM through `0x8008A500`, ignores its return at `0x8007D4F0`, calculates frame samples and calls native synthesis `0x8008910C`. Permitted discard path is established; participation in tempo acceleration is Pending. |
+| `0x8008A500` | Native AI output-buffer enqueue | Static-confirmed | Checks full FIFO via `0x80092E90`; returns `-1` without AI address/length writes when full, zero when accepted. Saved full FIFO alone is not evidence that this call failed. |
+| `0x80083D38` | Native WESS sequencer tick | Static-confirmed | Advances 16.16 millisecond accumulator by `0x85555` and tick counter, then services queue/sequence engine when enabled. Synthesis callback `0x8007DA34` requests another tick after 8,333 microseconds. |
 | `0x8000D0B8` | Debug stage-select menu | Runtime-confirmed | Production A-button title route |
 | `0x8000322C` | Embedded image decompression dispatcher | Static-confirmed | Ordinary types come from header byte `+3`; exact header `0x05000000` is special-cased to fighter codec type 5. Type 4 dispatches to `0x80003428`; type 5 dispatches through internal switch arm `0x80003314` (Ghidra `switchD_80003278::caseD_5`, **not** a distinct function entry), which calls `0x80065E00` |
 | `0x80003428` | Type-4 embedded image decoder | Static-confirmed | Separate control/token streams with a 1024-byte ring buffer; exact decode reproduced Water embedded Potion frames byte-for-byte against Fire external Potion payloads |

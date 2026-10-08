@@ -1,5 +1,7 @@
 # Audio system
 
+**Bounded music-engine map (2026-10-08): Static/snapshot-confirmed, full API and speedup cause still Pending.** The production v02 state exposes native WESS sequence/track/voice structures, eight exact Fortress music streams, coherent 120 Hz sequencer/sample clocks, full loaded bank/predictor identities, and intact sample DMA lists. Native AI enqueue returns `-1` when full, while its audio-frame caller ignores that result and advances synthesis/producer bookkeeping. This permits discarded sequenced audio and could explain tempo-only acceleration, but the captured full FIFO does not establish an enqueue failure. See [full reconstruction, limitations, and conditional correction](Production-Rich-Inventory-Music-Static-Investigation).
+
 > **Scope:** This page is the canonical owner for MKMSZ host audio behavior: native gameplay SFX routing, descriptor and runtime-definition architecture, call-chain behavior, stable host-bank conclusions, audio safety rules, and current music status.
 >
 > MKT Toasty donor identification, rejected candidates, source-to-retail mapping, and sound-proof v01-v03 chronology are canonical in [Toasty audio research](Toasty-Audio-Research). Function semantics remain canonical in [Function registry](Function-Registry); addresses are named here only to explain the audio call chain.
@@ -156,7 +158,7 @@ The attempted MKT retail `TS_SK_ITS_OFFICIAL` / `skyousuk` lookup is excluded fr
 
 ## Music
 
-**Pending.** No current MKMSZR research establishes the N64 music sequence format, track table, streaming model, bank ownership, or runtime music-control API. Sound effects and music should therefore remain separate research tracks until evidence shows which lower-level components they share.
+**Partially mapped, broader behavior Pending.** The [2026-10-08 production Inventory investigation](Production-Rich-Inventory-Music-Static-Investigation) statically/snapshot-confirms bounded WESS track/voice structures, current Fortress sequence data, bank/sample-cache ownership, and the synthesis-to-AI call path. It does not establish the complete sequence/control API, all sequence command semantics, or the accelerated-music cause. Preserve the distinction between bounded native evidence and a general subsystem closure.
 
 ## Safety and implementation boundary
 
