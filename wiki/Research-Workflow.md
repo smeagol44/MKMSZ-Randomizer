@@ -22,6 +22,8 @@ The shared repository currently targets the clean **MKMSZ USA Rev. 0** N64 image
 
 When a static investigation establishes a durable function/global identity, signature, type, label, or comment, update the appropriate canonical Wiki/registry and the Ghidra-facing metadata in the same task when practical. Stage-overlay symbols must retain explicit stage/overlay scope rather than being flattened into one global address namespace.
 
+**Extended analysis formats (2026-10-07):** The active repository now has versioned scoped records and Ghidra import/export scripts for structures/enums, verified function signatures, stack-local variables, typed data, comments, bookmarks, and documented relationships/optional guarded references. Its initial curated examples include the native inventory-item ID enum, authoritative four-box backing layout, and bounded trace navigation bookmarks. The established names importer remains separate. The new extended importer preserves existing conflicting local analysis and fails closed on unrecognized program hashes. Overlay scopes must identify their source program/hash; no stage-specific virtual address is promoted as a global identity. Documentation and schemas are at [MKMSZ-Ghidra extended analysis](https://github.com/smeagol44/MKMSZ-Ghidra/blob/main/docs/extended-analysis.md). **Implementation status:** repository code committed; first Ghidra 12.1.2 runtime execution of the new script remains Pending. The importer does not update itself when the Wiki changes; investigators must explicitly commit reviewed new evidence, then users `git pull` and run both import scripts.
+
 ## Types of investigation
 
 - **Static analysis** establishes code, data, address, and control-flow relationships without executing the game.
