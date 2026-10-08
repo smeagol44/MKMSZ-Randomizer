@@ -8,6 +8,23 @@ The earliest verified unsuccessful operation is native full-FIFO enqueue `0x8008
 
 ROM `0x0008B158`, `1440000A → 1440FFFD`, is explicitly rejected for this investigation. It remains an untested mitigation. Retrying can change scheduler timing and hang if AI stops draining. Nothing in the new counter evidence promotes it to a root-cause fix.
 
+## RMG host observer: bounded smoke validation (2026-10-08)
+
+**Runtime-observed diagnostic operation, not root-cause confirmation.** The maintainer used the separate RMG v0.9.0 diagnostic Flatpak from draft [PR #157](https://github.com/smeagol44/MKMSZ-Randomizer/pull/157) and uploaded four Trace v02 event files from a roughly 33-second manual smoke run. Read-only binary decoding validated `MZRHST1` magic, version 1, 56-byte records, exact byte counts, consecutive sequence numbers, and monotonic timestamps:
+
+| Source | Total/retained events | Overwritten | Observation |
+|---|---:|---:|---|
+| AI | 10,043/10,043 | 0 | 1,674 enqueue attempts, 1,674 status reads; zero FULL in either sampled position |
+| VI | 3,938/3,938 | 0 | 1,969 callback+due pairs |
+| RSP | 10,881/10,881 | 0 | 2,511 task-boundary entries; zero recorded RSP cycles at all 5,022 post-run points (consistent with pinned ParaLLEl RSP source, not independently a failure) |
+| Host audio | 6,694/6,694 | 0 | 3,347 SDL push results, all successful; zero host drops |
+
+The host SDL queue sampled **0..7,396 bytes**, below the **17,637-byte threshold**. These results are healthy-path reference measurements, not a reproduction of accelerated music.
+
+At the measured event rates, the v02 rings retain about **12.2 minutes AI, 18.3 minutes VI, 12.8 minutes RSP, and 9.1 minutes host audio**. The canonical eight-minute filled→empty→filled test can fit at similar rates, but host-audio margin is modest; quit normally promptly after its final 30-second closed phase, and always inspect overwritten counters before claiming a complete timeline. Backend rate or stage changes could reduce retention.
+
+This v02 logger observes guest AI register accesses, VI/RSP task boundaries, and host audio submission/drop decisions. It **does not itself record full WESS synthesis generations, task PCM record identity, or native audio-service call provenance**; further discriminating evidence may still be necessary. No game correction, AI retry, merge, or emulator automation was performed.
+
 ## Sources, scope and identities
 
 Evidence labels: **C** checked native code or primary source; **S** decoded snapshot; **R** maintainer runtime report; **H** inference; **U** unavailable. Inputs were read-only. Project Status was read first, followed by the Roadmap, previous static owner, Native HUD/UI, Persistence/Inventory/Lifecycle, Memory/Allocation, Patch Registry, Runtime Validation and relevant audio/resource/scheduling/failure records. Living Ghidra metadata was consulted before adding verified entries.
