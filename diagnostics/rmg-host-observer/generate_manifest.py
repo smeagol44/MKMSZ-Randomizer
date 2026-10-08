@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generate a separate Flatpak manifest from pinned Flathub RMG v0.9.0.
 
 Requires network access in GitHub Actions; never modifies the user's installation.
