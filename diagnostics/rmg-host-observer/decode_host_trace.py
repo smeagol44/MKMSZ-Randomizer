@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Decode the experimental MKMSZR RMG host-side observer traces.
 
 Read-only stdlib. Supply one or more mkmszr-*-trace.bin files.
@@ -6,9 +5,9 @@ All timestamps are host CLOCK_MONOTONIC nanoseconds; cross-ring alignment is
 approximate. Guest Count is only meaningful within same emulator run.
 """
 import argparse
+import struct
 from collections import Counter
 from pathlib import Path
-import struct
 
 HEADER = struct.Struct("=8sIIQQQ")
 # The C structure has uint64_t sequence/ns, ten uint32_t event/count/a...h.
@@ -60,7 +59,7 @@ def read(path: Path):
         prev_seq, prev_ns = seq, ns
     if rows and rows[0][0] != lost:
         raise ValueError(f"{path}: ring first sequence mismatch")
-    return dict(path=str(path), saved=saved, total=total, overwritten=lost, rows=rows)
+    return {"path": str(path), "saved": saved, "total": total, "overwritten": lost, "rows": rows}
 
 
 def report(trace):
