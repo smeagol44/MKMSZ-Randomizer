@@ -39,5 +39,11 @@ rmg["sources"].extend([
     {"type": "shell", "commands": ["python3 observer_patch.py"]},
 ])
 rmg.setdefault("config-opts", []).append("-DINSTALL_DESKTOP_FILE=OFF")
+# The pinned hidapi CMake module installs hidapi-hidraw.pc into /app/lib64.
+# The legacy Raphnet sub-make calls pkg-config directly: expose lib64 explicitly.
+rmg.setdefault("build-options", {}).setdefault("env", {})["PKG_CONFIG_PATH"] = (
+    "/app/lib64/pkgconfig:/app/lib/pkgconfig:"
+    "/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+)
 Path("org.mkmszr.RMGObserver.json").write_text(json.dumps(manifest, indent=2))
 print("Generated isolated Flatpak manifest; source pinned", source["commit"])
