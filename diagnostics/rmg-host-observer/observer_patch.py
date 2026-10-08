@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Apply the MKMSZR observation-only trace to exactly RMG v0.9.0 source.
 
 Run as a Flatpak-builder 'shell' source after checkout, before CMake.
