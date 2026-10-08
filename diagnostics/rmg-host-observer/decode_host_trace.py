@@ -41,7 +41,7 @@ def read(path: Path):
             f"{path}: incompatible signature/version/record size: "
             f"{magic!r} {version} {size}"
         )
-    if saved > 32768 or total < saved or lost != total - saved:
+    if saved > 262144 or total < saved or lost != total - saved:
         raise ValueError(f"{path}: invalid ring header")
     if len(blob) != HEADER.size + saved * RECORD.size:
         raise ValueError(f"{path}: truncated or trailing data")
