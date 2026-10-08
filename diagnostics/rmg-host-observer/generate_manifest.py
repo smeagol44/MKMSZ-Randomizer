@@ -37,7 +37,15 @@ rmg["sources"].extend([
     {"type": "file", "path": "observer_patch.py"},
     {"type": "shell", "commands": ["python3 observer_patch.py"]},
 ])
-rmg.setdefault("config-opts", []).append("-DINSTALL_DESKTOP_FILE=OFF")
+rmg.setdefault("config-opts", []).extend([
+    "-DINSTALL_DESKTOP_FILE=OFF",
+    # GNUInstallDirs defaults to lib64 for the SDK; Flatpak runtime loader
+    # does not search /app/lib64 by default, leading to missing libRMG-Core.so.
+    # RMG shared core and internal plugins belong under /app/lib.
+    "-DCMAKE_INSTALL_LIBDIR=lib",
+    # Imported HIDAPI from the pinned Flathub module remains in /app/lib64.
+    "-DCMAKE_INSTALL_RPATH=/app/lib:/app/lib64",
+])
 # The pinned hidapi CMake module installs hidapi-hidraw.pc into /app/lib64.
 # The legacy Raphnet sub-make calls pkg-config directly: expose lib64 explicitly.
 rmg.setdefault("build-options", {}).setdefault("env", {})["PKG_CONFIG_PATH"] = (
