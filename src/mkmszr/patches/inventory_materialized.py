@@ -168,6 +168,9 @@ EXPECTED_REQUIREMENT_GATE = words_blob(
 CHECK_GATE_ROM = 0x018194C4
 CHECK_CONTINUE_K1 = 0xA01B2CF4
 CHECK_DRAW_K1 = 0xA01B2D5C
+VANILLA_CHECK_GATE_ROM = 0x018194A0
+VANILLA_CHECK_CONTINUE_K1 = 0xA01B2CD0
+VANILLA_CHECK_DRAW_K1 = 0xA01B2D38
 EXPECTED_CHECK_GATE = words_blob(
     [
         lui("t0", 0xA01B),
@@ -361,7 +364,11 @@ def build_requirement_gate() -> bytes:
     return e.finish()
 
 
-def build_check_gate() -> bytes:
+def build_check_gate(
+    *,
+    continue_k1: int = CHECK_CONTINUE_K1,
+    draw_k1: int = CHECK_DRAW_K1,
+) -> bytes:
     e = Emitter()
     e.emit(
         lw("t8", 0x18, "sp"),
@@ -371,7 +378,7 @@ def build_check_gate() -> bytes:
     e.bne("t9", "t7", "prepare")
     e.emit(NOP)
     e.emit(addiu("t6", "t8", CHECK_TEXT_OFF))
-    _jump_abs(e, CHECK_DRAW_K1)
+    _jump_abs(e, draw_k1)
 
     e.label("prepare")
     e.emit(
@@ -382,7 +389,7 @@ def build_check_gate() -> bytes:
         addiu("t1", "t0", 0x20),
         addiu("t2", "zero", 8),
     )
-    _jump_abs(e, CHECK_CONTINUE_K1)
+    _jump_abs(e, continue_k1)
     return e.finish()
 
 
@@ -462,6 +469,10 @@ EMPTY_POWERS_WRAPPER = build_empty_powers_wrapper()
 OPEN_WRAPPER = build_open_wrapper()
 REQUIREMENT_GATE = build_requirement_gate()
 CHECK_GATE = build_check_gate()
+VANILLA_CHECK_GATE = build_check_gate(
+    continue_k1=VANILLA_CHECK_CONTINUE_K1,
+    draw_k1=VANILLA_CHECK_DRAW_K1,
+)
 TABLE_GATE = build_table_gate()
 
 _HELPERS = {
@@ -500,6 +511,9 @@ class InventoryMaterializedHudPatch:
 
     name = "inventory-rich-materialized"
 
+    def __init__(self, *, requirement_exact: bool = True) -> None:
+        self.requirement_exact = requirement_exact
+
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
         del context
 
@@ -514,8 +528,13 @@ class InventoryMaterializedHudPatch:
         rom.expect_bytes(INVENTORY_OPEN_HOOK_ROM, EXPECTED_INVENTORY_OPEN_HOOK)
         rom.expect_bytes(INVENTORY_LOOP_HOOK_ROM, _expected_switch_trampoline())
         rom.expect_bytes(TABLE_COMPUTE_ROM, EXPECTED_TABLE_COMPUTE)
-        rom.expect_bytes(REQUIREMENT_GATE_ROM, EXPECTED_REQUIREMENT_GATE)
-        rom.expect_bytes(CHECK_GATE_ROM, EXPECTED_CHECK_GATE)
+        if self.requirement_exact:
+            rom.expect_bytes(REQUIREMENT_GATE_ROM, EXPECTED_REQUIREMENT_GATE)
+            rom.expect_bytes(CHECK_GATE_ROM, EXPECTED_CHECK_GATE)
+        else:
+            # Vanilla requirement text is immutable "REQ. XP 5100"; only the
+            # CHKS path is mutable, and its helper body is 0x24 bytes earlier.
+            rom.expect_bytes(VANILLA_CHECK_GATE_ROM, EXPECTED_CHECK_GATE)
         rom.expect_bytes(HUD_DATA_ROM + STATUS_FLAG_OFF, b"\x00" * 8)
 
         if bytes(rom.data[LEGEND_PAYLOAD_END_ROM:MATERIALIZED_PAYLOAD_END_ROM]) != (
@@ -562,8 +581,14 @@ class InventoryMaterializedHudPatch:
         # Only the mutable table/status preparation seams change inside the
         # already-promoted HUD.  Rich rows and paper-title rendering stay exact.
         rom.write_bytes(TABLE_COMPUTE_ROM, _jump_trampoline(TABLE_K1))
-        rom.write_bytes(REQUIREMENT_GATE_ROM, _jump_trampoline(REQUIREMENT_K1))
-        rom.write_bytes(CHECK_GATE_ROM, _jump_trampoline(CHECK_K1))
+        if self.requirement_exact:
+            rom.write_bytes(REQUIREMENT_GATE_ROM, _jump_trampoline(REQUIREMENT_K1))
+            rom.write_bytes(CHECK_GATE_ROM, _jump_trampoline(CHECK_K1))
+        else:
+            rom.write_bytes(
+                VANILLA_CHECK_GATE_ROM,
+                _jump_trampoline(CHECK_K1),
+            )
 
         if bytes(rom.data[TRANSPORT_ROM:LEGEND_PAYLOAD_END_ROM]) == prefix:
             raise AssertionError(
@@ -573,7 +598,11 @@ class InventoryMaterializedHudPatch:
         return (
             "Fortress preloads the existing 0x1200 Inventory HUD allocation before its rewind anchor",
             "empty Powers mode accepts fresh pure Left/Right and reuses the promoted four-box switch transaction",
-            "REQ/CHKS and STG CHECKS KEYS mutable values are materialized per Inventory session",
+            (
+                "REQ/CHKS and STG CHECKS KEYS mutable values are materialized per Inventory session"
+                if self.requirement_exact
+                else "Vanilla REQ. XP 5100 remains static; CHKS and STG CHECKS KEYS are materialized per Inventory session"
+            ),
             "item rows, paper title, portraits, fonts, palettes, spacing and native text renderer remain unchanged",
             (
                 f"materialized file 0x1A end 0x{MATERIALIZED_PAYLOAD_END_ROM:08X}; "
