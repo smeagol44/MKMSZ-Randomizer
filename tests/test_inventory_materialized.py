@@ -30,6 +30,8 @@ from mkmszr.patches.inventory_materialized import (
     TABLE_COMPUTE_ROM,
     TABLE_GATE,
     TABLE_ROM,
+    VANILLA_CHECK_GATE,
+    VANILLA_CHECK_GATE_ROM,
     InventoryMaterializedHudPatch,
 )
 from mkmszr.patches.inventory_menu_switch import (
@@ -51,7 +53,7 @@ def _jump_trampoline(target: int) -> bytes:
     return words_blob([*address_words("t9", target), jr("t9"), NOP])
 
 
-def _post_legend_shape() -> RomImage:
+def _post_legend_shape(*, requirement_exact: bool = True) -> RomImage:
     data = bytearray(GLOBAL_OUTPUT_SIZE)
     data[TRANSPORT_ROM:TRANSPORT_END_ROM] = b"\xFF" * (
         TRANSPORT_END_ROM - TRANSPORT_ROM
@@ -79,10 +81,15 @@ def _post_legend_shape() -> RomImage:
         INVENTORY_LOOP_HOOK_ROM : INVENTORY_LOOP_HOOK_ROM + 16
     ] = _jump_trampoline(SWITCH_MODULE_K1)
     data[TABLE_COMPUTE_ROM : TABLE_COMPUTE_ROM + 16] = EXPECTED_TABLE_COMPUTE
-    data[
-        REQUIREMENT_GATE_ROM : REQUIREMENT_GATE_ROM + 16
-    ] = EXPECTED_REQUIREMENT_GATE
-    data[CHECK_GATE_ROM : CHECK_GATE_ROM + 16] = EXPECTED_CHECK_GATE
+    if requirement_exact:
+        data[
+            REQUIREMENT_GATE_ROM : REQUIREMENT_GATE_ROM + 16
+        ] = EXPECTED_REQUIREMENT_GATE
+        data[CHECK_GATE_ROM : CHECK_GATE_ROM + 16] = EXPECTED_CHECK_GATE
+    else:
+        data[
+            VANILLA_CHECK_GATE_ROM : VANILLA_CHECK_GATE_ROM + 16
+        ] = EXPECTED_CHECK_GATE
     data[0x01815198:0x018151A0] = b"\x00" * 8
     return RomImage(data=data, _original=bytes(data))
 
@@ -166,6 +173,21 @@ def test_materialized_inventory_appends_inside_existing_transport() -> None:
     assert "materialized" in notes[2]
 
 
+
+
+def test_materialized_inventory_supports_vanilla_static_requirement_layout() -> None:
+    rom = _post_legend_shape(requirement_exact=False)
+
+    InventoryMaterializedHudPatch(requirement_exact=False).apply(
+        rom,
+        PatchContext(seed="TEST"),
+    )
+
+    assert bytes(
+        rom.data[VANILLA_CHECK_GATE_ROM : VANILLA_CHECK_GATE_ROM + 16]
+    ) == words_blob([0x3C19A01B, 0x373932A0, 0x03200008, 0x00000000])
+    assert len(VANILLA_CHECK_GATE) == len(CHECK_GATE)
+
 def test_pipeline_installs_materialized_inventory_after_legend() -> None:
     plan = GlobalMaterializationPlan(
         assignments=(),
@@ -176,3 +198,7 @@ def test_pipeline_installs_materialized_inventory_after_legend() -> None:
     types = [type(patch) for patch in patches]
 
     assert types.index(InventoryLegendPatch) < types.index(InventoryMaterializedHudPatch)
+    materialized = next(
+        patch for patch in patches if isinstance(patch, InventoryMaterializedHudPatch)
+    )
+    assert materialized.requirement_exact is False
