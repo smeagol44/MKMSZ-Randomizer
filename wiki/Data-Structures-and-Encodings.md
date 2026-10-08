@@ -156,7 +156,7 @@ The type-5 wrapper is:
 | `+0x08` | Packed decode dimensions, high 16 bits height / low 16 bits width |
 | `+0x0C` | Compressed bitstream |
 
-`0x80003314` resolves the table pointer and calls `0x80065E00`. The output arena reservation is `align4(width) * align2(height)`. A fighter's visible descriptor dimensions may remain unpadded while the type-5 backing buffer uses decoder-aligned dimensions.
+The Type-5 switch arm at `0x80003314` (inside the decoder dispatch function, not a separate function entry) resolves the table pointer and calls `0x80065E00`. The output arena reservation is `align4(width) * align2(height)`. A fighter's visible descriptor dimensions may remain unpadded while the type-5 backing buffer uses decoder-aligned dimensions.
 
 The table begins with `u16 rows_per_block` and `u16 model_count`, followed by 104-byte model entries. Stock Sub-Zero's main table at file-`0x87` offset `+0x14AC` begins `0002 0004`: two rows per block and four models. A model contains:
 
