@@ -49,6 +49,41 @@ The failure **self-terminates**: final FULL read at t=47.624s, first later accep
 
 **Next lowest-cost manual discriminator (no new ROM required):** cold-boot the *same prefilled ROM* and observer/settings for short (~60–75s) sessions, contrasting (1) stationary Box 1; (2) rapid selection restricted to first four **ordinary** items (Herbs, Potion, Shield; do not enter any key/crystal); and (3) one rapid full Box 1 sweep through the actual stage keys/crystals, then idle. At minimum repeat the positive full-sweep route once before claiming reproducibility. Match stage/menu/open timing as closely as possible and record approximate sweep seconds. If ordinary-only remains clean while key traversal repeatedly causes FULL bursts, prioritize synchronous portrait ROM DMA/source identity and per-selection frontend. If both sweep types fail, prioritize generic selection/text/navigation CPU effects or background phase. The observer still lacks input/PI markers; a subsequent precise first-event chronology would need a bounded observer-only enhancement. Do not build a rendering deletion or AI enqueue retry, merge either diagnostic PR, or assert a production fix.
 
+## Populated Fortress negative controls — Trace (6) and ordinary-only (2026-10-09)
+
+**Maintainer Runtime-observed: both comparison runs did not reproduce accelerated music.** In the normal-items-only experiment, there was no reported speedup or appreciable crunching; in the second/full-item cursor experiment, there was no speedup, and only a few isolated audible clips were reported. Both used the new prefilled Fortress diagnostic and the separate opt-in RMG observer. **There are no input/phase/onset markers in the traces:** exact cursor action times cannot be reconstructed; do not attribute the few clips to a particular dropped packet.
+
+**Read-only input validation:** all eight files contain complete `MZRHST1` v1 56-byte records, sequential event IDs and monotonic per-ring timestamps, with **zero overwritten entries**.
+
+| Run | Trace | Events | SHA-256 |
+|---|---|---:|---|
+| Full-sweep retry (6) | VI | 26,300 | `1927d45c517a8088d9cc43ff5ecf149ed05c1d775a0a6c4af15d8f133ec3b32d` |
+| Full-sweep retry (6) | RSP | 68,450 | `6f89ecafb274b064f114f98a927a2481daffecc1cf0441ea567e631a6ef5cf83` |
+| Full-sweep retry (6) | Host audio | 51,404 | `0cce60a890f815a8c167a760709fa3e85d960433323b7355e1c7ac3be9b439f9` |
+| Full-sweep retry (6) | AI | 77,117 | `c94c1188dececc35261315d9b223e7e29b9cd77eea834f627855cf3e6074ee30` |
+| Normal items only | VI | 13,218 | `c9e69a25306d9533d3f0611ab8c149c63fef5ed1820d7d43337525cb05abed4a` |
+| Normal items only | RSP | 34,016 | `eaede42430da447a2491e9282afcb3fc78efd48715befb1e128bba6fd1b02194` |
+| Normal items only | Host audio | 25,254 | `b4d6130271a3c8d946521286bd316e24ee4c9e8beecf2902a0667d4269e36b8d` |
+| Normal items only | AI | 37,883 | `b27aa3788fefc47c47d0227ad92237856ab5077150bca85ad09909c9f20755c0` |
+
+| Measurement | Normal-items-only | Full-sweep retry (6) |
+|---|---:|---:|
+| VI host-timestamp span | 110.27s / 6,609 VI callbacks | 219.32s / 13,150 VI callbacks |
+| Native AI writes | 6,314 | 12,851 |
+| Native AI_STATUS.FULL read pairs | **0** | **4 isolated paired failures** |
+| RMG SDL host-discard events | **0** | **14 drops / 14,920 bytes** |
+| SDL push calls returning failure | 0 | 0 |
+| Host queue sampled maximum | **17,548 bytes** | **17,724 bytes**, above the 17,637-byte drop guard |
+| Host output frequency / speed | 22,047 Hz / 100% | 22,047 Hz / 100% |
+
+The four isolated full-FIFO rejections in the long run occur at **t=122.456, 157.373, 192.207 and 192.323 seconds** from the first VI event. They do **not** start a sustained positive-feedback loop. Their next accepted audio writes include 704- or 688-sample buffers (AI_LEN of 0 or 8 bytes), followed by return to nominal 352/368/384-sample cycling. Their roughly 35-second separation for the first three is compatible with a slowly changing AI/VI feedback phase **as a hypothesis**, not proof of an oscillator or Inventory event.
+
+**More robust independent host-clipping mechanism:** RMG starts discarding audio whenever queued bytes reach its roughly 0.2-second threshold (**17,637 bytes**). In both negative runs, pre-drop queue growth during t=15..95s fits **~133 bytes/host-second** (linear fits 132.82 and 133.13 B/s). A nominal 60-VI/s guest output of 368 stereo samples × 4 bytes is 88,320 B/s, versus 22,047 × 4 = 88,188 B/s host playback—**132 B/s surplus**. This precisely accounts for the observed gradual host-queue saturation without invoking any changed Inventory workload. It is a host producer-versus-playback rate mismatch at this operating point; do **not** conflate it with the different emulated-Count AI DMA timing. In the normal-only run, its queue reaches 17,548 bytes but the recording ends just before crossing the guard. In the long run, the first recorded SDL fragment drop is at **t=111.790s**, *before* the first native FULL pair, and further host drops persist at later times. The 14 dropped chunks total 14,920 bytes = **3,730 stereo frames, ~0.169 seconds at 22,047Hz spread across many events**. This is strong evidence for an independent intermittent clipping-risk path, but not direct acoustic attribution of each maintainer-heard clip.
+
+**Relation to successful Trace (5):** Trace (5)'s 80 rejected submissions in 5.27s and accelerated music remain a genuine runtime reproduction; these negative controls neither refute the feedback rejection mechanism nor establish that cursor movement is necessary or sufficient. Unlike the Trace (5) burst, both negative runs maintain essentially nominal 60Hz VI and accepted native PCM cadence without a runaway failure. The positive/negative comparison weakens a deterministic “key/portrait switch always causes speedup” theory and favors a *phase-sensitive* guest AI producer/consumer transition as a competing explanation. The rich renderer/portrait ROM DMA can still act as an intermittent phase perturbation, but its actual timing at onset has not been observed. No production correction, RMG patch, retry, emulation automation or new ROM follows.
+
+**Recommended next action:** Stop blind manual reproductions. First resolve the native AI_LEN/AI FIFO feedback dynamics and how a single rejection tips (or does not tip) the cycle, by analyzing complete pre-failure event intervals against the negative near-boundary cases. If renderer attribution is still needed, extend **only the separate opt-in host observer** with bounded input/selection/PI-DMA provenance and audio-generation/service timing (no extra guest AI register reads), then collect on a natural failure. Keep PR #156/#157 draft and the upstream root cause Pending.
+
 ## RMG host observer: bounded smoke validation (2026-10-08)
 
 **Runtime-observed diagnostic operation, not root-cause confirmation.** The maintainer used the separate RMG v0.9.0 diagnostic Flatpak from draft [PR #157](https://github.com/smeagol44/MKMSZ-Randomizer/pull/157) and uploaded four Trace v02 event files from a roughly 33-second manual smoke run. Read-only binary decoding validated `MZRHST1` magic, version 1, 56-byte records, exact byte counts, consecutive sequence numbers, and monotonic timestamps:
