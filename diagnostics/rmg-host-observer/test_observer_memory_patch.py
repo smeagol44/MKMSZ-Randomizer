@@ -6,7 +6,6 @@ from pathlib import Path
 
 from observer_memory_patch import INJECT, apply
 
-
 PREFIX = r"""
 #include <stdint.h>
 #include <stddef.h>
