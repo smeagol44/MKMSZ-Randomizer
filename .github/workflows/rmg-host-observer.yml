@@ -1,0 +1,47 @@
+name: RMG host observer Flatpak (manual)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'diagnostics/rmg-host-observer/**'
+      - '.github/workflows/rmg-host-observer.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-observer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install flatpak-builder and tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder python3-yaml
+          flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak --user install -y flathub org.kde.Platform//6.11 org.kde.Sdk//6.11
+      - name: Generate pinned side-by-side manifest
+        working-directory: diagnostics/rmg-host-observer
+        run: python3 generate_manifest.py
+      - name: Build separately installed observer
+        working-directory: diagnostics/rmg-host-observer
+        run: |
+          flatpak-builder --user --force-clean --disable-rofiles-fuse \
+            --install-deps-from=flathub --repo=flatpak-repo flatpak-build \
+            org.mkmszr.RMGObserver.json
+          flatpak build-bundle flatpak-repo RMG-Host-Observer-v0.9.0.flatpak org.mkmszr.RMGObserver
+      - name: Verify runtime linker paths and observer payload
+        working-directory: diagnostics/rmg-host-observer
+        run: |
+          test -f flatpak-build/files/lib/libRMG-Core.so
+          test -f flatpak-build/files/bin/RMG
+          readelf -d flatpak-build/files/bin/RMG | grep -E '(RPATH|RUNPATH)' | grep '/app/lib'
+          find flatpak-build/files/lib/RMG -maxdepth 4 -type f | head -30
+          test -s RMG-Host-Observer-v0.9.0.flatpak
+      - name: Archive for independent review (not runtime validated)
+        uses: actions/upload-artifact@v4
+        with:
+          name: rmg-host-observer-v0.9.0-flatpak
+          path: diagnostics/rmg-host-observer/RMG-Host-Observer-v0.9.0.flatpak
+          retention-days: 14
