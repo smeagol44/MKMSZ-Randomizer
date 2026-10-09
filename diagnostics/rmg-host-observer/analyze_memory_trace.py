@@ -54,8 +54,8 @@ def analyze(vi: list[tuple], ai: list[tuple] | None = None) -> dict:
     for current, digest in zip(state, hashes):
         if digest[0] != current[0] + 1 or digest[3] != current[3]:
             raise ValueError("memory records are not adjacent within a VI")
-        _, ns, _, _, cursor, base, hud, stage, magic, frame, peak, flags = current
-        _, _, _, _, h_code, h_legend, h_tail, cached_id, box, work, index, cursor2 = digest
+        _, ns, _, _, cursor, base, hud, stage, magic, _frame, _peak, _flags = current
+        _, _, _, _, h_code, h_legend, h_tail, _cached_id, _box, _work, _index, cursor2 = digest
         t = round((ns - first_ns) / 1e9, 5)
         active = base == FLOOR and magic == MKSV
         if active:
