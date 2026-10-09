@@ -8,6 +8,31 @@ The earliest verified unsuccessful operation is native full-FIFO enqueue `0x8008
 
 ROM `0x0008B158`, `1440000A → 1440FFFD`, is explicitly rejected for this investigation. It remains an untested mitigation. Retrying can change scheduler timing and hang if AI stops draining. Nothing in the new counter evidence promotes it to a root-cause fix.
 
+## Trace (10): Sound-call NOP alone does NOT cure the selector-helper-associated FIFO runaway (2026-10-09)
+
+**Maintainer Runtime-confirmed audible acceleration and clipping; independent trace-confirmed prolonged native FIFO rejection; exact upstream trigger Pending.** The attached ROM is the guarded **sound-call-only NOP** variant `MKMSZR_selector-move-call-off_fortress_proof_v01.z64` (SHA `7ef2ce16bddcc5716df8aa030c5eaf367363a3bbdf882f6b63ceee2ba73bb25e`). Against original failing prefilled Fortress Trace (7) input SHA `13346ae68efd99fb9d07929d2d1016eba1fd5d065170d58235522fd9a6e505b1`, the only gameplay code change is ROM `0xE29C: 0C019306` (native MOVE SFX wrapper `JAL 0x80064C18`) → `00000000`, with N64 CRC recomputed. The Safe Stage Select helper `0x8000D67C` is **still reached** via `0xDD70`, including input-edge logic, register manipulation, and fixed instruction count; no sound plays. No emulator replacement or production changes.
+
+| Measurement | Sound+helper ON, Trace 7 | Entire helper OFF, Trace 9 | Helper ON, SFX JAL NOP, Trace 10 |
+|---|---:|---:|---:|
+| First-VI-relative capture | 130.062 s | 251.722 s | **65.657 s** (user stopped after ongoing audible failure) |
+| Stage 9 first observed | t=10.284s | t=13.158s | **t=13.378s** |
+| Native FIFO FULL paired failures | 74 | 2 isolated | **352 consecutive**, t=42.206744..65.607132s (last just before recording ends) |
+| Longest all-368-frame output run | 2,383 (~39.7s) | 9 | **3** |
+| In-burst accepted frame sizes | 704/368/400 mix | No sustained burst | **688/416/368** repeating |
+| Separate SDL threshold drops | 4 | 22 | **0** |
+| Accepted AI DMA duration | 551 Count/byte | 551 Count/byte | 551 Count/byte |
+| Sampled arena max | `0x8028CD48` | `0x8028CD48` | **`0x8028CD48`** |
+| HUD data pointer / resident cursor | `0x801FEBA0` / `0x8028C538` | identical | identical |
+| Static rich/legend/helper code FNV32 | `21E410DE/2298F9CB/09615F1E` | identical | identical |
+
+Trace 10 consists of **20,753 AI, 15,720 VI (3,930 complete memory sample pairs), 20,410 RSP, 13,832 host-audio records, with saved=total and lost=0**. SHA-256: AI `020f821caaa52e25b7488550ddaf32cf99969ab0b1314fbf3d5e7eed49f9ecab`; VI `ae011752d45b33938249cb2c3d6f7cfd8d8f515204bf54477765146fb505f426`; RSP `3906781c297b96caa361564ca33bc5699f057fd23198ee6acf8dd040dcf1e508`; host `9d1107ad39ee7d5a9a8597ed9b594635dee26412b344f8b3d1ca98c65766318f`. Each failed native service gives **two** observed FULL reads in the instrumentation, not two guest enqueue attempts; 704 FULL reads → 352 failures, with ~15 attempts/second throughout continuous episode. All three monitored code hashes remain constant in stage 9; memory sampling does not rule out transient or unobserved writes. Native RSP task cadence is ~75/s within the burst, and SDL queue-threshold did **not** drop an audio fragment in this capture.
+
+**Interpretation:** The effect of **playing descriptor 0x1FC is not necessary** for a sustained accelerated-music cycle in this production composition, contrary to the leading sound-voice-lifetime explanation after Trace (9). The common change between failing Traces 7/10 and the long healthy Trace 9 is executing the selector movement helper, or the CPU/audio timing/phase resulting from executing it. The particular 39.7s 368-only precursor is **not necessary** for runaway (it is absent in Trace 10). The old rejected confirmation-chime v02 remains a separate unproven historical incident. This refines the suspected upstream condition to **frontend helper register/ABI vs clock phase**, without proving the helper changes RAM illegally or that RMG is solely responsible.
+
+**Static check of actual helper:** `ROM 0xE290 / runtime 0x8000D690: addu s0,ra,zero` is reached on the helper call's branch-delay path even for no movement; `ROM 0xE2A8 / runtime 0x8000D6A8: jr s0` uses it for return. Because `s0` is callee-saved, this is an ABI-preservation concern, although the frontend selector itself saves `s0` in its prologue and reloads it later in the draw loop, so actual misuse/invariant break is **NOT proven**. A more discriminating two-instruction **register-only** proof was built *from the failed Trace 10 ROM*, with the native SFX call still NOPed: `MKMSZR_selector-move-abi-preserve_fortress_proof_v01.z64` SHA `73d8e64b078ff6211b9e059e6f46bdb90f2bef9bd829c2a7e52f41392b77fc68`. Its only gameplay differences are `ROM E290:03E08021→03E0C821` (preserve return in caller-saved `t9`) and `ROM E2A8:02000008→03200008` (`jr t9`), plus recalculated CIC6102 CRC1/2 `2A85E778/8D9A6F0A`. This keeps helper logic, instruction count, SFX call disabled, and stage/Inventory/test options unchanged. The native selector itself does not reference `t9` in statically scanned `[0xDCB8,0xDE60)`, and the no-call helper has no nested clobber of `t9`. Guarded SHA/expected-word and precise diff tests pass. **No runtime test yet; do not call this a correction.**
+
+**Next closure gate (only if maintainer wants another brief manual run):** use the exact v02 host observer and same prefilled Fortress/Box 1 route, cold boot the `s0`-preserving disposable proof, and compare guest FIFO FULLs/accepted buffer shapes with Trace 10. If it still fails, `s0` alone isn't the culprit on that route; concentrated work should move to frontend helper timing/initial audio phase and an emulator-independent control. If it stays stable, replicate before treating `s0` as causal because 60Hz/AI DMA phase makes short-lived negative outcomes nondeterministic. No guest retry patch, new cave ownership, or production merge authorized.
+
 ## Trace (9): selector MOVE helper disabled, stable long-session negative control (2026-10-09)
 
 ### Trace (9) accepted single-site negative: MOVE SFX-off avoids severe music runaway (2026-10-09)
