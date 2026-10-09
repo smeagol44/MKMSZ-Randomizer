@@ -78,6 +78,42 @@ The host-audio ring's first 146s were overwritten, but all five analysis windows
 
 **Remaining gate:** a matched instrumentation/production proof that marks Inventory open/box-switch/close and native audio generation/service dispatch in guest Count, allowing the earliest timing-phase shift to be attributed to a concrete operation without changing visual behavior. Do not apply AI enqueue retry or promote PR #156 on this evidence alone.
 
+## Direct-entry Fortress no-input test: transient crunching, guest floor lock and host queue (2026-10-08)
+
+**Runtime-observed:** The maintainer entered Fortress directly through legal screen → title → Safe Stage Select (**Phase 0**), waited ~30s with Inventory closed (Phase 1), opened occupied box 1 for ~3 minutes without any input (Phase 2), switched to empty box 3 for ~1 minute (Phase 3), returned through box 4 to box 1 for ~1 minute (Phase 4), then **added a separate ~1-minute phase moving the selection two slots downward in box 1** before closing Inventory (Phase 4b). Final Inventory-closed phase ended early (~25s) when an enemy killed the idle player. **No savestate save/load, pause, or emulator restart** occurred during the recording. Unlike the earlier post-Kia run, no music-speedup episode was heard, but the maintainer reported substantial **audio crunching only after first navigating to box 3**. Audible onset is a subjective observation and not timestamped by host event markers.
+
+**Read-only decoded inputs:** four Trace v02 host files, RMG v0.9.0 Flatpak observer, 56-byte `MZRHST1` event records. All four have validated headers/lengths, sequence continuity and nondecreasing CLOCK_MONOTONIC timestamps, and **zero records overwritten**. Times below are in seconds from the first VI event (the initial ~5s do not contain host audio/AI events).
+
+| Host trace | Retained/total | Span (seconds) | SHA-256 |
+|---|---:|---:|---|
+| `mkmszr-vi-trace(3).bin` | 51,940/51,940 | 432.931 | `1dd5adca71a951d953b57fb800e639f753e48937efec9ab762152e2e51956a9b` |
+| `mkmszr-rsp-trace(3).bin` | 148,725/148,725 | 432.013 | `71c412a5999fc1132179a1925469c17c06d71f4542f9012ab0f34dac04c950aa` |
+| `mkmszr-host-audio-trace(3).bin` | 102,686/102,686 | 427.880 | `0391a32466952fb7df24bbb3e58514fa23b385a24904277d70a192894eff5e6d` |
+| `mkmszr-ai-trace(3).bin` | 154,036/154,036 | 428.030 | `5193f4c1dc70f7afa74f4b77c61985b6026b2d97a058bce807f0f0c3a3b34ebc` |
+
+RSP first-run task cadence is ~90/s from ~t13–42, ~80/s t44–405 while Inventory remains open, and ~90/s again at t408–433. VI remains ~60/s. This brackets Inventory opening near **t43** and closing near **t407**; internal box changes are **inferred from the maintainer's approximate durations**, not recorded input events: empty box 3 ~t223, return to occupied box 1 ~t283, downward selection movement ~t343.
+
+| Estimated state/window (seconds) | FULL AI_STATUS observations | Host SDL discarded fragments (bytes) | Host accepted PCM rate |
+|---|---:|---:|---:|
+| Phase 0+1, prior to opening, 5–43 | 0 | 0 | ~88,320 B/s in stable part |
+| Phase 2: idle occupied box 1, 43–223 | 4 reads, **2 close pairs** | **13 / 14,664 B** | ~88,230 B/s including drops |
+| Phase 3: idle empty box 3, 223–283 | 2 reads, **1 pair** | **7 / 8,336 B** | ~88,181 B/s including drops |
+| Phase 4: returned occupied box 1, 283–343 | 3 reads, **1 pair plus 1 isolated transient read** | **1 / 1,296 B** | shifts to ~84,480 B/s |
+| Phase 4b: selection moved in box 1, 343–403 | 0 | 0 | **84,480 B/s** |
+| Phase 5: closed Inventory, 403–433 | 0 | 0 | **~84,480 B/s** |
+
+The four FULL-status **pairs** occur at t120.776, t120.893, t257.395 and t291.429, consistent with four native guest FIFO-full enqueue rejections; a **single additional FULL read at t291.546** is followed by DMA completion and a non-FULL status before any new AI attempt and must not be automatically counted as a fifth rejection. There is **no prolonged guest rejection burst** in this recording. Every recorded `SDL_PutAudioStreamData` call returned success, but the plugin's earlier explicit queue-threshold guard **discarded 21 PCM fragments, 24,296 bytes**, at t110.859–286.029.
+
+**Host producer/consumer finding:** Recorded RMG audio DAC sample rate remains **22,047 Hz**, speed setting **100%**, and the plugin's 0.2-second queue threshold is **17,637 bytes** throughout. The queue rises even before Inventory opens: at t10–100, the native source normally produces **368 samples × 60 VI/s = 22,080 samples/s = 88,320 B/s** against **22,047 × 4 = 88,188 B/s** sink consumption, a nominal **132 B/s surplus (~0.15%)**. The gradual queue build reaches threshold near t110; dropped fragments recur roughly every ten seconds thereafter, including *well before* the first user-reported audible crunch at/after the box-3 switch. Their occurrence does not independently establish the rich HUD as cause.
+
+**Distinct guest feedback transition:** At t291.429, a FULL read-pair occurs with current AI_LEN 8 bytes just before DMA completion. At ~t291.546, another isolated FULL observation coincides with DMA completion and a fresh 1,400-byte remaining-length read. From **t291.562 until recording end**, every accepted guest AI PCM submission is **1,408 bytes = 352 samples per VI**, with persistent AI_LEN read **1,400 bytes** and no additional FULL status: before that, regular accepted sizes cycle **1,408/1,472/1,536 bytes (352/368/384 samples; average 368)**. The native head-only feedback expression then perpetuates the minimum **352-sample** choice. This is an observed **low-output steady regime**, not merely an inference from the sound.
+
+In the low-output regime, native AI DMA duration is **775,808 emulated Count units**, versus median VI interval **811,092**, leaving a ~**35,284-Count** (~0.7ms) inter-frame drain gap. Host PCM supply becomes **352×60×4 = 84,480 B/s**, **3,708 B/s (~4.2%) below** the nominal playback demand of 88,188 B/s. Host queue decreases from ~16 KiB to nearly empty within ~4s around t292–296, and subsequently oscillates ~28–1,436 bytes with **zero additional host queue-overflow drops**. This establishes a credible sustained **underrun/crackling-risk mechanism** in addition to the earlier small host queue-overflow losses. Underflow was not directly logged as an SDL device event, so do **not** claim every audible crunch has been proven to come from host underruns.
+
+**Causality and scope:** The transition to 352-sample-only output occurs several seconds after the approximate box-3→box-1 return, not precisely at the box-3 switch; RSP cadence stays ~80/s throughout those phases. Both the host queue build and guest FIFO-full observations precede/straddle box 3. The audio remains in the low-output regime through the extra selection movement and Inventory closure. The earlier accelerated-music run had a major **transient** native rejection burst, whereas this run has **four isolated failed-enqueue pairs, recurring host queue overflow, and a long-lived low-supply attractor**. These are related parts of the game's adaptive guest audio and RMG host buffering, but this evidence alone does **not** prove a single upstream rich-Inventory render operation triggers both audible symptoms. A native audio feedback/VI phase stability audit, with a matched no-Inventory or other-stage control and observer-disabled parity if needed, is more justified than removing rich HUD visuals or applying the rejected AI enqueue spin-retry.
+
+**No correction/ROM/emulator automation was performed.** Keep the accelerated-music release blocker Pending and PR #156 draft/unmerged. Diagnostic PR #157 remains separate.
+
 ## Sources, scope and identities
 
 Evidence labels: **C** checked native code or primary source; **S** decoded snapshot; **R** maintainer runtime report; **H** inference; **U** unavailable. Inputs were read-only. Project Status was read first, followed by the Roadmap, previous static owner, Native HUD/UI, Persistence/Inventory/Lifecycle, Memory/Allocation, Patch Registry, Runtime Validation and relevant audio/resource/scheduling/failure records. Living Ghidra metadata was consulted before adding verified entries.
