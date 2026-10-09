@@ -48,3 +48,34 @@ It refuses overwritten trace rings and reports arena bounds, HUD pointer validit
 **Shortest useful manual route, after CI/installation and parity:** cold-boot prefilled Fortress diagnostic v01 through Safe Stage Select, open rich Inventory, move selection through both ordinary and key entries for 30 seconds and leave idle until 90–120 seconds after entry. End earlier if an audio symptom occurs; exit normally, preserving all VI/AI/RSP/host-audio traces. An ordinary-items-only variant is optional if the first capture contains informative violations. No combat or stage progression is required. Record host time of audible symptom and whether a savestate or pause was used. This is a first-pass observation, not exhaustive validation. The existing severe Trace (5) cannot be retrospectively given new memory events.
 
 **Release gate:** this tool does not authorize changing 16 KiB arena floor, deleting Toasty/controls/HUD, installing native AI retry, declaring an emulator defect, or merging diagnostic PRs. The first offending write/allocation/owner must still be identified by reproducible evidence before proposing a guarded native change.
+
+## v03 controlled timing experiment — optional, NOT production
+
+[Proposed experimental branch](https://github.com/smeagol44/MKMSZ-Randomizer/tree/diagnostic/rmg-ai-duration-rational-v03) adds **only an opt-in host Mupen64Plus AI DMA duration calculation variant**. The default timing expression remains unchanged when the flag is absent or not exactly \`1\`. It retains the v02 VI memory and v01 audio observers. This is **not an accepted gameplay fix**, hardware equivalence claim, or bypass for rejected AI FIFO retries.
+
+Pinned RMG v0.9.0 \`get_dma_duration()\` computes:
+
+\`\`\`c
+return ai_len_bytes * (cpu_counts_per_sec / (4 * samples_per_sec));
+\`\`\`
+
+That integer division first truncates \`48,665,520 / (4 × 22,047)\` to **551 Count/byte**, yielding \`368 × 4 × 551 = 811,072\` Count. VI period is \`811,092\` Count. The emulator's DMA therefore consumes ~22,080.54 PCM frames/second against a configured audio playback rate of 22,047, predicting ~134.18 bytes/second of host queue growth (consistent with observed ~133 B/s and independent of guest FIFO bursts). The fractional timing experiment conditionally calculates:
+
+\`\`\`c
+return (unsigned int)(((uint64_t)ai_len_bytes * cpu_counts_per_sec) /
+                      ((uint64_t)4 * samples_per_sec));
+\`\`\`
+
+For 368 frames it produces **812,306 Count** instead. This is a host-clock proof, NOT an accepted replacement for the emulator. The native game's \`0x8007D4A8\` generator and synth code are byte-identical between clean ROM and trace ROM, except for the known debug-only rejected-submission logger in the separate enqueue branch.
+
+Trace (6) and Trace (7) independently show **2,369 / 2,383 consecutive 368-frame buffers** over 39.47 / 39.70 seconds respectively, during which AI_LEN slides **1,344 → 1,280 bytes** before the same feedback threshold. Linear slopes approximately **−0.0262/−0.0260 bytes/VI** with R² 0.984. This repeatable sequence does not prove the integer timing loss is the only root cause of the audible symptom, or that the clean ROM would exhibit the same effect.
+
+**For a verified CI-built v03 Flatpak**, default behavior is obtained without \`MKMSZR_AI_RATIONAL_DIAG\`. Opt into only the controlled timing change with:
+
+\`\`\`bash
+flatpak run --user --env=MKMSZR_TRACE=1 \
+  --env=MKMSZR_TRACE_MEM=1 --env=MKMSZR_AI_RATIONAL_DIAG=1 \
+  org.mkmszr.RMGObserver
+\`\`\`
+
+Keep real ParaLLEl RSP/RDP and SDL playback, 100% speed, matching ROM/settings and cold start. Compare to a separate baseline launched without the rational flag; do not mix output logs. **Do not run this experiment until CI and exact binary identity are confirmed.** One bounded prefilled-Fortress box-sweep/idle run for ~2 minutes, clean exit and all four traces are sufficient as a first diagnostic. A negative run does not establish correctness, and a positive result must still be checked for unexpected speed/pitch/drift and guest behavior changes. No production promotion before user manual verification and a correction that works on supported deployment targets.

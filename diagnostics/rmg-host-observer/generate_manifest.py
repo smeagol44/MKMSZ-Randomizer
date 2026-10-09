@@ -36,6 +36,7 @@ manifest["finish-args"].extend([
 rmg["sources"].extend([
     {"type": "file", "path": "observer_patch.py"},
     {"type": "file", "path": "observer_memory_patch.py"},
+    {"type": "file", "path": "observer_ai_duration_patch.py"},
     {"type": "shell", "commands": ["python3 observer_patch.py"]},
 ])
 rmg.setdefault("config-opts", []).extend([

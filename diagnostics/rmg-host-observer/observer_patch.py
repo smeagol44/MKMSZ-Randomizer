@@ -5,6 +5,7 @@ No emulator execution, ROM edits, enqueue retries, or playback changes.
 """
 from pathlib import Path
 
+from observer_ai_duration_patch import apply as install_ai_duration_diagnostic
 from observer_memory_patch import apply as install_memory_probe
 
 CORE = Path("Source/3rdParty/mupen64plus-core/src/device/rcp")
@@ -219,4 +220,5 @@ replace_once(AUDIO,
     '        sdl_backend->frequency, 0, 0, 0);\n')
 
 install_memory_probe(vi)
-print("MKMSZR observer patch + opt-in RDRAM v02 applied to pinned RMG source")
+install_ai_duration_diagnostic(ai)
+print("MKMSZR observer + opt-in memory and AI-duration v03 diagnostics installed")
