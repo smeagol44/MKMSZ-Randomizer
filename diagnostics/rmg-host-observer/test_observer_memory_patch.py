@@ -1,8 +1,8 @@
 """Synthetic smoke: exact patch anchors + native C source observes but never writes."""
-from pathlib import Path
 import os
 import subprocess
 import tempfile
+from pathlib import Path
 
 from observer_memory_patch import INJECT, apply
 
