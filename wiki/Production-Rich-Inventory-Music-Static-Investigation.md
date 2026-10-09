@@ -8,6 +8,42 @@ The earliest verified unsuccessful operation is native full-FIFO enqueue `0x8008
 
 ROM `0x0008B158`, `1440000A → 1440FFFD`, is explicitly rejected for this investigation. It remains an untested mitigation. Retrying can change scheduler timing and hang if AI stops draining. Nothing in the new counter evidence promotes it to a root-cause fix.
 
+## Trace (8): vanilla USA Rev.0 audio negative control with native FIFO rejects (2026-10-09)
+
+**Maintainer reports NO audible acceleration in clean vanilla Fortress. That observation is valid, but 'vanilla audio FIFO never rejects' is false.** After cold boot and password-based direct Fortress access with the same separate RMG v02 host observer, the user supplied four complete binary streams (zero overwrite). Guest-memory `0x40/0x41` MKMSZR markers must **not** be treated as valid game invariants in the unmodified ROM. Time origins below are each file set's first VI, **not** Inventory-open timestamps; input and precise Inventory idle time are unrecorded. This is a real control, but not a matched script/controller workload.
+
+| Metric | Clean vanilla Trace (8) | Full MKMSZR Trace (7) |
+|---|---:|---:|
+| Recorded span from first VI | 321.460 s | 130.062 s |
+| Sampled Fortress stage `9` begins | t=53.379 s | t=10.284 s |
+| Native AI enqueue attempts | 18,978 | 7,429 |
+| FULL-derived rejected attempts | **5** | **74** |
+| Largest consecutive failed cluster | **3** (t=124.558, 124.624, 124.691 s) | **73** (t=118.729..123.529 s) |
+| Longest uninterrupted 368-frame PCM sequence | **4** native outputs (0.05 s) | **2,383** native outputs (~39.70 s) |
+| Other MKMSZR 368-frame-only control (Trace 6) | N/A | **2,369** outputs (~39.47 s) |
+| Observed DMA duration ratio | exactly **551 Count/byte** for all 18,978 accepted submissions | exactly **551 Count/byte** for all 7,429 accepted submissions |
+| Host SDL-threshold drops | **40**, total **30,944 bytes** | **4**, total **2,832 bytes** |
+| Audible sustained acceleration | **Not reproduced** | **Maintainer-confirmed** |
+
+**Vanilla FIFO FULL chronology:** one isolated event at t=36.473 s occurs **before Fortress entry** in the title/password/menu state. During Fortress, **three** events occur t=124.558..124.691 s, then a single isolated event at t=175.859 s. Stock `0x13` FULL is emitted once per failure, whereas the debug-instrumented MKMSZR ROM has a second read 34 guest Count later; de-duplicate only the verified paired reads. All five vanilla FULL events are real and not artifacts of the modified game/diagnostic rejection logger. The healthy absence of *audible sustained* acceleration remains a bounded runtime negative, not proof of zero guest audio omissions or zero clipping.
+
+**Precise divergence within the three-event failed cluster** (head and tail buffer lengths, in **bytes**):
+
+| Event ordinal | Vanilla Trace 8 at t≈124.558s | MKMSZR Trace 7 at t≈118.729s |
+|---|---|---|
+| #1 | head **1600**, tail **1472** | head **1600**, tail **1472** |
+| #2 | head **2816**, tail **1472** | head **2816**, tail **1472** |
+| #3 | head **1600**, tail **1408** | head **1600**, tail **1472** |
+| #4 | No FIFO FULL | head **2816**, tail **1472** and subsequent alternating loop |
+
+The two workloads enter the **same initial two observable FIFO-failure sizes**. Vanilla's third queued tail is **64 bytes shorter**, plausibly bringing FIFO occupancy below FULL before the next service, and the episode recovers; modified Trace (7) retains the longer tail and remains in 73 rejections. The record establishes the first observed *difference*, **not** which earlier game operation or timer transition creates it. Distinct inputs/configuration and emulator wall-time jitter remain possible confounders.
+
+**Crucial pre-failure difference:** vanilla shows a repeating native 352/368/384 output rhythm for most of its ~5.3-minute capture and **never** exhibits MKMSZR's approximately 40-second, 368-only run. This indicates that while a FIFO FULL and the early-truncated **551 Count/byte** emulator timing exist without MKMSZR, **that integer timing rule alone is not sufficient** to force the prolonged 368-only precursor or sustained audible failure in all workloads. MKMSZR's composed code/workload/timing interaction is a stronger suspect for *remaining trapped*, but it does **not** identify invalid RAM/cave ownership, a corrupting write, or the rich HUD as sole origin. Conversely, vanilla's 40 SDL discards corroborate a distinct common host playback-queue pressure mechanism even in the absence of reported audible acceleration.
+
+**Trace 8 file identities (SHA-256):** AI `cf0e82b0916a1f0c5215c0a62c89b703141939104ab815719c017c85f054e19e`; VI `d6c11a5f5821c228a1f03fb551a51a71ea000d76e40ecd5d396443e72085fc01`; RSP `63afa258f6177c1c2ab4d6fe5c091bdf0f8df4b37a779967b9a352ed6cdf19ae`; host-audio `9bef85e55fc7b67bb13b124bd126d00a5b33e6db53caaefbbe754722b500c898`. Decoded spans/record counts/zero-lost assertions checked for all four against prior Trace 6 and 7. The read-only comparison is reproducible from observer binary structs (`=8sIIQQQ` header; `=QQ10I` records), unique event `0x13` FULL readings, head `a`/tail `b` and `0x10` output sizes.
+
+**Next experiment, if needed:** a strict opt-in RMG AI rational-duration A/B using already drafted emulator-only PR #161 with **the same prefilled MKMSZR ROM, comparable controller route and original 100% SDL playback** can discriminate whether the common 551-Count precision loss is sufficient to create the 40-second regime. Do **not** interpret clean vanilla not accelerating as proof that the 16 KiB fixed reservation is invalid, and do not permanently depend on a modified emulator without careful backend/portability review. No guest enqueue retry, rich-HUD feature drop, allocation reset or production patch is justified by this evidence alone. Release gate remains BLOCKED.
+
 ## Cross-capture ~40-second AI clock drift and pinned RMG integer-duration hypothesis (2026-10-09)
 
 **New static + trace-confirmed evidence, *not yet runtime-corrected*.** The rejected-synthesis mechanism is already known, and Trace (7)'s memory observation weakens arena/HUD corruption as the proximate cause. Reanalyzing *entire precursor windows* in independent Trace (6) and Trace (7) finds unexpectedly reproducible long 368-frame-only output regimes, ending near the first isolated FIFO rejections:
