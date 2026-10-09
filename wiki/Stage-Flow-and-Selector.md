@@ -62,6 +62,27 @@ A strictly isolated **disposable** control is prepared from exact prefilled-Fort
 
 This controls only the added selector movement SFX while preserving Safe Stage Select, blue cursor and all later production features and diagnostics. One manual negative-control test can compare this output against already established failing Trace (7) using same RMG v02 configuration and prefilled Fortress route: cold boot, enter stage via safe selector (now silent on Up/Down), Box 1 cursor sweep ~30s, idle up to ~2min; save four observer traces on normal exit. Because timing is sensitive and failure intermittent, *one clean result is supportive but not conclusive*: disabling a sound call also changes audio phase. A repeated FIFO burst **with MOVE disabled** would directly refute MOVE SFX being necessary on that route. **No approval to remove v03a production SFX or restore rejected v02 confirmation chime.**
 
+### Trace (9) accepted single-site negative: MOVE SFX-off avoids severe music runaway (2026-10-09)
+
+**User Runtime-confirmed absence of audible accelerated music in this route; trace-confirmed absence of sustained FIFO rejection / long fixed-buffer phase; cause not finally established.** Input ROM `MKMSZR_selector-move-sfx-off_fortress_proof_v01.z64`, SHA256 `3988da00cc1fda37d314f4b20452ac678ae17cc1bc2d078c9e0dc12a857dd98f`, differs from the exact Trace (7) failure ROM `13346ae68efd99fb9d07929d2d1016eba1fd5d065170d58235522fd9a6e505b1` only by reverting ROM `0xDD70` from `0C00359F` (JAL selector movement helper) to stock `24040050` (drawing parameter), and changed CIC6102 header CRC bytes. All other original prefilled Fortress production + rejection logger bytes remain identical. No other feature removed.
+
+The new Trace (9) captures **251.722s** (Fortress selected and begins at first-VI-relative t=13.158s), compared with **130.062s** in failing Trace (7) (Fortress starts t=10.284s). All four Trace (9) observer streams have no overwritten records: AI `707543354fe8e7faab77a1028a177420177b262ca511cc301d9c82c7f5d0ed08`, VI `65643baa1666ada3fde1484a29b207ea879254db2d351a79869b8c19cbe0c478`, RSP `5f1ea257b6bebb392dc4d2c087169e8a58be093bcda1e91c43f984faacd9b36a`, host `a7e3a31f927f95387f6a0175bbc7f4968b74a937bc65a48af9c886640b6b98c1`.
+
+| Event | Baseline Sound-ON Trace (7) | MOVE-helper-OFF Trace (9) |
+|---|---:|---:|
+| User reports audible speed-up | Yes | **No** |
+| Native FIFO rejected submissions (two logger FULL reads each) | 74 | **2 isolated** (t=123.288, 158.605s), no cluster |
+| Longest uninterrupted 368-frame output | 2,383 / ~39.70s | **9 / 0.15s** |
+| Host SDL threshold drops | 4 (2,832 bytes) | 22 (21,520 bytes); independent host queue channel |
+| Sampled stage-9 highwater / static bound headroom | `0x8028CD48` / 15,432 bytes | **identical** |
+| HUD data pointer | `0x801FEBA0` | **identical** |
+| HUD/legend/materialized fixed-code region hashes | `21E410DE/2298F9CB/09615F1E` | **identical** |
+| Sampled arena reset base, cursor/HUD coherence | No observed violations | No observed violations |
+
+Both runs have the identical RMG AI duration rule `551 Count/byte`; Trace (9) accepted 14,798 submissions. Its two actual FULL attempts were isolated and recovered, similar to the clean-ROM Trace (8) behavior. **Eliminating the selector MOVE helper changes the full audio regime before the failure, not only its audibility.** This is our strongest isolated feature-composition control so far. It weakens a purely emulator-clock-only or always-on rich-HUD explanation, but does not prove the 0x1FC sound playback itself is defective: bypassing the helper also bypasses its edge logic, callee call, register/return handling and instruction-time cost; routes were not input-cycle matched; a single benign run cannot rule out stochastic phase.
+
+**Next staged control, no gameplay change:** additional disposable `MKMSZR_selector-move-call-off_fortress_proof_v01.z64`, SHA `7ef2ce16bddcc5716df8aa030c5eaf367363a3bbdf882f6b63ceee2ba73bb25e`, retains the original selector JAL helper at `0xDD70` and all helper logic (including `s0` save/return) but replaces exactly its native sound wrapper `JAL 0x80064C18` at ROM `0xE29C:0C019306` with `00000000`, leaving delay slot `0xE2A0` intact; CRC1/2 recalculated `2A85F778/A8B71C2A`. Static byte-/checksum guards passed, **runtime Pending**. When tested with same unmodified RMG v02 prefilled Fortress route, if stable while helper still runs it points toward native SFX playback/voice-lifetime/audio-phase, rather than helper instructions alone; if repeated runaway persists without playback, focus on helper ABI/return state/instruction timing. This is a request for a *bounded single differential test*, not an approved removal of selector SFX from production. No production ROM modification, no CI/emulator run and no merge.
+
 ## Compact-to-native selection mapping
 
 The debug menu writes its compact selection at `0x800C11E0`. The transition path at `0x80015088` ultimately stores the native stage at `0x8009A910`.
