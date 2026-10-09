@@ -34,7 +34,7 @@ Production V2 lives at `0x801AF7D0..0x801AF81F`.
 | `+0x08` | Total size `0x50` |
 | `+0x0C` | Header size `0x20` |
 | `+0x10` | Flags; bit `0x0001` = Temple scripted special check collected |
-| `+0x14..+0x1F` | Reserved |
+| `+0x14..+0x1F` | Lifecycle-v06 HP/reason/current-resource snapshots (specific fields/validation owned by the Persistence and Lifecycle page); no longer unused reserved storage |
 | `+0x20` | Temple ordinary-pickup bitset |
 | `+0x24` | Wind |
 | `+0x28` | Water |
@@ -46,7 +46,7 @@ Production V2 lives at `0x801AF7D0..0x801AF81F`.
 | `+0x40` | Progression rewards acquired, 0..9 |
 | `+0x44` | Persistent progression XP |
 | `+0x48` | Rainbow phase word; used only by the `rainbow` outfit mode |
-| `+0x4C` | Reserved |
+| `+0x4C` | Reserved persistent-state word with temporary GAME SETTINGS editor use at `0x801AF81C` while editing; not free storage |
 
 Fire's 19 manager ordinals translate to catalog bits as:
 
@@ -65,7 +65,7 @@ Fire's 19 manager ordinals translate to catalog bits as:
 | `0x800A6070` | 10 | Box 2 backing |
 | `0x800A6098` | 10 | Box 3 backing |
 | `0x800A60C0` | 10 | Box 4 backing |
-| `0x800A60E8` | 1 | Active index, input latch, and GAME SETTINGS bits: `0x0200` TURN=LOCK, `0x0400` COMBOS=ASSIST, `0x0800` SPECIALS=MODERN, `0x1000` JUMP=BUTTON |
+| `0x800A60E8` | 1 | Active index bits `0..1`, input latch bit `0x0100`, and five durable GAME SETTINGS flags: `0x0200` TURN=LOCK, `0x0400` ATTACK=MODERN, `0x0800` SPECIALS=MODERN, `0x1000` JUMP=BUTTON, `0x2000` RUN=AUTO. Current accepted five-setting frontend replaces the old COMBOS label; see Persistence/Inventory lifecycle for prerequisite behavior. |
 | `0x800A60EC` | 1 | `MKBX` magic |
 
 Empty stock slots use `0xFFFFFFFF`. Foreign-stage keys appear in the live window as item `0x08` only; the true item remains in backing storage.

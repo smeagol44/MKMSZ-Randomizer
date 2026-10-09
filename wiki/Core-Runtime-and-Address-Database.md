@@ -53,7 +53,7 @@ These offsets are composition contracts, not a second allocation registry. New c
 
 ### Expansion pool
 
-The remaining reserved range `0x801AF820..0x801B3420` is managed by the build-time `ExpansionPoolAllocator`. It is a monotonic aligned allocator used while constructing a ROM; it does **not** replace or consume the stock runtime arena allocator. No production feature owns a subrange yet. Requests receive named, aligned slices, duplicate names are rejected, and a build fails before output if the pool would overflow. The Memory Map remains canonical for any sub-owner once a feature actually claims bytes.
+The remaining reserved range `0x801AF820..0x801B3420` is managed by the build-time `ExpansionPoolAllocator`. It is a monotonic aligned allocator used while constructing a ROM; it does **not** replace or consume the stock runtime arena allocator. The pool already has named production sub-owners (TURN, modern controls, optional rainbow/Toasty, lifecycle, materializer, Inventory HUD and box-switch helpers) recorded in the current Memory Map. New build-time requests still receive named, aligned slices; duplicate names are rejected and a build fails before output if the pool would overflow. Unallocated capacity remains reserved by the parent pool, not available as a general-purpose cave. The Memory Map remains canonical for any sub-owner once a feature actually claims bytes.
 
 ## Payload registration and bootstrap
 
