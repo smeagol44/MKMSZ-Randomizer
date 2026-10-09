@@ -1,6 +1,6 @@
 # Enemy randomization
 
-Enemy randomization is research/proof work, not part of the production patch pipeline.
+Enemy Randomization is now a selectable guarded shared browser/CLI feature; the browser default is ON. Its planner/materializer has bounded Runtime-confirmed evidence rather than exhaustive generated-seed or release coverage. The research and proof chronology below retains its original evidence limits; current option and integration semantics are owned by [Web patcher and product behavior](Web-Patcher-and-Product).
 
 ## Ordinary-enemy architecture
 
