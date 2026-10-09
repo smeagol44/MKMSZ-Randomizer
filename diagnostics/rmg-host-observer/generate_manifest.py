@@ -35,6 +35,7 @@ manifest["finish-args"].extend([
 # Source patch is applied in flatpak-builder's sources phase, before CMake.
 rmg["sources"].extend([
     {"type": "file", "path": "observer_patch.py"},
+    {"type": "file", "path": "observer_memory_patch.py"},
     {"type": "shell", "commands": ["python3 observer_patch.py"]},
 ])
 rmg.setdefault("config-opts", []).extend([
