@@ -8,6 +8,38 @@ The earliest verified unsuccessful operation is native full-FIFO enqueue `0x8008
 
 ROM `0x0008B158`, `1440000A → 1440FFFD`, is explicitly rejected for this investigation. It remains an untested mitigation. Retrying can change scheduler timing and hang if AI stops draining. Nothing in the new counter evidence promotes it to a root-cause fix.
 
+## Cross-capture ~40-second AI clock drift and pinned RMG integer-duration hypothesis (2026-10-09)
+
+**New static + trace-confirmed evidence, *not yet runtime-corrected*.** The rejected-synthesis mechanism is already known, and Trace (7)'s memory observation weakens arena/HUD corruption as the proximate cause. Reanalyzing *entire precursor windows* in independent Trace (6) and Trace (7) finds unexpectedly reproducible long 368-frame-only output regimes, ending near the first isolated FIFO rejections:
+
+| Signal | Trace (6) | Trace (7) |
+|---|---:|---:|
+| 368-frame-only run (start/end from first VI epoch) | t=82.4559..121.9227s | t=42.0450..81.7458s |
+| Exact consecutive output count | **2,369** | **2,383** |
+| Head AI_LEN at beginning → end | **1,344→1,280 bytes** | **1,344→1,280 bytes** |
+| Linear AI_LEN slope per output (bytes/VI) | −0.026245 | −0.026007 |
+| R² of fit (quantized steps) | 0.98389 | 0.98386 |
+| First subsequent rejected PCM submission | t=122.4563s | t=82.1117s |
+
+Both sequences complete a similar slow countdown and then transition through 352/368/384/400-sized outputs; independent Trace (7)'s monitored cursor, stage state and fixed code hashes were stable during the final stages of that drift, and its key-portrait cache had not changed since 55.73 seconds. This repetition strongly favors a native AI_LEN / FIFO timing mechanism over a random concurrent fixed-code overwrite at *the instant* of rejection. It does **not** establish that no earlier patch or memory fault influenced when the regime began. The normal-items-only control recorded no rejection in 110s, so the vulnerability is phase/composition-dependent rather than guaranteed each run.
+
+**Verified unchanged native audio producer:** compare byte-for-byte clean USA Rev.0 ROM SHA `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6` against prefilled diagnostic SHA `13346ae68efd99fb9d07929d2d1016eba1fd5d065170d58235522fd9a6e505b1`: ROM `[0x7E0A8,0x7E350)` containing the native frame builder/synthesis scheduling is identical. The audio enqueuer's only differences in checked `[0x8B100,0x8B1D0)` are the previously documented diagnostic rejection logger branch/stub at `0x8B15B` and `0x8B198..0x8B19B`. Thus this is not explained by a direct patch overwriting the native synth implementation. No computed-pointer or earlier feature side effects are excluded.
+
+**Pinned RMG v0.9.0 emulator timebase precision loss (Static-confirmed source and all trace submissions):** `Source/3rdParty/mupen64plus-core/src/device/rcp/ai/ai_controller.c:get_dma_duration()` calculates:
+
+```c
+return ai->regs[AI_LEN_REG] *
+       (cpu_counts_per_sec / (bytes_per_sample * samples_per_sec));
+```
+
+The integer division is performed **before** multiplication by the requested length. With NTSC VI clock `48,681,812`, host sample-rate observation `22,047Hz` (consistent with `AI_DACRATE+1=2,208`), observed `VI_delay=811,092 Count`, `expected_refresh_rate=60`, and 4-byte stereo frames, `cpu_counts_per_sec=48,665,520`, so this calculation discards the fractional part of `48,665,520 / 88,188 = 551.838345...` Count/PCM byte and uses exactly **551** instead. All **7,429** Trace (7) accepted DMA durations, **12,851** Trace (6) accepted durations, **2,670** Trace (5) accepted durations, and **6,314** ordinary-control accepted durations independently record exactly 551 Count/byte.
+
+Consequences in the pinned emulator's measured configuration: one nominal 368-frame output lasts **811,072 Count** while VI runs at ~**811,092 Count**, a near-resonance with only 20 Count/VI nominal separation. The DMA rate is `48,665,520/(4×551)≈22,080.54` frames/s while the **separate** SDL playback sample rate is **22,047**; the expected persistent host queue accumulation is ~**134.18 bytes/s**, closely matching the *independently measured* pre-drop ~132–133 bytes/s from normal-items/full-sweep controls. This **explains the independent host audio queue buildup/clipping channel in RMG** without any ROM corruption. The quantized FIFO head feedback's near-resonance and 40-second slow drift may also create guest FIFO state changes, but the observed linear AI_LEN slope ~−0.0261 B/VI is not exactly the naive `−20/551≈−0.0363 B/VI` value: interrupt dispatch/event bookkeeping, actual VI Count jitter and FIFO feedback must be accounted for. Do **not** advertise the scalar calculation alone as a proven complete guest FIFO root cause or claim actual N64 hardware timing from the host emulator's arithmetic.
+
+**Focused A/B emulator-only experiment, no production behavior:** isolated [draft PR #161](https://github.com/smeagol44/MKMSZ-Randomizer/pull/161) builds on optional observer #160/#157 and adds an **opt-in** `MKMSZR_AI_RATIONAL_DIAG=1` variant that calculates `(uint64_t)AI_LEN * cpu_counts_per_sec / ((uint64_t)4 * sample_rate)`, carrying the fractional Count across each DMA instead of truncating per byte. Original expression executes when the flag is absent. A 368-frame request is **812,306 Count**, versus stock **811,072 Count**. Native game code, output samples, inventory and FIFO enqueue/rejection logic remain unaltered. Synthetic C opt-out parity/opt-in arithmetic tests are staged in GitHub CI; pinned Flatpak compilation and manual same-ROM/backend A/B testing are pending verification. This is a deliberate *emulator timing intervention*, not a universally accepted timing fix, and might change gameplay audio cadence or move the system into a different bad regime; inspect both guest reject counts and actual audio output before promoting any result. Do not merge diagnostics or ship a modified emulator as an implicit MKMSZR 1.0 dependency.
+
+**Decision criterion:** If A/B removes the 40s AI_LEN countdown and subsequent PCM FIFO rejections while preserving 100% playback, audio sample rate/pitch, game speed and renderer/gameplay, the pinned Mupen AI timing precision becomes the leading *test-supported* upstream target; follow with clean-ROM control and upstream/core compatibility review, not a blind native-game patch. If it does not, use the paired traces and native control/release/PI telemetry to locate the remaining cause. Historical accelerated-audio symptoms tied to other faulty MKMSZR patches remain valid as separate incidents.
+
 ## Trace (7): RMG v02 memory observer catches severe audio failure with intact monitored arena and code (2026-10-09)
 
 **Maintainer Runtime-confirmed audio symptom, trace-confirmed producer/consumer behavior, and bounded negative memory observations. Upstream root cause and any production fix remain Pending.** The maintainer cold-booted the guarded prefilled-Fortress diagnostic ROM, followed the short Inventory sweep/idle route, heard accelerated music before the intended idle duration, exited normally and provided all four opt-in v02 RMG observer outputs. The trace epoch below is **first VI event**, not stage entry or Inventory opening. The sampled stage indicator becomes Fortress `9` at t=10.284s. The recording ends t=130.062s; all saved/total records match with zero lost events, and the VI ring includes paired `0x40/0x41` memory samples on all **7,798** VIs.
