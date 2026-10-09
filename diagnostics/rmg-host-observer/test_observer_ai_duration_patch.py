@@ -6,7 +6,6 @@ from pathlib import Path
 
 from observer_ai_duration_patch import NEW, OLD, apply
 
-
 HEADER = r"""
 #include <stdint.h>
 #include <stdlib.h>
