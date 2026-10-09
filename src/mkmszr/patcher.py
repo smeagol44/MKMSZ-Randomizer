@@ -24,6 +24,7 @@ from .patches import (
     GlobalItemMaterializationPatch,
     InventoryHudPatch,
     InventoryLegendPatch,
+    InventoryMaterializedHudPatch,
     InventoryMenuSwitchPatch,
     NativePayloadPatch,
     NativePayloadSpec,
@@ -266,6 +267,11 @@ def build_pipeline(
         )
         patches.append(InventoryMenuSwitchPatch())
         patches.append(InventoryLegendPatch())
+        patches.append(
+            InventoryMaterializedHudPatch(
+                requirement_exact=config.required_powers_mode != "vanilla"
+            )
+        )
     if config.enemy_randomization:
         patches.append(EnemyRandomizationPatch())
     return PatchPipeline(patches)
