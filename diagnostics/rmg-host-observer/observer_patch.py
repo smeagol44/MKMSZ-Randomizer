@@ -216,4 +216,6 @@ replace_once(AUDIO,
     '        (uint32_t)acceptableLatency, mkmszr_queued ? 1u : 0u,\n'
     '        sdl_backend->frequency, 0, 0, 0);\n')
 
-print("MKMSZR observer patch applied to pinned RMG source")
+from observer_memory_patch import apply as install_memory_probe
+install_memory_probe(vi)
+print("MKMSZR observer patch + opt-in RDRAM v02 applied to pinned RMG source")
