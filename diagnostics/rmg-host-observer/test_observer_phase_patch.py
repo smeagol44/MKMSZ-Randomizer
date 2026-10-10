@@ -10,6 +10,7 @@ from observer_phase_patch import HEADER, apply
 
 
 FAKE = """#include "mkmszr_trace.h"
+#include "device/rdram/rdram.h"
 void synthetic_read(void) {
         if (*value < ai->last_read)
 }
