@@ -94,7 +94,7 @@ def test() -> None:
         apply(mock)
         changed = mock.read_text()
         assert '#include "mkmszr_phase_trace.h"' in changed
-        assert changed.count("mkmszr_phase_capture(") == 3
+        assert changed.count("mkmszr_phase_capture(") == 4
         assert "mkmszr_phase_capture(ai, 1u, *value)" in changed
         assert "mkmszr_phase_capture(ai, 2u, ai->regs[reg])" in changed
         assert "mkmszr_phase_capture(ai, 3u, ai->regs[reg])" in changed
