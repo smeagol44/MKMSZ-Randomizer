@@ -24,6 +24,9 @@ jobs:
       - name: Verify read-only memory observer (synthetic C)
         working-directory: diagnostics/rmg-host-observer
         run: python3 test_observer_memory_patch.py
+      - name: Verify opt-in phase snapshots and opt-out parity (synthetic C)
+        working-directory: diagnostics/rmg-host-observer
+        run: python3 test_observer_phase_patch.py
       - name: Generate pinned side-by-side manifest
         working-directory: diagnostics/rmg-host-observer
         run: python3 generate_manifest.py
