@@ -1,0 +1,23 @@
+name: RMG PIF controller observer smoke (ROM-free)
+on:
+  pull_request:
+    paths:
+      - 'diagnostics/rmg-host-observer/**'
+      - '.github/workflows/rmg-pif-input-observer-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  controller-input-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile input probe and test disabled / enabled streams
+        working-directory: diagnostics/rmg-host-observer
+        run: python3 test_observer_input_patch.py
+      - name: Check guest input-to-VI and native rejection correlation
+        working-directory: diagnostics/rmg-host-observer
+        run: python3 test_analyze_input_audio_alignment.py
