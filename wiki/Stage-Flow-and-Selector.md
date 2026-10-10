@@ -8,6 +8,16 @@
 >
 > Exact guarded ROM patch bytes, expected bytes, and replacement words remain canonical in the [Address and patch-site registry](Address-and-Patch-Site-Registry). This page owns the behavior and flow boundaries, not a duplicate byte registry.
 
+### Selector-only frontend crunch: new independent runtime observation (2026-10-10)
+
+**Maintainer Runtime-observed:** rapid navigation Up/Down can audibly crunch *within Safe Stage Select*, before Start commits a stage and with no stage music. This narrows necessary conditions for the **audible frontend symptom**, not necessarily for the previously reconstructed Inventory FIFO feedback: the new six-channel v05 selector-only recording must first establish whether native enqueues are rejected, host SDL fragments discarded, or a voice/source problem appears. No producer/waveform trace captures subjective onset.
+
+**Current exact presentation boundaries (static-confirmed in `src/mkmszr/patches/stage_selector.py` and clean USA Rev. 0):** selector cursor recolor copies exactly the 29-entry/58-byte title cursor BGR555 palette from ROM `0xB32E8` over guarded selector ROM `0xB21D8..0xB2211`; both have 29-entry headers. The original nine selector sprite pixel frames in file `0x5F`, selector texture slot `0x1C2`, draw-call path, and native input routing are not replaced by this palette edit. The separate movement helper patches `0xDD70` to `JAL 0x8000D67C`, leaves original `0xDD74 = 24050014` delay instruction, and occupies `0xE27C..0xE2AF` (13 guarded instructions). Inside the helper `0xE29C` calls sound wrapper `0x80064C18` for just a newly pressed single Up/Down edge (`0x1FC`); after this it restores `a0=0x50`, `a1=0x14` and returns to `0xDD78`. The helper itself performs no load/store. `s0` initially holds return `ra`, overwritten by native selector at `0xDDA8`; no proved unsafe register persistence.
+
+**Do not re-run existing differential controls:** Trace 9 helper entirely bypassed was healthy on a bounded run **with blue palette retained**; Trace 10 helper active and SFX JAL NOP still accelerated with 352 failed PCM submissions; Trace 11 sound muted and helper return `s0→t9` still accelerated. None determines whether this specific new *pre-stage* audible event was guest FIFO, host queue, or music/SFX voice failure. Existing healthy palette-retaining Trace 9 is evidence against a simple always-broken blue palette; it cannot exclude composition-dependent timing.
+
+**Pending six-stream analysis:** `mkmszr-vi-trace(20261010-094557).bin`, `mkmszr-rsp-trace(20261010-094557).bin`, `mkmszr-phase-trace(3).bin`, `mkmszr-input-trace(3).bin`, `mkmszr-host-audio-trace(20261010-094558).bin`, `mkmszr-ai-trace(20261010-094601).bin`. Server-side copied intact as Library artifacts to `MKMSZR Research/07 - RAM Diffs and Experiment Data/RMG-v05-Selector-Only-2026-10-10/`, but current analysis interface denied raw-byte materialization: **header saved/total/lost values and individual event correlations are not yet verified**. Do not confuse with preceding A–E healthy Fortress/Inventory experiment (state E not failing). No ROM patch, emulator fix, feature deletion or runtime automation authorized by this observation.
+
 ## Current production flow
 
 MKMSZR keeps the normal game stage-loader path and narrows only the frontend path used to choose a stage:
