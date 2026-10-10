@@ -78,14 +78,8 @@ def apply(path: Path = PIF) -> None:
     source = path.read_text()
     if "mkmszr_input_observe_joybus" in source:
         raise RuntimeError("Joybus observer already installed")
-    source = replace_once(
-        source,
-        '#include "device/r4300/r4300_core.h"\n',
-        '#include "device/r4300/r4300_core.h"\n'
-        '#define MKMSZR_TRACE_CAP 131072u\n'
-        '#define MKMSZR_TRACE_CHANNEL "input"\n'
-        '#include "mkmszr_trace.h"\n',
-    )
+    if '#define MKMSZR_TRACE_CHANNEL "input"' not in source:
+        raise RuntimeError("apply mkmszr_trace.h input channel before PIF observer")
     source = replace_once(
         source,
         'void update_pif_ram(struct pif* pif)\n',
