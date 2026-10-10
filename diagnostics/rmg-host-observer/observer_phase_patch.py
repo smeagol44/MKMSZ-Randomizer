@@ -186,8 +186,8 @@ def apply(path: Path = SRC) -> None:
         raise RuntimeError("install v02 observer first")
     source = replace_once(
         source,
-        '#include "mkmszr_trace.h"\n',
-        '#include "mkmszr_trace.h"\n#include "mkmszr_phase_trace.h"\n',
+        '#include "device/rdram/rdram.h"\n',
+        '#include "device/rdram/rdram.h"\n#include "mkmszr_phase_trace.h"\n',
     )
     source = replace_once(
         source,
