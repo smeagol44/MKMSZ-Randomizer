@@ -15,7 +15,6 @@ import json
 import statistics
 import struct
 import zipfile
-from collections import Counter
 from pathlib import Path
 
 HEADER = struct.Struct("=8sIIQQQ")
