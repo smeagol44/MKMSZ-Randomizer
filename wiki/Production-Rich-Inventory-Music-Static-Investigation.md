@@ -8,6 +8,68 @@ The earliest verified unsuccessful operation is native full-FIFO enqueue `0x8008
 
 ROM `0x0008B158`, `1440000A → 1440FFFD`, is explicitly rejected for this investigation. It remains an untested mitigation. Retrying can change scheduler timing and hang if AI stops draining. Nothing in the new counter evidence promotes it to a root-cause fix.
 
+## Focused upstream initialization and ownership assessment (2026-10-10)
+
+**The upstream cause is still Pending. No native operation has been shown to cause the production composition's unfavorable FIFO phase.** This bounded audit adds an initialization/lifecycle baseline and one previously unrecorded native delay-slot contact. Neither establishes a correction. The complete Traces (7)–(11) FIFO replay and broad producer/scheduler teardown were reused, not repeated.
+
+### Static-confirmed initialization and lifecycle findings
+
+The supported clean USA Rev.0 ROM was SHA-256 verified. Current implementation/Wiki baseline is `a8601aac6de0ad2f1db1a86c868242902cbab850`; living Ghidra baseline is `1c73998221cc20b5c67b35c4fae8efd566725af5`. Exact existing failing full-production v02 is SHA-256 `f44e3724a8c883b720d727936cb7f4204f19acc5569ca4b0fc581007ee2b7313` (32 MiB). No ROM was edited or executed.
+
+| Native operation | Newly bounded contract |
+|---|---|
+| Boot audio setup `0x800012EC`, called at `0x800008B8` | Sets reserve to **320** via `0x80001354..0x8000138C`; supplies nominal **60.0 Hz** when runtime TV type `0x80000300` is nonzero, and requests **22,050 Hz** at `0x800013C8..0x800013CC`. The supported captured configuration has TV type 1. |
+| Manager initialization `0x8007CCEC`, call `0x800013F4` | Clears output-record index at `0x8007CD20` and `lastInfo` at `0x8007CD28`; obtains the hardware-realized sample rate at `0x8007CD7C`; finishes by setting manager-ready `0x800A7F74=1` at `0x8007CED4`. |
+| AI frequency configuration `0x8008A3D0` | Uses native crystal global `0x800A8FC8`; for NTSC **48,681,812 Hz** and request 22,050, rounded divisor is **2,208**. Stores DAC divisor-minus-one **0x89F** at `0x8008A4A4`, bit rate **0xF** at `0x8008A4B8`, AI control **1** at `0x8008A4C0`; returns integer realized rate **22,047**. |
+| Buffer/target initialization `0x8007CEE0` | Divides the realized rate by the nominal video rate, rounds upward and aligns to 16: target **368**, minimum **352** (`0x8007D010`), capacity **704** (`0x8007D038`, target + reserve + 16). Thus 1,408 and 1,472 bytes are existing neighboring native outputs, not different configured clocks. |
+| Work enable `0x800014B8`, called at `0x800797CC` | After the legal presentation's 120 one-tick iterations, writes `0x8009A530=1` at **`0x80001510`**, before the logos. This is the newly bounded output-start lifecycle seam. Manager-ready and VI-work-enable are separate flags. |
+| First enabled frame / later transitions | With initialized `lastInfo=0`, `0x8007D4D4` skips previous-PCM submission. If AI_LEN is zero, this first frame is 704 samples; its PCM can be submitted on the following service. Title, selector, stage entry and Inventory do not call the identified manager/frequency/enable setup again on the inspected direct-call routes. They inherit the live audio history. |
+
+Aligned resident-code JAL scanning finds one direct caller each for boot setup, work enable, manager initialization, target/buffer initialization, parameter setter `0x8007DA60`, and frequency configuration. No aligned literal pointer to these six entry addresses occurs in the clean ROM. This is bounded static evidence, not exhaustive exclusion of synthesized indirect calls, wild writes, or unexamined overlay paths. Direct constant-address references show no later clear of manager-ready or VI-work-enable in the inspected resident executable.
+
+The **earliest newly established boundary relevant to phase is the work-enable store**, followed by the first buffer generation/submission epoch. DAC configuration precedes it and fixes duration, but does not itself enqueue PCM. These operations are stock; none has been shown to initiate runaway. The selector helper is reached after audio starts, so its survival correlation cannot by itself establish that it changed DAC initialization.
+
+### Direct changes versus indirect timing interactions
+
+Exact v02/clean comparisons show **zero changed bytes** in the following half-open VA ranges (resident ROM offset = VA − `0x80000000` + `0xC00`):
+
+| Protected native region | VA range |
+|---|---|
+| Boot setup / work enable | `[0x800012EC,0x80001530)` |
+| Scheduler ownership/dispatch | `[0x80000A70,0x80001228)` |
+| Audio initialization, allocation and frame construction | `[0x8007CCEC,0x8007D618)` |
+| Native parameter setter/getter | `[0x8007DA60,0x8007DCD8)` |
+| AI length/frequency/enqueue accessors | `[0x8008A3C0,0x8008A5A0)` |
+| Initial scheduler ownership words | `[0x8009A530,0x8009A540)` |
+| Initial producer/index/ready words | `[0x800A7F60,0x800A7F78)` |
+| Initial parameter words / crystal | `[0x800A7FF8,0x800A8030)` and `[0x800A8FC8,0x800A8FCC)` |
+
+These comparisons cover the actual failing composition, not every future seed or configuration. The existing trace ROM adds its documented enqueue-failure logger; this audit does not call that trace accessor byte-identical or timing-neutral.
+
+**A verified qualification to “unchanged native scheduling code”:** four-box production storage starts at VA **`0x8008EAE8`** / ROM **`0x8F6E8`**. This word is also the delay slot of the native interrupt-restore routine's `jr ra` at `0x8008EAE4`. Stock NOP becomes **`lui t0,0x800a`**. Consequently normal interrupt-restore returns execute this one inventory-owned word, including native queue/time paths. They do **not** fall through into the rest of the inventory helper. The interrupt restore itself performs its CP0 Status update at `0x8008EAD8`, before this slot; the changed slot writes only caller-saved `t0`, with no memory/MMIO/CP0 store, branch, call or extra instruction. Checked direct restore callers do not establish a live dependency on the returned `t0`. **No interrupt-state corruption, extra service, phase displacement or audio cause follows from this shared word alone.** It must nevertheless be represented in allocation/patch provenance rather than described as unreachable padding. No cave relocation or register proof is proposed.
+
+Separately, the logo bypass at `0x800797F4` occurs **after audio enable**, and the selector movement helper at `0x8000D170` runs at its draw hook even without a movement edge. Both change executed frontend workload while audio is live. The muted helper in Trace (11) has no memory write; its failure weakens an SFX/state-write attribution while leaving a workload/phase interaction possible. Inventory's accepted renderer and buffer preparation also change CPU/graphics work. Static instruction counts cannot predict emulated Count phase across interrupts/JIT blocks or establish the originating operation. A host GPU wait alone must not be equated with guest Count delay.
+
+### Hypotheses and remaining ambiguity
+
+**Hypothesis / strong inference:** a persistent output epoch or a later small timing perturbation selects which existing AI_LEN quantization band supplies the critical tail. The 64-byte length difference changes pinned duration by **35,264 Count**, comfortably exceeding the already measured ~4,000-Count adverse boundary. The extra duration explains sensitivity; it is not a newly identified upstream trigger. No whole-VI service gap is required.
+
+**Pending:** whether the relevant phase is inherited from first DMA, created later by frontend/Inventory execution, or affected by a transient native parameter/record/task-ownership fault between existing VI snapshots. Direct initializer replacement, a title-to-stage audio restart, and a different configured 1,472-byte clock are unsupported by this audit. Correct replay of FIFO events does not certify all producer RAM/record ownership.
+
+### One justified next diagnostic experiment
+
+**Proposed, not implemented:** add a compact **native phase-provenance snapshot** to the already pinned maintainer-local RMG observer. Keep the existing ROM, integer-DMA timebase and accepted features. This is an upstream state/initialization observation, not another FIFO replay or rational-duration test.
+
+At each **existing native AI_LEN read**, after the controller has computed its normal return value, append one fixed-size host record: existing Count/VI epoch/value; audio frame number; manager-ready and work-enable; target/minimum/capacity/reserve; lastInfo pointer and its signed `+4` sample count; current output-record index and three record pointers; command-list index/pointers; fresh/queued/active tasks; synth pointer/sample clock; native stage, selector choice and Inventory-open byte. On existing **AI DAC/control writes**, add a sparse startup/reinitialization record containing the normal write, cached Count, runtime TV type, native crystal value and work-enable/ready flags. These writes precede PCM output and are not covered by a length-only FIFO history. Reuse existing RSP completion records for chronology; do not infer completed generations merely from rotating addresses.
+
+Read physical RDRAM directly with validated endian helpers and bounds/alias checks. Interpret lastInfo as the already produced prior generation; the current record's old contents at AI_LEN time must not be called newly generated data. No extra guest AI reads, execution breakpoints, Count updates for logging, ROM patches, guest allocations or audio retry. A separate **32,768 × 128-byte host ring (4 MiB)** retains one snapshot per ~60-Hz service for up to six minutes with ample spare capacity; sparse startup writes must also be retained. Honor overflow and code/ROM identity gates. Opt-out parity and manual validation remain required.
+
+Use the **same existing prefilled Fortress ROM** for two cold-boot, manually controlled captures, each at most six minutes: legal/title → selector → Fortress → fixed Inventory cursor sweep → idle. Record audible onset and stop/pause/save-state use. Obtain a healthy and failing capture if they occur; if both share the same outcome, do not claim discrimination. No new feature-removal control is requested.
+
+Compare the **first upstream divergence**, rather than replaying rejection aftermath: different first-DMA phase with identical constants supports inherited initialization phase; matching startup followed by divergence supports a later timing interaction; changed constants/ready/index/pointers outside native lifecycle contracts redirects investigation to a state writer/owner. Unfinished task/record reuse requires actual generation/completion evidence and may remain unresolved. If state stays valid and only existing event phase differs, the result still does not identify an individual offending instruction. Report that limit explicitly.
+
+No production correction, feature deletion, emulator execution, or runtime-confirmation claim was made. The 1.0 audio gate and draft rich-Inventory integration remain blocked. Wiki/Ghidra annotations can be updated with the bounded static contracts; importing them into the user's Ghidra project remains a separate local action.
+
 ## VI-relative native audio-service phase across all control traces (2026-10-09)
 
 **New read-only trace-confirmed control, no new emulator/ROM execution.** To test whether upstream MKMSZR Inventory/selector edits *delay the native audio generator by one or more frames*, pair each emulated VI callback (host observer event `0x20`) with the following first native AI_STATUS read (`0x13`) before the next AI_LEN read (`0x12`). **Only the first** status read in an audio service counts: the rejection logger's later `0x13` is not a new audio-frame service. Compare the two **emulated guest CP0 Count** values with signed 32-bit wrap handling; do not use host-monotonic milliseconds as emulated CPU delay. Verify no VI interval receives two native services.
