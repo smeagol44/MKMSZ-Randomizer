@@ -253,3 +253,7 @@ The earlier proof carrier descriptor `0x220` / event `0x1B8` is **not a producti
 | Ordinary pickup record `+0x14` | Low 15 bits encode logical award + destination action for wrapper-owned locations; raw bit `0x8000` remains destination activation state and is masked before callback dispatch. | Static-confirmed ownership; Implementation/CI-confirmed emission |
 
 Native per-stage selector writer sites are not globally NOPed or rewritten by this integration. Destination wrappers invoke only the separately researched location-owned transition/state effects.
+
+## Shared interrupt-restore delay-slot provenance (2026-10-10)
+
+ROM `0x0008F6E8` / global VA `0x8008EAE8` is both the first word of the accepted four-box action helper and the return delay slot of native interrupt restore (`jr ra` at `0x8008EAE4`). In exact failing full-production v02, stock `00000000` is `3C08800A` (`lui t0,0x800a`). Normal restore callers execute only this word, then return; CP0 Status was updated earlier at `0x8008EAD8`. The slot has no memory/MMIO/CP0 write and adds no instruction. This is **Static-confirmed shared ownership**, not a new patch or confirmed audio defect. Allocation owner remains the [Memory Map](Memory-and-Allocation-Map); causal limits are in the [focused audio assessment](Production-Rich-Inventory-Music-Static-Investigation#focused-upstream-initialization-and-ownership-assessment-2026-10-10). No relocation/fix is proposed.

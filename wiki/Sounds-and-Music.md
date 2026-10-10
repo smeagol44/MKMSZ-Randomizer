@@ -156,6 +156,14 @@ Clean-ROM analysis found no direct descriptor/event immediates for `0x20A/0x1A6`
 
 The attempted MKT retail `TS_SK_ITS_OFFICIAL` / `skyousuk` lookup is excluded from the pool. User audition showed the retail waveform reached through that surviving identity is an unrelated short impact-like sound. Older Midway sources show the complete phrase was assembled from separate `skofficl` then `skyousuk` material; recovering that phrase remains optional future pool work.
 
+## Clock and output initialization — bounded static contract (2026-10-10)
+
+Boot `0x800012EC` supplies 60.0 Hz for the captured NTSC configuration, requests 22,050 Hz, and sets reserve 320. Manager `0x8007CCEC` clears output index/lastInfo, calls AI frequency setup `0x8008A3D0`, and sets manager-ready `0x800A7F74=1`. Native NTSC crystal `0x800A8FC8=48,681,812` yields rounded divisor 2,208, DAC `0x89F`, bit rate `0xF`, AI control 1, and returned rate 22,047. Target/buffer initializer `0x8007CEE0` derives target 368, minimum 352 and capacity 704 from realized rate/video cadence/reserve. No separate clock setting distinguishes 1,408- from 1,472-byte output.
+
+Work-enable is separate: `0x800014B8`, called at `0x800797CC` after legal presentation, sets VI-side gate `0x8009A530=1` at `0x80001510`, before the logos skipped by MKMSZR. First enabled construction has no previous lastInfo to submit; with an empty AI it generates 704 frames for later submission. Identified setup routines have one resident direct caller each; inspected title/selector/stage/Inventory routes do not restart them. This is a bounded direct-call audit, not exclusion of computed calls or transient corruption.
+
+Exact failing v02 preserves all checked initialization, scheduler-owner, producer and AI accessor bytes. Frontend workload still changes while audio is live. One shared native instruction outside those protected ranges also needs provenance: four-box helper start `0x8008EAE8` is interrupt-restore's return delay slot. Its NOP→`lui t0,0x800a` only changes caller-saved `t0`; no audio/interrupt-state defect has been established. **Upstream cause and correction remain Pending.** The [focused assessment](Production-Rich-Inventory-Music-Static-Investigation#focused-upstream-initialization-and-ownership-assessment-2026-10-10) owns full provenance and the single proposed local read-only state/initialization diagnostic.
+
 ## Music
 
 **Partially mapped, broader behavior Pending.** The [2026-10-08 production Inventory investigation](Production-Rich-Inventory-Music-Static-Investigation) statically/snapshot-confirms bounded WESS track/voice structures, current Fortress sequence data, bank/sample-cache ownership, and the synthesis-to-AI call path. It does not establish the complete sequence/control API, all sequence command semantics, or the accelerated-music cause. Preserve the distinction between bounded native evidence and a general subsystem closure.
