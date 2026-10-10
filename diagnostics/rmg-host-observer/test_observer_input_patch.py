@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import ast
 import os
-from pathlib import Path
 import struct
 import subprocess
 import tempfile
+from pathlib import Path
 
 from observer_input_patch import INJECT, apply
 
@@ -14,9 +14,10 @@ from observer_input_patch import INJECT, apply
 def observer_header() -> str:
     source = ast.parse(Path(__file__).with_name("observer_patch.py").read_text())
     for node in source.body:
-        if isinstance(node, ast.Assign):
-            if any(isinstance(t, ast.Name) and t.id == "HEADER" for t in node.targets):
-                return ast.literal_eval(node.value)
+        if isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == "HEADER" for t in node.targets
+        ):
+            return ast.literal_eval(node.value)
     raise AssertionError("Shared v01 trace header not found")
 
 
