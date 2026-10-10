@@ -7,6 +7,7 @@ from pathlib import Path
 
 from observer_memory_patch import apply as install_memory_probe
 from observer_phase_patch import apply as install_phase_probe
+from observer_input_patch import apply as install_input_probe
 
 CORE = Path("Source/3rdParty/mupen64plus-core/src/device/rcp")
 AUDIO = Path("Source/RMG-Audio/sdl_backend.cpp")
@@ -107,7 +108,7 @@ def replace_once(path: Path, needle: str, replacement: str):
 def add_trace_header(path: Path, channel: str):
     (path.parent / "mkmszr_trace.h").write_text(HEADER)
     capacities = {"ai": 262144, "vi": 131072, "rsp": 262144,
-                  "host-audio": 131072}
+                  "host-audio": 131072, "input": 131072}
     capacity = capacities[channel]
     replace_once(path, '#include <string.h>',
                  '#include <string.h>\n#define MKMSZR_TRACE_CAP '
@@ -221,4 +222,7 @@ replace_once(AUDIO,
 
 install_memory_probe(vi)
 install_phase_probe(ai)
-print("MKMSZR observer + opt-in RDRAM v02 and phase provenance v04 applied to pinned RMG")
+pif = Path("Source/3rdParty/mupen64plus-core/src/device/pif/pif.c")
+add_trace_header(pif, "input")
+install_input_probe(pif)
+print("MKMSZR RMG host observer v05: VI/AI/RSP/SDL + opt-in memory/phase/PIF input")
