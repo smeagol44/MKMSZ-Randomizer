@@ -5,9 +5,9 @@ No emulator execution, ROM edits, enqueue retries, or playback changes.
 """
 from pathlib import Path
 
+from observer_input_patch import apply as install_input_probe
 from observer_memory_patch import apply as install_memory_probe
 from observer_phase_patch import apply as install_phase_probe
-from observer_input_patch import apply as install_input_probe
 
 CORE = Path("Source/3rdParty/mupen64plus-core/src/device/rcp")
 AUDIO = Path("Source/RMG-Audio/sdl_backend.cpp")
