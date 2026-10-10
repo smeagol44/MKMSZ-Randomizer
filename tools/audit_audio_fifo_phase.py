@@ -161,6 +161,85 @@ def analyze(ai: list[tuple[int, ...]], vi: list[tuple[int, ...]]) -> dict:
             "episodes": episodes, "status_dma_end_interleavings": interleavings}
 
 
+
+def replay_fifo_from_events(ai: list[tuple[int, ...]]) -> dict:
+    """Endogenous FIFO replay: no recorded status, length or PCM-size inputs.
+
+    The trace supplies service/write *event times* and DMA start/END dispatches.
+    Queue contents, generated lengths, failed writes and AI_LEN are reconstructed
+    from the native recurrence and 551 Count/byte and compared to every record.
+    """
+    head = tail = None
+    previous_len = None
+    in_service = False
+    expects_write = did_write = False
+    pending_frames = None
+    status_checks = len_checks = pcm_checks = expected_rejects = 0
+    for i, r in enumerate(ai):
+        typ, count = r[2], r[3]
+        if typ == 0x13:
+            status = (BUSY if head is not None else 0) | (FULL if tail is not None else 0)
+            if status != r[4]:
+                raise ValueError(f"Replayed FIFO STATUS mismatch at {i}")
+            status_checks += 1
+            if not in_service:
+                in_service = True
+                expects_write = not bool(status & FULL)
+                if not expects_write:
+                    expected_rejects += 1
+                if previous_len is None:
+                    raise ValueError("Audio submission before initial feedback")
+                pending_frames = native_pcm_frames(previous_len)
+                did_write = False
+        elif typ == 0x10:
+            if not expects_write or did_write:
+                raise ValueError(f"Unexpected audio write at {i}")
+            did_write = True
+            pcm_checks += 1
+            size = pending_frames * 4
+            if size != r[5] or size * 551 != r[9]:
+                raise ValueError(f"Replayed PCM output mismatch at {i}")
+            item = {"length": size, "duration": size * 551, "deadline": None}
+            if head is None:
+                head = item
+            elif tail is None:
+                tail = item
+            else:
+                raise ValueError(f"Write to FULL emulated FIFO at {i}")
+        elif typ == 0x11:
+            status = (BUSY if head is not None else 0) | (FULL if tail is not None else 0)
+            if status != r[4]:
+                raise ValueError(f"Replayed post-write STATUS mismatch at {i}")
+            if head is not None and head["deadline"] is None:
+                head["deadline"] = (count + head["duration"]) & 0xFFFFFFFF
+        elif typ == 0x14:
+            if head is None:
+                raise ValueError(f"DMA END when no head at {i}")
+            head, tail = tail, None
+        elif typ == 0x15:
+            status = (BUSY if head is not None else 0) | (FULL if tail is not None else 0)
+            if status != r[4]:
+                raise ValueError(f"Replayed post-DMA STATUS mismatch at {i}")
+            if head is not None:
+                head["deadline"] = (count + head["duration"]) & 0xFFFFFFFF
+        elif typ == 0x12:
+            len_checks += 1
+            if in_service and expects_write != did_write:
+                raise ValueError(f"Replayed enqueue decision mismatch at {i}")
+            if head is not None and head["deadline"] is not None:
+                rem = max(0, cp0_delta(head["deadline"], count))
+                feedback = (rem * head["length"] // head["duration"]) & ~7
+            else:
+                feedback = 0
+            if feedback != r[4]:
+                raise ValueError(f"Replayed AI_LEN mismatch at {i}")
+            previous_len = feedback
+            in_service = False
+    return {"exact_fifo_status_reads": status_checks, "exact_ai_len_reads": len_checks,
+            "exact_pcm_sizes": pcm_checks, "predicted_enqueue_rejections": expected_rejects,
+            "mismatches": 0}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, required=True)
@@ -178,9 +257,17 @@ def main() -> None:
     for label, suffix in runs.items():
         ai, ai_meta = read_trace(args.root / f"mkmszr-ai-trace({suffix}).bin")
         vi, vi_meta = read_trace(args.root / f"mkmszr-vi-trace({suffix}).bin")
-        report["runs"][label] = {"source": {"ai": ai_meta, "vi": vi_meta}, **analyze(ai, vi)}
+        report["runs"][label] = {"source": {"ai": ai_meta, "vi": vi_meta}, **analyze(ai, vi),
+                                 "endogenous_replay": replay_fifo_from_events(ai)}
     for field in ("exact_ai_len_reads", "exact_accepted_pcm_sizes", "native_rejected_submissions"):
         report["totals"][field] = sum(run[field] for run in report["runs"].values())
+    report["totals"]["endogenous_status_reads"] = sum(
+        run["endogenous_replay"]["exact_fifo_status_reads"]
+        for run in report["runs"].values()
+    )
+    for run in report["runs"].values():
+        assert run["exact_ai_len_reads"] == run["endogenous_replay"]["exact_ai_len_reads"]
+        assert run["exact_accepted_pcm_sizes"] == run["endogenous_replay"]["exact_pcm_sizes"]
     args.out.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report["totals"], indent=2))
 
