@@ -8,6 +8,56 @@ The earliest verified unsuccessful operation is native full-FIFO enqueue `0x8008
 
 ROM `0x0008B158`, `1440000A → 1440FFFD`, is explicitly rejected for this investigation. It remains an untested mitigation. Retrying can change scheduler timing and hang if AI stops draining. Nothing in the new counter evidence promotes it to a root-cause fix.
 
+## Closed-loop native AI sizing and DMA phase audit across Traces (7)–(11) (2026-10-09)
+
+**Trace-confirmed full bounded playback accounting, *not* a production correction or proof that no memory corruption can exist.** A fresh read-only analysis of all complete audio/VI streams (original failed MKMSZR, vanilla, entire MOVE helper disabled, SFX call only disabled, return-register change) reconstructs the pinned RMG v0.9.0 emulated `AI_LEN` feedback from nothing except observed DMA starts/completions, each queued head's length/duration, and the recorded CP0 Count of the read. After independent head start or promotion from tail, predict:
+
+```text
+remaining_count = max(0, (dma_head_end_count - AI_LEN_read_count) mod 2^32)
+AI_LEN = floor(remaining_count * dma_head_length / dma_head_duration) & ~7
+```
+
+The model handles interrupt Count wraparound and keeps the original *full event chronology* rather than inferring playback from wall clock. **All 59,489 measured AI_LEN reads match to the byte, without exception.** The established native ROM frame-size recurrence (unchanged by the controlled selector variants) is:
+
+```text
+frames = clamp(352, 704, (((368 - (previous_AI_LEN >> 2) + 320) & ~15) + 16))
+```
+
+That rule also predicts **all 58,971 actually submitted PCM buffer sizes**, without an exception, plus **352-frame minimum-size attempts for all 513 native rejected submissions** across those captures. For a rejected submission, the synthesized sample size is inferred from the previous feedback, not observed as an AI DMA write (the write is omitted by definition). This dramatically expands the prior three-second post-failure partial replay: it covers *the complete recorded histories* of these five independent runs, from first audio generation, across the first failure, through recoveries or shutdown. It validates internal event/length consistency, not the correctness of each recorded guest audio synthesis sample, work scheduling or N64 hardware timing.
+
+| Capture | AI_LEN exact | Accepted PCM size exact | Reject attempts | Native outcome |
+|---|---:|---:|---:|---|
+| Trace 7, MOVE helper+SFX on | 7,504/7,504 | 7,429/7,429 | 74 | one isolated, later 73 burst |
+| Trace 8, clean vanilla | 18,984/18,984 | 18,978/18,978 | 5 | isolated + 3 + isolated |
+| Trace 9, entire MOVE helper off | 14,801/14,801 | 14,798/14,798 | 2 | only isolated; no audible acceleration |
+| Trace 10, helper on / no SFX wrapper | 3,636/3,636 | 3,283/3,283 | 352 | continuous to shutdown |
+| Trace 11, helper on / no SFX wrapper / return in t9 | 14,564/14,564 | 14,483/14,483 | 80 | isolated + 79 burst; recovery |
+| **Total** | **59,489/59,489** | **58,971/58,971** | **513** | No unexplained feedback or size transition |
+
+### The exact first-failure fork is a DMA deadline, independently repeated
+
+For each first rejection in a burst, calculate the end deadline of its **queued tail** from the first following AI END event and promoted queued duration (`0x14/0x15`); subtract this deadline from the **next** native audio service's CP0 Count. Negative means service arrives before the tail ends, positive after:
+
+| Capture/episode | First rejected head/tail | Next service relative to tail end | Subsequent behavior |
+|---|---|---:|---|
+| Trace 7 isolated | 1,536/1,408 bytes | **+31,468 Count** | Recovers immediately |
+| Trace 7 severe | 1,600/1,472 | **−4,246 Count** | 73 consecutive rejects |
+| Vanilla Trace 8 three-event burst | 1,600/1,472 | **−4,134 Count** | Three rejects, then tail changes to 1,408 and recovers |
+| Trace 9 first/second isolated | 1,536/1,408 | **+31,714 / +30,816 Count** | Both recover immediately |
+| Trace 10 severe | 1,600/1,472 | **−4,486 Count** | 352 consecutive rejects; still failing at stop |
+| Trace 11 isolated | 1,536/1,408 | **+31,186 Count** | Recovers immediately |
+| Trace 11 severe | 1,600/1,472 | **−3,784 Count** | 79 consecutive rejects then recovers |
+
+The original emulator 551 Count/PCM byte agrees with all data. A 64-byte tail shortening (1,472→1,408) removes **35,264 Count** from the FIFO deadline, enough to switch the result from ~−4,000 to ~+31,000 even when the audio service cadence is unchanged. This is a concrete emulated-buffer/clock threshold. The clean vanilla control can *briefly enter* the same negative-deadline state as the modified ROM; therefore the immediate FIFO fault is not proof of bad MKMSZR code or RAM, while the modified compositions reproducibly spend more time in a trap. The canonical question remains **why the whole composition/route preferentially lands in and maintains that phase**, not whether the individual AI_LEN result was spontaneously corrupted.
+
+### Previously unnoticed precise Trace (11) recovery: status/DMA interrupt collision
+
+At the last of 79 consecutive rejections in Trace 11, the native enqueue routine's **first** AI_STATUS read (CP0 `3,355,939,791`) sees `FULL|BUSY`. A scheduled emulated AI END fires at CP0 `3,355,939,809`: **only 18 Count later**. The *diagnostic rejection logger's* additional status read occurs at `3,355,940,445` and sees **BUSY only**, then the native feedback `AI_LEN` read at `3,355,940,483` sees **1,464 bytes remaining on the promoted 1,472-byte head**. The core's two `0x13` observations are **NOT two independent native enqueue decisions**. One genuine native rejected submission has already happened because the first read saw FULL. Interruption and DMA promotion *between* these reads changes the subsequent feedback and the next frame is only **352 samples**, permitting normal audio cadence to resume. This is exactly recorded by `0x13 → 0x14/0x15 → 0x13 → 0x12` in one service. The incidental diagnostic logger adds guest instructions, so its phase can affect the exact recovery and must not be generalized byte-for-byte to an uninstrumented production ROM.
+
+This establishes a second escape mechanism *without shortening the 1,472-byte tail*: the emulator's AI END event crosses the guest enqueue/feedback read boundary. For comparison Trace 7 recovers when the queued tail finishes ~**650 Count before** the next service, whereas at the first severe reject the same buffer's deadline is 4,246 Count *after* the next service. Both are sensitive to differences much smaller than one 60Hz frame; neither requires an invalid `AI_LEN` value or new memory overwrite in the loop. This is **a proven mechanism for recovery and self-maintaining feedback, not proof of the upstream earliest perturbing operation or root-cause fix**.
+
+**Research decision:** Stop selector-s0 experiments (rejected by Trace 11) and do not remove the accepted movement SFX on a single healthy Trace 9. Do not start a PCM FIFO retry or alter the accepted rich HUD. An emulated-AI fractional-duration experiment (#161) remains a diagnostic, not a guaranteed cure; because it makes a 368-frame DMA *longer* (812,306 vs 811,072 Count), it may actually increase FIFO pressure even while reducing SDL queue drift. A real fix requires identifying an earlier native production scheduling/deadline condition and verifying it under representative ROM/audio backends, potentially including hardware-independent controls. No emulator or ROM was executed or changed for this read-only audit.
+
 ## Trace (11): selector helper with SFX muted and s0 preserved still produces bounded FIFO runaway (2026-10-09)
 
 **Maintainer Runtime-confirmed audible short accelerated-music episode on second run; trace-confirmed 80 guest FIFO rejections, 79 contiguous across ~5.2 seconds; no root-cause repair established.** The exact disposable ROM is `MKMSZR_selector-move-abi-preserve_fortress_proof_v01.z64` SHA-256 `73d8e64b078ff6211b9e059e6f46bdb90f2bef9bd829c2a7e52f41392b77fc68` (the Trace 10 native sound-wrapper call stays NOP, the helper stays active, and two register-only instruction encodings change `s0→t9` for the saved helper return address at ROM `0xE290/0xE2A8`, with N64 CRC recomputed). This is the *s0 preservation control*, not the movement-SFX-disabled entire-helper control.
