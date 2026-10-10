@@ -94,3 +94,29 @@ python3 diagnostics/rmg-host-observer/analyze_phase_trace.py \
 **First controlled question:** Compare two cold-boot captures using the *same proven prefilled Fortress ROM*, emulator settings, the same manually repeated selector->Fortress->Inventory cursor route, and 100% speed. Determine whether initialized DAC/target/previous-info/task state matches at the earliest native AI_LEN reads, and then find the *earliest subsequent divergence*, before FIFO FULL. If a healthy/failing pair cannot be obtained within a reasonable bounded session, report that outcome rather than demanding endless tests. Do not infer an individual faulty instruction from phase correlation alone.
 
 No guest FIFO retry, RMG fractional timing variant, camera/RSP/audio-backend substitution, or feature deletion is part of v04. ROM hash and trace provenance should be recorded alongside each run. This is a **diagnostic experiment, not a production correction**.
+
+## v05 — guest-visible controller/PIF input trace (opt-in)
+
+Source: [draft diagnostic PR #165](https://github.com/smeagol44/MKMSZ-Randomizer/pull/165), layered on v04. The former five-stream observer recorded no controller-button state; the user's cursor-to-speedup temporal observation cannot be retrospectively aligned.
+
+The pinned core processes game controller commands in the SI/PIF pathway: original controller backend, then normal netplay_update_input, then the Joybus controller read reply becomes visible to the emulated game. v05 **copies the already produced four PIF response bytes** after this original processing; it never polls host SDL or guest input a second time, mutates controller values, edits ROM/RDRAM, or changes AI timing. Every response poll is recorded, even unchanged samples.
+
+Input channel is enabled only when both environment variables MKMSZR_TRACE=1 and MKMSZR_TRACE_INPUT=1 are set. The existing v04 phase and v02 memory options remain independent. PIF response events have the same MZRHST1/56-byte layout as other host traces and a dedicated 131,072-record ring (one 0x60 event per guest controller-read response). Fields: a=port (0..3); b=four raw bytes little-endian packed; c=low 16-bit buttons; d/e=signed analog X/Y; f=response error bits; g/h=Tx/Rx lengths. Byte order and button labels follow the pinned m64p_plugin.h BUTTONS union. Error replies must not count as presses.
+
+Input timestamp is CLOCK_MONOTONIC and a *read-only* CP0 Count snapshot. Join it to the preceding VI 0x20 event by host timestamp, in the same emulator session. The guest Count snapshot is not an instrumented consumer PC or an updated cycle-perfect Count; exact MKMSZ Inventory cursor consumption is not directly recorded. Do not infer a causal relation from timing alone.
+
+**Launch only after pinned Flatpak CI and synthetic opt-in/disabled tests pass:**
+
+    flatpak run --user --env=MKMSZR_TRACE=1 --env=MKMSZR_TRACE_MEM=1 --env=MKMSZR_TRACE_PHASE=1 --env=MKMSZR_TRACE_INPUT=1 org.mkmszr.RMGObserver
+
+A normal full RMG app exit (not only the in-emulation Shutdown button) dumps the six separate traces, including mkmszr-input-trace.bin, under the observer app XDG_CACHE_HOME; subsequent runs overwrite them. Unexpected process exits can prevent trace export. Validate saved/total/overwritten headers; never infer guest crash from missing files.
+
+**Offline decoder:**
+
+    python3 diagnostics/rmg-host-observer/analyze_input_audio_alignment.py --folder /path/to/traces --report controller-audio-alignment.json --edges controller-edges.csv
+
+Decoder emits individual controller state transitions, preceding VI index and input edges in the ten seconds before native FIFO bursts. For 352-frame-only slowdown without FIFO bursts, align CSV to prior phase/audible reports separately. The initial v04 recordings lack input data.
+
+**Bounded manual control:** Same prefilled Fortress proof ROM and RMG settings. Cold boot, select Fortress, open Inventory, hold still 15–20s, move Up/Down cursor repetitively for 20–30s, then hold still at least 20s; stop after audible disturbance + ~10s if responsive or cap ~3–4 min. Save six streams under separate per-run names. Add listener-reported onset and no savestate/pause during the capture. An opt-out short boot parity control remains required for the new input hook.
+
+No accepted code/feature changes, no native AI retry, no production fix, no new ROM cave, and no emulator fractional DMA variant are part of this observer.
