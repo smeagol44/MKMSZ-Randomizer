@@ -11,8 +11,8 @@ import bisect
 import csv
 import hashlib
 import json
-from pathlib import Path
 import struct
+from pathlib import Path
 
 H = struct.Struct("=8sIIQQQ")
 R = struct.Struct("=QQ10I")
