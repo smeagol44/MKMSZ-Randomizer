@@ -58,7 +58,7 @@ def analyze(ai: list[tuple[int, ...]], vi: list[tuple[int, ...]]) -> dict:
     rejections = []
     interleavings = []
     for index, row in enumerate(ai):
-        kind, ns, count = row[2], row[1], row[3]
+        kind, count = row[2], row[3]
         if kind == 0x11 and (row[4] & 0xC0000000) == BUSY:
             active = True
             head_len, head_duration = row[5], row[7]
