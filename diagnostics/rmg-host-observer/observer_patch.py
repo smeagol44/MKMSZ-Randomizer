@@ -6,6 +6,7 @@ No emulator execution, ROM edits, enqueue retries, or playback changes.
 from pathlib import Path
 
 from observer_memory_patch import apply as install_memory_probe
+from observer_phase_patch import apply as install_phase_probe
 
 CORE = Path("Source/3rdParty/mupen64plus-core/src/device/rcp")
 AUDIO = Path("Source/RMG-Audio/sdl_backend.cpp")
@@ -219,4 +220,5 @@ replace_once(AUDIO,
     '        sdl_backend->frequency, 0, 0, 0);\n')
 
 install_memory_probe(vi)
-print("MKMSZR observer patch + opt-in RDRAM v02 applied to pinned RMG source")
+install_phase_probe(ai)
+print("MKMSZR observer + opt-in RDRAM v02 and phase provenance v04 applied to pinned RMG")
