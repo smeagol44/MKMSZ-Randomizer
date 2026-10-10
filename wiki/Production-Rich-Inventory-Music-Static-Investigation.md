@@ -8,6 +8,23 @@ The earliest verified unsuccessful operation is native full-FIFO enqueue `0x8008
 
 ROM `0x0008B158`, `1440000A → 1440FFFD`, is explicitly rejected for this investigation. It remains an untested mitigation. Retrying can change scheduler timing and hang if AI stops draining. Nothing in the new counter evidence promotes it to a root-cause fix.
 
+## Existing-trace control on earliest AI DMA phase (2026-10-10)
+
+**New read-only, trace-confirmed finding; first *size* divergence occurs long after the native output epoch.** Work's separately staged static audio-init assessment identifies normal work-enable at `0x80001510` before frontend logos; this comparison uses the already existing complete RMG Observer v02 Traces (6)–(11), not a new emulator run. Each capture's initial AI `0x10` FIFO-push record is matched against its preceding VI `0x20` record using guest CP0 Count (wrap-corrected), not host wall clock. Each trace's first PCM DMA submission is exactly **2,816 bytes (704 frames)**, and **the first ten submitted sizes are byte-for-byte the same sequence**: 2816, 1408, 1472, 1536, 1536, 1472, 1408, 1408, 1472, 1536.
+
+| Capture | Preceding VI callback index (zero-based) | First PCM write after VI (guest Count) | Earliest AI_LEN disagreement vs failing Trace 7 (service index) | First *submitted PCM size* disagreement vs Trace 7 (write index) |
+|---|---:|---:|---:|---:|
+| Trace 6, modified | 294 | +7,726 | 3 (1280 vs 1272) | **2,184** (~41.41 s Trace-7 epoch) |
+| Trace 7, failing modified | 294 | +7,682 | Reference | Reference |
+| Trace 8, clean vanilla/password route | 295 | +7,722 | 256 | **1,874** (~36.245 s) |
+| Trace 9, entire selector MOVE helper bypassed | 294 | +7,722 | 260 | **2,203** (~41.728 s) |
+| Trace 10, helper active / SFX call NOP | 294 | +7,722 | 258 | **2,201** (~41.695 s) |
+| Trace 11, helper active / `s0→t9` | 294 | +7,682 | 260 | **2,203** (~41.728 s) |
+
+These are *output-buffer length* sequences, **not PCM payload equality**. The first guest AI_LEN feedback readings can differ earlier by only eight bytes because they sample a current DMA deadline at a slightly different Count without immediately crossing the game's 16-frame size-quantization band. Vanilla differs in menus/route and is not an input-frame-matched control. The common first PCM length and first-VI-relative submission offsets of just **7,682..7,726 Count** compared with ~811,092 Count/VI weaken a theory of wholly different startup audio rates or a gross audio-initialization offset, but **do not establish identical first-DMA sub-frame phase, native synthesis/voice state, or the exact later triggering operation**. A 40-Count initial jitter can still matter near a narrow DMA-completion boundary.
+
+**Diagnostic implication:** Work's proposed opt-in host snapshot of native producer/DAC state is still potentially useful, but the first DMA submission Count, initial length and initial buffer-size prefix are **already measured**. The next diagnostic must discriminate the *earliest state/phase divergence* during frontend/stage/Inventory execution, not just reproduce startup settings or the known FIFO rejection loop. The static Work report is staged in [draft PR #163](https://github.com/smeagol44/MKMSZ-Randomizer/pull/163), Ghidra metadata [draft PR #7](https://github.com/smeagol44/MKMSZ-Ghidra/pull/7); neither is merged or production-authorized. A review comment in #163 clarifies the correct selector **hook** VA `0x8000D170` versus actual **MOVE helper entry** VA `0x8000D67C` and requests avoiding redundant instrumentation. No ROM, game, or emulator modification was performed in this comparison.
+
 ## VI-relative native audio-service phase across all control traces (2026-10-09)
 
 **New read-only trace-confirmed control, no new emulator/ROM execution.** To test whether upstream MKMSZR Inventory/selector edits *delay the native audio generator by one or more frames*, pair each emulated VI callback (host observer event `0x20`) with the following first native AI_STATUS read (`0x13`) before the next AI_LEN read (`0x12`). **Only the first** status read in an audio service counts: the rejection logger's later `0x13` is not a new audio-frame service. Compare the two **emulated guest CP0 Count** values with signed 32-bit wrap handling; do not use host-monotonic milliseconds as emulated CPU delay. Verify no VI interval receives two native services.
