@@ -8,6 +8,24 @@ The earliest verified unsuccessful operation is native full-FIFO enqueue `0x8008
 
 ROM `0x0008B158`, `1440000A → 1440FFFD`, is explicitly rejected for this investigation. It remains an untested mitigation. Retrying can change scheduler timing and hang if AI stops draining. Nothing in the new counter evidence promotes it to a root-cause fix.
 
+## VI-relative native audio-service phase across all control traces (2026-10-09)
+
+**New read-only trace-confirmed control, no new emulator/ROM execution.** To test whether upstream MKMSZR Inventory/selector edits *delay the native audio generator by one or more frames*, pair each emulated VI callback (host observer event `0x20`) with the following first native AI_STATUS read (`0x13`) before the next AI_LEN read (`0x12`). **Only the first** status read in an audio service counts: the rejection logger's later `0x13` is not a new audio-frame service. Compare the two **emulated guest CP0 Count** values with signed 32-bit wrap handling; do not use host-monotonic milliseconds as emulated CPU delay. Verify no VI interval receives two native services.
+
+| Trace (ROM variant) | VI events | Native first-status services | VI startup events before audio | CP0 Count from VI to service: median (p05..p95) | Min..max | Guest rejects |
+|---|---:|---:|---:|---|---|---:|
+| (7) full sound + helper, accelerated | 7,798 | 7,503 | 295 | **7,662 (7,406..8,064)** | 7,294..9,100 | 74 |
+| (8) unmodified vanilla, no sustained symptom | 19,279 | 18,983 | 296 | **7,722 (7,418..8,198)** | 7,338..9,272 | 5 |
+| (9) movement helper bypassed, healthy | 15,095 | 14,800 | 295 | **7,722 (7,418..8,206)** | 7,318..9,394 | 2 |
+| (10) helper active, SFX-call NOP, ongoing acceleration | 3,930 | 3,635 | 295 | **7,652 (7,398..7,972)** | 7,294..9,402 | 352 |
+| (11) helper active, SFX-call NOP and `s0→t9`, 5s failure | 14,858 | 14,563 | 295 | **7,722 (7,418..8,212)** | 7,294..9,490 | 80 |
+
+All **59,484** observed native first-status services fall in unique VI intervals, including the entire pathological 352-failure run (10); no duplicate/missed **active** VI audio service is evident. Startup has 295/296 VI events before the native output service starts across *all* variants, including vanilla. For comparison, the pinned RMG VI interval is `811,092` Count; the entire observed ~7.3–9.5k Count VI-relative service timing range is a fraction of one frame. The central difference of the healthy-versus-failing variants is only ~60–70 Count, not a full-frame delay. The traces therefore **disfavor a simplistic inventory-renderer multi-frame starvation/dropped audio service mechanism** and support investigating the evolution of prior queued AI DMA deadlines and output-buffer sizes.
+
+**Boundaries:** The timestamp is **first AI_STATUS poll within the native enqueue call**, not the instant the scheduler receives VI or begins `audio_frame_work`; the scheduler is already statically mapped in [the original native task tracing section](Production-Rich-Inventory-Music-Static-Investigation). It cannot establish that every producer instruction executes at the same Count, does not record controller input, title SFX events or precise Inventory-open state, and says nothing about earlier phase offsets accumulated before stage entry. A stable VI→service offset does not prove the upstream game compositional trigger is an emulator bug or that all memory is valid. RMG's DMA deadline and guest scheduling are distinct timing domains; pending work remains to identify *why the audio FIFO queued tail is 1,472 rather than 1,408 bytes at the critical first failure*. This also means another broad Ghidra scheduler discovery trace is redundant; the Ghidra metadata already records `scheduler_vi_service 0x80000E24`, `audio_frame_work 0x8007D3FC`, `audio_frame_build 0x8007D4A8`, `scheduler_task_dispatch 0x80000F4C` and `rsp_task_submit 0x800011F0`.
+
+**Reproduction inputs:** use existing attached Traces 7/8/9/10/11; local read-only companion report `MKMSZR_audio_vi_service_phase_audit_v01.json` and script `mkmszr_audio_vi_service_phase_audit_v01.py`. No new user run, production edit or ROM diff. Evidence label **Trace-confirmed**, causation **Pending**.
+
 ## Closed-loop native AI sizing and DMA phase audit across Traces (7)–(11) (2026-10-09)
 
 **Trace-confirmed full bounded playback accounting, *not* a production correction or proof that no memory corruption can exist.** A fresh read-only analysis of all complete audio/VI streams (original failed MKMSZR, vanilla, entire MOVE helper disabled, SFX call only disabled, return-register change) reconstructs the pinned RMG v0.9.0 emulated `AI_LEN` feedback from nothing except observed DMA starts/completions, each queued head's length/duration, and the recorded CP0 Count of the read. After independent head start or promotion from tail, predict:
