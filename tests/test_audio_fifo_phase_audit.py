@@ -10,6 +10,7 @@ from tools.audit_audio_fifo_phase import (
     cp0_delta,
     native_pcm_frames,
     read_trace,
+    replay_fifo_from_events,
 )
 
 
@@ -39,6 +40,14 @@ def test_one_native_buffer_reconstructed_exactly():
     assert result["exact_ai_len_reads"] == 2
     assert result["exact_accepted_pcm_sizes"] == 1
     assert result["native_rejected_submissions"] == 0
+    replay = replay_fifo_from_events(ai)
+    assert replay == {
+        "exact_fifo_status_reads": 1,
+        "exact_ai_len_reads": 2,
+        "exact_pcm_sizes": 1,
+        "predicted_enqueue_rejections": 0,
+        "mismatches": 0,
+    }
 
 
 def test_binary_trace_integrity_guard(tmp_path):
