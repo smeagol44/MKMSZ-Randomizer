@@ -30,6 +30,9 @@ jobs:
       - name: Verify opt-in controller PIF read logging and disabled-mode parity (C)
         working-directory: diagnostics/rmg-host-observer
         run: python3 test_observer_input_patch.py
+      - name: Verify input edges align to VI and logger double-status events
+        working-directory: diagnostics/rmg-host-observer
+        run: python3 test_analyze_input_audio_alignment.py
       - name: Generate pinned side-by-side manifest
         working-directory: diagnostics/rmg-host-observer
         run: python3 generate_manifest.py
