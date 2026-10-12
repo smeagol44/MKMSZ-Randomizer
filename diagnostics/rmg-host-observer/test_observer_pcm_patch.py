@@ -1,5 +1,6 @@
 """Synthetic C/Python contract tests; never loads a ROM or runs an emulator."""
 
+import ctypes
 import os
 import subprocess
 import tempfile
@@ -13,7 +14,7 @@ PREFIX = r'''
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#define EXPORT
+#define EXPORT __attribute__((visibility("default")))
 #define CALL
 #define S8 3u
 #define CP0_COUNT_REG 9
@@ -114,6 +115,10 @@ def decoder_tests():
     bad = list(rows)
     bad[4] = row(4, 0x83, [0x2000, 256, 2, 0, 2, 256, 128, 31])
     assert analyze({"rows": bad, "overwritten": 0}, onset, session)["verdict"].startswith("INCONCLUSIVE")
+    late_onset = {"kind": "audible_onset", "monotonic_ns": 1001000000,
+                  "uncertainty_seconds": 0.001}
+    assert analyze(trace, late_onset, session)["committed_tail_mutations"][0][
+        "relative_to_reported_audio_onset"].startswith("after")
     print("PASS decoder refuses legacy/lost/incomplete/wrong-ROM/invalid ownership evidence")
 
 
@@ -129,6 +134,18 @@ def main():
             env["MKMSZR_TRACE"] = "1"
             env["MKMSZR_TRACE_PCM"] = "1" if mode == "on" else "0"
             subprocess.run([str(binary), mode], env=env, check=True)
+        # Visibility alone cannot override a GNU export allowlist.
+        version = Path(temp)/"export.ver"
+        version.write_text('{global: MKMSZR_PCMBefore; MKMSZR_PCMAfter; MKMSZR_PCMTask; '
+                           'local: *; };\n')
+        shared = Path(temp)/"pcm.so"
+        subprocess.run(["cc", "-std=c11", "-fPIC", "-shared", "-fvisibility=hidden",
+                        str(source), "-o", str(shared),
+                        "-Wl,--version-script="+str(version)], check=True)
+        lib = ctypes.CDLL(str(shared))
+        for name in ["MKMSZR_PCMBefore", "MKMSZR_PCMAfter", "MKMSZR_PCMTask"]:
+            getattr(lib, name)
+        print("PASS diagnostic callbacks resolve across shared-library export boundary")
     decoder_tests()
 
 

@@ -33,6 +33,8 @@ an RSP boundary alone is not assumed to be audio. The PC field is RSP/JIT contex
 not a proven exact store instruction PC. FIFO enqueue/pop IDs and write records
 share **one AI ring**, preserving their ordering. The loaded ROM MD5 is recorded.
 No raw PCM, ROM or guest-memory payload is exported.
+The AI/write ring holds 524,288 records (28 MiB of host storage). Any overwritten
+records still make the lead-up incomplete; the analyzer refuses a complete verdict.
 
 This deliberately observes **ParaLLEl RSP DMA writes to the unstarted tail**.
 CPU/PI/RDP/wild writes and active-head overwrite remain outside coverage. The
@@ -46,6 +48,7 @@ justified in native ROM code and remain portable.
 
 Use the successful **RMG host observer Flatpak** run on this diagnostic PR.
 Download artifact `rmg-pcm-observer-v0.9.0-flatpak`, extract it, then:
+The same archive includes the capture helper, analyzer, decoder and these instructions.
 
 ```bash
 flatpak --user install ./RMG-PCM-Observer-v0.9.0.flatpak

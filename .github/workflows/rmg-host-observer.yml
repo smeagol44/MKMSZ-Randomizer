@@ -42,9 +42,10 @@ jobs:
         run: |
           test -f flatpak-build/files/lib/libRMG-Core.so
           test -f flatpak-build/files/bin/RMG
-          nm -D flatpak-build/files/lib/libRMG-Core.so | grep ' MKMSZR_PCMBefore$'
-          nm -D flatpak-build/files/lib/libRMG-Core.so | grep ' MKMSZR_PCMAfter$'
-          nm -D flatpak-build/files/lib/libRMG-Core.so | grep ' MKMSZR_PCMTask$'
+          test -f flatpak-build/files/lib/RMG/Core/libmupen64plus.so
+          nm -D flatpak-build/files/lib/RMG/Core/libmupen64plus.so | grep ' MKMSZR_PCMBefore$'
+          nm -D flatpak-build/files/lib/RMG/Core/libmupen64plus.so | grep ' MKMSZR_PCMAfter$'
+          nm -D flatpak-build/files/lib/RMG/Core/libmupen64plus.so | grep ' MKMSZR_PCMTask$'
           readelf -d flatpak-build/files/bin/RMG | grep -E '(RPATH|RUNPATH)' | grep '/app/lib'
           find flatpak-build/files/lib/RMG -maxdepth 4 -type f | head -30
           test -s RMG-PCM-Observer-v0.9.0.flatpak
@@ -52,5 +53,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rmg-pcm-observer-v0.9.0-flatpak
-          path: diagnostics/rmg-host-observer/RMG-PCM-Observer-v0.9.0.flatpak
+          path: |
+            diagnostics/rmg-host-observer/RMG-PCM-Observer-v0.9.0.flatpak
+            diagnostics/rmg-host-observer/analyze_pcm_trace.py
+            diagnostics/rmg-host-observer/decode_host_trace.py
+            diagnostics/rmg-host-observer/prepare_pcm_capture.py
+            diagnostics/rmg-host-observer/README-PCM.md
           retention-days: 14

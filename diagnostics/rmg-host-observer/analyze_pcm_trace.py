@@ -36,6 +36,8 @@ def analyze(trace, onset=None, session=None):
         problems.append("capture session ROM identity missing")
     elif loaded_md5 != session.get("rom_md5", "").lower():
         problems.append("loaded-ROM MD5 differs from supplied session ROM")
+    if session and rows and rows[0][1] < session.get("prepared_monotonic_ns", 0):
+        problems.append("trace predates session preparation; stale capture")
     if not any(r[2] == 0x85 and r[4][1] == 2 for r in rows):
         problems.append("no observed audio task type 2: wrong plugin/path or incomplete capture")
     if onset and (not rows or not rows[0][1] <= onset["monotonic_ns"] <= rows[-1][1]):

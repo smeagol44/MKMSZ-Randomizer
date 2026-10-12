@@ -219,6 +219,9 @@ def apply(root: Path) -> None:
     plugin = root / "Source/3rdParty/mupen64plus-rsp-parallel"
     if "MKMSZR_PCMBefore" in core.read_text():
         raise RuntimeError("PCM observer already installed")
+    exports = root / "Source/3rdParty/mupen64plus-core/src/api/api_export.ver"
+    replace(exports, 'PluginGetVersion;',
+            'MKMSZR_PCMBefore;\nMKMSZR_PCMAfter;\nMKMSZR_PCMTask;\nPluginGetVersion;')
     replace(core, '#include "device/rdram/rdram.h"',
             '#include "device/rdram/rdram.h"\n#include "device/device.h"\n'
             '#include "main/main.h"\n#include "main/rom.h"\n#include "api/m64p_types.h"')

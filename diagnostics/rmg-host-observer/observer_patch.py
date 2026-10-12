@@ -106,7 +106,7 @@ def replace_once(path: Path, needle: str, replacement: str):
 
 def add_trace_header(path: Path, channel: str):
     (path.parent / "mkmszr_trace.h").write_text(HEADER)
-    capacities = {"ai": 262144, "vi": 131072, "rsp": 262144,
+    capacities = {"ai": 524288, "vi": 131072, "rsp": 262144,
                   "host-audio": 131072}
     capacity = capacities[channel]
     replace_once(path, '#include <string.h>',
