@@ -55,6 +55,11 @@ def analyze(trace, onset=None, session=None):
     ready_tail = 0
     writes = []
     unsealed = []
+    initial_fills = []
+    completion_rows = {r[4][0]: r for r in rows if r[2] == 0x87
+                       and r[4][1] == 2 and r[4][2] & 0x203 == 0x203}
+    ready_rows = {(r[4][0], r[4][1]): r for r in rows if r[2] == 0x8a
+                  and r[4][1] and r[4][5] & 0x80000000}
     same_value = 0
     safe_audio = 0
     for i, row in enumerate(rows):
@@ -97,10 +102,18 @@ def analyze(trace, onset=None, session=None):
             continue
         if (not flags & 32 or not ready_tail or ready_tail not in completed
                 or task_types.get(ready_tail) != 2 or ready_tail == task):
-            unsealed.append({"sequence": row[0], "count": count, "task_generation": task,
-                             "tail_generation": owner, "completed_tail_writer": ready_tail,
-                             "changed_unread_bytes": changed,
-                             "note": "May be own-generation synthesis/initialization; no older completed overwrite established"})
+            fill = {"sequence": row[0], "count": count, "task_generation": task,
+                    "tail_generation": owner, "completed_tail_writer": ready_tail,
+                    "changed_unread_bytes": changed}
+            end = completion_rows.get(task)
+            sealed = ready_rows.get((owner, task))
+            if (not ready_tail and end and sealed
+                    and row[0] < end[0] <= sealed[0]):
+                fill["note"] = "Same generation finished the complete queued range before promotion; permitted async initialization, not older-completed replacement"
+                initial_fills.append(fill)
+            else:
+                fill["note"] = "Older completed ownership or own-generation readiness before playback is unproved"
+                unsealed.append(fill)
             continue
         relation = "audible onset not marked"
         delta = None
@@ -131,7 +144,7 @@ def analyze(trace, onset=None, session=None):
     elif unsealed:
         verdict = "INCONCLUSIVE: queued writes lack older completed-generation provenance; stop"
     elif audible:
-        verdict = "REPORTED FAILURE WITHOUT OBSERVED RSP-DMA TAIL MUTATION"
+        verdict = "REPORTED FAILURE WITHOUT OBSERVED OLDER-COMPLETED-GENERATION REPLACEMENT"
     else:
         verdict = "INCONCLUSIVE: no reported acceleration; stop"
     return {
@@ -142,6 +155,7 @@ def analyze(trace, onset=None, session=None):
         "safe_audio_write_rows": safe_audio, "identical_value_overlap_rows": same_value,
         "committed_tail_mutations": writes, "coverage_summary": ends[0][4] if len(ends) == 1 else None,
         "unqualified_queued_mutations": unsealed,
+        "completed_before_playback_initialization": initial_fills,
         "limitations": [
             "Observes ParaLLEl RSP DMA stores only; CPU/PI/RDP/wild writers and active-head overlap are unmeasured.",
             "A queued device tail has not started playback; late AI event delivery can still affect console portability.",

@@ -32,7 +32,10 @@ An alert needs all of these:
 Queueing a buffer before its own synthesis finishes can be legal. Such writes
 must not be labeled an older-buffer overwrite. Host-only per-word writer tags
 and HALT|BROKE|TASKDONE records qualify prior completed audio; uncertain/unsealed
-queued mutations are reported as inconclusive. These tags cost an additional
+queued mutations are reported as inconclusive unless that same generation is
+later proven to finish the entire queued range before it becomes active. That
+case is permitted asynchronous initialization, not an older-completed overwrite.
+These tags cost an additional
 8 MiB of host RAM and do not reserve or modify guest memory.
 
 Identical rewrites and address reuse after release are reported separately. A
@@ -94,7 +97,7 @@ human report, not a waveform measurement.
 In terminal 2, launch manually:
 
 ```bash
-flatpak run --user --env=MKMSZR_TRACE=1 --env=MKMSZR_TRACE_PCM=1 org.mkmszr.RMGPCMObserver
+flatpak run --user --env=MKMSZR_TRACE=1 --env=MKMSZR_TRACE_PCM=1 --env=MKMSZR_TRACE_MEM=0 org.mkmszr.RMGPCMObserver
 ```
 
 1. Start **this exact ROM from cold boot**. Do not load a savestate or change speed.

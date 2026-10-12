@@ -138,11 +138,18 @@ def decoder_tests():
     inflight[9] = row(9, 0x8b, [0, 2, 2, 2, 0, 0, 0, 0])
     assert analyze({"rows": inflight, "overwritten": 0}, onset, session)[
         "verdict"].startswith("INCONCLUSIVE")
+    legal = list(inflight)
+    legal.insert(10, row(10, 0x87, [2, 2, 0x243, 0, 0, 0, 0, 0]))
+    legal.insert(11, row(11, 0x8a, [2, 2, 2, 0x2000, 1024, 0xc0000000, 0, 0]))
+    legal = [row(i, r[2], r[4]) for i, r in enumerate(legal)]
+    legal_result = analyze({"rows": legal, "overwritten": 0}, onset, session)
+    assert legal_result["verdict"].startswith("REPORTED FAILURE WITHOUT")
+    assert len(legal_result["completed_before_playback_initialization"]) == 1
     late_onset = {"kind": "audible_onset", "monotonic_ns": 1001000000,
                   "uncertainty_seconds": 0.001}
     assert analyze(trace, late_onset, session)["committed_tail_mutations"][0][
         "relative_to_reported_audio_onset"].startswith("after")
-    print("PASS decoder refuses legacy/lost/incomplete/wrong-ROM/invalid ownership evidence")
+    print("PASS decoder separates completed-before-playback initialization and refuses incomplete ownership evidence")
 
 
 def main():
