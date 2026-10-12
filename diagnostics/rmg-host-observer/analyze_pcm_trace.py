@@ -18,7 +18,7 @@ def analyze(trace, onset=None, session=None):
         problems.append("early records overwritten: lead-up unavailable")
     starts = [r for r in rows if r[2] == 0x80]
     ends = [r for r in rows if r[2] == 0x89]
-    if len(starts) != 1 or starts[0][4][:2] != [1, 4096]:
+    if len(starts) != 1 or starts[0][4][:2] != [2, 4096]:
         problems.append("PCM protocol start missing/repeated/incompatible; old capture lacks writes")
     if len(ends) != 1:
         problems.append("normal-exit PCM coverage summary missing/repeated")
@@ -50,15 +50,27 @@ def analyze(trace, onset=None, session=None):
     epoch = first_vi[1] if first_vi else rows[0][1] if rows else 0
     tail_id = 0
     task = None
+    completed = set()
+    task_types = {}
+    ready_tail = 0
     writes = []
+    unsealed = []
     same_value = 0
     safe_audio = 0
     for i, row in enumerate(rows):
         _, ns, event, count, values = row
         if event in (0x81, 0x82):
             tail_id = values[3] if values[6] & 0x80000000 else 0
+            ready_tail = 0
         if event == 0x85:
             task = values[0]
+            task_types[task] = values[1]
+        if event == 0x87 and values[2] & 0x203 == 0x203:
+            completed.add(values[0])
+        if event == 0x8a:
+            if values[0] != tail_id:
+                problems.append("ready-generation record has mismatched AI-tail identity")
+            ready_tail = values[1]
         if event != 0x83:
             continue
         dest, size, task_type, pc, owner, overlap, changed, flags = values
@@ -67,10 +79,13 @@ def analyze(trace, onset=None, session=None):
         if not overlap:
             safe_audio += task_type == 2
             continue
-        if i+1 >= len(rows) or rows[i+1][2] != 0x84:
+        if i+2 >= len(rows) or rows[i+1][2] != 0x84 or rows[i+2][2] != 0x8b:
             problems.append(f"missing byte-proof detail at sequence {row[0]}")
             continue
         detail = rows[i+1][4]
+        provenance = rows[i+2][4]
+        if provenance[:3] != [ready_tail, task, owner]:
+            problems.append(f"mismatched write generation provenance at sequence {row[0]}")
         if owner != tail_id or not owner or detail[7] != task:
             problems.append(f"missing/mismatched tail or task generation at sequence {row[0]}")
         if changed > overlap or overlap > size or not flags & 8:
@@ -79,6 +94,13 @@ def analyze(trace, onset=None, session=None):
             same_value += 1
             continue
         if flags & 16 or not flags & 8 or not flags & 2 or owner != tail_id or not owner:
+            continue
+        if (not flags & 32 or not ready_tail or ready_tail not in completed
+                or task_types.get(ready_tail) != 2 or ready_tail == task):
+            unsealed.append({"sequence": row[0], "count": count, "task_generation": task,
+                             "tail_generation": owner, "completed_tail_writer": ready_tail,
+                             "changed_unread_bytes": changed,
+                             "note": "May be own-generation synthesis/initialization; no older completed overwrite established"})
             continue
         relation = "audible onset not marked"
         delta = None
@@ -93,6 +115,7 @@ def analyze(trace, onset=None, session=None):
             "task_generation": task, "latched_task_type": task_type,
             "rsp_pc_context": hex(pc), "write_start_physical": hex(dest), "row_bytes": size,
             "tail_generation": owner, "tail_start_physical": hex(detail[1]),
+            "older_completed_generation": ready_tail,
             "tail_length": detail[2], "overlap_bytes": overlap, "changed_unread_bytes": changed,
             "first_changed_physical": hex(detail[0]),
             "relative_to_first_full_status": (
@@ -104,7 +127,9 @@ def analyze(trace, onset=None, session=None):
     if problems:
         verdict = "INCONCLUSIVE: missing/incomplete evidence; stop"
     elif writes:
-        verdict = "COMMITTED CHANGED BYTES IN UNSTARTED AI TAIL"
+        verdict = "DIFFERENT GENERATION MUTATED COMPLETED UNREAD AI-TAIL PCM"
+    elif unsealed:
+        verdict = "INCONCLUSIVE: queued writes lack older completed-generation provenance; stop"
     elif audible:
         verdict = "REPORTED FAILURE WITHOUT OBSERVED RSP-DMA TAIL MUTATION"
     else:
@@ -116,11 +141,13 @@ def analyze(trace, onset=None, session=None):
         "first_full_note": "FULL-status observation is a rejection proxy, not an acoustic onset",
         "safe_audio_write_rows": safe_audio, "identical_value_overlap_rows": same_value,
         "committed_tail_mutations": writes, "coverage_summary": ends[0][4] if len(ends) == 1 else None,
+        "unqualified_queued_mutations": unsealed,
         "limitations": [
             "Observes ParaLLEl RSP DMA stores only; CPU/PI/RDP/wild writers and active-head overlap are unmeasured.",
             "A queued device tail has not started playback; late AI event delivery can still affect console portability.",
             "A mutation proves unread sample replacement, not corruption of all memory or its acoustic impact.",
             "Task type is latched from DMEM OSTask at first-run; RSP PC is context, not an exact JIT-store PC.",
+            "Queueing before own synthesis completes can be legal; only writes over an older completed generation qualify.",
             "Human onset marker has a reported uncertainty; precedence alone is not causation.",
             "Opt-in observer can perturb phase; no non-reproduction certifies health.",
         ],

@@ -56,8 +56,11 @@ int main(int argc,char **argv)
  g_dev.sp.mem=calloc(0x800,4);if(!g_dev.rdram.dram||!g_dev.sp.mem)return 91;
  for(i=0;i<0x800;i++)g_dev.sp.mem[i]=0x11223344;
  ai->fifo[0].address=0x1000;ai->fifo[0].length=0x400;ai->regs[3]=AI_STATUS_BUSY;
- mkmszr_pcm_accept(ai);ai->fifo[1].address=0x2000;ai->fifo[1].length=0x400;
+ mkmszr_pcm_accept(ai);MKMSZR_PCMTask(2,0);
+ copy_row(0x2000,0,0x400);MKMSZR_PCMTaskEnd(0x243,0);
+ ai->fifo[1].address=0x2000;ai->fifo[1].length=0x400;
  ai->regs[3]|=AI_STATUS_FULL;mkmszr_pcm_accept(ai);MKMSZR_PCMTask(2,0);
+ for(i=0;i<0x800;i++)g_dev.sp.mem[i]=0x55667788;
  if(!strcmp(argv[1],"off")) {
   if(records)return 1;
   copy_row(0x2000,0,0x100);if(records)return 2;
@@ -66,11 +69,17 @@ int main(int argc,char **argv)
   memcpy(before,g_dev.rdram.dram+0x2000/4,0x400);baseline=ai->regs[3];
   MKMSZR_PCMBefore(0x2000,0,0x100,0);MKMSZR_PCMAfter();
   if(memcmp(before,g_dev.rdram.dram+0x2000/4,0x400)||ai->regs[3]!=baseline)return 3;
-  copy_row(0x2000,0,0x100);if(changed!=0x100||overlap!=0x100||(flags&31)!=15)return 4;
+  copy_row(0x2000,0,0x100);if(changed!=0x100||overlap!=0x100||(flags&63)!=47)return 4;
   copy_row(0x2000,0,0x100);if(changed||overlap!=0x100)return 5;
   copy_row(0x1000,0,0x100);if(overlap)return 6; /* active head is out of scope */
   ai->delayed_carry=1;copy_row(0x2000,0,0x100);if(overlap)return 7;
   copy_row(0x4000,0,0x100);if(changed!=0x100)return 8;
+  /* Own-generation queued initialization is not an older-generation violation. */
+  ai->delayed_carry=0;ai->fifo[1].address=0x5000;ai->fifo[1].length=0x400;
+  mkmszr_pcm_accept(ai);MKMSZR_PCMTask(2,0);copy_row(0x5000,0,0x400);
+  if(flags&32 || !changed || mkmszr_pcm.tail_ready_generation)return 13;
+  MKMSZR_PCMTaskEnd(0x243,0);
+  if(mkmszr_pcm.tail_ready_generation!=mkmszr_pcm.task_id)return 14;
   ai->delayed_carry=0;ai->fifo[1].address=0;copy_row(0x7ffff8,0x1ff8,16);
   if(overlap!=8||changed!=8)return 9; /* physical wrap */
   ai->delayed_carry=0;ai->fifo[0]=ai->fifo[1];ai->regs[3]&=~AI_STATUS_FULL;
@@ -91,33 +100,43 @@ def row(seq, event, values, ns=None):
 
 def decoder_tests():
     session = {"rom_md5": "7ea59868ada334e8ec7d050918b22749"}
-    rows = [row(0, 0x80, [1, 4096, 0, 0, 0, 0, 0, 0]),
+    rows = [row(0, 0x80, [2, 4096, 0, 0, 0, 0, 0, 0]),
             row(1, 0x86, [0x7EA59868, 0xADA334E8, 0xEC7D0509, 0x18B22749, 0x800000, 0, 0, 0]),
             row(2, 0x85, [1, 2, 0, 0, 0, 0, 0, 0]),
-            row(3, 0x81, [1, 0x1000, 1024, 2, 0x2000, 1024, 0xc0000000, 0]),
-            row(4, 0x83, [0x2000, 256, 2, 0, 2, 256, 128, 15]),
-            row(5, 0x84, [0x2000, 0x2000, 1024, 1, 1, 2, 2, 1]),
-            row(6, 0x13, [0x80000000, 0, 0, 0, 0, 0, 0, 0]),
-            row(7, 0x89, [1, 1, 1, 1, 1, 0, 0, 0])]
+            row(3, 0x87, [1, 2, 0x243, 0, 0, 0, 0, 0]),
+            row(4, 0x85, [2, 2, 0, 0, 0, 0, 0, 0]),
+            row(5, 0x81, [1, 0x1000, 1024, 2, 0x2000, 1024, 0xc0000000, 0]),
+            row(6, 0x8a, [2, 1, 2, 0x2000, 1024, 0xc0000000, 0, 0]),
+            row(7, 0x83, [0x2000, 256, 2, 0, 2, 256, 128, 47]),
+            row(8, 0x84, [0x2000, 0x2000, 1024, 1, 1, 2, 2, 2]),
+            row(9, 0x8b, [1, 2, 2, 2, 0, 0, 0, 0]),
+            row(10, 0x13, [0x80000000, 0, 0, 0, 0, 0, 0, 0]),
+            row(11, 0x89, [1, 1, 1, 1, 1, 0, 0, 0])]
     trace = {"rows": rows, "overwritten": 0}
-    onset = {"kind": "audible_onset", "monotonic_ns": 1006000000, "uncertainty_seconds": 0.001}
+    onset = {"kind": "audible_onset", "monotonic_ns": 1010000000, "uncertainty_seconds": 0.001}
     result = analyze(trace, onset, session)
-    assert result["verdict"].startswith("COMMITTED")
+    assert result["verdict"].startswith("DIFFERENT GENERATION")
     assert result["committed_tail_mutations"][0]["relative_to_first_full_status"] == "before"
     assert result["committed_tail_mutations"][0]["relative_to_reported_audio_onset"].startswith("before")
     same = list(rows)
-    same[4] = row(4, 0x83, [0x2000, 256, 2, 0, 2, 256, 0, 15])
+    same[7] = row(7, 0x83, [0x2000, 256, 2, 0, 2, 256, 0, 47])
     assert not analyze({"rows": same, "overwritten": 0}, onset, session)["committed_tail_mutations"]
     assert analyze(trace, onset, {"rom_md5": "wrong"})["verdict"].startswith("INCONCLUSIVE")
     assert analyze({"rows": rows, "overwritten": 1}, onset, session)["verdict"].startswith("INCONCLUSIVE")
     assert analyze({"rows": rows[:-1], "overwritten": 0}, onset, session)["verdict"].startswith("INCONCLUSIVE")
     assert analyze({"rows": [], "overwritten": 0}, None, None)["verdict"].startswith("INCONCLUSIVE")
     bad = list(rows)
-    bad[4] = row(4, 0x83, [0x2000, 256, 2, 0, 2, 256, 128, 31])
+    bad[7] = row(7, 0x83, [0x2000, 256, 2, 0, 2, 256, 128, 63])
     assert analyze({"rows": bad, "overwritten": 0}, onset, session)["verdict"].startswith("INCONCLUSIVE")
     unverified = list(rows)
-    unverified[4] = row(4, 0x83, [0x2000, 256, 2, 0, 2, 256, 0, 7])
+    unverified[7] = row(7, 0x83, [0x2000, 256, 2, 0, 2, 256, 0, 39])
     assert analyze({"rows": unverified, "overwritten": 0}, onset, session)[
+        "verdict"].startswith("INCONCLUSIVE")
+    inflight = list(rows)
+    inflight[6] = row(6, 0x8a, [2, 0, 2, 0x2000, 1024, 0xc0000000, 0, 0])
+    inflight[7] = row(7, 0x83, [0x2000, 256, 2, 0, 2, 256, 128, 79])
+    inflight[9] = row(9, 0x8b, [0, 2, 2, 2, 0, 0, 0, 0])
+    assert analyze({"rows": inflight, "overwritten": 0}, onset, session)[
         "verdict"].startswith("INCONCLUSIVE")
     late_onset = {"kind": "audible_onset", "monotonic_ns": 1001000000,
                   "uncertainty_seconds": 0.001}
@@ -140,14 +159,14 @@ def main():
             subprocess.run([str(binary), mode], env=env, check=True)
         # Visibility alone cannot override a GNU export allowlist.
         version = Path(temp)/"export.ver"
-        version.write_text('{global: MKMSZR_PCMBefore; MKMSZR_PCMAfter; MKMSZR_PCMTask; '
+        version.write_text('{global: MKMSZR_PCMBefore; MKMSZR_PCMAfter; MKMSZR_PCMTask; MKMSZR_PCMTaskEnd; '
                            'local: *; };\n')
         shared = Path(temp)/"pcm.so"
         subprocess.run(["cc", "-std=c11", "-fPIC", "-shared", "-fvisibility=hidden",
                         str(source), "-o", str(shared),
                         "-Wl,--version-script="+str(version)], check=True)
         lib = ctypes.CDLL(str(shared))
-        for name in ["MKMSZR_PCMBefore", "MKMSZR_PCMAfter", "MKMSZR_PCMTask"]:
+        for name in ["MKMSZR_PCMBefore", "MKMSZR_PCMAfter", "MKMSZR_PCMTask", "MKMSZR_PCMTaskEnd"]:
             getattr(lib, name)
         print("PASS diagnostic callbacks resolve across shared-library export boundary")
     decoder_tests()

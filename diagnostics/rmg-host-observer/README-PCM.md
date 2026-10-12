@@ -25,7 +25,15 @@ An alert needs all of these:
 - the real store overlaps that tail's effective physical range (including native
   AI carry, word alignment, SP wrap and 8 MiB RDRAM wrap);
 - at least one byte actually changed, and committed bytes match the DMA source;
+- an **older completed audio-task generation** wrote the entire accepted range,
+  and the current writer is a different task generation;
 - the tail identity did not change during the synchronous copy.
+
+Queueing a buffer before its own synthesis finishes can be legal. Such writes
+must not be labeled an older-buffer overwrite. Host-only per-word writer tags
+and HALT|BROKE|TASKDONE records qualify prior completed audio; uncertain/unsealed
+queued mutations are reported as inconclusive. These tags cost an additional
+8 MiB of host RAM and do not reserve or modify guest memory.
 
 Identical rewrites and address reuse after release are reported separately. A
 latched OSTask type and task generation come from DMEM at first RSP execution;
@@ -132,7 +140,10 @@ an acoustic onset. Close timing remains uncertain; precedence alone is not cause
 ## Decision and stop rule
 
 - **Committed changed unread-tail bytes before the symptom:** concrete ownership
-  violation to attribute to its native buffer handoff. Inspect that operation for
+  violation only with the completed older-generation qualification above. If the
+  writer is graphics work, investigate that native output/resource reference;
+  if audio, investigate the audio buffer handoff.
+  Inspect that operation for
   a portable ROM buffer-lifetime correction. No FIFO retry or renderer deletion.
 - **Violation only after failure:** may be a consequence; do not label it the
   initiator.

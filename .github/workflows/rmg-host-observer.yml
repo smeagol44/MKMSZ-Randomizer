@@ -46,6 +46,7 @@ jobs:
           nm -D flatpak-build/files/lib/RMG/Core/libmupen64plus.so | grep ' MKMSZR_PCMBefore$'
           nm -D flatpak-build/files/lib/RMG/Core/libmupen64plus.so | grep ' MKMSZR_PCMAfter$'
           nm -D flatpak-build/files/lib/RMG/Core/libmupen64plus.so | grep ' MKMSZR_PCMTask$'
+          nm -D flatpak-build/files/lib/RMG/Core/libmupen64plus.so | grep ' MKMSZR_PCMTaskEnd$'
           readelf -d flatpak-build/files/bin/RMG | grep -E '(RPATH|RUNPATH)' | grep '/app/lib'
           find flatpak-build/files/lib/RMG -maxdepth 4 -type f | head -30
           test -s RMG-PCM-Observer-v0.9.0.flatpak

@@ -13,6 +13,10 @@ static struct {
     uint32_t dst, src, bytes, pc, tail, tail_length, overlap;
     uint32_t first_changed, old_hash, incoming_hash;
     uint32_t begins, commits, audio_rows, overlaps, changed_rows, invalid, nested;
+    uint32_t *word_writer;
+    uint32_t task_types[65536];
+    unsigned char completed[65536];
+    uint32_t tail_ready_generation, ready_before;
     unsigned char old_bytes[4096];
 } mkmszr_pcm;
 
@@ -27,6 +31,7 @@ static void mkmszr_pcm_summary(void)
         mkmszr_pcm.commits, mkmszr_pcm.audio_rows, mkmszr_pcm.overlaps,
         mkmszr_pcm.changed_rows, mkmszr_pcm.invalid, mkmszr_pcm.nested,
         mkmszr_pcm.pending ? 1u : 0u);
+    free(mkmszr_pcm.word_writer);
 }
 
 static int mkmszr_pcm_enabled(void)
@@ -39,7 +44,9 @@ static int mkmszr_pcm_enabled(void)
             && strcmp(trace,"1") == 0;
         if (mkmszr_pcm.enabled) {
             uint32_t words[4]={0,0,0,0}, i;
-            mkmszr_trace(0x80, mkmszr_pcm_count(), 1, 4096, 0, 0, 0, 0, 0, 0);
+            mkmszr_pcm.word_writer = (uint32_t*)calloc(0x200000u, sizeof(uint32_t));
+            if (!mkmszr_pcm.word_writer) mkmszr_pcm.invalid++;
+            mkmszr_trace(0x80, mkmszr_pcm_count(), 2, 4096, 0x200000u, 65536, 0, 0, 0, 0);
             for (i=0;i<32;i++) {
                 unsigned char c=(unsigned char)ROM_SETTINGS.MD5[i];
                 uint32_t v=c>='0' && c<='9' ? c-'0' :
@@ -62,6 +69,29 @@ static uint32_t mkmszr_pcm_tail_address(const struct ai_controller *ai)
     return ai->fifo[1].address + (ai->delayed_carry ? 0x2000u : 0u);
 }
 
+static uint32_t mkmszr_pcm_sealed(uint32_t address, uint32_t length)
+{
+    uint32_t k, generation=0, owner;
+    if (!mkmszr_pcm.word_writer || !length || (address & 3) || (length & 3)
+        || address >= 0x800000u || length > 0x800000u-address) return 0;
+    for (k=0;k<length;k+=4) {
+        owner=mkmszr_pcm.word_writer[(address+k)/4];
+        if (!owner || owner>=65536 || !mkmszr_pcm.completed[owner]
+            || mkmszr_pcm.task_types[owner]!=2) return 0;
+        if (!generation) generation=owner;
+        if (generation!=owner) return 0;
+    }
+    return generation;
+}
+
+static void mkmszr_pcm_ready_record(struct ai_controller *ai)
+{
+    mkmszr_trace(0x8a,mkmszr_pcm_count(),mkmszr_pcm.tail_id,
+        mkmszr_pcm.tail_ready_generation,mkmszr_pcm.task_id,
+        mkmszr_pcm_tail_address(ai),ai->fifo[1].length,
+        ai->regs[AI_STATUS_REG],0,0);
+}
+
 static void mkmszr_pcm_occupancy(struct ai_controller *ai, uint32_t event)
 {
     mkmszr_trace(event, mkmszr_pcm_count(), mkmszr_pcm.head_id,
@@ -73,11 +103,14 @@ static void mkmszr_pcm_occupancy(struct ai_controller *ai, uint32_t event)
 static void mkmszr_pcm_accept(struct ai_controller *ai)
 {
     if (!mkmszr_pcm_enabled()) return;
-    if (ai->regs[AI_STATUS_REG] & AI_STATUS_FULL)
+    if (ai->regs[AI_STATUS_REG] & AI_STATUS_FULL) {
         mkmszr_pcm.tail_id = ++mkmszr_pcm.next_id;
-    else
+        mkmszr_pcm.tail_ready_generation = mkmszr_pcm_sealed(
+            mkmszr_pcm_tail_address(ai),ai->fifo[1].length);
+    } else
         mkmszr_pcm.head_id = ++mkmszr_pcm.next_id;
     mkmszr_pcm_occupancy(ai, 0x81);
+    mkmszr_pcm_ready_record(ai);
 }
 
 static void mkmszr_pcm_pop(struct ai_controller *ai, uint32_t had_tail)
@@ -85,16 +118,35 @@ static void mkmszr_pcm_pop(struct ai_controller *ai, uint32_t had_tail)
     if (!mkmszr_pcm_enabled()) return;
     mkmszr_pcm.head_id = had_tail ? mkmszr_pcm.tail_id : 0;
     mkmszr_pcm.tail_id = 0;
+    mkmszr_pcm.tail_ready_generation = 0;
     mkmszr_pcm_occupancy(ai, 0x82);
+    mkmszr_pcm_ready_record(ai);
 }
 
 EXPORT void CALL MKMSZR_PCMTask(uint32_t type, uint32_t pc)
 {
     if (!mkmszr_pcm_enabled()) return;
     mkmszr_pcm.task_id++;
+    if (mkmszr_pcm.task_id >= 65536) {mkmszr_pcm.invalid++;return;}
     mkmszr_pcm.task_type = type;
+    mkmszr_pcm.task_types[mkmszr_pcm.task_id]=type;
     mkmszr_trace(0x85, mkmszr_pcm_count(), mkmszr_pcm.task_id,
         type, pc, 0, 0, 0, 0, 0);
+}
+
+EXPORT void CALL MKMSZR_PCMTaskEnd(uint32_t status, uint32_t pc)
+{
+    struct ai_controller *ai=&g_dev.ai;
+    uint32_t id=mkmszr_pcm.task_id;
+    if (!mkmszr_pcm_enabled() || !id || id>=65536) return;
+    /* HALT|BROKE|TASKDONE; a yielded/running task is not complete. */
+    if ((status & 0x203u)!=0x203u || mkmszr_pcm.completed[id]) return;
+    mkmszr_pcm.completed[id]=1;
+    mkmszr_trace(0x87,mkmszr_pcm_count(),id,mkmszr_pcm.task_type,status,pc,0,0,0,0);
+    if ((ai->regs[AI_STATUS_REG] & AI_STATUS_FULL) && !mkmszr_pcm.tail_ready_generation)
+        mkmszr_pcm.tail_ready_generation=mkmszr_pcm_sealed(
+            mkmszr_pcm_tail_address(ai),ai->fifo[1].length);
+    mkmszr_pcm_ready_record(ai);
 }
 
 EXPORT void CALL MKMSZR_PCMBefore(uint32_t dst, uint32_t src,
@@ -117,11 +169,13 @@ EXPORT void CALL MKMSZR_PCMBefore(uint32_t dst, uint32_t src,
     mkmszr_pcm.pc = pc;
     mkmszr_pcm.tail = tail = mkmszr_pcm_tail_address(ai);
     mkmszr_pcm.tail_length = ai->fifo[1].length;
+    mkmszr_pcm.ready_before = mkmszr_pcm.tail_ready_generation;
     mkmszr_pcm.overlap = 0;
     mkmszr_pcm.old_hash = mkmszr_pcm.incoming_hash = 2166136261u;
     if (mkmszr_pcm.task_type == 2) mkmszr_pcm.audio_rows++;
     flags = ai->regs[AI_STATUS_REG];
-    if (bytes > 4096 || (bytes & 3) || !ram || !spmem
+    if (bytes > 4096 || (bytes & 3) || !ram || !spmem || !mkmszr_pcm.word_writer
+        || !mkmszr_pcm.task_id || mkmszr_pcm.task_id >= 65536
         || g_dev.rdram.dram_size != 0x800000u
         || ((flags & AI_STATUS_FULL) &&
             (tail >= 0x800000u || ai->fifo[1].length > 0x800000u-tail))) {
@@ -161,6 +215,8 @@ EXPORT void CALL MKMSZR_PCMAfter(void)
     }
     if (ai->regs[AI_STATUS_REG] & AI_STATUS_FULL) flags |= 2;
     if (mkmszr_pcm.overlap) flags |= 4;
+    if (mkmszr_pcm.ready_before && mkmszr_pcm.ready_before!=mkmszr_pcm.task_id) flags |= 32;
+    else if (mkmszr_pcm.overlap) flags |= 64;
     /* Nothing may promote/rebind the tail inside one synchronous DMA row. */
     if (mkmszr_pcm.bad_pending || mkmszr_pcm.tail != mkmszr_pcm_tail_address(ai)
         || mkmszr_pcm.tail_length != ai->fifo[1].length) flags |= 16;
@@ -180,6 +236,8 @@ EXPORT void CALL MKMSZR_PCMAfter(void)
             }
         }
         if (match) flags |= 8;
+        for (k=0;k<mkmszr_pcm.bytes;k+=4)
+            mkmszr_pcm.word_writer[((mkmszr_pcm.dst+k)&0x7ffffcu)/4]=mkmszr_pcm.task_id;
     }
     if (mkmszr_pcm.overlap) mkmszr_pcm.overlaps++;
     if (changed) mkmszr_pcm.changed_rows++;
@@ -192,6 +250,9 @@ EXPORT void CALL MKMSZR_PCMAfter(void)
             mkmszr_pcm.tail, mkmszr_pcm.tail_length, mkmszr_pcm.head_id,
             mkmszr_pcm.old_hash, now_hash, mkmszr_pcm.incoming_hash,
             mkmszr_pcm.task_id);
+    if (mkmszr_pcm.overlap)
+        mkmszr_trace(0x8b,mkmszr_pcm_count(),mkmszr_pcm.ready_before,
+            mkmszr_pcm.task_id,mkmszr_pcm.tail_id,mkmszr_pcm.task_type,0,0,0,0);
     mkmszr_pcm.pending = mkmszr_pcm.bad_pending = 0;
 }
 '''
@@ -201,6 +262,7 @@ BRIDGE_HEADER = r'''
 #define MKMSZR_PCM_BRIDGE_H
 #include <stdint.h>
 extern void (*mkmszr_pcm_task)(uint32_t, uint32_t);
+extern void (*mkmszr_pcm_end)(uint32_t, uint32_t);
 extern void (*mkmszr_pcm_before)(uint32_t, uint32_t, uint32_t, uint32_t);
 extern void (*mkmszr_pcm_after)(void);
 #endif
@@ -221,7 +283,7 @@ def apply(root: Path) -> None:
         raise RuntimeError("PCM observer already installed")
     exports = root / "Source/3rdParty/mupen64plus-core/src/api/api_export.ver"
     replace(exports, 'PluginGetVersion;',
-            'MKMSZR_PCMBefore;\nMKMSZR_PCMAfter;\nMKMSZR_PCMTask;\nPluginGetVersion;')
+            'MKMSZR_PCMBefore;\nMKMSZR_PCMAfter;\nMKMSZR_PCMTask;\nMKMSZR_PCMTaskEnd;\nPluginGetVersion;')
     replace(core, '#include "device/rdram/rdram.h"',
             '#include "device/rdram/rdram.h"\n#include "device/device.h"\n'
             '#include "main/main.h"\n#include "main/rom.h"\n#include "api/m64p_types.h"')
@@ -238,20 +300,25 @@ def apply(root: Path) -> None:
     replace(parallel, '#include <cstdarg>', '#include <cstdarg>\n#include <cstdlib>\n'
             '#include <cstring>\n#include <dlfcn.h>\n#include "mkmszr_pcm_bridge.h"\n'
             'void (*mkmszr_pcm_task)(uint32_t,uint32_t) = nullptr;\n'
+            'void (*mkmszr_pcm_end)(uint32_t,uint32_t) = nullptr;\n'
             'void (*mkmszr_pcm_before)(uint32_t,uint32_t,uint32_t,uint32_t) = nullptr;\n'
             'void (*mkmszr_pcm_after)(void) = nullptr;')
     replace(parallel, '\t\tif (cycles)\n\t\t{',
             '\t\tif (cycles)\n\t\t{\n'
             '\t\t\tif (mkmszr_pcm_task) mkmszr_pcm_task(\n'
             '\t\t\t    RSP::cpu.get_state().dmem[0xfc0/4], *RSP::rsp.SP_PC_REG);')
+    replace(parallel, '\t\treturn cycles;',
+            '\t\tif (mkmszr_pcm_end) mkmszr_pcm_end(*RSP::rsp.SP_STATUS_REG, *RSP::rsp.SP_PC_REG);\n'
+            '\t\treturn cycles;')
     startup = '\t\treturn M64ERR_SUCCESS;\n\t}\n\n\tEXPORT m64p_error CALL PluginShutdown'
     replacement = '''\t\tconst char *pcm = std::getenv("MKMSZR_TRACE_PCM");
 \t\tconst char *trace = std::getenv("MKMSZR_TRACE");
 \t\tif (pcm && trace && std::strcmp(pcm,"1")==0 && std::strcmp(trace,"1")==0) {
 \t\t\tmkmszr_pcm_task = reinterpret_cast<decltype(mkmszr_pcm_task)>(dlsym(CoreLibHandle,"MKMSZR_PCMTask"));
+\t\t\tmkmszr_pcm_end = reinterpret_cast<decltype(mkmszr_pcm_end)>(dlsym(CoreLibHandle,"MKMSZR_PCMTaskEnd"));
 \t\t\tmkmszr_pcm_before = reinterpret_cast<decltype(mkmszr_pcm_before)>(dlsym(CoreLibHandle,"MKMSZR_PCMBefore"));
 \t\t\tmkmszr_pcm_after = reinterpret_cast<decltype(mkmszr_pcm_after)>(dlsym(CoreLibHandle,"MKMSZR_PCMAfter"));
-\t\t\tif (!mkmszr_pcm_task || !mkmszr_pcm_before || !mkmszr_pcm_after) return M64ERR_INCOMPATIBLE;
+\t\t\tif (!mkmszr_pcm_task || !mkmszr_pcm_end || !mkmszr_pcm_before || !mkmszr_pcm_after) return M64ERR_INCOMPATIBLE;
 \t\t}
 \t\treturn M64ERR_SUCCESS;
 \t}
