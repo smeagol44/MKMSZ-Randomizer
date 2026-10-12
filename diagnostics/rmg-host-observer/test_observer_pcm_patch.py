@@ -115,6 +115,10 @@ def decoder_tests():
     bad = list(rows)
     bad[4] = row(4, 0x83, [0x2000, 256, 2, 0, 2, 256, 128, 31])
     assert analyze({"rows": bad, "overwritten": 0}, onset, session)["verdict"].startswith("INCONCLUSIVE")
+    unverified = list(rows)
+    unverified[4] = row(4, 0x83, [0x2000, 256, 2, 0, 2, 256, 0, 7])
+    assert analyze({"rows": unverified, "overwritten": 0}, onset, session)[
+        "verdict"].startswith("INCONCLUSIVE")
     late_onset = {"kind": "audible_onset", "monotonic_ns": 1001000000,
                   "uncertainty_seconds": 0.001}
     assert analyze(trace, late_onset, session)["committed_tail_mutations"][0][

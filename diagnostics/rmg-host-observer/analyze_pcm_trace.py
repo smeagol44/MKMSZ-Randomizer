@@ -73,7 +73,7 @@ def analyze(trace, onset=None, session=None):
         detail = rows[i+1][4]
         if owner != tail_id or not owner or detail[7] != task:
             problems.append(f"missing/mismatched tail or task generation at sequence {row[0]}")
-        if changed > overlap or overlap > size or (changed and not flags & 8):
+        if changed > overlap or overlap > size or not flags & 8:
             problems.append(f"unverified changed-byte evidence at sequence {row[0]}")
         if not changed:
             same_value += 1
@@ -141,7 +141,7 @@ def main():
     try:
         trace = read(args.ai)
         result = analyze(trace, onset, json.loads(args.session.read_text()))
-    except ValueError as error:
+    except (ValueError, OSError) as error:
         result = {"verdict": "INCONCLUSIVE: invalid capture; stop",
                   "missing_evidence": [str(error)], "committed_tail_mutations": []}
     result["trace_sha256"] = hashlib.sha256(args.ai.read_bytes()).hexdigest()
