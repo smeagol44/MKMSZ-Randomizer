@@ -24,6 +24,9 @@ jobs:
       - name: Verify read-only memory observer (synthetic C)
         working-directory: diagnostics/rmg-host-observer
         run: python3 test_observer_memory_patch.py
+      - name: Verify unread PCM write observer (synthetic only)
+        working-directory: diagnostics/rmg-host-observer
+        run: python3 test_observer_pcm_patch.py
       - name: Generate pinned side-by-side manifest
         working-directory: diagnostics/rmg-host-observer
         run: python3 generate_manifest.py
@@ -32,19 +35,22 @@ jobs:
         run: |
           flatpak-builder --user --force-clean --disable-rofiles-fuse \
             --install-deps-from=flathub --repo=flatpak-repo flatpak-build \
-            org.mkmszr.RMGObserver.json
-          flatpak build-bundle flatpak-repo RMG-Host-Observer-v0.9.0.flatpak org.mkmszr.RMGObserver
+            org.mkmszr.RMGPCMObserver.json
+          flatpak build-bundle flatpak-repo RMG-PCM-Observer-v0.9.0.flatpak org.mkmszr.RMGPCMObserver
       - name: Verify runtime linker paths and observer payload
         working-directory: diagnostics/rmg-host-observer
         run: |
           test -f flatpak-build/files/lib/libRMG-Core.so
           test -f flatpak-build/files/bin/RMG
+          nm -D flatpak-build/files/lib/libRMG-Core.so | grep ' MKMSZR_PCMBefore$'
+          nm -D flatpak-build/files/lib/libRMG-Core.so | grep ' MKMSZR_PCMAfter$'
+          nm -D flatpak-build/files/lib/libRMG-Core.so | grep ' MKMSZR_PCMTask$'
           readelf -d flatpak-build/files/bin/RMG | grep -E '(RPATH|RUNPATH)' | grep '/app/lib'
           find flatpak-build/files/lib/RMG -maxdepth 4 -type f | head -30
-          test -s RMG-Host-Observer-v0.9.0.flatpak
+          test -s RMG-PCM-Observer-v0.9.0.flatpak
       - name: Archive for independent review (not runtime validated)
         uses: actions/upload-artifact@v4
         with:
-          name: rmg-host-observer-v0.9.0-flatpak
-          path: diagnostics/rmg-host-observer/RMG-Host-Observer-v0.9.0.flatpak
+          name: rmg-pcm-observer-v0.9.0-flatpak
+          path: diagnostics/rmg-host-observer/RMG-PCM-Observer-v0.9.0.flatpak
           retention-days: 14

@@ -26,7 +26,7 @@ for module in manifest["modules"]:
             patch_url = "https://raw.githubusercontent.com/flathub/com.github.Rosalie241.RMG/master/" + str(patch_path)
             with urllib.request.urlopen(patch_url, timeout=30) as response:
                 patch_path.write_bytes(response.read())
-manifest["app-id"] = "org.mkmszr.RMGObserver"
+manifest["app-id"] = "org.mkmszr.RMGPCMObserver"
 manifest["command"] = "RMG"
 manifest["finish-args"].extend([
     "--filesystem=xdg-cache/mkmszr-observer:create",
@@ -36,6 +36,7 @@ manifest["finish-args"].extend([
 rmg["sources"].extend([
     {"type": "file", "path": "observer_patch.py"},
     {"type": "file", "path": "observer_memory_patch.py"},
+    {"type": "file", "path": "observer_pcm_patch.py"},
     {"type": "shell", "commands": ["python3 observer_patch.py"]},
 ])
 rmg.setdefault("config-opts", []).extend([
@@ -53,5 +54,5 @@ rmg.setdefault("build-options", {}).setdefault("env", {})["PKG_CONFIG_PATH"] = (
     "/app/lib64/pkgconfig:/app/lib/pkgconfig:"
     "/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
 )
-Path("org.mkmszr.RMGObserver.json").write_text(json.dumps(manifest, indent=2))
+Path("org.mkmszr.RMGPCMObserver.json").write_text(json.dumps(manifest, indent=2))
 print("Generated isolated Flatpak manifest; source pinned", source["commit"])

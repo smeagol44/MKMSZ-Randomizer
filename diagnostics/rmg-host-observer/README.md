@@ -1,5 +1,9 @@
 # MKMSZR host observer — experimental RMG v0.9.0
 
+**PCM diagnostic branch:** use [README-PCM.md](README-PCM.md) for the separate
+`org.mkmszr.RMGPCMObserver` package and one bounded unread-tail write capture.
+The earlier v01/v02 instructions below document their original packages.
+
 **Status: unverified diagnostic**, not a fix or production release. Lives only in draft PR #157; PR #156 remains draft.
 
 The GitHub Actions job attempts to build `org.mkmszr.RMGObserver` using Flathub's pinned RMG v0.9.0 source (`453f6639734537908c4c2ca35244255bc5424e3d`) and KDE 6.11 runtime, leaving `com.github.Rosalie241.RMG` installed through Bazaar alone.
