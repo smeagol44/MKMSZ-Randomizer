@@ -10,6 +10,7 @@ from .global_materialization import GlobalItemMaterializationPatch
 from .inventory_boxes import FourBoxInventoryPatch
 from .inventory_hud import InventoryHudPatch
 from .inventory_legend import InventoryLegendPatch
+from .inventory_materialized import InventoryMaterializedHudPatch
 from .inventory_menu_switch import InventoryMenuSwitchPatch
 from .manager_persistence import (
     ManagerPersistenceFirePatch,
@@ -52,6 +53,7 @@ __all__ = [
     "GlobalItemMaterializationPatch",
     "InventoryHudPatch",
     "InventoryLegendPatch",
+    "InventoryMaterializedHudPatch",
     "InventoryMenuSwitchPatch",
     "ManagerPersistenceFirePatch",
     "MktAudioClip",
