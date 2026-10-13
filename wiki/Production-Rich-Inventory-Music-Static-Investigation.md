@@ -1,5 +1,35 @@
 # MKMSZR rich Inventory music — upstream investigation
 
+## PCM-ownership branch closed — narrow negative (2026-10-13 UTC / 2026-10-12 UYT)
+
+The existing rich-enabled October 12 capture matches session ROM MD5 `95b4d6d53085496780c0f5ba84a5ac8d`, independently recorded by core event `0x86`. Session filename and SHA-256 `13346ae68efd99fb9d07929d2d1016eba1fd5d065170d58235522fd9a6e505b1` are declared/preparation-helper identities; the offline analyzer did not freshly hash loaded ROM bytes. Identity is not missing.
+
+Actual instrumented ParaLLEl coverage includes 2,687 completed audio tasks and 228,175 DMA rows, with no lost records or invalid snapshots. The corrected classifier rejects all 2,676 former flags across 892 released-storage reuses: a stale last-writer seal at acceptance is not ownership of the new packet. Full synthesis within a live queued lease binds its owner; only another generation changing that bound live lease qualifies.
+
+The 33 promoted-before-completion buffers are also resolved for the captured RMG source-copy path. Exact AI_LEN/end ranges match all 5,210 host request/result pairs; their 66 copies (92,928 bytes) consume words already written by the expected generation. The minimum observed particular-word commit lead is 15.206492 ms. Promotion and whole-task completion are not interchangeable with completion of the bytes actually read. Synthetic tests cover ready-byte consumption during an unfinished task and consumption extending into unwritten words; the supplied-capture regression passes.
+
+Enter remains a host observation inside the reported focus-loss pause, about 2–3 seconds after noticing acceleration. No exact emulated/acoustic onset is inferred. This is a negative for the investigated RSP PCM ownership/unfinished-buffer-consumption mechanism in this capture, not all transient corruption, physical-console read timing, or every historical speedup.
+
+**Disposition: CLOSED for these cases. No further run, buffer fence or enqueue patch.** Diagnostic [PR #171](https://github.com/smeagol44/MKMSZ-Randomizer/pull/171) is closed without merge; corrected source/history is retained at [110cfb6](https://github.com/smeagol44/MKMSZ-Randomizer/commit/110cfb6cd6d1fef763a487b09f181614220c5dac). Production main and accepted features are unchanged. The audio release gate remains BLOCKED because acceleration causality is unproved. QUESO's older audio/HUD incident and the noisy/possible-slowdown capture remain separate.
+
+## HUD boundary — one untested cached-table redraw comparison (plan only)
+
+The completed preload v01/no-rich-render v02 pair toggled item rows, paper/title/table and status as a bundle while retaining preload/resources, portraits, legend and four-box switching. Materialized rich rendering was already tested and still failed in full production: avoiding repeated data preparation is not enough. Occupied/empty-box and ordinary-item/full-item cursor comparisons have also been exercised; they are not proposed again. The accepted proof/full-production pair is composition-confounded and does not isolate status or table drawing.
+
+The smallest untested operation-level contrast found is **normal full rich rendering versus suppressing only later cached `STG CHECKS KEYS` table redraws**. Keep the first table preparation AND draw, data/validity flags, initial palette/resource setup, preload/arena reservation, rich item rows, paper title, selected portraits, REQ/CHKS status, legend, switching, gameplay settings and audio unchanged. Only the already-valid cached-table branch omits the header/eight-row native text emissions. This tests repeated glyph/palette-acquire/render-node submission, not initial HUD allocation or prepared-glyph renderer replacement.
+
+Primary source: [PR #156's `build_table_gate`](https://github.com/smeagol44/MKMSZ-Randomizer/blob/47a395ba16c7e4cecc0ba9d6de91b8a4310db32e/src/mkmszr/patches/inventory_materialized.py). Independently rehashed existing full-production v02 is `f44e3724a8c883b720d727936cb7f4204f19acc5569ca4b0fc581007ee2b7313`; its generated branch at ROM `0x01819AD8` is `1720000B` with NOP delay slot. The existing restore epilogue begins at `0x01819B78` / K1 `0xA01B3398`. A later authorized diagnostic could retarget that one condition to the epilogue (`17200027`), retaining register/stack restoration and first-pass execution. This is a plan, not an applied patch. The exact prefilled parent must pass its own SHA/code guards before any future derivation; the currently local prefill candidate does not match the declared SHA and is excluded as byte evidence.
+
+| Future paired outcome | What it would change |
+| --- | --- |
+| ON reproduces sustained acceleration; cached-redraw OFF does not under matched exposure | Supports a contribution from repeated table emission/workload; does not prove corrupt palette/node ownership or certify OFF healthy. Focus correction analysis on this operation while preserving the visible table. |
+| Both reproduce similarly after the cached path is active | Repeated table redraw is not necessary for this reproduction; no table-redraw remedy is justified. Initial preparation remains common to both and untested by this contrast. |
+| Both reproduce with shifted onset/rate, or only OFF fails | Shows sensitivity to the bypass/workload/phase; does not establish a table corruption defect or justify promoting the bypass. |
+| Neither reproduces | Inconclusive; do not infer health or consume another broad run merely to chase the fault. |
+| Failure begins before the cached-table path runs | This contrast cannot attribute initiation to repeated cached redraw; do not label the table the universal historical cause. |
+
+No existing ROM pair isolates this cached-only operation. One diagnostic derivative would be needed only after a later explicit build decision; the unchanged already-failing full-rich parent is the ON control. Any future bypass is diagnostic only. This assessment does not identify the historical introduction commit or connect October 3 v09/QUESO to a shared mechanism. No ROM build or runtime test was performed.
+
 ## Recovered October 3 v09 observation and completed preload comparison (2026-10-11)
 
 **Historical evidence correction, not a new causal finding.** The recovered October 3 chat places a maintainer-reported music speedup in the key-labels/HUD **TEST LAB v09**, before production HUD integration, Fortress HUD preloading, and in-Inventory box switching. It supersedes any description of preload v01 as the earliest *recovered rich-HUD* music report. Earlier, separate historical speedups remain separate incidents. The maintainer's current clarification is that the current music issue became noticeable with the HUD changes; selector presentation was a suspected contributor, not an established introduction point. Neither this recollection nor the v09 report identifies the first defective instruction or proves that all historical audio symptoms share today's traced FIFO mechanism.
