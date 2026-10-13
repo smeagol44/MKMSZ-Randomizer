@@ -104,7 +104,7 @@ The existing Runtime-confirmed `BOX n OF 4` text satisfies only the storage-stat
 
 ## Production GAME SETTINGS frontend
 
-The shared browser/CLI builder now installs the accepted v02 five-setting composition. The six cursor positions are `TURN / ATTACK / SPECIALS / JUMP / RUN / EXIT`; the frontend remains title-resident, and gameplay helpers load at stage initialization.
+The shared browser/CLI builder now installs the accepted v02 five-setting composition. The six cursor positions are `TURN / ATTACK / SPECIALS / JUMP / RUN / EXIT`; the frontend remains title-resident. **Load-lifetime qualification (2026-10-13):** exact prefill v01's common legal/title resource initializer also reaches the composed bootstrap before stage selection, copying shared gameplay helpers/assets and initializing V2 state. Loaded/resident code is not proof that gameplay callbacks execute in the selector. See [exact call-chain and reduction inventory](Production-Rich-Inventory-Music-Static-Investigation#pre-stage-composition-inventory-and-systematic-reduction--2026-10-13-plan-only).
 
 | Setting | Values | Current behavior |
 |---|---|---|
