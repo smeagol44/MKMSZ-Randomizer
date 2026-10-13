@@ -4,7 +4,41 @@ Diagnostic only, based on PR #160's pinned RMG v0.9.0 observer. **Do not merge.*
 No game ROM changes, rich-render bypass, AI retry, timing correction or automatic
 emulator execution. Original RMG and earlier observer installations stay separate.
 
-## Why existing captures cannot answer this
+## October 12 capture: corrected offline ownership classification
+
+The existing rich-enabled capture has actual DMA/task coverage. The original
+classifier falsely flagged 2,676 rows across 892 new queue leases: its seal was
+the previous storage writer, whose accepted buffer was already released. The
+corrected `pcm_ownership.py` binds ownership from observed complete synthesis
+within a live lease, preserves that owner until release, and separates new-lease
+initialization. A seal discovered at acceptance alone is not packet ownership.
+
+Thirty-three 2,816-byte buffers were promoted before their task finished. That
+alone is not an underrun. Existing AI_LEN/end records identify the exact source
+ranges copied synchronously by the pinned backend; all 5,210 calls match host
+request/result records. The 33 buffers' 66 reads (92,928 bytes) all had the correct
+generation written first. The minimum observed particular-word lead was 15.206 ms.
+This establishes byte readiness for those RMG copies, not physical-console DAC
+read timing or absence of other corruption. Enter remains a host observation
+inside the reported focus-loss pause, not an exact emulated onset.
+
+Analyze the preserved capture without a new run (keep all Python files together):
+
+```bash
+python3 analyze_pcm_trace.py /path/to/capture/mkmszr-ai-trace.bin \
+  --session /path/to/capture/session.json \
+  --onset /path/to/capture/onset.json --marker-only \
+  --host /path/to/capture/mkmszr-host-audio-trace.bin \
+  --vi /path/to/capture/mkmszr-vi-trace.bin --output result.json
+python3 test_pcm_capture_regression.py /path/to/capture
+```
+
+The regression script checks the supplied AI digest; private trace/ROM bytes are
+not included in the repository. `rom_identity` separately reports the session's
+declared filename/SHA-256 and core-recorded loaded MD5 (`0x86`), which matches the
+session. No ROM SHA-256 is independently rehashed by the offline trace analyzer.
+
+## Why earlier v05/v09 captures cannot answer this
 
 The complete v05 captures contain FIFO events and RSP execution boundaries, but
 no actual PCM store events or executed output identity. VI memory hashes sample
@@ -25,16 +59,17 @@ An alert needs all of these:
 - the real store overlaps that tail's effective physical range (including native
   AI carry, word alignment, SP wrap and 8 MiB RDRAM wrap);
 - at least one byte actually changed, and committed bytes match the DMA source;
-- an **older completed audio-task generation** wrote the entire accepted range,
-  and the current writer is a different task generation;
+- a completed audio generation is bound to **this live accepted lease** by its
+  observed complete synthesis, and the current writer is a different generation;
 - the tail identity did not change during the synchronous copy.
 
 Queueing a buffer before its own synthesis finishes can be legal. Such writes
 must not be labeled an older-buffer overwrite. Host-only per-word writer tags
-and HALT|BROKE|TASKDONE records qualify prior completed audio; uncertain/unsealed
-queued mutations are reported as inconclusive unless that same generation is
-later proven to finish the entire queued range before it becomes active. That
-case is permitted asynchronous initialization, not an older-completed overwrite.
+and HALT|BROKE|TASKDONE records qualify a live lease's completed synthesis, not
+stale data discovered at a new acceptance. New-lease initialization is separated
+when its own entire range completes before promotion (or while still queued at
+capture end). Promoted incomplete buffers require particular-byte source-read
+assessment; whole-task completion and head promotion alone are not read boundaries.
 These tags cost an additional
 8 MiB of host RAM and do not reserve or modify guest memory.
 
@@ -157,6 +192,6 @@ an acoustic onset. Close timing remains uncertain; precedence alone is not cause
   ring, or unverified byte proof:** stop and report the missing evidence. Do not
   expand into another audit or request another generic gameplay run.
 
-Actual emulator behavior/runtime parity remains pending until the maintainer's
-bounded capture. Nothing in preparation authorizes an automated emulator run or
-production integration.
+The October 12 maintainer capture supplies actual task/write/source-read evidence
+as summarized above. Console runtime parity remains unverified. Nothing here
+authorizes an automated emulator run or production integration.

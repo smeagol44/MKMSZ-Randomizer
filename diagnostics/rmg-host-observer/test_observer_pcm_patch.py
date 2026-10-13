@@ -8,6 +8,7 @@ from pathlib import Path
 
 from analyze_pcm_trace import analyze
 from observer_pcm_patch import CORE_PROBE
+from pcm_ownership import assess_promoted_initialization, replay
 
 PREFIX = r'''
 #include <stdint.h>
@@ -100,56 +101,97 @@ def row(seq, event, values, ns=None):
 
 def decoder_tests():
     session = {"rom_md5": "7ea59868ada334e8ec7d050918b22749"}
-    rows = [row(0, 0x80, [2, 4096, 0, 0, 0, 0, 0, 0]),
-            row(1, 0x86, [0x7EA59868, 0xADA334E8, 0xEC7D0509, 0x18B22749, 0x800000, 0, 0, 0]),
-            row(2, 0x85, [1, 2, 0, 0, 0, 0, 0, 0]),
-            row(3, 0x87, [1, 2, 0x243, 0, 0, 0, 0, 0]),
-            row(4, 0x85, [2, 2, 0, 0, 0, 0, 0, 0]),
-            row(5, 0x81, [1, 0x1000, 1024, 2, 0x2000, 1024, 0xc0000000, 0]),
-            row(6, 0x8a, [2, 1, 2, 0x2000, 1024, 0xc0000000, 0, 0]),
-            row(7, 0x83, [0x2000, 256, 2, 0, 2, 256, 128, 47]),
-            row(8, 0x84, [0x2000, 0x2000, 1024, 1, 1, 2, 2, 2]),
-            row(9, 0x8b, [1, 2, 2, 2, 0, 0, 0, 0]),
-            row(10, 0x13, [0x80000000, 0, 0, 0, 0, 0, 0, 0]),
-            row(11, 0x89, [1, 1, 1, 1, 1, 0, 0, 0])]
-    trace = {"rows": rows, "overwritten": 0}
-    onset = {"kind": "audible_onset", "monotonic_ns": 1010000000, "uncertainty_seconds": 0.001}
-    result = analyze(trace, onset, session)
+    start = [(0x80, [2, 4096, 0, 0, 0, 0, 0, 0]),
+             (0x86, [0x7EA59868, 0xADA334E8, 0xEC7D0509, 0x18B22749, 0x800000, 0, 0, 0])]
+
+    def trace(events):
+        return {"rows": [row(i, e, v) for i, (e, v) in enumerate(start + events)],
+                "overwritten": 0}
+
+    # A whole range completed for THIS lease before another writer mutates it.
+    live = [(0x85, [1, 2, 0, 0, 0, 0, 0, 0]),
+            (0x81, [1, 0x1000, 256, 2, 0x2000, 256, 0xc0000000, 0]),
+            (0x8a, [2, 0, 1, 0x2000, 256, 0xc0000000, 0, 0]),
+            (0x83, [0x2000, 256, 2, 0, 2, 256, 128, 79]),
+            (0x84, [0x2000, 0x2000, 256, 1, 1, 2, 2, 1]),
+            (0x8b, [0, 1, 2, 2, 0, 0, 0, 0]),
+            (0x87, [1, 2, 0x243, 0, 0, 0, 0, 0]),
+            (0x8a, [2, 1, 1, 0x2000, 256, 0xc0000000, 0, 0]),
+            (0x85, [2, 2, 0, 0, 0, 0, 0, 0]),
+            (0x83, [0x2000, 256, 2, 0, 2, 256, 128, 47]),
+            (0x84, [0x2000, 0x2000, 256, 1, 2, 3, 3, 2]),
+            (0x8b, [1, 2, 2, 2, 0, 0, 0, 0]),
+            (0x13, [0x80000000, 0, 0, 0, 0, 0, 0, 0]),
+            (0x89, [2, 2, 2, 2, 2, 0, 0, 0])]
+    onset = {"kind": "audible_onset", "monotonic_ns": 1014000000,
+             "uncertainty_seconds": 0.001}
+    result = analyze(trace(live), onset, session)
     assert result["verdict"].startswith("DIFFERENT GENERATION")
+    assert len(result["committed_tail_mutations"]) == 1
+    assert result["committed_tail_mutations"][0]["older_completed_generation"] == 1
     assert result["committed_tail_mutations"][0]["relative_to_first_full_status"] == "before"
-    assert result["committed_tail_mutations"][0]["relative_to_reported_audio_onset"].startswith("before")
-    same = list(rows)
-    same[7] = row(7, 0x83, [0x2000, 256, 2, 0, 2, 256, 0, 47])
-    assert not analyze({"rows": same, "overwritten": 0}, onset, session)["committed_tail_mutations"]
-    assert analyze(trace, onset, {"rom_md5": "wrong"})["verdict"].startswith("INCONCLUSIVE")
-    assert analyze({"rows": rows, "overwritten": 1}, onset, session)["verdict"].startswith("INCONCLUSIVE")
-    assert analyze({"rows": rows[:-1], "overwritten": 0}, onset, session)["verdict"].startswith("INCONCLUSIVE")
-    assert analyze({"rows": [], "overwritten": 0}, None, None)["verdict"].startswith("INCONCLUSIVE")
-    bad = list(rows)
-    bad[7] = row(7, 0x83, [0x2000, 256, 2, 0, 2, 256, 128, 63])
-    assert analyze({"rows": bad, "overwritten": 0}, onset, session)["verdict"].startswith("INCONCLUSIVE")
-    unverified = list(rows)
-    unverified[7] = row(7, 0x83, [0x2000, 256, 2, 0, 2, 256, 0, 39])
-    assert analyze({"rows": unverified, "overwritten": 0}, onset, session)[
-        "verdict"].startswith("INCONCLUSIVE")
-    inflight = list(rows)
-    inflight[6] = row(6, 0x8a, [2, 0, 2, 0x2000, 1024, 0xc0000000, 0, 0])
-    inflight[7] = row(7, 0x83, [0x2000, 256, 2, 0, 2, 256, 128, 79])
-    inflight[9] = row(9, 0x8b, [0, 2, 2, 2, 0, 0, 0, 0])
-    assert analyze({"rows": inflight, "overwritten": 0}, onset, session)[
-        "verdict"].startswith("INCONCLUSIVE")
-    legal = list(inflight)
-    legal.insert(10, row(10, 0x87, [2, 2, 0x243, 0, 0, 0, 0, 0]))
-    legal.insert(11, row(11, 0x8a, [2, 2, 2, 0x2000, 1024, 0xc0000000, 0, 0]))
-    legal = [row(i, r[2], r[4]) for i, r in enumerate(legal)]
-    legal_result = analyze({"rows": legal, "overwritten": 0}, onset, session)
-    assert legal_result["verdict"].startswith("REPORTED FAILURE WITHOUT")
-    assert len(legal_result["completed_before_playback_initialization"]) == 1
-    late_onset = {"kind": "audible_onset", "monotonic_ns": 1001000000,
-                  "uncertainty_seconds": 0.001}
-    assert analyze(trace, late_onset, session)["committed_tail_mutations"][0][
-        "relative_to_reported_audio_onset"].startswith("after")
-    print("PASS decoder separates completed-before-playback initialization and refuses incomplete ownership evidence")
+    same = list(live)
+    same[9] = (0x83, [0x2000, 256, 2, 0, 2, 256, 0, 47])
+    assert not analyze(trace(same), onset, session)["committed_tail_mutations"]
+    assert analyze(trace(live), onset, {"rom_md5": "wrong"})["missing_evidence"]
+    assert analyze({**trace(live), "overwritten": 1}, onset, session)["missing_evidence"]
+    assert analyze(trace(live[:-1]), None, session)["missing_evidence"]
+    assert analyze({"rows": [], "overwritten": 0}, None, None)["missing_evidence"]
+    bad = list(live)
+    bad[9] = (0x83, [0x2000, 256, 2, 0, 2, 256, 128, 63])
+    assert analyze(trace(bad), onset, session)["missing_evidence"]
+
+    # Mirror real false positive: old directly accepted HEAD has been released.
+    reuse = [(0x81, [1, 0x2000, 256, 0, 0, 0, 0x40000000, 0]),
+             (0x85, [1, 2, 0, 0, 0, 0, 0, 0]),
+             (0x83, [0x2000, 256, 2, 0, 0, 0, 0, 9]),
+             (0x87, [1, 2, 0x243, 0, 0, 0, 0, 0]),
+             (0x82, [0, 0x2000, 256, 0, 0, 0, 0, 0]),
+             (0x85, [2, 2, 0, 0, 0, 0, 0, 0]),
+             (0x81, [2, 0x1000, 256, 0, 0, 0, 0x40000000, 0]),
+             (0x81, [2, 0x1000, 256, 3, 0x2000, 256, 0xc0000000, 0]),
+             (0x8a, [3, 1, 2, 0x2000, 256, 0xc0000000, 0, 0]),
+             (0x83, [0x2000, 256, 2, 0, 3, 256, 128, 47]),
+             (0x84, [0x2000, 0x2000, 256, 2, 1, 2, 2, 2]),
+             (0x8b, [1, 2, 3, 2, 0, 0, 0, 0]),
+             (0x87, [2, 2, 0x243, 0, 0, 0, 0, 0]),
+             (0x8a, [3, 1, 2, 0x2000, 256, 0xc0000000, 0, 0]),
+             (0x82, [3, 0x2000, 256, 0, 0x2000, 256, 0x40000000, 0]),
+             (0x89, [2, 2, 2, 1, 1, 0, 0, 0])]
+    reused = analyze(trace(reuse), None, session)
+    assert not reused["committed_tail_mutations"]
+    assert not reused["unqualified_queued_mutations"]
+    assert len(reused["completed_before_playback_initialization"]) == 1
+    assert reused["released_storage_initialization_instances"] == 1
+    assert reused["rom_identity"]["recorded_md5_matches_session"]
+    assert reused["rom_identity"]["session_declared_sha256"] is None
+    assert not reused["rom_identity"]["rom_bytes_independently_rehashed_by_analyzer"]
+    assert reused["first_full_status_seconds_from_vi"] is None
+    host_marker = {**onset, "kind": "host_observation"}
+    assert analyze(trace(live), host_marker, session)["committed_tail_mutations"][0][
+        "relative_to_reported_audio_onset"].startswith("host observation")
+    # First half is ready and read while the whole synthesis task is unfinished.
+    partial = [(0x81, [1, 0x1000, 256, 0, 0, 0, 0x40000000, 0]),
+               (0x85, [1, 2, 0, 0, 0, 0, 0, 0]),
+               (0x81, [1, 0x1000, 256, 2, 0x2000, 256, 0xc0000000, 0]),
+               (0x83, [0x2000, 128, 2, 0, 2, 128, 128, 79]),
+               (0x82, [2, 0x2000, 256, 0, 0x2000, 256, 0x40000000, 0]),
+               (0x12, [128, 0x40000000, 256, 1000, 256, 0, 0, 0]),
+               (0x83, [0x2080, 128, 2, 0, 0, 0, 0, 9]),
+               (0x87, [1, 2, 0x243, 0, 0, 0, 0, 0]),
+               (0x14, [0x40000000, 256, 0, 128, 1000, 0, 0, 0])]
+    byte_reads = assess_promoted_initialization(replay(trace(partial)["rows"]), {2})
+    assert byte_reads["all_particular_words_complete"]
+    assert not byte_reads["evidence"][0]["whole_task_complete_before_read"]
+    assert byte_reads["fully_read_buffers"] == 1
+    premature = list(partial)
+    premature[5] = (0x12, [64, 0x40000000, 256, 1000, 256, 0, 0, 0])
+    premature_reads = assess_promoted_initialization(replay(trace(premature)["rows"]), {2})
+    assert not premature_reads["all_particular_words_complete"]
+    assert premature_reads["evidence"][0]["word_writers"] == [0, 1]
+    assert premature_reads["host_pairs_verified"] is None
+    print("PASS decoder separates stale storage from a proven LIVE lease replacement")
+    print("PASS byte readiness is independent of whole-task completion; unwritten read is rejected")
 
 
 def main():

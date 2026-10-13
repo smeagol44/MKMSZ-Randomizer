@@ -9,9 +9,10 @@ import json
 from pathlib import Path
 
 from decode_host_trace import read
+from pcm_ownership import assess_promoted_initialization, replay
 
 
-def analyze(trace, onset=None, session=None):
+def analyze(trace, onset=None, session=None, host_trace=None, vi_trace=None):
     rows = trace["rows"]
     problems = []
     if trace["overwritten"]:
@@ -46,8 +47,9 @@ def analyze(trace, onset=None, session=None):
     if len(ends) == 1 and ends[0][4][2] != audio_rows:
         problems.append("audio write-row coverage differs from exit summary")
     first_full = next((r for r in rows if r[2] == 0x13 and r[4][0] & 0x80000000), None)
-    first_vi = next((r for r in rows if r[2] == 0x20), None)
+    first_vi = next((r for r in (vi_trace or trace)["rows"] if r[2] == 0x20), None)
     epoch = first_vi[1] if first_vi else rows[0][1] if rows else 0
+    ownership = replay(rows)
     tail_id = 0
     task = None
     completed = set()
@@ -56,10 +58,8 @@ def analyze(trace, onset=None, session=None):
     writes = []
     unsealed = []
     initial_fills = []
-    completion_rows = {r[4][0]: r for r in rows if r[2] == 0x87
-                       and r[4][1] == 2 and r[4][2] & 0x203 == 0x203}
-    ready_rows = {(r[4][0], r[4][1]): r for r in rows if r[2] == 0x8a
-                  and r[4][1] and r[4][5] & 0x80000000}
+    recycled = set()
+    promoted_incomplete = set()
     same_value = 0
     safe_audio = 0
     for i, row in enumerate(rows):
@@ -100,35 +100,45 @@ def analyze(trace, onset=None, session=None):
             continue
         if flags & 16 or not flags & 8 or not flags & 2 or owner != tail_id or not owner:
             continue
-        if (not flags & 32 or not ready_tail or ready_tail not in completed
-                or task_types.get(ready_tail) != 2 or ready_tail == task):
+        proven_owner = ownership["qualified_sequences"].get(row[0])
+        if proven_owner is None:
             fill = {"sequence": row[0], "count": count, "task_generation": task,
                     "tail_generation": owner, "completed_tail_writer": ready_tail,
                     "changed_unread_bytes": changed}
-            end = completion_rows.get(task)
-            sealed = ready_rows.get((owner, task))
-            if (not ready_tail and end and sealed
-                    and row[0] < end[0] <= sealed[0]):
-                fill["note"] = "Same generation finished the complete queued range before promotion; permitted async initialization, not older-completed replacement"
+            packet = ownership["packets"].get(owner, {})
+            if ((packet.get("writer_at_promotion") == task and packet.get("completed_at_promotion")
+                 or packet.get("owner_generation") == task)
+                    and not packet.get("has_qualified_replacement")):
+                fill["note"] = "New lease's complete synthesis finished before promotion; stale bytes from a released lease are not live ownership"
+                prior = packet.get("prior_released_lease")
+                if prior and prior["sequence"] < packet["accept_sequence"]:
+                    recycled.add(owner)
+                    fill["prior_released_lease"] = prior
                 initial_fills.append(fill)
             else:
-                fill["note"] = "Older completed ownership or own-generation readiness before playback is unproved"
+                fill["note"] = "Live older-packet ownership is unproved; promotion/task completion alone does not establish consumption of unwritten bytes"
+                if packet.get("promotion_sequence") is not None and not packet.get("completed_at_promotion"):
+                    promoted_incomplete.add(owner)
                 unsealed.append(fill)
             continue
         relation = "audible onset not marked"
         delta = None
-        if onset:
+        if onset and onset.get("kind") == "audible_onset":
             delta = (ns-onset["monotonic_ns"])/1e9
             uncertainty = onset["uncertainty_seconds"]
             relation = ("before reported audible-onset window" if delta < -uncertainty else
                         "after reported audible-onset window" if delta > uncertainty else
                         "within audible-onset uncertainty window")
+        elif onset:
+            delta = (ns-onset["monotonic_ns"])/1e9
+            relation = "host observation marker only; acoustic/emulated onset unknown"
         writes.append({
             "sequence": row[0], "count": count, "seconds_from_first_vi": (ns-epoch)/1e9,
             "task_generation": task, "latched_task_type": task_type,
             "rsp_pc_context": hex(pc), "write_start_physical": hex(dest), "row_bytes": size,
             "tail_generation": owner, "tail_start_physical": hex(detail[1]),
-            "older_completed_generation": ready_tail,
+            "older_completed_generation": proven_owner,
+            "raw_stale_ready_generation": ready_tail,
             "tail_length": detail[2], "overlap_bytes": overlap, "changed_unread_bytes": changed,
             "first_changed_physical": hex(detail[0]),
             "relative_to_first_full_status": (
@@ -137,29 +147,53 @@ def analyze(trace, onset=None, session=None):
             "relative_to_reported_audio_onset": relation, "onset_delta_seconds": delta,
         })
     audible = bool(onset and onset.get("kind") == "audible_onset")
+    reads = assess_promoted_initialization(
+        ownership, promoted_incomplete, host_trace["rows"] if host_trace else None)
+    if host_trace and host_trace["overwritten"]:
+        reads["host_pairs_verified"] = False
+        reads["host_pair_problems"].append("host ring lead-up overwritten")
     if problems:
         verdict = "INCONCLUSIVE: missing/incomplete evidence; stop"
     elif writes:
         verdict = "DIFFERENT GENERATION MUTATED COMPLETED UNREAD AI-TAIL PCM"
     elif unsealed:
-        verdict = "INCONCLUSIVE: queued writes lack older completed-generation provenance; stop"
+        if (reads["host_pairs_verified"] and reads["all_particular_words_complete"]
+                and reads["fully_read_buffers"] == len(promoted_incomplete)):
+            verdict = "NO QUALIFIED LIVE-LEASE REPLACEMENT; ASSESSED BACKEND READS CONSUMED COMPLETE BYTE GENERATIONS"
+        else:
+            verdict = "NO QUALIFIED LIVE-LEASE REPLACEMENT; PROMOTED INITIALIZATION REQUIRES BYTE-CONSUMPTION ASSESSMENT"
     elif audible:
         verdict = "REPORTED FAILURE WITHOUT OBSERVED OLDER-COMPLETED-GENERATION REPLACEMENT"
     else:
         verdict = "INCONCLUSIVE: no reported acceleration; stop"
     return {
         "verdict": verdict, "missing_evidence": sorted(set(problems)),
-        "loaded_rom_md5": loaded_md5, "session": session, "audible_onset": onset,
-        "first_full_status_seconds_from_vi": (first_full[1]-epoch)/1e9 if first_full else None,
+        "loaded_rom_md5": loaded_md5, "session": session, "reported_marker": onset,
+        "audible_onset": onset if audible else None,
+        "rom_identity": {
+            "trace_recorded_loaded_md5": loaded_md5,
+            "session_declared_md5": session.get("rom_md5") if session else None,
+            "session_declared_sha256": session.get("rom_sha256") if session else None,
+            "recorded_md5_matches_session": bool(session and loaded_md5 == session.get("rom_md5", "").lower()),
+            "rom_bytes_independently_rehashed_by_analyzer": False,
+            "note": "0x86 independently records the loaded core's ROM_SETTINGS MD5; filename/SHA-256 are declared in session, not recorded by this trace",
+        },
+        "time_epoch": "first VI callback" if first_vi else "first AI record (no VI ring supplied)",
+        "first_full_status_seconds_from_epoch": (first_full[1]-epoch)/1e9 if first_full else None,
+        "first_full_status_seconds_from_vi": (first_full[1]-epoch)/1e9 if first_full and first_vi else None,
         "first_full_note": "FULL-status observation is a rejection proxy, not an acoustic onset",
         "safe_audio_write_rows": safe_audio, "identical_value_overlap_rows": same_value,
         "committed_tail_mutations": writes, "coverage_summary": ends[0][4] if len(ends) == 1 else None,
         "unqualified_queued_mutations": unsealed,
         "completed_before_playback_initialization": initial_fills,
+        "released_storage_initialization_instances": len(recycled),
+        "promoted_incomplete_instances": sorted(promoted_incomplete),
+        "active_head_source_reads": reads,
         "limitations": [
-            "Observes ParaLLEl RSP DMA stores only; CPU/PI/RDP/wild writers and active-head overlap are unmeasured.",
+            "Observes ParaLLEl RSP DMA stores only; CPU/PI/RDP/wild writers are unmeasured.",
             "A queued device tail has not started playback; late AI event delivery can still affect console portability.",
-            "A mutation proves unread sample replacement, not corruption of all memory or its acoustic impact.",
+            "Only mutation after binding a live lease's completed synthesis proves older-packet replacement; a seal at new acceptance is stale-byte provenance, not semantic ownership.",
+            "Pinned-core AI_LEN/end events identify synchronous backend source reads; they do not record a physical N64 DAC byte cursor or final audible output.",
             "Task type is latched from DMEM OSTask at first-run; RSP PC is context, not an exact JIT-store PC.",
             "Queueing before own synthesis completes can be legal; only writes over an older completed generation qualify.",
             "Human onset marker has a reported uncertainty; precedence alone is not causation.",
@@ -173,15 +207,23 @@ def main():
     parser.add_argument("ai", type=Path)
     parser.add_argument("--session", type=Path, required=True)
     parser.add_argument("--onset", type=Path)
+    parser.add_argument("--marker-only", action="store_true",
+                        help="retain Enter as host observation; do not infer acoustic onset window")
+    parser.add_argument("--host", type=Path, help="host audio ring to verify synchronous source reads")
+    parser.add_argument("--vi", type=Path, help="VI ring providing the actual first-VI time epoch")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     onset = json.loads(args.onset.read_text()) if args.onset else None
-    if onset and (onset.get("kind") != "audible_onset" or
+    if onset and args.marker_only:
+        onset = {**onset, "original_kind": onset.get("kind"), "kind": "host_observation"}
+    if onset and (onset.get("kind") not in ("audible_onset", "host_observation") or
                   onset.get("uncertainty_seconds", -1) < 0):
         raise ValueError("invalid audible-onset marker")
     try:
         trace = read(args.ai)
-        result = analyze(trace, onset, json.loads(args.session.read_text()))
+        result = analyze(trace, onset, json.loads(args.session.read_text()),
+                         read(args.host) if args.host else None,
+                         read(args.vi) if args.vi else None)
     except (ValueError, OSError) as error:
         result = {"verdict": "INCONCLUSIVE: invalid capture; stop",
                   "missing_evidence": [str(error)], "committed_tail_mutations": []}

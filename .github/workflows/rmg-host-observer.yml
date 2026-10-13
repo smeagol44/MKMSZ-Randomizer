@@ -57,6 +57,7 @@ jobs:
           path: |
             diagnostics/rmg-host-observer/RMG-PCM-Observer-v0.9.0.flatpak
             diagnostics/rmg-host-observer/analyze_pcm_trace.py
+            diagnostics/rmg-host-observer/pcm_ownership.py
             diagnostics/rmg-host-observer/decode_host_trace.py
             diagnostics/rmg-host-observer/prepare_pcm_capture.py
             diagnostics/rmg-host-observer/README-PCM.md
