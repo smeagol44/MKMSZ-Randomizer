@@ -61,6 +61,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="earn powers through stock XP instead of nine generated pickup rewards",
     )
     parser.add_argument(
+        "--debug-all-keys",
+        action="store_true",
+        help="debug: start each fresh run with all 21 stage keys/crystals across boxes",
+    )
+    parser.add_argument(
         "--difficulty",
         choices=("very_easy", "easy", "medium", "hard", "very_hard"),
         default="very_hard",
@@ -140,6 +145,7 @@ def main(argv: list[str] | None = None) -> int:
         lives=args.lives,
         continues=args.continues,
         persist_hp=not args.no_persist_hp,
+        debug_all_keys=args.debug_all_keys,
     )
 
     try:

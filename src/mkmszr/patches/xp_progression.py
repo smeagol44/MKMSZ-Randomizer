@@ -230,7 +230,7 @@ if len(PROGRESSION_RESUME_PATCH) != len(PERSISTENCE_RESUME_PATCH):
 
 
 
-# Powers-as-pickups OFF keeps the game's stock XP award stores/caps, but stock
+# Powers-as-pickups OFF keeps the game's stock XP award stores, but stock
 # stage reconstruction does not preserve CURRENT_XP_VA. Reuse the already-owned
 # XP payload/state instead of adding a second authority: snapshot native earned
 # XP at the established lifecycle-v06 teardown seams, then restore state +0x44
@@ -395,9 +395,14 @@ class EarnedXPPersistencePatch:
         rom.write_bytes(PERSISTENCE_RESUME_ROM, EARNED_XP_RESUME_PATCH)
         for offset, _expected, patched, _label in EARNED_XP_LIFECYCLE_HOOK_PATCHES:
             rom.write_bytes(offset, patched)
+        # Stage-local limits are disabled in both progression modes. Preserve
+        # the existing 20,000 global ceiling used by pickup mode and Fortress.
+        for stage_id in XP_MAIN_STAGE_CAPS:
+            rom.write_u16(XP_CAP_TABLE_ROM + stage_id * 2, XP_CAP_VALUE)
 
         return (
-            "stock combat/award XP stores, combo XP UI, and stage caps remain untouched",
+            "stock combat/award XP stores and combo XP UI remain untouched",
+            f"8 main-stage XP caps guarded and set to the common {XP_CAP_VALUE} ceiling",
             "native current XP is snapshotted to MKSV +0x44 before lifecycle-v06 teardown",
             "stage init restores MKSV +0x44 before the existing four-box reconstruction",
             "native tier evaluator remains absent from stage-init restore per Diagnostic B",

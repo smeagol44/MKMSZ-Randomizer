@@ -23,6 +23,7 @@ import hashlib
 
 from ..config import DifficultyMode
 from ..errors import PatchError
+from ..mips import Emitter, addiu, lui, or_, sltiu, sw
 from ..rom import RomImage
 from .base import PatchContext
 from .temple_special_check import (
@@ -167,6 +168,54 @@ MODULE_NATIVE_DIFFICULTY_OFFSET = 0x33C
 MODULE_CURRENT_LIVES_OFFSET = 0x358
 MODULE_CURRENT_CONTINUES_OFFSET = 0x368
 
+# The existing final-reset inventory block, inside lifecycle's owned allocation.
+# Replace only this block in debug builds; every hook, terminal-context guard,
+# progress clear and GAME SETTINGS preservation instruction stays unchanged.
+MODULE_RESET_INVENTORY_OFFSET = 0x500
+MODULE_RESET_INVENTORY_SIZE = 0x40
+EXPECTED_RESET_INVENTORY = bytes.fromhex(
+    "3c0a800a254c60483c0dffff35adffff240e0028ad8d0000258c000425ceffff"
+    "15c0fffc00000000254c6048240d0004ad8d0000ad8d0004240d0001ad8d0008"
+)
+
+
+def debug_reset_inventory_code() -> bytes:
+    """Fill exactly 40 backing slots, then restore the three stock supplies.
+
+    Values 0x0B..0x32 cover 40 slots. Values past the last key (0x22)
+    become -1; the first three are then overwritten with Herbs/Herbs/Potion.
+    T2/T4/T5/T6/T7 are volatile scratch; no call, stack or new allocation.
+    """
+
+    e = Emitter()
+    e.emit(
+        lui("t2", 0x800A),
+        addiu("t4", "t2", 0x6048),
+        addiu("t5", "zero", 0x0B),
+        addiu("t6", "zero", 0x33),
+    )
+    e.label("slot")
+    e.emit(
+        sltiu("t7", "t5", 0x23),
+        addiu("t7", "t7", -1),
+        or_("t7", "t7", "t5"),
+        sw("t7", 0, "t4"),
+        addiu("t5", "t5", 1),
+    )
+    e.bne("t5", "t6", "slot")
+    e.emit(addiu("t4", "t4", 4))
+    e.emit(
+        addiu("t5", "zero", 4),
+        sw("t5", 0x6048, "t2"),
+        sw("t5", 0x604C, "t2"),
+        addiu("t5", "zero", 1),
+        sw("t5", 0x6050, "t2"),
+    )
+    code = e.finish()
+    if len(code) != MODULE_RESET_INVENTORY_SIZE:
+        raise AssertionError("debug inventory reset must fit the exact v06 block")
+    return code
+
 
 def _addiu_zero(register: int, value: int) -> bytes:
     return ((0x09 << 26) | (register << 16) | (value & 0xFFFF)).to_bytes(4, "big")
@@ -176,8 +225,10 @@ def configured_lifecycle_module(
     difficulty: DifficultyMode,
     lives: int,
     continues: int,
+    *,
+    debug_all_keys: bool = False,
 ) -> bytes:
-    """Return v06 control flow with only run-setting immediates changed."""
+    """Configure v06 defaults and its optional in-place debug inventory reset."""
 
     data = bytearray(LIFECYCLE_MODULE)
     difficulty_value = DIFFICULTY_VALUES[difficulty]
@@ -191,6 +242,12 @@ def configured_lifecycle_module(
     )
     for offset, register, value in replacements:
         data[offset : offset + 4] = _addiu_zero(register, value)
+    if debug_all_keys:
+        start = MODULE_RESET_INVENTORY_OFFSET
+        end = start + MODULE_RESET_INVENTORY_SIZE
+        if data[start:end] != EXPECTED_RESET_INVENTORY:
+            raise PatchError("lifecycle v06 inventory reset block guard failed")
+        data[start:end] = debug_reset_inventory_code()
     return bytes(data)
 
 
@@ -206,11 +263,13 @@ class RunLifecyclePatch:
         lives: int = 5,
         continues: int = 3,
         persist_hp: bool = True,
+        debug_all_keys: bool = False,
     ):
         self.difficulty = difficulty
         self.lives = lives
         self.continues = continues
         self.persist_hp = persist_hp
+        self.debug_all_keys = debug_all_keys
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
         del context
@@ -234,7 +293,9 @@ class RunLifecyclePatch:
         for offset, expected, _replacement, _label in HOOKS:
             rom.expect_bytes(offset, expected)
 
-        module = configured_lifecycle_module(self.difficulty, self.lives, self.continues)
+        module = configured_lifecycle_module(
+            self.difficulty, self.lives, self.continues, debug_all_keys=self.debug_all_keys,
+        )
         rom.write_bytes(LIFECYCLE_MODULE_ROM, module)
         if file_end < LIFECYCLE_MODULE_END_ROM:
             rom.write_u32(EXPANSION_FILE_ENTRY_ROM + 4, LIFECYCLE_MODULE_END_ROM)

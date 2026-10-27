@@ -5,6 +5,7 @@ from mkmszr.patches.global_materialization import (
     MATERIALIZER_HELPER_END_ROM,
     MATERIALIZER_HELPER_ROM,
 )
+from mkmszr.patches.inventory_boxes import BOX0_VA, starting_inventory
 from mkmszr.patches.run_lifecycle import (
     CONFIG_ROM,
     EXPECTED_CONFIG,
@@ -16,6 +17,8 @@ from mkmszr.patches.run_lifecycle import (
     LIFECYCLE_MODULE_ROM,
     LIFECYCLE_MODULE_SHA256,
     LIFECYCLE_MODULE_SIZE,
+    MODULE_RESET_INVENTORY_OFFSET,
+    MODULE_RESET_INVENTORY_SIZE,
     RUNTIME_CONFIRMED_V06_CONFIG,
     RunLifecyclePatch,
     configured_lifecycle_module,
@@ -123,3 +126,62 @@ def test_hp_persistence_off_keeps_stock_full_hp_store() -> None:
     )
 
     assert rom.read_u32(FINAL_FULL_HP_STORE_ROM) == EXPECTED_FINAL_FULL_HP_STORE
+
+
+def test_debug_reset_block_reconstructs_exact_initial_backing_with_bounded_stores() -> None:
+    """Evaluate the emitted reset block's small instruction subset, delay slots included."""
+
+    for debug in (False, True):
+        module = configured_lifecycle_module("very_hard", 9, 5, debug_all_keys=debug)
+        start = MODULE_RESET_INVENTORY_OFFSET
+        end = start + MODULE_RESET_INVENTORY_SIZE
+        assert module[:start] == LIFECYCLE_MODULE[:start]
+        assert module[end:] == LIFECYCLE_MODULE[end:]
+        code = module[start:end]
+        words = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
+        registers = [0] * 32
+        stores: dict[int, int] = {}
+
+        def execute(word: int, registers: list[int], stores: dict[int, int]) -> None:
+            op, rs, rt = word >> 26, (word >> 21) & 31, (word >> 16) & 31
+            immediate = word & 0xFFFF
+            signed = immediate if immediate < 0x8000 else immediate - 0x10000
+            if word == 0:
+                pass
+            elif op == 0x0F:  # LUI
+                registers[rt] = immediate << 16
+            elif op == 0x09:  # ADDIU
+                registers[rt] = (registers[rs] + signed) & 0xFFFFFFFF
+            elif op == 0x0D:  # ORI
+                registers[rt] = registers[rs] | immediate
+            elif op == 0x0B:  # SLTIU
+                registers[rt] = int(registers[rs] < (signed & 0xFFFFFFFF))
+            elif op == 0 and word & 63 == 0x25:  # OR
+                registers[(word >> 11) & 31] = registers[rs] | registers[rt]
+            elif op == 0x2B:  # SW
+                address = (registers[rs] + signed) & 0xFFFFFFFF
+                assert BOX0_VA <= address < BOX0_VA + 160
+                assert address % 4 == 0
+                stores[address] = registers[rt]
+            else:
+                raise AssertionError(f"unexpected reset instruction 0x{word:08X}")
+
+        pc = steps = 0
+        while pc < len(words):
+            steps += 1
+            assert steps < 500, "reset loop must terminate"
+            word = words[pc]
+            if word >> 26 == 0x05:  # BNE, with one executed delay slot
+                rs, rt = (word >> 21) & 31, (word >> 16) & 31
+                immediate = word & 0xFFFF
+                signed = immediate if immediate < 0x8000 else immediate - 0x10000
+                taken = registers[rs] != registers[rt]
+                execute(words[pc + 1], registers, stores)
+                pc = pc + 1 + signed if taken else pc + 2
+            else:
+                execute(word, registers, stores)
+                pc += 1
+        assert pc == len(words)
+        assert len(stores) == 40
+        actual = b"".join(stores[a].to_bytes(4, "big") for a in sorted(stores))
+        assert actual == starting_inventory(debug_all_keys=debug)
