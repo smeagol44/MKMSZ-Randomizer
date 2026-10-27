@@ -163,10 +163,13 @@ def build_pipeline(
     ]
     if materialization_plan is None:
         patches.append(PickupRandomizationPatch())
-    patches.append(FourBoxInventoryPatch(initial_settings_state=settings_state))
+    patches.append(FourBoxInventoryPatch(
+        initial_settings_state=settings_state, debug_all_keys=config.debug_all_keys,
+    ))
     if config.powers_as_pickups:
         # Only pickup mode replaces the four-box resume tail. The other mode
-        # keeps stock XP stores/caps and ordinary Herbs callbacks.
+        # keeps stock XP stores and ordinary Herbs callbacks. Both remove
+        # stage-specific XP limits.
         patches.append(
             XPProgressionPatch(global_mode=materialization_plan is not None)
         )
@@ -226,6 +229,7 @@ def build_pipeline(
             lives=config.lives,
             continues=config.continues,
             persist_hp=config.persist_hp,
+            debug_all_keys=config.debug_all_keys,
         )
     )
     if not config.powers_as_pickups:

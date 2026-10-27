@@ -33,6 +33,8 @@ const difficulty = document.querySelector("#difficulty");
 const startingLives = document.querySelector("#startingLives");
 const startingContinues = document.querySelector("#startingContinues");
 const persistHp = document.querySelector("#persistHp");
+const debugAllKeys = document.querySelector("#debugAllKeys");
+const debugOptionsSummary = document.querySelector("#debugOptionsSummary");
 const randomizerFeaturesSummary = document.querySelector("#randomizerFeaturesSummary");
 const runSettingsSummary = document.querySelector("#runSettingsSummary");
 const gameSettingsSummary = document.querySelector("#gameSettingsSummary");
@@ -219,6 +221,7 @@ function fortressSummary() {
 }
 
 function updateSummaries() {
+  debugOptionsSummary.textContent = debugAllKeys.checked ? "All stage keys" : "Off";
   randomizerFeaturesSummary.textContent = [
     "Powers: " + (powersAsPickups.checked ? "pickups" : "XP"),
     shufflePowerProgression.checked ? "shuffled" : "vanilla order",
@@ -251,8 +254,9 @@ function updateSummaries() {
       (shufflePowerProgression.checked ? " + shuffled" : ""),
     "Enemies: " + (enemyRandomization.checked ? "random" : "vanilla"),
     "Fortress: " + fortressSummary(),
-    "Completion: " + selectedText(globalCompletionMode)
-  ].join(" · ");
+    "Completion: " + selectedText(globalCompletionMode),
+    debugAllKeys.checked ? "DEBUG: all stage keys" : ""
+  ].filter(Boolean).join(" · ");
 
   buildSummaryRun.textContent = [
     "Run: " + selectedText(difficulty) + " / " + startingLives.value +
@@ -693,7 +697,8 @@ async function patchRom() {
       difficulty: difficulty.value,
       lives: livesValue,
       continues: continuesValue,
-      persistHp: persistHp.checked
+      persistHp: persistHp.checked,
+      debugAllKeys: debugAllKeys.checked
     }
   });
 }
@@ -737,6 +742,7 @@ difficulty.addEventListener("change", updateSummaries);
 startingLives.addEventListener("input", updateSummaries);
 startingContinues.addEventListener("input", updateSummaries);
 persistHp.addEventListener("change", updateSummaries);
+debugAllKeys.addEventListener("change", updateSummaries);
 globalCompletionMode.addEventListener("change", updateSummaries);
 customRequiredPowers.addEventListener("input", updateSummaries);
 seed.addEventListener("input", updateSummaries);

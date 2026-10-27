@@ -30,6 +30,7 @@ from mkmszr.patches.inventory_boxes import (
     LOAD_MASK_WRAPPER_VA,
     MAGIC,
     MASK_COPY_ROUTINE,
+    MASK_ITEM,
     MASK_ITEM_NAME,
     MASK_ITEM_NAME_ROM,
     PATCHED_ALL_KEYS_SCAN_BASE,
@@ -56,6 +57,8 @@ from mkmszr.patches.inventory_boxes import (
     SWITCH_HELPER_VA,
     TRANSITION_SAVE_WRAPPER,
     FourBoxInventoryPatch,
+    initial_box_data,
+    starting_inventory,
 )
 from mkmszr.patches.stage_selector import (
     MAPPER_ROM,
@@ -199,3 +202,26 @@ def test_four_box_patch_installs_stage_masking_and_filtered_sync() -> None:
     )
 
     assert any("SEALED" in note for note in notes)
+
+
+def test_debug_inventory_adds_every_credential_once_and_preserves_supplies() -> None:
+    from mkmszr.global_items import TOKEN_ITEMS
+
+    rom = _post_core_shape()
+    FourBoxInventoryPatch(initial_settings_state=0x3E00, debug_all_keys=True).apply(
+        rom, PatchContext()
+    )
+    backing = rom.data[BOX_DATA_ROM : BOX_DATA_ROM + BOX_DATA_SIZE]
+    slots = [int.from_bytes(backing[i:i + 4], "big") for i in range(0, 160, 4)]
+    credentials = sorted(item[1] for item in TOKEN_ITEMS.values())
+    assert slots[:3] == [4, 4, 1]
+    assert slots[3:24] == credentials == list(range(0x0E, 0x23))
+    assert slots[24:] == [0xFFFFFFFF] * 16
+    assert backing[160:] == initial_box_data(0x3E00)[160:]
+    assert backing[:160] == starting_inventory(debug_all_keys=True)
+    # Before stage reconstruction, title/default-loader filtered saves must
+    # preserve debug keys rather than overwrite them with empty LIVE slots.
+    live = [rom.read_u32(LIVE_INV_ROM + i * 4) for i in range(10)]
+    assert live == [4, 4, 1] + [MASK_ITEM] * 7
+    saved = [old if current == MASK_ITEM else current for old, current in zip(slots[:10], live, strict=True)]
+    assert saved == slots[:10]

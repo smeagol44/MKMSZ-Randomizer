@@ -22,6 +22,7 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
         "startingLives",
         "startingContinues",
         "persistHp",
+        "debugAllKeys",
     ):
         assert f'id="{control_id}"' in html
         assert f'querySelector("#{control_id}")' in app
@@ -44,6 +45,7 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
         "lives",
         "continues",
         "persistHp",
+        "debugAllKeys",
     ):
         assert config_key in app
         assert config_key in worker
@@ -81,6 +83,12 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
     assert "lives=int(web_lives)" in worker
     assert "continues=int(web_continues)" in worker
     assert "persist_hp=bool(web_persist_hp)" in worker
+    assert "debug_all_keys=bool(web_debug_all_keys)" in worker
+    assert 'id="debugAllKeys" type="checkbox">' in html
+    assert html.index('id="gameSettingsGroup"') < html.index('id="debugOptionsGroup"')
+    assert html.index('id="debugOptionsGroup"') < html.index('class="panel build-panel"')
+    assert 'debugAllKeys.addEventListener("change", updateSummaries)' in app
+    assert '"DEBUG: all stage keys"' in app
 
 
 def test_web_jump_button_dependency_is_enforced_in_ui() -> None:

@@ -156,7 +156,7 @@ ITEM_COUNT = 21
 # Native key/icon/crystal preview records. Payloads are copied from these stock
 # compressed image packages; only the common carrier record gets a new sprite ID.
 PORTRAIT_DONORS = (
-    (0x7E, (0x3AC, 0x3AD, 0x3AE)),  # Wind 0E..10
+    (0x7E, (0x3AC, 0x3AE, 0x3AD)),  # Wind 0E..10: circle, three bars, triangle
     (0x34, (0x3AE, 0x3AC, 0x3AD)),  # Earth 11..13
     (0x73, (0x3AD, 0x3AE, 0x3AC)),  # Water 14..16
     (0x39, (0x3AC, 0x3AD, 0x3AE)),  # Fire 17..19

@@ -159,9 +159,8 @@ def test_earned_xp_off_preserves_stock_awards_and_wraps_lifecycle_v06() -> None:
     stock_awards = {
         offset: rom.read_u32(offset) for offset in XP_AWARD_STORE_SITES
     }
-    stock_caps = {
-        stage_id: rom.read_u16(XP_CAP_TABLE_ROM + stage_id * 2)
-        for stage_id in XP_MAIN_STAGE_CAPS
+    stock_combo_ui = {
+        offset: rom.read_u32(offset) for offset in COMBO_EXPERIENCE_RENDER_SITES
     }
 
     EarnedXPPersistencePatch().apply(rom, PatchContext(seed="EARNED-XP-OFF"))
@@ -186,10 +185,11 @@ def test_earned_xp_off_preserves_stock_awards_and_wraps_lifecycle_v06() -> None:
         assert rom.data[offset : offset + len(replacement)] == replacement
 
     assert {offset: rom.read_u32(offset) for offset in XP_AWARD_STORE_SITES} == stock_awards
-    assert {
-        stage_id: rom.read_u16(XP_CAP_TABLE_ROM + stage_id * 2)
+    assert {offset: rom.read_u32(offset) for offset in COMBO_EXPERIENCE_RENDER_SITES} == stock_combo_ui
+    assert all(
+        rom.read_u16(XP_CAP_TABLE_ROM + stage_id * 2) == XP_CAP_VALUE
         for stage_id in XP_MAIN_STAGE_CAPS
-    } == stock_caps
+    )
 
     # The wrappers must address both the native current-XP word and MKSV state.
     current_xp_words = words_blob(address_words("t0", 0x8011200C))
@@ -279,3 +279,14 @@ def test_patch_guards_mapped_xp_sites() -> None:
     rom.data[first] ^= 1
     with pytest.raises(PatchError, match="guard failed"):
         XPProgressionPatch().apply(rom, PatchContext(seed="BCBDBF"))
+
+
+@pytest.mark.parametrize("pickup_mode", [False, True])
+def test_both_modes_reject_an_unexpected_stage_cap_before_writing(pickup_mode: bool) -> None:
+    rom = _post_four_box_shape("BCBDBF") if pickup_mode else _post_lifecycle_off_shape("BCBDBF")
+    rom.data[XP_CAP_TABLE_ROM + 2] ^= 1
+    before = bytes(rom.data)
+    patch = XPProgressionPatch() if pickup_mode else EarnedXPPersistencePatch()
+    with pytest.raises(PatchError, match="guard failed"):
+        patch.apply(rom, PatchContext(seed="BCBDBF"))
+    assert bytes(rom.data) == before

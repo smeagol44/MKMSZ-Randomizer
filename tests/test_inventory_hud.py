@@ -73,6 +73,12 @@ def test_water_portrait_donor_order_matches_water_labels() -> None:
     # WATER1/2/3 are item IDs 0x14..0x16 and atlas emission preserves tuple order.
     assert PORTRAIT_DONORS[2] == (0x73, (0x3AD, 0x3AE, 0x3AC))
 
+
+def test_wind_portrait_donor_order_matches_item_ids() -> None:
+    # WIND2 is Three Bars (0x0F); WIND3 is Triangle (0x10).
+    assert PORTRAIT_DONORS[0] == (0x7E, (0x3AC, 0x3AE, 0x3AD))
+
+
 def test_native_palette_uses_static_confirmed_15_bit_bgr_source_layout() -> None:
     stock = bytearray(FONT_DESCRIPTOR_SIZE)
     stock[:4] = (0x10).to_bytes(4, "big")

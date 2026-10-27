@@ -463,14 +463,26 @@ if len(EXPECTED_PERSISTENCE_RESUME) != len(PERSISTENCE_RESUME_PATCH):
     raise AssertionError("persistence resume patch changed scanner size")
 
 
-def initial_box_data(settings_state: int = 0) -> bytes:
+def starting_inventory(*, debug_all_keys: bool = False) -> bytes:
+    """Forty authoritative slots: stock supplies, optional 21 stage credentials.
+
+    Temple's Map (0x0D) is excluded, as in the global reward pool. Crystals
+    0x20..0x22 are included. Unused slots retain the native empty sentinel.
+    """
+
+    items = [4, 4, 1]
+    if debug_all_keys:
+        items.extend(range(0x0E, KEY_LAST + 1))
+    return words_blob(items + [0xFFFFFFFF] * (40 - len(items)))
+
+
+def initial_box_data(settings_state: int = 0, *, debug_all_keys: bool = False) -> bytes:
     """ROM-initialized backing state for the four-box inventory."""
 
     if settings_state & ~INITIAL_SETTINGS_STATE_MASK:
         raise ValueError(f"unsupported initial GAME SETTINGS bits: 0x{settings_state:08X}")
     return (
-        DEFAULT_INV
-        + words_blob([0xFFFFFFFF] * 30)
+        starting_inventory(debug_all_keys=debug_all_keys)
         + settings_state.to_bytes(4, "big")
         + MAGIC.to_bytes(4, "big")
     )
@@ -486,8 +498,9 @@ class FourBoxInventoryPatch:
 
     name = "four-box-inventory"
 
-    def __init__(self, *, initial_settings_state: int = 0):
+    def __init__(self, *, initial_settings_state: int = 0, debug_all_keys: bool = False):
         self.initial_settings_state = initial_settings_state
+        self.debug_all_keys = debug_all_keys
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
         del context
@@ -536,11 +549,21 @@ class FourBoxInventoryPatch:
         rom.write_u32(ACTION_HOOK_ROM, jal(ACTION_ROUTINE_VA))
         rom.write_u32(ACTION_HOOK_ROM + 4, NOP)
 
-        # Seed box 1 with stock inventory and boxes 2-4 empty. LIVE starts from
-        # the same stock image. The now-dead stock template becomes the compact
+        # Seed the authoritative boxes; stage init reconstructs/masks LIVE from
+        # them before gameplay. The now-dead stock template becomes the compact
         # item-ID -> originating-stage table used by the mask routine.
-        rom.write_bytes(BOX_DATA_ROM, initial_box_data(self.initial_settings_state))
-        rom.write_bytes(LIVE_INV_ROM, DEFAULT_INV)
+        rom.write_bytes(
+            BOX_DATA_ROM,
+            initial_box_data(self.initial_settings_state, debug_all_keys=self.debug_all_keys),
+        )
+        # A title/default-loader commit may precede the first stage rebuild.
+        # Protect the debug keys in box 1 with inert placeholders in LIVE so
+        # that filtered save cannot replace them with empty initializer slots.
+        initial_live = (
+            DEFAULT_INV[:12] + words_blob([MASK_ITEM] * 7)
+            if self.debug_all_keys else DEFAULT_INV
+        )
+        rom.write_bytes(LIVE_INV_ROM, initial_live)
         rom.write_bytes(DEFAULT_INV_ROM, KEY_STAGE_TABLE)
 
         # Replace native special-item cleanup with stage-local masking. Existing

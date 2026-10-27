@@ -30,6 +30,14 @@ def test_core_native_patches_are_always_first() -> None:
     assert isinstance(pipeline.patches[3], PickupPersistencePatch)
 
 
+def test_debug_all_keys_configures_both_initial_and_reset_inventory() -> None:
+    for enabled in (False, True):
+        pipeline = build_pipeline(RandomizerConfig(seed="DEBUG-KEYS", debug_all_keys=enabled))
+        owners = [p for p in pipeline.patches if isinstance(p, (FourBoxInventoryPatch, RunLifecyclePatch))]
+        assert len(owners) == 2
+        assert all(p.debug_all_keys is enabled for p in owners)
+
+
 def test_progression_runs_after_generated_pickups_and_four_box_resume_patch() -> None:
     pipeline = build_pipeline(RandomizerConfig(seed="BCBDBF"))
     types = [type(patch) for patch in pipeline.patches]
