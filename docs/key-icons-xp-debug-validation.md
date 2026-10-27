@@ -1,8 +1,10 @@
 # Wind portraits, stage XP limits and debug starting keys
 
-Implementation/static-confirmed candidate, 2026-10-27. Runtime validation is
-Pending. Do not merge/deploy until the bounded manual check below passes.
-No emulator was run by the assistant.
+Runtime-confirmed bounded; owner approved promotion on 2026-10-27. After
+receiving proof v01 and the manual check below, the maintainer reported
+“It's good, merge it.” This accepts the proof and authorizes PR #174 merge.
+No separate per-step log or exhaustive stage/seed matrix was supplied.
+No game emulator was run by the assistant.
 
 ## Changes
 
@@ -77,7 +79,7 @@ Use a fresh boot of this ROM, without an older savestate.
    not re-grant keys on an ordinary stage transition or Pause → Quit.
 
 Existing unresolved audio behavior remains a separate release gate; this
-candidate makes no audio correction or new audio claim.
+change makes no audio correction or new audio claim.
 
 ## Static checks
 
