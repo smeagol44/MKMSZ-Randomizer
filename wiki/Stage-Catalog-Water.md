@@ -230,7 +230,15 @@
 - Occupied selectors without ordinary pickup users remain protected because other Water actors or scripts may reference them. Slot `7`, for example, aliases outer offset `0x10C` used by the Water Moon bundle but has no ordinary-pickup user.
 - Empty stock selectors `8, 9, 11..19` are logical selector capacity only. Per the shared schema, they are not evidence of free physical file bytes or production-safe allocation space.
 
-## Related owners
+## Related owners## 2026-10-28 scripted boss-entry checkpoint investigation (Pending runtime)
+
+**New maintainer observation:** entering the Water boss area from a checkpoint earlier than the expected immediate predecessor sometimes reconstructs the player at the prior selector **+1**, rather than at the boss entrance. This is user-observed failure behavior; the owning branch and full selector chronology were not captured.
+
+**Static-confirmed precise code at the already-cataloged scripted selector writer:** Water overlay `0xA1`, ROM `0xB9330` / Water VA `0x802F11A0`, instruction `24420001` (`addiu v0,v0,1`) converts the selector read at ROM `0xB9320` to a relative increment. ROM `0xB9338` / Water VA `0x802F11A8`, `A42218F8` (`sh v0,0x18F8(at)`), commits it to live `0x802C18F8`. A nearby ROM `0xB9344` calls stock `0x80035F38` after selector update. These are **raw Water overlay** offsets, not globally resident main-ROM VAs; the opcode sequence and the supported clean-ROM SHA were independently checked. The native spawn resolver `0x8003BF4C` consumes that selector for spawn-table selection.
+
+**Hypothesis, not yet a verified fix:** if this scripted transition is the reported boss entry, its stock path may expect selector `5` and increment to `6`. From selector `3`, the same code would produce `4`, explaining the reported unintended respawn. A disposable proof changes **only** ROM `0xB9330` from `24420001` to `24020006` (`addiu v0,zero,6`), guards the surrounding stock code, and recomputes CIC6102 CRC1/CRC2. Clean-base proof SHA-256 `60df85b1120085a4f7f66d7cf10f071f573bf577708d57710080b51ef324ce3d`; no emulator run performed. This diagnostic constant assignment **is not production-safe** for a possible revisit when current selector is `>6`, and does not by itself establish that 6 is the boss destination. An eventual accepted production correction must preserve later-stage monotonic state and scripted world/lifecycle semantics and pass manual validation on the skipped-predecessor route and normal progression before integration. This scripted path is distinct from the production global materializer's already guarded three Water ordinary-key destination callbacks.
+
+
 
 - [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, and eight-stage index.
 - [Data structures and encodings](Data-Structures-and-Encodings) — ordinary `0x30`-byte record grammar.
