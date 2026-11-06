@@ -23,7 +23,7 @@ import hashlib
 
 from ..config import DifficultyMode
 from ..errors import PatchError
-from ..mips import Emitter, addiu, lui, or_, sltiu, sw
+from ..mips import Emitter, addiu, lui, or_, sltiu, sw, words_blob
 from ..rom import RomImage
 from .base import PatchContext
 from .temple_special_check import (
@@ -136,6 +136,79 @@ HOOKS = (
     ),
 )
 
+# Transport v07 (2026-11-06): the Runtime-confirmed v06 hooks and module
+# carried control through k0 and the teardown reason through k1. The game's
+# exception handler (0x80095DE0) overwrites k0/k1 and never restores them, so
+# an interrupt could redirect a death/reconstruction to the stage-completion
+# continuation. v07 changes only the transport, not lifecycle behavior:
+#   - every lui/ori/jr k0 transfer uses t9 instead (saved/restored by the
+#     handler; never read by stock code at these hook/continuation sites);
+#   - the four reason hooks put the reason in t8 instead of k1;
+#   - the reason entry spills t8 to its own stack frame in an existing delay
+#     slot and reloads it before releasing the frame, so the reason survives
+#     the native calls in between.
+# The module size and every internal offset stay unchanged.
+HOOKS_V06 = HOOKS
+
+LUI_K0, ORI_K0_K0, JR_K0 = 0x3C1A0000, 0x375A0000, 0x03400008
+LUI_T9, ORI_T9_T9, JR_T9 = 0x3C190000, 0x37390000, 0x03200008
+ADDIU_K1_ZERO, ADDIU_T8_ZERO = 0x241B0000, 0x24180000
+
+
+def _t9_transfer(words: tuple[int, int, int]) -> tuple[int, int, int]:
+    lui_w, ori_w, jr_w = words
+    if lui_w & 0xFFFF0000 != LUI_K0 or ori_w & 0xFFFF0000 != ORI_K0_K0 or jr_w != JR_K0:
+        raise AssertionError("expected a lui/ori/jr k0 transfer")
+    return LUI_T9 | (lui_w & 0xFFFF), ORI_T9_T9 | (ori_w & 0xFFFF), JR_T9
+
+
+def _v07_hook(replacement: bytes) -> bytes:
+    words = [int.from_bytes(replacement[i : i + 4], "big") for i in range(0, 16, 4)]
+    delay = words[3]
+    if delay & 0xFFFF0000 == ADDIU_K1_ZERO:
+        delay = ADDIU_T8_ZERO | (delay & 0xFFFF)
+    elif delay != 0:
+        raise AssertionError("unexpected lifecycle hook delay slot")
+    return words_blob([*_t9_transfer((words[0], words[1], words[2])), delay])
+
+
+HOOKS = tuple(
+    (offset, expected, _v07_hook(replacement), label)
+    for offset, expected, replacement, label in HOOKS_V06
+)
+
+# Module-internal edits: (offset, v06 word, v07 word). Exits replace k0 with t9.
+_EXIT_OFFSETS = (0x194, 0x25C, 0x27C, 0x29C, 0x2BC, 0x444, 0x584)
+_REASON_EDITS = (
+    (0x1C0, 0x13680007, 0x13080007),  # beq k1,t0 -> beq t8,t0 (reason 1)
+    (0x1C4, 0x00000000, 0xAFB80004),  # delay-slot nop -> sw t8,4(sp)
+    (0x1CC, 0x13680007, 0x13080007),  # beq k1,t0 -> beq t8,t0 (reason 2)
+    (0x224, 0x27BD0010, 0x8FB80004),  # addiu sp,0x10 -> lw t8,4(sp)
+    (0x22C, 0x1368001F, 0x1308001F),  # beq k1,t0 -> beq t8,t0 (reason 1)
+    (0x230, 0x00000000, 0x27BD0010),  # delay-slot nop -> addiu sp,sp,0x10
+    (0x238, 0x13680014, 0x13080014),  # beq k1,t0 -> beq t8,t0 (reason 2)
+    (0x244, 0x13680009, 0x13080009),  # beq k1,t0 -> beq t8,t0 (reason 3)
+)
+
+
+def _word(data: bytes | bytearray, offset: int) -> int:
+    return int.from_bytes(data[offset : offset + 4], "big")
+
+
+def lifecycle_transport_v07(module: bytes) -> bytes:
+    """Apply the guarded k0/k1 -> t9/t8 transport edits to the v06 module."""
+
+    data = bytearray(module)
+    for offset in _EXIT_OFFSETS:
+        new = _t9_transfer((_word(data, offset), _word(data, offset + 4), _word(data, offset + 8)))
+        data[offset : offset + 12] = words_blob(new)
+    for offset, old, new in _REASON_EDITS:
+        if _word(data, offset) != old:
+            raise PatchError(f"lifecycle v06 transport guard failed at +0x{offset:X}")
+        data[offset : offset + 4] = new.to_bytes(4, "big")
+    return bytes(data)
+
+
 # Initial GAME SETTINGS resource defaults.  The live current-lives counter is a
 # spare-life count, so configured 9 yields 8 spare lives plus the active life.
 CONFIG_ROM = 0x000A6BA8
@@ -230,7 +303,7 @@ def configured_lifecycle_module(
 ) -> bytes:
     """Configure v06 defaults and its optional in-place debug inventory reset."""
 
-    data = bytearray(LIFECYCLE_MODULE)
+    data = bytearray(lifecycle_transport_v07(LIFECYCLE_MODULE))
     difficulty_value = DIFFICULTY_VALUES[difficulty]
     replacements = (
         (MODULE_CONFIG_DIFFICULTY_OFFSET, 11, difficulty_value),
@@ -327,7 +400,7 @@ class RunLifecyclePatch:
             "ordinary death and Continue retain stock counter/full-HP behavior while preserving run progress",
             "classified final Game Over resets run progress and starter inventory while preserving GAME SETTINGS",
             (
-                f"runtime-confirmed v06 helper 0x{LIFECYCLE_MODULE_ROM:08X}.."
+                f"lifecycle v06 helper with v07 t9/t8 transport 0x{LIFECYCLE_MODULE_ROM:08X}.."
                 f"0x{LIFECYCLE_MODULE_END_ROM - 1:08X} via KSEG1 0x{LIFECYCLE_MODULE_K1:08X}"
             ),
         )
