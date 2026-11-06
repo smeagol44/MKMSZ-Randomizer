@@ -14,6 +14,7 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 ## Recent updates
 
+- 2026-11-06 Water boss-area checkpoint: validated bounded proof promoted to guarded shared pipeline; late re-entry Pending; Inventory boss-transition crashes deferred. ([PS-19](Status-Update-Log#ps-19-2026-11-06))
 Dated update notes are kept verbatim in the [Status update log](Status-Update-Log); newest first.
 
 - 2026-11-06 cache-contract follow-up: RUN state uncached; two cached code entries accepted with invariant — Runtime-confirmed bounded. ([PS-18](Status-Update-Log#ps-18-2026-11-06))

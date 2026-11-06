@@ -1,5 +1,9 @@
 # Persistence, inventory, and lifecycle
 
+## Encounter-transition Inventory crash reports — 2026-10-28 (pending)
+
+The maintainer reported Inventory crashes immediately after Bridge dinosaur boss reward collection and after Temple Scorpion defeat before the exit door was ready; the older Kia/Fortress post-fight transition was similar. No crash trace establishes a shared cause. The earlier Kia pre-open/asset-preload v01 test avoided the hang only on its exercised route; the separate TEST LAB `0x1200` HUD allocation correction is not a demonstrated fix for these later cases. Reproduction and root cause are deferred by owner choice (2026-11-06). Do not confuse the independent Water scripted checkpoint correction with an Inventory crash repair.
+
 ## Debug starting keys — 2026-10-27
 
 **Runtime-confirmed bounded; promotion approved (2026-10-27).** The maintainer reported proof v01 good and requested PR #174 merge; evidence is limited to that manual proof, not an exhaustive matrix. Optional `debug_all_keys` starts each fresh run with the normal Herbs/Herbs/Potion plus one copy of each of the 21 stage credentials `0x0E..0x22`, including the three Fortress crystals. Temple Map `0x0D` remains excluded. Slots 0..2 hold supplies, 3..23 hold credentials in item-ID order, and 24..39 are empty; this uses boxes 1..3 and leaves box 4 empty. Existing stage masking, filtered saves and native key-use rules apply. The pre-stage LIVE initializer masks occupied debug key slots as SEALED so an early title/default-loader save cannot erase box-1 keys before the first stage reconstruction.

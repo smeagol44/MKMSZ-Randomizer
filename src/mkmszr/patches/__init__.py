@@ -38,6 +38,7 @@ from .temple_special_check import TempleSpecialCheckPatch
 from .title_branding import TitleBrandingPatch
 from .toasty import ToastyProductionCompositionPatch
 from .toasty_constants import ToastyAssets
+from .water_scripted_checkpoint import WaterScriptedCheckpointPatch
 from .xp_progression import EarnedXPPersistencePatch, XPProgressionPatch
 
 __all__ = [
@@ -76,6 +77,7 @@ __all__ = [
     "TitleBrandingPatch",
     "ToastyAssets",
     "ToastyProductionCompositionPatch",
+    "WaterScriptedCheckpointPatch",
     "XPProgressionPatch",
     "manager_persistence_fire_patches",
     "pickup_persistence_patches",

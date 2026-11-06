@@ -230,6 +230,14 @@
 - Occupied selectors without ordinary pickup users remain protected because other Water actors or scripts may reference them. Slot `7`, for example, aliases outer offset `0x10C` used by the Water Moon bundle but has no ordinary-pickup user.
 - Empty stock selectors `8, 9, 11..19` are logical selector capacity only. Per the shared schema, they are not evidence of free physical file bytes or production-safe allocation space.
 
+## Scripted boss-area checkpoint — Water selector fix (2026-11-06)
+
+**Runtime-confirmed bounded (owner report), implementation scope verified against the earlier proof.** The Water boss-area transition previously advanced the current selector by one. The maintainer observed the wrong checkpoint after bypassing its ordinary predecessor and subsequently reported the one-opcode Water experiment "Working fine now." This confirms a successful test report for the supplied Water-patched ROM; no exact route recording, selector trace, fresh-current-`main` full build, or exhaustive revisit matrix was supplied. The other boss/Inventory crashes remain deferred.
+
+**Static-confirmed site:** Water stage overlay `0xA1`, raw ROM `0xB9330` / Water VA `0x802F11A0`, is `24420001` (`addiu v0,v0,1`) after loading the selector from `0x802C18F8` at ROM `0xB9320`. The subsequent `A42218F8` at ROM `0xB9338` / Water VA `0x802F11A8` writes the computed selector, followed by stock reconstruction JAL at ROM `0xB9344`. The accepted disposable diagnostic substitutes exactly `24020006` (`addiu v0,zero,6`); 32 MiB debug-baseline proof v02 SHA-256 `5a9a3e7802e9d1487acb046b677fa8f66fb448a1965e355f5bf545a4f5018fcc`. The normal patch pipeline now uses that same opcode, with an exact surrounding 48-byte guard and standard checksum update, and leaves the stock scene, flag, call and all ordinary-item destination wrappers intact.
+
+**Known limit:** direct selector 6 is appropriate to the reported route but is not a general monotonic update. If this script can execute at a selector above 6, it would lower it. The nearby `0x802F2EAC` state advances from 1 to 2 within the script, indicating a one-shot process branch (Static-confirmed), but this does not prove later Water re-entry cannot retrigger it. Such an edge must be tested or statically closed before exhaustive release claims. This does **not** authorize changing Water overlay initialization `0xB5384` or the ordinary physical-key callbacks `0xBA60C`.
+
 ## Related owners
 
 - [Stage catalogs](Stage-Catalogs) — shared schema, notation, safety rules, and eight-stage index.

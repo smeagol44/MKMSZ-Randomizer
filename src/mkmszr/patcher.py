@@ -44,6 +44,7 @@ from .patches import (
     TitleBrandingPatch,
     ToastyAssets,
     ToastyProductionCompositionPatch,
+    WaterScriptedCheckpointPatch,
     XPProgressionPatch,
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
@@ -182,6 +183,7 @@ def build_pipeline(
             BoxIndicatorPatch(),
             BootBrandingPatch(config.edition_name),
             BootLogoBypassPatch(),
+            WaterScriptedCheckpointPatch(),
             TitleBrandingPatch(config.edition_name, config.outfit),
         ]
     )
