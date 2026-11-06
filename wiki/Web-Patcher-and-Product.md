@@ -77,6 +77,8 @@ The underlying planner/materializer has bounded Runtime-confirmed representative
 
 **Implementation-confirmed on native CPython 3.13; Pyodide not measured.** A full production build took 50–65 s. One profiled build spent 44.6 s of 58.7 s in `_changed_spans` (21 calls), because `PatchPipeline` snapshots and compares the whole 32 MiB image after every patch (`patches/base.py`, `rom.py`). A vectorised comparison in a scratch test produced identical outputs and brought builds to about 10–20 s. `decompress_resource_package` took about 11 s over 21 calls, with some packages decompressed more than once. Optimisation Pending.
 
+**Resolved (2026-11-06) — Implementation-confirmed.** `_changed_spans` now skips equal 4 KiB blocks with one C-level comparison and scans only differing blocks byte by byte; `decompress_resource_package` caches results (pure function of its input bytes). No new dependency. Measured on native CPython 3.13 with the clean ROM: a full donor-backed composition (rainbow, enemy randomization, power shuffle, debug keys, all GAME SETTINGS) went from 58.5 s to 5.3 s, and a pickups-OFF no-donor build from 44.6 s to 3.2 s. Output ROMs, total changed spans, and every per-patch span/note report were identical to the previous code for both configurations; a unit test pins the block comparison to the byte-wise reference. Browser (Pyodide) timing not measured.
+
 ## CLI and browser parity (2026-11-06)
 
 **Implementation-confirmed.** The CLI cannot set the initial TURN / ATTACK / SPECIALS / JUMP / RUN settings, and two defaults differ: outfit (CLI `vanilla`, browser "Random from seed") and Required powers (CLI `vanilla`, browser `seed`). A browser build therefore cannot always be reproduced from the CLI. Pending.
