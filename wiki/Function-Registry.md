@@ -127,7 +127,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80080A88` | Raw sound-ID playback entry | Static-confirmed | Selects a 16-byte runtime sound definition by raw ID and dispatches through `0x8007EC4C` |
 | `0x8007EC4C` | Low-level sound-definition/voice allocator | Static-confirmed | Consumes resolved runtime sound definition and allocates/starts native audio voices |
 | `0x80065D64` | Raw global-file loader | Runtime-confirmed | Used by native bootstrap. No `cache` instruction in it or its callees within three call levels (Static-confirmed 2026-11-06); see [Memory and allocation map](Memory-and-Allocation-Map). |
-| `0x8007550C` | Password screen / password-effect handler | Static-confirmed (2026-11-06) | Unpatched in production. `NXCVSZ` writes word `5` to `0x800A5FE4..0x800A6008` (now the key-stage table); stage passwords write `0x8009A910` and `0x8011200C`. See [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle). |
+| `0x8007550C` | Password screen / password-effect handler | Static-confirmed (2026-11-06) | Unpatched in production. `NXCVSZ` writes word `5` to `0x800A5FE4..0x800A6008` (the former key-stage table location; the table moved to `0x801B0970` on 2026-11-06, so the write is now harmless); stage passwords write `0x8009A910` and `0x8011200C`. See [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle). |
 | `0x800762C4` | Options menu dispatcher | Static-confirmed (2026-11-06) | Five entries via jump table `0x800AEAB8`: `0x8007739C`, `0x80076D74`, `0x8007816C`, `0x8007550C` (password), `0x800766BC` (GAME SETTINGS). Labels of entries 0–2 not individually confirmed. |
 | `0x80095DE0` | libultra-pattern exception handler entry | Static-confirmed (2026-11-06) | Overwrites `k1` with Status at `0x80095DEC`; the return path leaves `k0 = 0xA430000C` and `k1` = RCP mask before `eret` at `0x8009670C`. Injected code must not carry state in `k0`/`k1`. |
 | `0x80066360` | Cold arena initializer | Static-confirmed | Initializes both arena base/floor `0x800EECD0` and live bump cursor `0x80111ECC` to the stock hardcoded arena start, with initial boundary bookkeeping |
@@ -163,7 +163,7 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x80078C40` | Title handoff after frontend flow | Static-confirmed | Called after fade normalization |
 | `0x80079510` | Owning legal/logo/title routine | Static-confirmed | Contains two logo presentations |
 | `0x800798A8` | Automatic stage-save flow | Static/runtime-confirmed | Generic routine remains intact |
-| `0x8007AD00` | Stock inventory sanitizer | Runtime-confirmed/replaced | Production replaces with stage-key mask copy |
+| `0x8007AD00` | Stock inventory sanitizer | Runtime-confirmed/replaced | Production replaces with stage-key mask copy; table read uncached at `0xA01B0970` since 2026-11-06 |
 | `0x8007AD4C` | Stock default-inventory loader; production filtered SAVE wrapper | Runtime-confirmed/replaced; ownership corrected statically | Current production computes active backing pointer and tail-calls `0xA01AF5F4`: LIVE -> backing, skipping Glass. It does not reconstruct LIVE. Reconstruction is `0x80099B14 -> 0x8007AD00`. |
 
 ### Static lifecycle owners (2026-10-01)
