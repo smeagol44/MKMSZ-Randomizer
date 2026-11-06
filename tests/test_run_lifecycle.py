@@ -22,6 +22,7 @@ from mkmszr.patches.run_lifecycle import (
     RUNTIME_CONFIRMED_V06_CONFIG,
     RunLifecyclePatch,
     configured_lifecycle_module,
+    lifecycle_transport_v07,
 )
 from mkmszr.patches.temple_special_check import (
     EXPANSION_FILE_ENTRY_ROM,
@@ -30,6 +31,8 @@ from mkmszr.patches.temple_special_check import (
     TOASTY_ROM,
 )
 from mkmszr.rom import RomImage
+
+V07_MODULE = lifecycle_transport_v07(LIFECYCLE_MODULE)
 
 
 def _clean_shape() -> RomImage:
@@ -67,7 +70,7 @@ def test_lifecycle_v06_installs_exact_runtime_confirmed_seams() -> None:
         rom, PatchContext(seed="LIFECYCLE-V06")
     )
 
-    assert rom.data[LIFECYCLE_MODULE_ROM:LIFECYCLE_MODULE_END_ROM] == LIFECYCLE_MODULE
+    assert rom.data[LIFECYCLE_MODULE_ROM:LIFECYCLE_MODULE_END_ROM] == V07_MODULE
     assert rom.read_u32(EXPANSION_FILE_ENTRY_ROM + 4) == LIFECYCLE_MODULE_END_ROM
     assert (
         rom.data[CONFIG_ROM : CONFIG_ROM + len(RUNTIME_CONFIRMED_V06_CONFIG)]
@@ -92,7 +95,7 @@ def test_lifecycle_v06_preserves_existing_longer_shared_file() -> None:
     )
 
     assert rom.read_u32(EXPANSION_FILE_ENTRY_ROM + 4) == existing_end
-    assert rom.data[LIFECYCLE_MODULE_ROM:LIFECYCLE_MODULE_END_ROM] == LIFECYCLE_MODULE
+    assert rom.data[LIFECYCLE_MODULE_ROM:LIFECYCLE_MODULE_END_ROM] == V07_MODULE
 
 
 def test_configurable_run_defaults_only_change_v06_immediates() -> None:
@@ -102,7 +105,7 @@ def test_configurable_run_defaults_only_change_v06_immediates() -> None:
     differing_words = [
         offset
         for offset in range(0, len(LIFECYCLE_MODULE), 4)
-        if configured[offset : offset + 4] != LIFECYCLE_MODULE[offset : offset + 4]
+        if configured[offset : offset + 4] != V07_MODULE[offset : offset + 4]
     ]
     assert differing_words == [0x320, 0x328, 0x330, 0x33C, 0x358, 0x368]
 
@@ -135,8 +138,8 @@ def test_debug_reset_block_reconstructs_exact_initial_backing_with_bounded_store
         module = configured_lifecycle_module("very_hard", 9, 5, debug_all_keys=debug)
         start = MODULE_RESET_INVENTORY_OFFSET
         end = start + MODULE_RESET_INVENTORY_SIZE
-        assert module[:start] == LIFECYCLE_MODULE[:start]
-        assert module[end:] == LIFECYCLE_MODULE[end:]
+        assert module[:start] == V07_MODULE[:start]
+        assert module[end:] == V07_MODULE[end:]
         code = module[start:end]
         words = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
         registers = [0] * 32
@@ -185,3 +188,43 @@ def test_debug_reset_block_reconstructs_exact_initial_backing_with_bounded_store
         assert len(stores) == 40
         actual = b"".join(stores[a].to_bytes(4, "big") for a in sorted(stores))
         assert actual == starting_inventory(debug_all_keys=debug)
+
+
+def _regs(word: int) -> set[int]:
+    op = word >> 26
+    regs = {(word >> 21) & 31, (word >> 16) & 31}
+    if op == 0:
+        regs.add((word >> 11) & 31)
+    return regs
+
+
+def test_transport_v07_removes_every_k0_k1_use_and_keeps_layout() -> None:
+    assert len(V07_MODULE) == len(LIFECYCLE_MODULE) == LIFECYCLE_MODULE_SIZE
+    # Only the transport words change: seven 3-word exits and eight reason words.
+    changed = [
+        o for o in range(0, LIFECYCLE_MODULE_SIZE, 4)
+        if V07_MODULE[o : o + 4] != LIFECYCLE_MODULE[o : o + 4]
+    ]
+    assert len(changed) == 7 * 3 + 8
+    for o in range(0, LIFECYCLE_MODULE_SIZE, 4):
+        word = int.from_bytes(V07_MODULE[o : o + 4], "big")
+        if word not in (0, 0xFFFFFFFF):
+            assert not (_regs(word) & {26, 27}), f"k0/k1 still used at +0x{o:X}"
+    for _offset, _expected, replacement, _label in HOOKS:
+        for i in range(0, 16, 4):
+            word = int.from_bytes(replacement[i : i + 4], "big")
+            assert not (_regs(word) & {26, 27}) or word == 0
+
+
+def test_transport_v07_reason_survives_native_calls_on_the_stack() -> None:
+    def w(o: int) -> int:
+        return int.from_bytes(V07_MODULE[o : o + 4], "big")
+
+    assert w(0x1C4) == 0xAFB80004  # sw t8,4(sp), delay slot of first test
+    assert w(0x214) >> 26 == 3     # jal into the native-calling helper
+    assert w(0x224) == 0x8FB80004  # lw t8,4(sp) after the call
+    assert w(0x230) == 0x27BD0010  # frame released in the first dispatch delay slot
+    reason_hooks = [r for _o, _e, r, _l in HOOKS[1:5]]
+    assert [int.from_bytes(r[12:16], "big") for r in reason_hooks] == [
+        0x24180001, 0x24180002, 0x24180003, 0x24180004
+    ]
