@@ -16,6 +16,7 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 Dated update notes are kept verbatim in the [Status update log](Status-Update-Log); newest first.
 
+- 2026-11-06 lifecycle transport v07 — Runtime-confirmed bounded fix. ([PS-16](Status-Update-Log#ps-16-2026-11-06))
 - 2026-11-06 key-to-stage table relocation — Runtime-confirmed bounded fix. ([PS-15](Status-Update-Log#ps-15-2026-11-06))
 - 2026-11-06 code/ROM review findings — Static/Implementation-confirmed; no runtime claims. ([PS-14](Status-Update-Log#ps-14-2026-11-06))
 - 2026-10-27 owner-requested Wind/XP/debug changes — Runtime-confirmed bounded; promotion approved. ([PS-01](Status-Update-Log#ps-01-2026-10-27))
