@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import bisect
 import collections
+import itertools
 import json
 import struct
 from pathlib import Path
@@ -43,7 +44,7 @@ def read(path: Path) -> list[tuple]:
             for i in range(saved)]
     if any(r[0] != i for i, r in enumerate(rows)):
         raise ValueError(f"{path}: sequence discontinuity")
-    if any(a[1] > b[1] for a, b in zip(rows, rows[1:])):
+    if any(a[1] > b[1] for a, b in itertools.pairwise(rows)):
         raise ValueError(f"{path}: timestamp regression")
     return rows
 
