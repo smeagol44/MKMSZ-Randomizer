@@ -14,6 +14,7 @@ from .global_generation import (
 from .patches import (
     PICKUP_PERSISTENCE_PAYLOAD,
     ArenaReservationPatch,
+    AudioFifoReservePatch,
     BootBrandingPatch,
     BootLogoBypassPatch,
     BoxIndicatorPatch,
@@ -184,6 +185,10 @@ def build_pipeline(
             TitleBrandingPatch(config.edition_name, config.outfit),
         ]
     )
+    if config.audio_fifo_fix:
+        # Vanilla audio bug fix: one guarded boot-code immediate, independent
+        # of every other owner. Disable only for debugging/comparison.
+        patches.append(AudioFifoReservePatch())
     outfit_mode = config.outfit.mode.lower()
     if outfit_mode != "rainbow" and outfit_mode != "vanilla":
         patches.append(

@@ -48,6 +48,7 @@ class RandomizerConfig:
     continues: int = 3
     persist_hp: bool = True
     debug_all_keys: bool = False
+    audio_fifo_fix: bool = True
 
     def __post_init__(self) -> None:
         if self.difficulty not in ("very_easy", "easy", "medium", "hard", "very_hard"):
@@ -60,6 +61,8 @@ class RandomizerConfig:
             raise ValueError("persist_hp must be a boolean")
         if type(self.debug_all_keys) is not bool:
             raise ValueError("debug_all_keys must be a boolean")
+        if type(self.audio_fifo_fix) is not bool:
+            raise ValueError("audio_fifo_fix must be a boolean")
         if self.global_completion_mode not in ("all_85", "game_beatable"):
             raise ValueError("global completion mode must be all_85 or game_beatable")
         if self.required_powers_mode not in ("vanilla", "custom", "seed"):

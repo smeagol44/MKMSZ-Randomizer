@@ -79,6 +79,10 @@ The underlying planner/materializer has bounded Runtime-confirmed representative
 
 **Resolved (2026-11-06) — Implementation-confirmed.** `_changed_spans` now skips equal 4 KiB blocks with one C-level comparison and scans only differing blocks byte by byte; `decompress_resource_package` caches results (pure function of its input bytes). No new dependency. Measured on native CPython 3.13 with the clean ROM: a full donor-backed composition (rainbow, enemy randomization, power shuffle, debug keys, all GAME SETTINGS) went from 58.5 s to 5.3 s, and a pickups-OFF no-donor build from 44.6 s to 3.2 s. Output ROMs, total changed spans, and every per-patch span/note report were identical to the previous code for both configurations; a unit test pins the block comparison to the byte-wise reference. Browser (Pyodide) timing not measured.
 
+## Vanilla audio fix option (2026-11-06)
+
+The production pipeline applies `AudioFifoReservePatch` by default (`RandomizerConfig.audio_fifo_fix = True`). **Debug options → Disable vanilla audio fix** in the browser, or `--no-audio-fifo-fix` in the CLI, keeps the stock audio reserve for comparison. With the fix on, a build from the same seed and settings is byte-identical to the Runtime-tested proof v01; with it off, byte-identical to the previous production output. See [Audio system](Sounds-and-Music).
+
 ## CLI and browser parity (2026-11-06)
 
 **Implementation-confirmed.** The CLI cannot set the initial TURN / ATTACK / SPECIALS / JUMP / RUN settings, and two defaults differ: outfit (CLI `vanilla`, browser "Random from seed") and Required powers (CLI `vanilla`, browser `seed`). A browser build therefore cannot always be reproduced from the CLI. Pending.

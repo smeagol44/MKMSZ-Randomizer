@@ -48,6 +48,7 @@ const PATCH_PY = [
   "    continues=int(web_continues),",
   "    persist_hp=bool(web_persist_hp),",
   "    debug_all_keys=bool(web_debug_all_keys),",
+  "    audio_fifo_fix=not bool(web_disable_audio_fix),",
   "    game_settings=GameSettingsConfig(",
   "        turn_lock=bool(web_turn_lock),",
   "        attack_modern=bool(web_attack_modern),",
@@ -234,6 +235,7 @@ function setPatchGlobals(config, hasDonor) {
   pyodide.globals.set("web_continues", config.continues);
   pyodide.globals.set("web_persist_hp", config.persistHp);
   pyodide.globals.set("web_debug_all_keys", config.debugAllKeys);
+  pyodide.globals.set("web_disable_audio_fix", config.disableAudioFix);
 }
 
 async function patchRom(message) {

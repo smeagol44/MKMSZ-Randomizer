@@ -1,6 +1,7 @@
 """Composable native ROM patch modules."""
 
 from .arena import ArenaReservationPatch
+from .audio_fifo_fix import AudioFifoReservePatch
 from .boot_branding import BootBrandingPatch
 from .box_indicator import BoxIndicatorPatch
 from .enemy_randomization import EnemyRandomizationPatch
@@ -42,6 +43,7 @@ from .xp_progression import EarnedXPPersistencePatch, XPProgressionPatch
 __all__ = [
     "PICKUP_PERSISTENCE_PAYLOAD",
     "ArenaReservationPatch",
+    "AudioFifoReservePatch",
     "BootBrandingPatch",
     "BootLogoBypassPatch",
     "BoxIndicatorPatch",

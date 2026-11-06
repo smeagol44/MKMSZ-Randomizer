@@ -1,5 +1,9 @@
 # MKMSZR rich Inventory music — upstream investigation
 
+## Resolution: vanilla audio FIFO margin (2026-11-06)
+
+**Closed.** The speed-up reproduced in the unmodified vanilla ROM while idling at the password screen, so it is a stock audio-engine defect. Root cause, model evidence, the production fix and its runtime result are canonical in [Audio system](Sounds-and-Music#vanilla-audio-fifo-speed-up--root-cause-and-fix-2026-11-06). The detailed trace work below remains valid: the exact `AI_LEN` feedback, the DMA-deadline fork, the 20-Count integer-timebase resonance and the service-phase measurements are the components of that mechanism. Earlier candidate attributions to MKMSZR composition (rich Inventory rendering, palettes, the Safe Stage Select MOVE helper, the stale-HUD write) are **superseded as causes of the speed-up**: they could only nudge service phase within a loop that was already marginal. The stale-HUD lifetime defect remains a separate, independent issue.
+
 ## Lifecycle transport v07 non-reproduction note (2026-11-06)
 
 **Observation only; not attributed.** On lifecycle transport v07 proof v01 (SHA-256 `3f7e251fe5838c2597f7ef5d2fc751e6f852e80900fcf0a567f07054bdf7248d`), the maintainer tried the known unreliable speed-up triggers and could not reproduce the speed-up. v07 only removes `k0`/`k1` use from the lifecycle hooks (see [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle)). Those hooks run only on Pause→Quit, death, reconstruction, stage completion, player construction and Game Over, so they do not run during the menu-only Safe Stage Select failures recorded below. A non-reproduction is consistent with this bug's intermittent history.

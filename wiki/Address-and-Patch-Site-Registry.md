@@ -33,6 +33,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x0005CCE0` | `0x8005C0E0` | Toasty stage init | `3C048029 8C841C10` | Jump through production-owned selector padding to load file `0x1A` and initialize Toasty |
 | `0x0005D2E0` | `0x8005C6E0` | Toasty HUD compositor | `0C007AB9 A0C20046` | JAL shared Toasty dispatcher while preserving the stock HUD submission path |
 | `0x000396CC` | `0x80038ACC` | Persistence | `3C03800A 8C63A910` | Restore collected flags, resume `0x80038AD4` |
+| `0x00001F54` | `0x80001354` | Vanilla audio FIFO fix (default on) | guarded `24020140` (`addiu v0,zero,0x140`, audio config reserve 320) | `24020110` (reserve 272); disabled by the debug option. See [Audio system](Sounds-and-Music) |
 | `0x000172CC..0x000172DB` | `0x800166CC` | Lifecycle v06 Pause Quit | Guard stock four-word Quit->Yes teardown call | Transfer to uncached helper, snapshot living HP/resources/inventory, replay stock teardown contract |
 | `0x00036178..0x00036187` | `0x80035578` | Lifecycle v06 failure root | Guard `27BDFFA0 AFB30044 00009821 AFBF005C` | Commit inventory, classify failure/demo, invalidate living HP token, preserve stock death/Continue graph |
 | `0x00036934..0x00036943` | `0x80035D34` | Lifecycle v06 alternate reconstruction | Guard `27BDFFE0 AFB00010 00808021 3C02802F` | Classify living/failure reconstruction through uncached helper |
