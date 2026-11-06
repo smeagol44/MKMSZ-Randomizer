@@ -68,6 +68,14 @@ Keys should be usable only in their origin stage. When backing data is copied to
 
 The stage mapping is Temple Map `0x0D`; Wind `0x0E..0x10`; Earth `0x11..0x13`; Water `0x14..0x16`; Fire `0x17..0x19`; Prison `0x1A..0x1C`; Bridge `0x1D..0x1F`; Fortress `0x20..0x22`.
 
+### Stock password screen writes over the key-stage table — Static-confirmed (2026-11-06)
+
+**Static-confirmed; runtime Pending.** The stock password screen `0x8007550C` is not patched by production. For input `NXCVSZ` (compare chain `0x80075D80..0x80075DC8`) it stores word `5` into the ten words `0x800A6008` down to `0x800A5FE4` (loop at VA `0x80075DD4` / ROM `0x769D4`) and plays descriptor `0x142`. In stock this filled the default-inventory template; production reuses exactly that span as the key-to-stage table (`rdram.production.key_stage_table`). Afterwards the table reads `00 00 00 05` repeated. Replaying the mask rule offline against that table marks every stage's own keys SEALED in that stage (Fire keeps only `0x18` usable), so stage key progression cannot complete. Nothing in MKMSZR rewrites the table, so the condition lasts until reset/power cycle (restoration on reset is an inference). The generated layout itself is unchanged.
+
+Reachability (static): the password screen is entry 3 of the five-entry Options dispatcher `0x800762C4` (jump table `0x800AEAB8`); entry 4 is the GAME SETTINGS editor `0x800766BC` that production extends. The legacy Lua randomizer used this screen for seed entry (buffer `0x800AE940`). Stage passwords in the same handler write current stage `0x8009A910` and current XP `0x8011200C` directly (for example `THWMSB` → Wind / XP 50, `ZVRKDM` → Water / XP 260); their interaction with production XP restore is Pending.
+
+Evidence: disassembly of the clean USA Rev. 0 ROM (SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`); the handler is byte-identical in production builds from `main` `f790981`. No emulator run. Fix direction (move the table to MKMSZR-owned memory, neutralise the affected password effects, or hide/replace the menu entry) is a pending owner decision.
+
 ### Foreign-key acquisition masking boundary — Runtime-confirmed closure (2026-09-30)
 
 Fire -> Wind Circle v01 confirmed the existing reconstruction behavior but exposed an immediate-acquisition gap: directly after the foreign Circle was awarded in Fire, LIVE still showed real item ID `0x0E` until the next box/stage reconstruction. The authoritative backing identity itself was already correct.
@@ -87,6 +95,14 @@ Native key items are **not consumed by normal use**. They remain in inventory af
 - Title-menu START was the destructive live-window boundary in stock behavior and is explicitly intercepted.
 
 Normal save logic is preserved. Only selector-triggered immediate stage-entry save is suppressed, as documented in [Stage flow and selector](Stage-Flow-and-Selector).
+
+### Lifecycle v06 event code carried in `k1` — Static-confirmed exposure (2026-11-06)
+
+**Static-confirmed mechanism; no observed failure attributed; repair Pending.** Hooks 1–4 (ROM `0x36178`, `0x36934`, `0x36B38`, `0x36BC0`) enter the v06 module through `lui k0 / ori k0 / jr k0` and set the event code with `addiu k1,zero,N` in the delay slot. The reason entry (module `+0x1B0`, entered at KSEG1 `0xA01B0C10`) tests `k1` at `+0x1C0/+0x1CC`, calls `0x801B0AB0` (which calls native `0x8007AD4C` and other code), then tests `k1` again at `+0x22C..+0x244` to select the continuation. A value matching none of 1–3 falls through to the event-4 (stage completion, `0x80035FD0`) continuation.
+
+The game's libultra-pattern exception handler overwrites both registers: `0x80095DEC` is `mfc0 k1, Status`, and the return path sets `k0 = 0xA430000C` and loads `k1` with an RCP interrupt-mask halfword before `eret` at `0x8009670C`. Neither is restored. An interrupt between the `k1` assignment and the second test can therefore send a death or reconstruction event to the stage-completion continuation. With Powers as pickups OFF, the earned-XP save wrappers add instructions to this window. Each `lui k0 / ori k0 / jr k0` transfer is also exposed at its two internal instruction boundaries.
+
+Checked safe in the same review: the four replayed prologues and continuation addresses match stock exactly, and the four hooked functions read only `a0`, which the helper saves on the stack. A scan of every changed byte of a full production build found no other production `k0`/`k1` use. Candidate repair direction (not implemented): one entry point per event so no register carries the event code, transfers through `t9`/`at`, then a guarded disposable proof and manual validation.
 
 
 ## Progression lifecycle evidence

@@ -45,6 +45,20 @@ CI proves deterministic generation, guarded source expectations, emitted byte/co
 
 Game-state-dependent correctness therefore remains unresolved by CI alone. A reproducible runtime record identifies the exact ROM/configuration, stage/route, expected change, observed behavior, negative controls, and lifecycle boundary. A single positive location is representative evidence only.
 
+## Lint version pin (2026-11-06)
+
+**Implementation/CI-confirmed.** CI installed an unbounded `ruff>=0.6`; a newer ruff enabled `EXE001` and `RUF007` by default and `ruff check .` failed on every PR, including docs-only ones. PR #177 marked the two `tools/inventory_audio_*.py` scripts executable, replaced `zip(rows, rows[1:])` with the equivalent `itertools.pairwise(rows)`, and pinned `ruff==0.16.9`. Bump the pin deliberately.
+
+## Real-ROM static composition audit (2026-11-06)
+
+**Static / Implementation-confirmed for the listed builds only; no emulator run.** Inputs: clean USA Rev. 0 (SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`) and MKT Rev. 2 donor (SHA-256 `30efdbe266dda8b8b12652a8d0a71b3b4bfec88bdf11ed12c219f5c4e1eaf7bb`), patch code at `main` `f790981`.
+
+- Seven full `patch_rom` configurations built successfully (32 MiB, header unchanged, CRC1/CRC2 valid), covering pickups ON/OFF, vanilla/rainbow/seeded/rgb/red outfits, donor present/absent, enemy randomization, power-order shuffle, debug keys, all Required powers modes, both completion modes, and all GAME SETTINGS bits. A repeated build was byte-identical.
+- Per-patch write-overlap audit: only intended overlaps, such as successive owners extending the shared file-`0x1A` end word at ROM `0xA514C`, and the guarded Toasty call trampoline at ROM `0xAFA8C` inside the box-indicator region.
+- Hook checks: four-box action hook `0x80015B4C` (stock redefines `v0`/`v1` immediately; no live `a0`/`a1`/temporaries); box-indicator wrapper (displaced callee `0x8001EAE4` takes no stack arguments, following call `0x8002018C` takes no arguments); lifecycle v06 replays (see [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle)).
+
+Gap: no automated test runs the full `patch_rom` composition, because CI has no ROM. A ROM-gated matrix test (skipped unless a ROM path is supplied) remains a candidate.
+
 ## Wiki publication
 
 Changes under `wiki/**` on `main` trigger a mirror job. It clones the `.wiki.git` repository, `rsync --delete`s this directory, commits only if changed, and pushes `master`. Broken internal links will still publish unless caught locally, so documentation validation includes a repository link scan in addition to code tests.

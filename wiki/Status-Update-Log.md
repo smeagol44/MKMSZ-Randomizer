@@ -4,6 +4,10 @@
 
 ## From Project status
 
+### PS-14 (2026-11-06)
+
+**2026-11-06 code/ROM review findings — Static/Implementation-confirmed; no runtime claims.** A review against the clean USA Rev. 0 ROM and MKT Rev. 2 donor (no emulator) recorded: (A) the unpatched stock password `NXCVSZ` overwrites the key-to-stage table, so stage keys show as SEALED in their own stages until reset; the password screen is reachable from Options; (B) lifecycle v06 carries its event code in `k1`, which the interrupt handler overwrites. Both are on [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle). (C) Build time is dominated by per-patch whole-image comparison, and the CLI cannot reproduce every browser configuration ([Web patcher and product](Web-Patcher-and-Product)). (D) Three accesses enter raw-loaded memory through cached aliases, currently harmless but fragile ([Memory and allocation map](Memory-and-Allocation-Map)). Also recorded: a seven-configuration real-ROM composition audit and the ruff pin from PR #177 ([Testing and CI](Testing-and-CI)). Repairs for A, B and D need owner decisions and guarded runtime proofs; all remain Pending.
+
 ### PS-01 (2026-10-27)
 
 **2026-10-27 owner-requested Wind/XP/debug changes — Runtime-confirmed bounded; promotion approved.** Correct `WIND2/WIND3` portrait order, remove stage-specific XP limits in both progression modes, and add an unchecked **Debug options → Start with all stage keys** setting at the bottom of the browser settings. All 21 keys/crystals are added alongside normal supplies and restored on fresh-run reset within existing inventory/lifecycle allocations. The maintainer accepted proof v01 (SHA-256 `7129c455a29f736c77bb06b6a34d5695326f6eae48981b2a82a8739e47bc8465`) and explicitly approved PR #174 merge. This is bounded user-reported validation, not exhaustive stage/seed coverage; audio investigation status is unchanged. Evidence and reproduction are in `docs/key-icons-xp-debug-validation.md`.
@@ -57,6 +61,10 @@
 **Focused lifecycle update (2026-10-01): lifecycle v06 is Runtime-confirmed and promoted to the shared production pipeline.** The exact accepted reference is Very Hard / 9 total lives / 5 continues / persistent HP ON. The shared core now parameterizes that same lifecycle control flow for build-time difficulty, starting lives (1..10), starting continues (0..5), and persistent HP ON/OFF; browser defaults are Very Hard / 5 / 3 / HP ON. Non-reference combinations are Implementation/CI-confirmed pending representative runtime coverage. v04 remains **Rejected / unsafe composition**. See [Lifecycle static closure](Lifecycle-Static-Closure-v05), [Persistence/inventory/lifecycle](Persistence-Inventory-and-Lifecycle), and [Web patcher/product behavior](Web-Patcher-and-Product).
 
 ## From Runtime validation status
+
+### RV-12 (2026-11-06)
+
+**2026-11-06 static review — no new runtime evidence.** The 2026-11-06 review ([PS-14](#ps-14-2026-11-06)) produced static and implementation evidence only and changes no Runtime-confirmed claim on this page. Two items will need runtime validation once repairs exist: the password-screen key-table corruption and the lifecycle v06 `k1` exposure (see [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle)).
 
 ### RV-01 (2026-10-27)
 
