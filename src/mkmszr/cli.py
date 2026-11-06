@@ -66,6 +66,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="debug: start each fresh run with all 21 stage keys/crystals across boxes",
     )
     parser.add_argument(
+        "--no-audio-fifo-fix",
+        action="store_true",
+        help="debug: keep the vanilla audio FIFO reserve (disables the music speed-up fix)",
+    )
+    parser.add_argument(
         "--difficulty",
         choices=("very_easy", "easy", "medium", "hard", "very_hard"),
         default="very_hard",
@@ -146,6 +151,7 @@ def main(argv: list[str] | None = None) -> int:
         continues=args.continues,
         persist_hp=not args.no_persist_hp,
         debug_all_keys=args.debug_all_keys,
+        audio_fifo_fix=not args.no_audio_fifo_fix,
     )
 
     try:

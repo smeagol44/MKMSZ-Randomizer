@@ -34,6 +34,7 @@ const startingLives = document.querySelector("#startingLives");
 const startingContinues = document.querySelector("#startingContinues");
 const persistHp = document.querySelector("#persistHp");
 const debugAllKeys = document.querySelector("#debugAllKeys");
+const disableAudioFix = document.querySelector("#disableAudioFix");
 const debugOptionsSummary = document.querySelector("#debugOptionsSummary");
 const randomizerFeaturesSummary = document.querySelector("#randomizerFeaturesSummary");
 const runSettingsSummary = document.querySelector("#runSettingsSummary");
@@ -221,7 +222,10 @@ function fortressSummary() {
 }
 
 function updateSummaries() {
-  debugOptionsSummary.textContent = debugAllKeys.checked ? "All stage keys" : "Off";
+  debugOptionsSummary.textContent = [
+    debugAllKeys.checked ? "All stage keys" : "",
+    disableAudioFix.checked ? "Audio fix off" : ""
+  ].filter(Boolean).join(" · ") || "Off";
   randomizerFeaturesSummary.textContent = [
     "Powers: " + (powersAsPickups.checked ? "pickups" : "XP"),
     shufflePowerProgression.checked ? "shuffled" : "vanilla order",
@@ -255,7 +259,8 @@ function updateSummaries() {
     "Enemies: " + (enemyRandomization.checked ? "random" : "vanilla"),
     "Fortress: " + fortressSummary(),
     "Completion: " + selectedText(globalCompletionMode),
-    debugAllKeys.checked ? "DEBUG: all stage keys" : ""
+    debugAllKeys.checked ? "DEBUG: all stage keys" : "",
+    disableAudioFix.checked ? "DEBUG: audio fix off" : ""
   ].filter(Boolean).join(" · ");
 
   buildSummaryRun.textContent = [
@@ -698,7 +703,8 @@ async function patchRom() {
       lives: livesValue,
       continues: continuesValue,
       persistHp: persistHp.checked,
-      debugAllKeys: debugAllKeys.checked
+      debugAllKeys: debugAllKeys.checked,
+      disableAudioFix: disableAudioFix.checked
     }
   });
 }
@@ -743,6 +749,7 @@ startingLives.addEventListener("input", updateSummaries);
 startingContinues.addEventListener("input", updateSummaries);
 persistHp.addEventListener("change", updateSummaries);
 debugAllKeys.addEventListener("change", updateSummaries);
+disableAudioFix.addEventListener("change", updateSummaries);
 globalCompletionMode.addEventListener("change", updateSummaries);
 customRequiredPowers.addEventListener("input", updateSummaries);
 seed.addEventListener("input", updateSummaries);

@@ -23,6 +23,7 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
         "startingContinues",
         "persistHp",
         "debugAllKeys",
+        "disableAudioFix",
     ):
         assert f'id="{control_id}"' in html
         assert f'querySelector("#{control_id}")' in app
@@ -46,6 +47,7 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
         "continues",
         "persistHp",
         "debugAllKeys",
+        "disableAudioFix",
     ):
         assert config_key in app
         assert config_key in worker
@@ -89,6 +91,10 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
     assert html.index('id="debugOptionsGroup"') < html.index('class="panel build-panel"')
     assert 'debugAllKeys.addEventListener("change", updateSummaries)' in app
     assert '"DEBUG: all stage keys"' in app
+    assert "audio_fifo_fix=not bool(web_disable_audio_fix)" in worker
+    assert 'id="disableAudioFix" type="checkbox">' in html
+    assert 'disableAudioFix.addEventListener("change", updateSummaries)' in app
+    assert '"DEBUG: audio fix off"' in app
 
 
 def test_web_jump_button_dependency_is_enforced_in_ui() -> None:

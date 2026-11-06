@@ -16,6 +16,7 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 Dated update notes are kept verbatim in the [Status update log](Status-Update-Log); newest first.
 
+- 2026-11-06 vanilla audio FIFO speed-up — root cause found; production fix Runtime-confirmed bounded. ([PS-17](Status-Update-Log#ps-17-2026-11-06))
 - 2026-11-06 lifecycle transport v07 — Runtime-confirmed bounded fix. ([PS-16](Status-Update-Log#ps-16-2026-11-06))
 - 2026-11-06 key-to-stage table relocation — Runtime-confirmed bounded fix. ([PS-15](Status-Update-Log#ps-15-2026-11-06))
 - 2026-11-06 code/ROM review findings — Static/Implementation-confirmed; no runtime claims. ([PS-14](Status-Update-Log#ps-14-2026-11-06))
@@ -84,7 +85,7 @@ These results are important feasibility evidence but are **not** normal browser/
 
 ## Current priority order
 
-Current user direction is to promote the completed native Inventory HUD / asynchronous Power feedback, then continue the representative full-seed release work. The FX-crunch investigation is deferred.
+Current user direction is to promote the completed native Inventory HUD / asynchronous Power feedback, then continue the representative full-seed release work. The FX-crunch investigation is deferred. **Resolved 2026-11-06:** the speed-up/crunch is a vanilla audio-engine defect with a default-on production fix ([Audio system](Sounds-and-Music)).
 
 1. Merge and verify the native Inventory HUD / asynchronous Power-feedback production integration.
 2. Run the representative full-seed 1.0 gate across global items, solver, HUD, progression, and lifecycle.

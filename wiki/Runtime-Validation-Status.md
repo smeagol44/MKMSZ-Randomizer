@@ -8,6 +8,7 @@ Current project maturity and priorities are owned by [Project status](Project-St
 
 | Proof | Status | Evidence |
 |---|---|---|
+| Audio reserve 272 proof v01 (2026-11-06) | **Runtime-confirmed bounded fix** | Speed-up first reproduced in the unmodified vanilla ROM idling at the password screen; the proof ran the same scenario plus usual triggers without speed-up. Occasional very short pops noted, source Pending. See [Audio system](Sounds-and-Music). |
 | Lifecycle transport v07 proof v01 (2026-11-06) | **Runtime-confirmed bounded fix** | Ordinary death with lives remaining on the pickups-ON build respawned normally; reported working perfectly. Removes all `k0`/`k1` use from lifecycle. See [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle). |
 | Key-to-stage table relocation v01 (2026-11-06) | **Runtime-confirmed bounded fix** | With password `NXCVSZ` entered, the control build's Wind keys had no effect at the tornado section while the proof build summoned the tornado. Wind route only. See [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle). |
 | Key-checkpoint self-trace v06 | **Runtime-confirmed bounded diagnostic** | Prison first easy pickup carries full L1 identity. Native trace reported `KA`, live `G4 S7 B1`; visible `CHECK POINT` banner was absent with the three direct generic-key `0x80062D60` spawns suppressed. User death-tested afterward and confirmed checkpoint relocation still occurred. Establishes separate banner vs respawn effects; not yet a production/global fix. |
@@ -27,6 +28,7 @@ Current project maturity and priorities are owned by [Project status](Project-St
 
 Dated update notes are kept verbatim in the [Status update log](Status-Update-Log); newest first.
 
+- 2026-11-06 vanilla audio speed-up reproduced; audio reserve proof v01 — Runtime-confirmed bounded. ([RV-15](Status-Update-Log#rv-15-2026-11-06))
 - 2026-11-06 lifecycle transport v07 proof v01 — Runtime-confirmed bounded. ([RV-14](Status-Update-Log#rv-14-2026-11-06))
 - 2026-11-06 key-to-stage table relocation proof v01 — Runtime-confirmed bounded. ([RV-13](Status-Update-Log#rv-13-2026-11-06))
 - 2026-11-06 static review — no new runtime evidence. ([RV-12](Status-Update-Log#rv-12-2026-11-06))
