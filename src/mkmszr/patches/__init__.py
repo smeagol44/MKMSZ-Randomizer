@@ -7,7 +7,7 @@ from .enemy_randomization import EnemyRandomizationPatch
 from .flow_bypass import BootLogoBypassPatch, SafeStageSelectSkipAutoSavePatch
 from .game_settings_turn import GameSettingsTurnPatch
 from .global_materialization import GlobalItemMaterializationPatch
-from .inventory_boxes import FourBoxInventoryPatch
+from .inventory_boxes import FourBoxInventoryPatch, KeyStageTablePatch
 from .inventory_hud import InventoryHudPatch
 from .inventory_legend import InventoryLegendPatch
 from .inventory_menu_switch import InventoryMenuSwitchPatch
@@ -53,6 +53,7 @@ __all__ = [
     "InventoryHudPatch",
     "InventoryLegendPatch",
     "InventoryMenuSwitchPatch",
+    "KeyStageTablePatch",
     "ManagerPersistenceFirePatch",
     "MktAudioClip",
     "NativePayloadPatch",
