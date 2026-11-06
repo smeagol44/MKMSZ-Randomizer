@@ -66,18 +66,35 @@ def normalize_n64_byte_order(source: bytes) -> tuple[bytes, str]:
     )
 
 
+_SPAN_BLOCK = 0x1000
+
+
 def _changed_spans(before: bytes, after: bytes | bytearray) -> tuple[tuple[int, int], ...]:
-    """Return half-open contiguous byte ranges that differ, including appended output."""
+    """Return half-open contiguous byte ranges that differ, including appended output.
+
+    Equal 4 KiB blocks are skipped with one C-level comparison; only blocks that
+    differ are scanned byte by byte. The result is identical to a full scan.
+    """
 
     spans: list[tuple[int, int]] = []
     start: int | None = None
     shared_length = min(len(before), len(after))
-    for index, (old, new) in enumerate(zip(before[:shared_length], after[:shared_length])):
-        if old != new and start is None:
-            start = index
-        elif old == new and start is not None:
-            spans.append((start, index))
-            start = None
+    old_view = memoryview(before)
+    new_view = memoryview(after)
+    for block in range(0, shared_length, _SPAN_BLOCK):
+        block_end = min(block + _SPAN_BLOCK, shared_length)
+        if old_view[block:block_end] == new_view[block:block_end]:
+            if start is not None:
+                spans.append((start, block))
+                start = None
+            continue
+        for index in range(block, block_end):
+            if old_view[index] != new_view[index]:
+                if start is None:
+                    start = index
+            elif start is not None:
+                spans.append((start, index))
+                start = None
     if start is not None:
         spans.append((start, shared_length))
     if len(after) > shared_length:

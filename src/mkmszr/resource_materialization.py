@@ -13,6 +13,7 @@ inventory-token families; unresolved destination/source semantics fail closed.
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -360,8 +361,18 @@ def _read_bits_msb(data: bytes, bit_position: int, width: int) -> tuple[int, int
     return value, bit_position
 
 
-def decompress_resource_package(blob: bytes) -> bytes:
-    """Decode the MKMSZ package LZW stream used by stage image packages."""
+def decompress_resource_package(blob: bytes | bytearray) -> bytes:
+    """Decode the MKMSZ package LZW stream used by stage image packages.
+
+    Pure function of the input bytes; results are cached because the same
+    stock packages are decoded repeatedly within one build.
+    """
+
+    return _decompress_resource_package_cached(bytes(blob))
+
+
+@functools.lru_cache(maxsize=32)
+def _decompress_resource_package_cached(blob: bytes) -> bytes:
 
     if len(blob) < 8:
         raise PatchError("compressed package is too small")

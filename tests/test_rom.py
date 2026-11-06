@@ -106,3 +106,41 @@ def test_fresh_copy_restores_canonical_source_snapshot() -> None:
     assert fresh.changed_spans() == ()
     assert rom.read_u32(0x100) == 0xDEADBEEF
     assert fresh.read_u32(0x100) == 0
+
+
+def _reference_changed_spans(before: bytes, after: bytes) -> tuple[tuple[int, int], ...]:
+    spans: list[tuple[int, int]] = []
+    start = None
+    shared = min(len(before), len(after))
+    for index in range(shared):
+        if before[index] != after[index] and start is None:
+            start = index
+        elif before[index] == after[index] and start is not None:
+            spans.append((start, index))
+            start = None
+    if start is not None:
+        spans.append((start, shared))
+    if len(after) > shared:
+        spans.append((shared, len(after)))
+    return tuple(spans)
+
+
+def test_blockwise_changed_spans_match_bytewise_reference() -> None:
+    import random
+
+    from mkmszr.rom import _SPAN_BLOCK, _changed_spans
+
+    rng = random.Random(1234)
+    sizes = (0, 1, _SPAN_BLOCK - 1, _SPAN_BLOCK, _SPAN_BLOCK + 1, 3 * _SPAN_BLOCK + 7)
+    for size in sizes:
+        for _ in range(40):
+            before = bytes(rng.getrandbits(8) for _ in range(size))
+            after = bytearray(before)
+            for _ in range(rng.randint(0, 4)):
+                if size:
+                    first = rng.randrange(size)
+                    for index in range(first, min(size, first + rng.randint(1, 2 * _SPAN_BLOCK))):
+                        after[index] ^= 0xFF
+            if rng.random() < 0.25:
+                after += bytes(rng.randint(1, 50))
+            assert _changed_spans(before, after) == _reference_changed_spans(before, bytes(after))
