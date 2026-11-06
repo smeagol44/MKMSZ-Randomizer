@@ -16,6 +16,7 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 Dated update notes are kept verbatim in the [Status update log](Status-Update-Log); newest first.
 
+- 2026-11-06 cache-contract follow-up: RUN state uncached; two cached code entries accepted with invariant — Runtime-confirmed bounded. ([PS-18](Status-Update-Log#ps-18-2026-11-06))
 - 2026-11-06 vanilla audio FIFO speed-up — root cause found; production fix Runtime-confirmed bounded. ([PS-17](Status-Update-Log#ps-17-2026-11-06))
 - 2026-11-06 lifecycle transport v07 — Runtime-confirmed bounded fix. ([PS-16](Status-Update-Log#ps-16-2026-11-06))
 - 2026-11-06 key-to-stage table relocation — Runtime-confirmed bounded fix. ([PS-15](Status-Update-Log#ps-15-2026-11-06))

@@ -287,6 +287,10 @@ Static tracing distinguishes the arena's persistent/reset floor from its transie
 
 Why these are currently harmless (inference): instruction-cache lines for these addresses are only filled by executing them, and file `0x1A` reloads identical bytes; the RUN state word sits alone in its 16-byte data-cache line with zero padding, so a dirty-line writeback after a reload rewrites only live state plus zeros. A different allocation layout, or file-`0x1A` content that differs between loads, would invalidate this. A direct `jal` cannot switch from KSEG0 to KSEG1, so moving the two entries to uncached execution needs an indirect transfer. Correction Pending.
 
+**Resolution (2026-11-06).** A full-composition scan of every MKMSZR load/store into this block through the cached alias found exactly one data access: the RUN button state word (`0x801B0800`, loads at ROM `0xF68ED4`/`0xF68F90`, store at `0xF68F28`). It now uses the uncached alias `0xA01B0800` (**Runtime-confirmed bounded**, RUN-state uncached proof v01, SHA-256 `4f79a75ca66b5569862410079a728978cb4f650dbf1cca9288a52399df547c12`: RUN in HOLD and AUTO, before and after a stage change, unchanged). A repeat scan finds no cached-alias load or store into the block.
+
+The two cached `jal` entries (ROM `0x39FD4`, `0x10E64`) are **reviewed and accepted** rather than replaced: they only execute code, an instruction-cache line for those addresses can only be filled by executing those same bytes, and moving them to KSEG1 would require new main-segment trampoline space that no current owner has free. **Invariant this relies on:** shared file `0x1A` must be byte-identical on every load, and nothing else may execute at its addresses. Any change to that (stage-specific contents, a different module loaded there, or self-modifying data inside a module's code range) must first move these entries to an uncached transfer.
+
 ## Dynamic and overlay-qualified runtime facts
 
 These facts are important to allocation safety but are not promoted into bounded reusable intervals.
