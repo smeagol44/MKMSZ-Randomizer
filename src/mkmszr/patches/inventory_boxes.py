@@ -19,12 +19,15 @@ from __future__ import annotations
 
 from ..data.addresses import (
     CURRENT_STAGE_VA,
+    FILE_TABLE_ENTRY_SIZE,
+    FILE_TABLE_ROM,
     NATIVE_BOOTSTRAP_STUB_ROM,
     NATIVE_BOOTSTRAP_STUB_VA,
     PICKUP_MANAGER_RESUME_VA,
     PROVEN_PAYLOAD_ROM,
     RUNTIME_V2_CODE_START,
 )
+from ..errors import PatchError
 from ..mips import (
     Emitter,
     addiu,
@@ -123,14 +126,21 @@ KEY_STAGE_BY_ITEM = bytes(
         9, 9, 9, # 20..22 Fortress crystals
     ]
 )
-KEY_STAGE_TABLE = KEY_STAGE_BY_ITEM + bytes(len(DEFAULT_INV) - len(KEY_STAGE_BY_ITEM))
 if len(KEY_STAGE_BY_ITEM) != KEY_LAST - KEY_FIRST + 1:
     raise AssertionError("stage-key table does not cover 0x0D..0x22 exactly")
 
-# The stock default inventory template is no longer read after the native
-# loader is replaced, so its uniquely-referenced 40-byte data area is reused as
-# the stage-key table. The live initializer remains separately normalized.
-KEY_STAGE_TABLE_VA = 0x800A5FE4
+# The key-to-stage table lives in MKMSZR-owned memory: a 0x20-byte slice of
+# the expansion pool inside shared file 0x1A, between the Temple special-check
+# module (ends 0x801B0970) and lifecycle v06 (starts 0x801B0A60). It must not
+# live in stock memory: the former home, the obsolete default-inventory
+# template 0x800A5FE4, is still written by the stock password handler
+# 0x8007550C (input NXCVSZ). File 0x1A is raw-loaded without cache
+# maintenance, so the mask routine reads the table through its uncached alias.
+KEY_STAGE_TABLE_K0 = 0x801B0970
+KEY_STAGE_TABLE_K1 = KEY_STAGE_TABLE_K0 | 0x20000000
+KEY_STAGE_TABLE_ALLOC_SIZE = 0x20
+KEY_STAGE_TABLE_ROM = 0x00F68000 + (KEY_STAGE_TABLE_K0 - 0x801AF820)
+KEY_STAGE_TABLE = KEY_STAGE_BY_ITEM + bytes(KEY_STAGE_TABLE_ALLOC_SIZE - len(KEY_STAGE_BY_ITEM))
 
 # Native stock sanitizer and default loader. The sanitizer used to delete all
 # special/key IDs during transitions; stage-local masking replaces that role.
@@ -228,8 +238,7 @@ def build_mask_copy_routine() -> bytes:
     e.emit(
         lui("t0", (CURRENT_STAGE_VA + 0x8000) >> 16),
         lw("t0", CURRENT_STAGE_VA & 0xFFFF, "t0"),
-        lui("t1", 0x800A),
-        addiu("t1", "t1", KEY_STAGE_TABLE_VA & 0xFFFF),
+        *address_words("t1", KEY_STAGE_TABLE_K1),
         addiu("t7", "a0", 40),
     )
     e.label("loop")
@@ -550,8 +559,8 @@ class FourBoxInventoryPatch:
         rom.write_u32(ACTION_HOOK_ROM + 4, NOP)
 
         # Seed the authoritative boxes; stage init reconstructs/masks LIVE from
-        # them before gameplay. The now-dead stock template becomes the compact
-        # item-ID -> originating-stage table used by the mask routine.
+        # them before gameplay. The obsolete stock default-inventory template
+        # is left untouched (the stock password handler may still write it).
         rom.write_bytes(
             BOX_DATA_ROM,
             initial_box_data(self.initial_settings_state, debug_all_keys=self.debug_all_keys),
@@ -564,7 +573,6 @@ class FourBoxInventoryPatch:
             if self.debug_all_keys else DEFAULT_INV
         )
         rom.write_bytes(LIVE_INV_ROM, initial_live)
-        rom.write_bytes(DEFAULT_INV_ROM, KEY_STAGE_TABLE)
 
         # Replace native special-item cleanup with stage-local masking. Existing
         # sanitizer call sites are disabled; reconstruction happens explicitly
@@ -606,6 +614,44 @@ class FourBoxInventoryPatch:
             "SEALED (stock item 0x08 / Glass identity) masks keys outside their originating stage",
             "stage transitions and box loads reconstruct masked LIVE from backing state",
             "Fire/Bridge all-three USE gates search all 40 authoritative backing slots",
+        )
+
+
+SHARED_FILE_1A_ENTRY_ROM = FILE_TABLE_ROM + 0x1A * FILE_TABLE_ENTRY_SIZE
+SHARED_FILE_1A_ROM = 0x00F68000
+
+
+class KeyStageTablePatch:
+    """Install the key-to-stage table in its MKMSZR-owned file-0x1A slice.
+
+    Runs after the other shared file-0x1A owners (Toasty guards this span as
+    untouched padding when it composes; Temple and lifecycle fill neighbouring
+    slices afterwards) and before the Inventory menu-switch patch copies the
+    final file-0x1A image. FourBoxInventoryPatch's mask routine reads the
+    table through KEY_STAGE_TABLE_K1.
+    """
+
+    name = "key-stage-table"
+
+    def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
+        del context
+        start = rom.read_u32(SHARED_FILE_1A_ENTRY_ROM)
+        end = rom.read_u32(SHARED_FILE_1A_ENTRY_ROM + 4)
+        table_end = KEY_STAGE_TABLE_ROM + KEY_STAGE_TABLE_ALLOC_SIZE
+        if start != SHARED_FILE_1A_ROM or end < table_end:
+            raise PatchError(
+                "key-stage table requires shared file 0x1A at "
+                f"0x{SHARED_FILE_1A_ROM:08X} covering 0x{table_end:08X}; "
+                f"entry is 0x{start:08X}..0x{end:08X}"
+            )
+        rom.expect_bytes(KEY_STAGE_TABLE_ROM, b"\xff" * KEY_STAGE_TABLE_ALLOC_SIZE)
+        rom.write_bytes(KEY_STAGE_TABLE_ROM, KEY_STAGE_TABLE)
+        return (
+            (
+                f"key-to-stage table at 0x{KEY_STAGE_TABLE_K0:08X} "
+                f"(ROM 0x{KEY_STAGE_TABLE_ROM:08X}, "
+                f"0x{KEY_STAGE_TABLE_ALLOC_SIZE:X} bytes), read uncached"
+            ),
         )
 
 

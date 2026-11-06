@@ -4,6 +4,10 @@
 
 ## From Project status
 
+### PS-15 (2026-11-06)
+
+**2026-11-06 key-to-stage table relocation — Runtime-confirmed bounded fix.** The four-box key-to-stage table moved out of the stock default-inventory template (still written by the stock password `NXCVSZ`) into an MKMSZR-owned `0x20`-byte slice of shared file `0x1A` at `0x801B0970`, read uncached and written by the new late `KeyStageTablePatch`. Inputs: clean USA Rev. 0 (SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`) + MKT Rev. 2 donor; seed `KEYTABLE01`, **Start with all stage keys** ON, other settings default. Control `MKMSZR_key-table-relocation_all-stages_control_v01.z64` (`main` `0ea956d`, SHA-256 `114199cce511ca3a95a07c92f43b982c9b0fc841218928c79c12a3f3e57a1904`); proof `MKMSZR_key-table-relocation_all-stages_proof_v01.z64` (commit `f2db524`, SHA-256 `0882414e1e040ea8943f6472a54947f4d6b5d0118aca48e383baa16d15558ac7`). After entering `NXCVSZ` and advancing Wind to the tornado section, the Wind keys had no effect on the control and summoned the tornado on the proof. Masked keys are not visually distinguishable in the production Inventory HUD (maintainer correction); masking shows only as inert USE. Details: [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle), [Memory and allocation map](Memory-and-Allocation-Map). The `k0`/`k1` lifecycle exposure (PS-14 item B) and the cached-alias items (D) remain Pending.
+
 ### PS-14 (2026-11-06)
 
 **2026-11-06 code/ROM review findings — Static/Implementation-confirmed; no runtime claims.** A review against the clean USA Rev. 0 ROM and MKT Rev. 2 donor (no emulator) recorded: (A) the unpatched stock password `NXCVSZ` overwrites the key-to-stage table, so stage keys show as SEALED in their own stages until reset; the password screen is reachable from Options; (B) lifecycle v06 carries its event code in `k1`, which the interrupt handler overwrites. Both are on [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle). (C) Build time is dominated by per-patch whole-image comparison, and the CLI cannot reproduce every browser configuration ([Web patcher and product](Web-Patcher-and-Product)). (D) Three accesses enter raw-loaded memory through cached aliases, currently harmless but fragile ([Memory and allocation map](Memory-and-Allocation-Map)). Also recorded: a seven-configuration real-ROM composition audit and the ruff pin from PR #177 ([Testing and CI](Testing-and-CI)). Repairs for A, B and D need owner decisions and guarded runtime proofs; all remain Pending.
@@ -61,6 +65,10 @@
 **Focused lifecycle update (2026-10-01): lifecycle v06 is Runtime-confirmed and promoted to the shared production pipeline.** The exact accepted reference is Very Hard / 9 total lives / 5 continues / persistent HP ON. The shared core now parameterizes that same lifecycle control flow for build-time difficulty, starting lives (1..10), starting continues (0..5), and persistent HP ON/OFF; browser defaults are Very Hard / 5 / 3 / HP ON. Non-reference combinations are Implementation/CI-confirmed pending representative runtime coverage. v04 remains **Rejected / unsafe composition**. See [Lifecycle static closure](Lifecycle-Static-Closure-v05), [Persistence/inventory/lifecycle](Persistence-Inventory-and-Lifecycle), and [Web patcher/product behavior](Web-Patcher-and-Product).
 
 ## From Runtime validation status
+
+### RV-13 (2026-11-06)
+
+**2026-11-06 key-to-stage table relocation proof v01 — Runtime-confirmed bounded.** Inputs: clean USA Rev. 0 (SHA-256 `9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6`) + MKT Rev. 2 donor; seed `KEYTABLE01`, **Start with all stage keys** ON, other settings default. Control `MKMSZR_key-table-relocation_all-stages_control_v01.z64` (`main` `0ea956d`, SHA-256 `114199cce511ca3a95a07c92f43b982c9b0fc841218928c79c12a3f3e57a1904`); proof `MKMSZR_key-table-relocation_all-stages_proof_v01.z64` (commit `f2db524`, SHA-256 `0882414e1e040ea8943f6472a54947f4d6b5d0118aca48e383baa16d15558ac7`). Route: Options → Password `NXCVSZ` → Safe Stage Select → Wind, advanced to the tornado section and used the Wind keys. Control: no effect (defect reproduced). Proof: tornado summoned. Wind route only; other stages not individually runtime-tested.
 
 ### RV-12 (2026-11-06)
 

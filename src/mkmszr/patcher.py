@@ -25,6 +25,7 @@ from .patches import (
     InventoryHudPatch,
     InventoryLegendPatch,
     InventoryMenuSwitchPatch,
+    KeyStageTablePatch,
     NativePayloadPatch,
     NativePayloadSpec,
     PickupPersistencePatch,
@@ -232,6 +233,10 @@ def build_pipeline(
             debug_all_keys=config.debug_all_keys,
         )
     )
+    # The key-to-stage table is a late shared file-0x1A owner: Toasty requires
+    # this span untouched when it composes, and the Inventory menu-switch
+    # patch later copies the final file-0x1A image.
+    patches.append(KeyStageTablePatch())
     if not config.powers_as_pickups:
         # Stock XP remains authoritative while playing. Mirror it into the
         # existing MKSV +0x44 slot at lifecycle boundaries and reuse the
