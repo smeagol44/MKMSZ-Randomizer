@@ -41,8 +41,12 @@ class WaterScriptedCheckpointPatch:
         rom.expect_bytes(WATER_SCRIPT_CONTEXT_ROM, WATER_SCRIPT_CONTEXT_EXPECTED)
         rom.write_u32(WATER_SCRIPTED_CHECKPOINT_ROM, WATER_ABSOLUTE_SIX)
         return (
-            "Water overlay 0xA1 scripted transition sets checkpoint selector 6 "
-            "before stock reconstruction, independent of skipped key checkpoints",
-            "Only ROM 0xB9330 is changed; scripted world-state, item callbacks "
-            "and native reconstruction call are preserved",
+            (
+                "Water overlay 0xA1 scripted transition sets checkpoint selector 6 "
+                "before stock reconstruction, independent of skipped key checkpoints"
+            ),
+            (
+                "Only ROM 0xB9330 is changed; scripted world-state, item callbacks "
+                "and native reconstruction call are preserved"
+            ),
         )
