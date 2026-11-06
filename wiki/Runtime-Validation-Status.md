@@ -25,6 +25,7 @@ Current project maturity and priorities are owned by [Project status](Project-St
 
 Dated update notes are kept verbatim in the [Status update log](Status-Update-Log); newest first.
 
+- 2026-11-06 static review — no new runtime evidence. ([RV-12](Status-Update-Log#rv-12-2026-11-06))
 - 2026-10-27 Wind/XP/debug correction — Runtime-confirmed bounded; promotion approved. ([RV-01](Status-Update-Log#rv-01-2026-10-27))
 - 2026-10-10 — Long v05 stress control 2026-10-10 — Runtime-confirmed no sustained music speedup, short crunches observed; trace-confirmed recoverable n... ([RV-02](Status-Update-Log#rv-02-2026-10-10))
 - 2026-10-09 — Cross-feature reservation audit (2026-10-09), ROM-static and historical runtime evidence only; peak safety Pending. ([RV-03](Status-Update-Log#rv-03-2026-10-09))

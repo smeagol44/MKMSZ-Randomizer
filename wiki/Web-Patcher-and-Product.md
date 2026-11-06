@@ -73,6 +73,14 @@ The shared product configuration exposes **Enemy Randomization** as a seeded opt
 
 The underlying planner/materializer has bounded Runtime-confirmed representative all-stage evidence. The new product composition still requires repository CI plus one normal browser/CLI production-build runtime gate with the option enabled.
 
+## Build-time profile (2026-11-06)
+
+**Implementation-confirmed on native CPython 3.13; Pyodide not measured.** A full production build took 50–65 s. One profiled build spent 44.6 s of 58.7 s in `_changed_spans` (21 calls), because `PatchPipeline` snapshots and compares the whole 32 MiB image after every patch (`patches/base.py`, `rom.py`). A vectorised comparison in a scratch test produced identical outputs and brought builds to about 10–20 s. `decompress_resource_package` took about 11 s over 21 calls, with some packages decompressed more than once. Optimisation Pending.
+
+## CLI and browser parity (2026-11-06)
+
+**Implementation-confirmed.** The CLI cannot set the initial TURN / ATTACK / SPECIALS / JUMP / RUN settings, and two defaults differ: outfit (CLI `vanilla`, browser "Random from seed") and Required powers (CLI `vanilla`, browser `seed`). A browser build therefore cannot always be reproduced from the CLI. Pending.
+
 ## Deployment
 
 `.github/workflows/pages.yml` runs on `main`, first compiles `src/mkmszr` with Python's `compileall`, then builds the wheel, copies the static frontend to `_site`, substitutes the run number into the displayed version, and deploys GitHub Pages. The compile gate was added after a 2026-09-22 title-branding packaging regression in which a malformed source header containing literal `\\n` escapes was packaged into a syntactically invalid wheel; Pyodide then failed before patching. A follow-up browser failure showed that reusing the same wheel URL could still serve the stale malformed package from cache even after the source was fixed. Pages now rewrites the wheel to a unique PEP 440 dev version per deployment (for example `mkmszr-0.1.0.dev371-py3-none-any.whl`) and cache-busts `app.js` with the same run number. The app passes that deployment query string to `patch-worker.js`, so the worker cannot remain stale across Pages releases. The deployment artifact was manually inspected and `mkmszr.patcher` imported successfully from the unique wheel. `.github/workflows/wiki.yml` independently mirrors `wiki/` to the GitHub Wiki.

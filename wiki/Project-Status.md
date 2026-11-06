@@ -16,6 +16,7 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 Dated update notes are kept verbatim in the [Status update log](Status-Update-Log); newest first.
 
+- 2026-11-06 code/ROM review findings — Static/Implementation-confirmed; no runtime claims. ([PS-14](Status-Update-Log#ps-14-2026-11-06))
 - 2026-10-27 owner-requested Wind/XP/debug changes — Runtime-confirmed bounded; promotion approved. ([PS-01](Status-Update-Log#ps-01-2026-10-27))
 - 2026-10-11 — Focused selector RSP/task-event upstream static audit (2026-10-11; no emulator run) ([PS-02](Status-Update-Log#ps-02-2026-10-11))
 - 2026-10-10 — NEW earliest selector audio-size divergence (2026-10-10; five complete v05 captures, source/trace-confirmed, origin Pending) ([PS-03](Status-Update-Log#ps-03-2026-10-10))
