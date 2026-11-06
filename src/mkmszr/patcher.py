@@ -14,6 +14,7 @@ from .global_generation import (
 from .patches import (
     PICKUP_PERSISTENCE_PAYLOAD,
     ArenaReservationPatch,
+    AudioFifoReservePatch,
     BootBrandingPatch,
     BootLogoBypassPatch,
     BoxIndicatorPatch,
@@ -25,6 +26,7 @@ from .patches import (
     InventoryHudPatch,
     InventoryLegendPatch,
     InventoryMenuSwitchPatch,
+    KeyStageTablePatch,
     NativePayloadPatch,
     NativePayloadSpec,
     PickupPersistencePatch,
@@ -42,6 +44,7 @@ from .patches import (
     TitleBrandingPatch,
     ToastyAssets,
     ToastyProductionCompositionPatch,
+    WaterScriptedCheckpointPatch,
     XPProgressionPatch,
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
@@ -180,9 +183,14 @@ def build_pipeline(
             BoxIndicatorPatch(),
             BootBrandingPatch(config.edition_name),
             BootLogoBypassPatch(),
+            WaterScriptedCheckpointPatch(),
             TitleBrandingPatch(config.edition_name, config.outfit),
         ]
     )
+    if config.audio_fifo_fix:
+        # Vanilla audio bug fix: one guarded boot-code immediate, independent
+        # of every other owner. Disable only for debugging/comparison.
+        patches.append(AudioFifoReservePatch())
     outfit_mode = config.outfit.mode.lower()
     if outfit_mode != "rainbow" and outfit_mode != "vanilla":
         patches.append(
@@ -232,6 +240,10 @@ def build_pipeline(
             debug_all_keys=config.debug_all_keys,
         )
     )
+    # The key-to-stage table is a late shared file-0x1A owner: Toasty requires
+    # this span untouched when it composes, and the Inventory menu-switch
+    # patch later copies the final file-0x1A image.
+    patches.append(KeyStageTablePatch())
     if not config.powers_as_pickups:
         # Stock XP remains authoritative while playing. Mirror it into the
         # existing MKSV +0x44 slot at lifecycle boundaries and reuse the

@@ -1,4 +1,4 @@
-from mkmszr.mips import jal
+from mkmszr.mips import addiu, jal, lui
 from mkmszr.patches.base import PatchContext
 from mkmszr.patches.inventory_boxes import (
     ACTION_HOOK_ROM,
@@ -24,6 +24,9 @@ from mkmszr.patches.inventory_boxes import (
     INITIAL_BOX_DATA,
     KEY_STAGE_BY_ITEM,
     KEY_STAGE_TABLE,
+    KEY_STAGE_TABLE_ALLOC_SIZE,
+    KEY_STAGE_TABLE_K1,
+    KEY_STAGE_TABLE_ROM,
     LIVE_INV_ROM,
     LOAD_DEFAULT_END,
     LOAD_DEFAULT_ROM,
@@ -53,10 +56,13 @@ from mkmszr.patches.inventory_boxes import (
     SELECTOR_CAVE_BLOB,
     SELECTOR_CAVE_ROM,
     SELECTOR_CAVE_SIZE,
+    SHARED_FILE_1A_ENTRY_ROM,
+    SHARED_FILE_1A_ROM,
     SWITCH_HELPER_SIZE,
     SWITCH_HELPER_VA,
     TRANSITION_SAVE_WRAPPER,
     FourBoxInventoryPatch,
+    KeyStageTablePatch,
     initial_box_data,
     starting_inventory,
 )
@@ -121,7 +127,8 @@ def test_stage_key_map_matches_originating_stage_policy() -> None:
             9, 9, 9,
         ]
     )
-    assert len(KEY_STAGE_TABLE) == len(DEFAULT_INV) == 40
+    assert len(KEY_STAGE_TABLE) == KEY_STAGE_TABLE_ALLOC_SIZE == 0x20
+    assert KEY_STAGE_TABLE[: len(KEY_STAGE_BY_ITEM)] == KEY_STAGE_BY_ITEM
 
 
 def test_four_box_binary_layout_fits_confirmed_regions() -> None:
@@ -176,9 +183,13 @@ def test_four_box_patch_installs_stage_masking_and_filtered_sync() -> None:
 
     assert rom.data[BOX_DATA_ROM : BOX_DATA_ROM + BOX_DATA_SIZE] == INITIAL_BOX_DATA
     assert rom.data[LIVE_INV_ROM : LIVE_INV_ROM + len(DEFAULT_INV)] == DEFAULT_INV
-    assert rom.data[
-        DEFAULT_INV_ROM : DEFAULT_INV_ROM + len(KEY_STAGE_TABLE)
-    ] == KEY_STAGE_TABLE
+    # The obsolete stock template stays stock: the stock password handler
+    # 0x8007550C (input NXCVSZ) still writes it at runtime.
+    assert rom.data[DEFAULT_INV_ROM : DEFAULT_INV_ROM + len(DEFAULT_INV)] == DEFAULT_INV
+    # The mask routine reads the relocated table through its uncached alias.
+    hi, lo = (KEY_STAGE_TABLE_K1 + 0x8000) >> 16, KEY_STAGE_TABLE_K1 & 0xFFFF
+    assert MASK_COPY_ROUTINE.find(lui("t1", hi).to_bytes(4, "big")) >= 0
+    assert MASK_COPY_ROUTINE.find(addiu("t1", "t1", lo).to_bytes(4, "big")) >= 0
 
     assert rom.data[SANITIZE_ROM:SANITIZE_END] == MASK_COPY_ROUTINE
     for call_rom in SANITIZE_CALL_ROMS:
@@ -225,3 +236,35 @@ def test_debug_inventory_adds_every_credential_once_and_preserves_supplies() -> 
     assert live == [4, 4, 1] + [MASK_ITEM] * 7
     saved = [old if current == MASK_ITEM else current for old, current in zip(slots[:10], live, strict=True)]
     assert saved == slots[:10]
+
+
+def _key_table_rom(*, file_end: int) -> RomImage:
+    size = KEY_STAGE_TABLE_ROM + KEY_STAGE_TABLE_ALLOC_SIZE + 0x100
+    data = bytearray(b"\xff" * size)
+    data[SHARED_FILE_1A_ENTRY_ROM : SHARED_FILE_1A_ENTRY_ROM + 8] = (
+        SHARED_FILE_1A_ROM.to_bytes(4, "big") + file_end.to_bytes(4, "big")
+    )
+    return RomImage(data=data, _original=bytes(data))
+
+
+def test_key_stage_table_patch_writes_owned_file_1a_slice() -> None:
+    rom = _key_table_rom(file_end=KEY_STAGE_TABLE_ROM + 0x100)
+    KeyStageTablePatch().apply(rom, PatchContext())
+    assert rom.data[
+        KEY_STAGE_TABLE_ROM : KEY_STAGE_TABLE_ROM + KEY_STAGE_TABLE_ALLOC_SIZE
+    ] == KEY_STAGE_TABLE
+
+
+def test_key_stage_table_patch_refuses_uncovered_or_occupied_slice() -> None:
+    import pytest
+
+    from mkmszr.errors import PatchError
+
+    short = _key_table_rom(file_end=KEY_STAGE_TABLE_ROM + 4)
+    with pytest.raises(PatchError):
+        KeyStageTablePatch().apply(short, PatchContext())
+
+    occupied = _key_table_rom(file_end=KEY_STAGE_TABLE_ROM + 0x100)
+    occupied.data[KEY_STAGE_TABLE_ROM] = 0
+    with pytest.raises(PatchError):
+        KeyStageTablePatch().apply(occupied, PatchContext())

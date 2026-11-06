@@ -1,13 +1,14 @@
 """Composable native ROM patch modules."""
 
 from .arena import ArenaReservationPatch
+from .audio_fifo_fix import AudioFifoReservePatch
 from .boot_branding import BootBrandingPatch
 from .box_indicator import BoxIndicatorPatch
 from .enemy_randomization import EnemyRandomizationPatch
 from .flow_bypass import BootLogoBypassPatch, SafeStageSelectSkipAutoSavePatch
 from .game_settings_turn import GameSettingsTurnPatch
 from .global_materialization import GlobalItemMaterializationPatch
-from .inventory_boxes import FourBoxInventoryPatch
+from .inventory_boxes import FourBoxInventoryPatch, KeyStageTablePatch
 from .inventory_hud import InventoryHudPatch
 from .inventory_legend import InventoryLegendPatch
 from .inventory_menu_switch import InventoryMenuSwitchPatch
@@ -37,11 +38,13 @@ from .temple_special_check import TempleSpecialCheckPatch
 from .title_branding import TitleBrandingPatch
 from .toasty import ToastyProductionCompositionPatch
 from .toasty_constants import ToastyAssets
+from .water_scripted_checkpoint import WaterScriptedCheckpointPatch
 from .xp_progression import EarnedXPPersistencePatch, XPProgressionPatch
 
 __all__ = [
     "PICKUP_PERSISTENCE_PAYLOAD",
     "ArenaReservationPatch",
+    "AudioFifoReservePatch",
     "BootBrandingPatch",
     "BootLogoBypassPatch",
     "BoxIndicatorPatch",
@@ -53,6 +56,7 @@ __all__ = [
     "InventoryHudPatch",
     "InventoryLegendPatch",
     "InventoryMenuSwitchPatch",
+    "KeyStageTablePatch",
     "ManagerPersistenceFirePatch",
     "MktAudioClip",
     "NativePayloadPatch",
@@ -74,6 +78,7 @@ __all__ = [
     "ToastyAssets",
     "ToastyProductionCompositionPatch",
     "XPProgressionPatch",
+    "WaterScriptedCheckpointPatch",
     "manager_persistence_fire_patches",
     "pickup_persistence_patches",
     "runtime_v1_fire_patches",

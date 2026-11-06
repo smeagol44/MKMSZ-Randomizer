@@ -386,7 +386,9 @@ class ControlsProductionPatch:
         cursor=align(cursor,16); alloc['run-capture']=cursor; cursor+=len(rc0)
         cursor=align(cursor,16); alloc['run-loop']=cursor; cursor+=len(rl0)
         cursor=align(cursor,16); alloc['run-state']=cursor; state_va=cursor; cursor+=4
-        rd=run_decision(state_va); rc=run_capture(state_va); rl=run_loop(state_va)
+        # The RUN state word lives in raw-loaded shared file 0x1A (no cache
+        # maintenance on load), so every access uses its uncached KSEG1 alias.
+        rd=run_decision(k1(state_va)); rc=run_capture(k1(state_va)); rl=run_loop(k1(state_va))
         if (len(rd),len(rc),len(rl))!=(len(rd0),len(rc0),len(rl0)): raise AssertionError('RUN helper size drift')
         blobs['run-decision']=rd; blobs['run-capture']=rc; blobs['run-loop']=rl; blobs['run-state']=bytes(4)
         cursor=align(cursor,16); alloc['run-dispatch']=cursor

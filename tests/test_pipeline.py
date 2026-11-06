@@ -8,7 +8,7 @@ from mkmszr.patches.arena import ArenaReservationPatch
 from mkmszr.patches.controls_production import ControlsProductionPatch
 from mkmszr.patches.enemy_randomization import EnemyRandomizationPatch
 from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
-from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch
+from mkmszr.patches.inventory_boxes import FourBoxInventoryPatch, KeyStageTablePatch
 from mkmszr.patches.native_payload import NativePayloadPatch
 from mkmszr.patches.pickup_persistence import PickupPersistencePatch
 from mkmszr.patches.pickup_randomization import PickupRandomizationPatch
@@ -188,3 +188,18 @@ def test_normal_product_global_plan_is_complete_and_deterministic() -> None:
     assert len(first_plan.placements) == 8
     assert first_plan.temple_special_item_key == "mana"
     assert len(first_run.power_locations) == 9
+
+
+def test_key_stage_table_is_a_late_shared_file_owner() -> None:
+    from mkmszr.patcher import _build_production_global_plan
+    from mkmszr.patches import InventoryMenuSwitchPatch, ToastyProductionCompositionPatch
+
+    config = RandomizerConfig(seed="KEYTABLE")
+    plan, _run = _build_production_global_plan(config, required_count=None, required_xp=5100)
+    types = [type(p) for p in build_pipeline(config, materialization_plan=plan).patches]
+    assert types.count(KeyStageTablePatch) == 1
+    assert types.index(RunLifecyclePatch) < types.index(KeyStageTablePatch)
+    assert types.index(KeyStageTablePatch) < types.index(InventoryMenuSwitchPatch)
+    assert ToastyProductionCompositionPatch not in types or types.index(
+        ToastyProductionCompositionPatch
+    ) < types.index(KeyStageTablePatch)

@@ -243,14 +243,16 @@ EARNED_XP_EXTENSION_SIZE = 0xE0
 EARNED_XP_EXTENSION_ROM = PROGRESSION_EXTENSION_ROM
 LIFECYCLE_PAUSE_ENTRY_UNCACHED_VA = 0xA01B0BC0
 LIFECYCLE_REASON_ENTRY_UNCACHED_VA = 0xA01B0C10
-JR_K0 = 0x03400008
+JR_T9 = 0x03200008
 
 
-def _k0_jump_words(address: int, delay_slot: int = NOP) -> tuple[int, int, int, int]:
+def _t9_jump_words(address: int, delay_slot: int = NOP) -> tuple[int, int, int, int]:
+    # Lifecycle transport v07: never carry control or state in k0/k1, which the
+    # exception handler overwrites; t9 is saved/restored and dead at these sites.
     return (
-        0x3C1A0000 | ((address >> 16) & 0xFFFF),  # lui k0,hi
-        0x375A0000 | (address & 0xFFFF),          # ori k0,k0,lo
-        JR_K0,
+        0x3C190000 | ((address >> 16) & 0xFFFF),  # lui t9,hi
+        0x37390000 | (address & 0xFFFF),          # ori t9,t9,lo
+        JR_T9,
         delay_slot,
     )
 
@@ -274,7 +276,7 @@ def _build_earned_xp_save_wrapper(resume_va: int) -> bytes:
         lw("t1", 0x04, "sp"),
         addiu("sp", "sp", 0x10),
     )
-    e.emit(*_k0_jump_words(resume_va))
+    e.emit(*_t9_jump_words(resume_va))
     return e.finish()
 
 
@@ -326,7 +328,7 @@ if len(EARNED_XP_RESUME_PATCH) != len(PERSISTENCE_RESUME_PATCH):
 
 
 def _lifecycle_hook_patch(entry: int, delay_slot: int) -> bytes:
-    return words_blob(_k0_jump_words(entry, delay_slot))
+    return words_blob(_t9_jump_words(entry, delay_slot))
 
 
 # Fail loudly if lifecycle-v06's validated direct entries ever move. The OFF
@@ -337,7 +339,7 @@ if HOOKS[0][2] != _lifecycle_hook_patch(LIFECYCLE_PAUSE_ENTRY_UNCACHED_VA, NOP):
 for reason, hook in enumerate(HOOKS[1:5], start=1):
     if hook[2] != _lifecycle_hook_patch(
         LIFECYCLE_REASON_ENTRY_UNCACHED_VA,
-        0x241B0000 | reason,  # addiu k1,zero,reason
+        0x24180000 | reason,  # addiu t8,zero,reason (transport v07)
     ):
         raise AssertionError(f"lifecycle-v06 reason entry {reason} drifted")
 
