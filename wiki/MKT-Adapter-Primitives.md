@@ -787,6 +787,12 @@ rocket_explode_fx:   ochar_sound 0x0A (metal ball BOOM) -> create_fx 5 (shared e
 
 Builder v19 calls the package. Its payload and its whole ROM are **byte-identical** to the Runtime-confirmed v18, so behaviour is unchanged by construction. `tests/test_fighter_import_actions.py` pins the payload hash without needing a ROM.
 
+**R2 analysis notes (2026-11-07, Static; arcade MK3 REV13 lineage):**
+- **Strike.** The rocket's strike `0x12` reaches `proj_strike_check` → `strike_check_a0` as offset `0x12` into the **attacker's own strike table**, so its reaction meaning has to be read from the robot strike table (Pending). The combo `stk_*` codes (`MKCOMBO.ASM`: `stk_0` hit in face, `stk_1` stumble, `stk_2` knocked on back, `stk_4` nailed, `stk_5` uppercutted, …) are a separate namespace.
+- **Sounds.** Launch `ochar_sound 3` ("robo fast rocket"), chest `0x0B`, boom `0x0A`. All three are entries in Sektor's MKT fighter table at the same indices, as was verified for the teleport.
+- **Effects.** `rocket_smoke` is `create_fx(4)` every other tick; the explosion is `create_fx(5)` at the rocket's x/y.
+- **Still open.** The Prison GRUNT3 explosion frames and their spawn path, and which v63–v89 seams to reuse.
+
 **Increments (each is a bounded proof).**
 - **R1.** Refactor the teleport adapter onto the primitive library with no behaviour change.
 - **R2.** The straight rocket as the first recipe: chest open/close, projectile with `ROCKET_P`, donor acceleration and cap at the v75 calibration, translated strike, launch/chest/boom sounds, and the `fx 5` explosion. Smoke comes later. It replaces the tier-1 Ice Blast LP record (`F,F + LP`, one live rocket at a time, as the donor's predicate does).
