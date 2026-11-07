@@ -298,6 +298,8 @@ That first type-`0x12` route is **Runtime-confirmed** by the v60 proof. The dura
 
 **Design-accepted 2026-09-25; bounded visual proof accepted by the user.** For the generic N64 MKT -> MKMSZ fighter importer, normalize donor fighter art to a **16-color indexed palette** by default. The Sektor 16-color proof was judged visually successful, so restoring a 32-color body palette is **not** a fidelity goal by itself.
 
+The proof artifact is `MKMSZR_sektor-16color_common-proof_v01.z64` (SHA-256 `e339d75c396b09a10b8c6a4fd1cab76efb5a99dda30d98c6524c029ad6fa3a59`, built from exact v75; identity recorded 2026-11-07 in [Sektor takeover proof history](Sektor-Takeover-Proof-History#build-kit-reproduction-and-takeover-change-map-2026-11-07)).
+
 This is an importer policy, not a claim that historical Sektor proofs used only 16 colors. The v53/v60 32-color resident-TLUT line remains valid runtime evidence for palette ownership and alternate-palette binding. The generic route should preserve those semantic lessons while quantizing/remapping the imported fighter body to 16 colors unless new technical evidence shows unacceptable quality, animation-specific palette breakage, collision with required effect/attachment colors, or another concrete incompatibility.
 
 The 16-color decision also does **not** change the target storage contract: imported frames must still be emitted as valid MKMSZ-native Type-5 assets with correct dimensions, anchors, dictionary/model encoding, palette binding, and lifecycle ownership. Do not infer a new raw 4-bpp target format merely from the 16-color palette policy.
