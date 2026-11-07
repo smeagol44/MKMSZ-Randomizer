@@ -2247,7 +2247,116 @@ Raw evidence archived in Library:
 
 The next bounded movement proof should retain v74's cadence folding but test the missing spatial magnitude separately; do not combine it with placement, smoke, palette, audio, or helper-process cleanup.
 
+## Teleport-uppercut proof line v01–v08 (2026-11-07)
 
+**Runtime-confirmed bounded: the move in v08 (user report "Everything looks and works really good") and Sektor's MKT teleport sound in v09 ("just perfect"); v10 is v09 without the landing thud (built, quick check pending); shadow behaviour unchanged.** This is the first end-to-end imported Sektor special: MKT `F,F + LK` teleport uppercut (`do_body_propell(8)` → `0x80048368`) on the Sektor takeover body. It ships as one disposable ROM per iteration (body repack + move). The donor-side analysis is in [MKT adapter primitives](MKT-Adapter-Primitives#sektor-teleport-uppercut-translation) and the host findings are in [Player actions and special moves](Player-Actions-and-Special-Moves#teleport-uppercut-host-findings-2026-11-07). Builders: `Experimental/SektorTransplantBuilders/teleport/MKMSZR_build_sektor_teleport_vNN.py`, run as `python3 <builder> <clean MKMSZ> <MKT Rev. 2> -o <out>`. All eight reproduce their ROMs byte-for-byte from the two clean inputs.
+
+User decisions that define the target behaviour:
+- classic controls only;
+- silent at first; then (after v08) Sektor's own MKT sounds rather than MKMSZ ones, because Sektor replaces Sub-Zero completely. The donor landing thud is not wanted, since the stock landing sound already plays;
+- the move can start airborne and cannot be cancelled;
+- range is a distance square (same limit horizontally and vertically) of roughly 90–95% of the starting camera's visible ground width on Temple/Fire/Water/Earth, ignoring zoom;
+- the hop is about a normal jump, using the user's MKT capture as reference;
+- Sektor falls on the last uppercut frame;
+- sink and emerge read as leaving and entering the screen;
+- the shadow may stay as it is if fixing it is costly.
+
+### Identities
+
+| Proof | SHA-256 | CRC1 / CRC2 | Runtime result (user) |
+|---|---|---|---|
+| v01 | `135659ebf18455435ab8b6eb354949d41af546ed82716bebe24d678ef98d4769` | `A9E75D9E / FF64623D` | 16c/4bpp body works; animation correct but no sink; target never hit; Sektor invisible in Wind; teleports to off-camera targets |
+| v02 | `587a657e9d40208bd47e8728c1cd5e7271d5c7febb63d0eb4a98b9dc91b216e4` | `A9E75D9E / FF64623D` | Hit lands and visibility fixed; no sink; sweep-type reaction; range too long; cannot start airborne |
+| v03 | `5826eb8e5a04b1e6fe270e3330bda5de991c218d8179180897c6e7140afa5918` | `A9E76426 / B4E3CBFC` | Sink looks good but reads as going through the floor; punch-type reaction; no hop after the hit (stops and is grounded at once) |
+| v04 | `3a0cba0b232626fcace49f4534e2aad5d7522336cfab2050b78be69a33ce397b` | `A9E7661E / FEDE07EC` | Uppercut reaction and distance range accepted. Problems: an airborne start pauses at ground level; shadow stays; hop too strong (camera rises); an airborne start with no target falls as if hit; no last-frame descent; cancellable by any action |
+| v05 | `455bf5c3195049fd3bc29be64277c41c461b6ffe15c5adce484ff07ad63f5319` | `A983662E / C9C25F79` | Shadow still visible; after the hit, stock jump-fall animation; still cancellable by every button and special |
+| v06 | `17b878cbfc472bb5e9f6c0841f09dc6036a8f3ec720b554228d0715e72dba271` | `A983662E / A9CA554A` | **Not cancellable (confirmed).** Move still ends as soon as it hits |
+| v07 | `3864fc3ad5733dd01ae39ac6dbeebce5b80d24d55cdd78cc0c1bf9b8cce50f74` | `A983662E / 0466CE32` | **Hop, arc, last-frame descent and landing work.** Against a cornered enemy, Sektor falls back as if hit mid-air |
+| v08 | `85f09d8a99d9f5aa2c4aba631e3d042922ed24915c0213da99cb6305cf5edebd` | `A983665E / 36E3F2EF` | **Accepted:** everything works; only sound (deliberately silent) and the shadow remain |
+| v09 | `51007a411ef9ed2646e28a8eba50bc9bc077b120de3cd5a6c5cabb60ff4afdf3` | `A983623E / B90F3AC2` | **Teleport sound "just perfect".** The added landing thud was too loud and redundant with the stock landing sound |
+| v10 | `913ebc2b02ed935515848d1615bc81538620e2f7cd4c678c4ea11bfbd882f56b` | `A983622E / 64626E81` | v09 without the landing thud; built and statically checked, quick runtime check pending |
+| v11 | `1682507985ce89199e5844442a750577dec97fbf64d74d4f2119ab70d21cde5a` | `A983622E / 64626E81` | **Worked perfectly:** post-hit timing matched to MKT, so the standing-LK juggle connects |
+| v12 | `12e15eb39a92456f5025700fe81794ef5bc613e575320864ae50268134535733` | `A9CB6252 / E3A446C6` | **"Everything sounds perfect"** (a bit loud): Sektor's MKT voice set replaces Sub-Zero's |
+| v13 | `af951e47789ff58942feb0b8a3b5a532ad72cd4619178a8b033e814536dbbcfb` | `A9CB6252 / E3A446C6` | Adds the robot run sound. Correct, but repetitive and annoying in MKMSZ, so dropped |
+| v14 | `c62dc1a9baad3fc3e4cac884587300d38ff4d7183d7c8983dd5a242583a82ebf` | `A9CB6580 / AF5E62DB` | Voice from MKT's voice-group table. **Rejected:** the group-9 "death scream" is a human pit/fatality scream and played on knockdown landings |
+| v15 | `06e3d306f89c7c5b4e6cc3bfabcfd4f805a1865630c7c012756368d8db1b0918` | `A93F6580 / E79F491A` | **"It's fantastic now":** knockdown landing and death silent; run sound removed |
+| v16 | `7e6b15597d838c299f91804f6f5900881151b90db44a4d0e523a599ecbcf27bc` | `EF26B815 / 7A9A1448` | Adds Sektor's MKT combos (v62 graph). **Rejected volume change:** player categories 0/1 also play the somersault jump, so the "attack whoosh" ×0.85 lowered the somersault instead |
+| v17 | `104e13ff9d92592b803d926b96470b66e7be6fd200781c1cbe4106a0421f4574` | `EF26B815 / 7A9A1448` | v16 with the volume change reverted. Combos work, but the kick endings lack their animation |
+| v18 | `4335e1ad03c7c6a06a761cd34e7c92a071064a12a533d184b8ab5bedd875ea02` | `EF26B815 / 7A9A1448` | Adds v59's late-Knee frames (`KNEE_LATE_MAP`); runtime check pending |
+
+### Version changes
+
+- **v01:**
+  - Body: the v05-equivalent Sektor body repacked as a 16-colour 4-bpp Type-5 (file `0x87` end `0x45BE0`, under the Fortress-safe `0x4E544`).
+  - Move: the teleport adapter on the exact Reverse Elbow v6 host infrastructure.
+  - Failures: it hid Sektor with actor `+0x64` bit `0x20` and added gravity in its own loop, which together with the engine's gravity gave 3× effective gravity. Its strike record lay in the KSEG1 payload.
+- **v02:**
+  - The strike record moved to the stack, giving a KSEG0 pointer (the collision core checks the top nibble is `8`).
+  - The hide bit was removed.
+  - The engine applies gravity; velocities are calibrated by matching the two stock jumps (donor `-0x88000/0x6CCC`, host `-0xB47AE/0x7851`).
+  - Targets must be on screen via `0x80035260`.
+- **v03:**
+  - Range: a 90% viewport projection test.
+  - Sink: frames cropped at the feet line.
+  - Airborne start: falls to the ground first.
+  - Payload arena widened to `0x800` bytes.
+  - Hit selector changed to crouch-punch.
+- **v04:**
+  - The strike record is the stock uppercut's reaction, aux and trailer (reaction `0x08`).
+  - Range: a 592-unit square on `|Δx|`, `|Δy|`. That is 0.925 × the 640-unit visible ground width at camera depth `0x200`.
+  - Sink and emerge use descriptor-only anchor-shift aliases, so the image moves below the screen without any cropping.
+  - Emerge velocity is anchored on the donor curve.
+- **v05:**
+  - Hop velocity × 0.9: from the user's apex captures, v04 peaked at about 1.04 enemy heights against MKT's ≈ 0.92.
+  - A custom descriptor condition rejects the move before it starts when there is no target.
+  - Action ID `0x603`.
+  - An airborne start continues the sink from the donor-curve index already reached.
+  - Its own ground reference replaces `+0x6B4`.
+  - Shadow attempt: detach and hide actors flagged `+0x8C & 0x2000`. It had no effect (Rejected).
+- **v06:**
+  - Native special-action begin `0x80049F90` (busy input map) → not cancellable.
+  - The adapter drives the hop itself, using engine-equivalent integration with `+0xF0` re-set each tick.
+  - The shadow attempt was removed.
+- **v07:**
+  - Root cause of "ends on hit": the per-tick floor check installs the stock fall routine `0x80025230` when no floor region is found and the ctrl `+0x6B0` word is zero.
+  - Fix: maintain the airborne counter `+0x6B2` every air tick, as the stock jump does, and clear it on landing and before exit.
+- **v08:**
+  - Placement follows the donor: Sektor appears past the target on the far side and turns to face it.
+    - Distance is `min(40, wall room − 4)`.
+    - If that leaves less than 16 units, the target is nudged out of the corner to 16 units of separation.
+  - This keeps the uppercut from knocking a cornered target into the wall, which triggers the stock corner pushback.
+  - Damage `0x10 → 0x18` and chip `2 → 3` (1.5×, user request).
+- **v09:**
+  - Adds the donor sounds of the move ([translation](MKT-Adapter-Primitives#sektor-teleport-uppercut-translation)).
+  - Teleport sound: MKT event `0x104`, played at the move start. It goes through MKMSZ event 335 → patch 492 → subpatch 335 → waveform 325.
+  - Landing thud: MKT event `0x92`, played on touchdown. It goes through MKMSZ event 437 → patch 594 → subpatch 437 → waveform 427.
+  - Both hosts are fully isolated stock chains ([Audio system](Sounds-and-Music#isolated-sound-host-chains-2026-11-07)).
+  - Playback copies the stock `0x80064C18` sequence: parameter block `0x802C1188` = `{0xB, volume 0x7F, 0x40, 0}`, then `0x80080A88(event, 0, block)` between the `0x800008D4/0x800008DC` pairs.
+- **v10:** the landing thud is removed and its host chain left stock.
+- **v11:** the post-hit arc keeps the accepted apex but matches MKT's real-time airtime. Launch velocity is ÷0.924 and gravity ÷0.924² (donor 0.602 s; v10 0.633 s). The landing hold drops from 4 to 3 ticks, matching the donor `0x80076E48` hold of 2×3 ticks at 60 Hz. Sektor can act 2 frames sooner.
+- **v12–v15 (voice):** Sub-Zero's player-only voice events are re-pointed at isolated host chains carrying Sektor's MKT sounds. The final v15 rule is in [Audio system](Sounds-and-Music#imported-fighter-voice-rule-2026-11-07).
+- **v16–v18 (combos):** v62's six Sektor combo records at `0xB1CB0` (byte-identical to v62). The standalone `HK,HK` record moves from `0x9AD90`, which is now this line's loader stub, into the payload arena (KSEG1 `0xA01AFB38`), with knee root `0xA1CE8` pointing at it. The combo walker `0x8004D4C0` follows any negative `+0x0C` pointer and fetches strike records from its own table `0x800B0D48`, so KSEG1 is accepted. v18 adds v59's late-Knee shape ownership, which this lineage had never received, so the knee's parts 3–5 show Sektor frames instead of the stance fallback.
+
+### Proof-only footprint (v08)
+
+All of these are the Reverse Elbow v6 proof infrastructure plus the takeover storage, guarded against clean bytes. **None is a production allocation.**
+
+| Site | Content |
+|---|---|
+| Payload | ROM `0xF10000..0xF107FF` → RDRAM `0x801AF420..0x801AFC1F`. Executed and read through the KSEG1 alias `0xA01AF420`. File `0x1B` table entry at `0xA5154`; the arena prefix is widened through `0x66F64` (`2442f420 → 2442fc20`) and the loader hook at `0x66FE0`; loader stub at `0x9AD84` (overlaps the production bootstrap, as in v6). |
+| Dispatch | Selector-3 permit `0x4B654` and the table[3] thunk at `0xA1C5C` (Reverse Elbow v6 bridge); proof EXP caps at `0xA6FFC..0xA700F`. |
+| Descriptor | The stock Low Kick descriptor at `0xB1B68` (`D,B + LK`) is replaced by `F,F + LK`: mask `0x40`, selector 1, the adapter condition, action `0x800A1060`, window `0x18`. Selector 1 is needed because selector 0 refuses an airborne start. |
+| Sound (v10) | Donor ADPCM sample at ROM `0xF20000..0xF20BE1`. In the sound bank, MKMSZ event 335's track (`0x97BCB8`, patch kept 492), subpatch 335 (`0x94A194`), waveform 325 (`0x94DFB0`, offset → `0xF20000`) and predictor 325 (`0x9653B8`) hold the donor records. |
+| Body | Repacked file `0x87` at ROM `0xF40000`, end pointer `0xA5668`. Teleport scripts SINK/DROP/LANDA/LANDB occupy the file tail up to `+0x45BE0`. |
+
+### Known limits after v08
+
+- Only the teleport sound is imported; Sektor's other sounds (voice, footsteps and so on) are still Sub-Zero's.
+- The drop shadow stays visible during sink and emerge: the shadow renderer is not yet located.
+- MKT's 16-tick velocity lead on placement is omitted.
+- Facing uses the stock nearest-opponent helper, so with two close enemies Sektor could face the nearer one.
+- A target standing at a drop-off edge could place Sektor over the drop. This is untested.
+- Only bounded manual routes were tested; this is not exhaustive coverage.
 
 ## Canonical ownership and remaining limits
 

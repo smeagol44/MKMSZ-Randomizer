@@ -222,7 +222,7 @@ The callback table at `0x8009F95C`:
 | `8` | `0x800289FC` | Spawns a class-`0x100` process at `0x80028A24` that builds a resource actor with a randomly chosen variant; identity Pending |
 | `9` | `0x800289E0` | Set actor `+0x64 bit 0x100` |
 
-Stock Sub-Zero file `0x87` uses only tokens `1, 2, 3, 5, 6, 10, 11, 16` and callback `1` in its script region `+0x1B0..+0xFD4` (linear sweep; no undecodable words). The MKT donor comparison of this grammar is owned by [MKT adapter primitives](MKT-Adapter-Primitives#animation-script-grammar-translation).
+Stock Sub-Zero file `0x87` uses only tokens `1, 2, 3, 5, 6, 10, 11, 16` and callback `1` in its script region `+0x1B0..+0xFF8`. The region decodes linearly with no undecodable words, and re-encoding it reproduces the file byte for byte (`src/mkmszr/fighter_import`). The region ends with code-referenced pointer words at `+0xFC4..+0xFD8` rather than scripts; for example, `+0xFD0` holds `+0xD90`, the rocket/Ice loop loaded by the projectile child. The MKT donor comparison of this grammar is owned by [MKT adapter primitives](MKT-Adapter-Primitives#animation-script-grammar-translation).
 
 ## Dynamic gameplay texture-slot record
 

@@ -38,6 +38,7 @@ The test workflow uses Python 3.11 for pushes to `main`, `refactor/**`, and `fea
 | `test_seed.py` | Seed generation and domain determinism |
 | `test_runtime_v1.py` | Historical/compatibility Runtime V1 layout, reference payload, and Fire persistence pipeline contract |
 | `test_runtime_v2.py` | Current Runtime V2 0x3B0-code/0x50-state repartition and versioned state-header contract |
+| `test_fighter_import.py` | Fighter-importer Step 0: script grammar decode/assemble round trip, label relocation, dialect differences, translation rules. **ROM-backed** (skipped unless `MKMSZR_CLEAN_ROM` / `MKMSZR_MKT_ROM` name the supported clean ROMs): stock file-`0x87` byte-identical re-encode, Sektor donor tables and special commands, and donor Run → the Runtime-confirmed v05 live Run script |
 
 ## What CI proves
 
@@ -57,7 +58,7 @@ Game-state-dependent correctness therefore remains unresolved by CI alone. A rep
 - Per-patch write-overlap audit: only intended overlaps, such as successive owners extending the shared file-`0x1A` end word at ROM `0xA514C`, and the guarded Toasty call trampoline at ROM `0xAFA8C` inside the box-indicator region.
 - Hook checks: four-box action hook `0x80015B4C` (stock redefines `v0`/`v1` immediately; no live `a0`/`a1`/temporaries); box-indicator wrapper (displaced callee `0x8001EAE4` takes no stack arguments, following call `0x8002018C` takes no arguments); lifecycle v06 replays (see [Persistence, inventory, and lifecycle](Persistence-Inventory-and-Lifecycle)).
 
-Gap: no automated test runs the full `patch_rom` composition, because CI has no ROM. A ROM-gated matrix test (skipped unless a ROM path is supplied) remains a candidate.
+Gap: no automated test runs the full `patch_rom` composition, because CI has no ROM. A ROM-gated matrix test (skipped unless a ROM path is supplied) remains a candidate; `test_fighter_import.py` (2026-11-07) establishes the `MKMSZR_CLEAN_ROM` / `MKMSZR_MKT_ROM` environment-variable convention for such tests.
 
 ## Wiki publication
 
