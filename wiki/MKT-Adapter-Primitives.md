@@ -264,7 +264,7 @@ Interpreter field correspondence. These offsets are engine-local, not a portable
 
 Callbacks 17 and 23 change the cursor, and callback 22 reads the following frame, so a static walker must model them.
 
-**Corpus census (linear sweep).** The fighter-ID-indexed heap table `0x800A247C` (start/end pairs) and dictionary table `0x800A2578` list 19 unique heaps for IDs 0–31. Token totals across them: `1:374, 2:96, 3:224, 4:305, 5:47, 6:159, 7:5, 8:22, 9:16, 10:2634, 11:59, 12:116, 13:9, 14:187, 15:8`. Every heap decodes completely except 43 words in the shared male-ninja heap `0x6298A0`; that block is probably embedded non-script data (Pending). Token 10 is concentrated in victim/reaction slots.
+**Corpus census (linear sweep).** The fighter-ID-indexed heap table `0x800A247C` (start/end pairs) and dictionary table `0x800A257C` (directly after it; corrected 2026-11-07 from an off-by-one `0x800A2578`, cross-checked against the male-ninja dictionary `0x6B8550` and the robot dictionary `0x906A90` used by the preserved builders) list 19 unique heaps for IDs 0–31. Token totals across them: `1:374, 2:96, 3:224, 4:305, 5:47, 6:159, 7:5, 8:22, 9:16, 10:2634, 11:59, 12:116, 13:9, 14:187, 15:8`. Every heap decodes completely except 43 words in the shared male-ninja heap `0x6298A0`; that block is probably embedded non-script data (Pending). Token 10 is concentrated in victim/reaction slots.
 
 **Robot heap** (ROM `0x8881C0..0x8E79B0`; IDs 7 Sektor, 8 Cyrax, 14 Smoke):
 
@@ -283,7 +283,13 @@ No other callback is reachable from Sektor's attacker-side scripts.
 3. **Fold token 8** for the imported fighter ID.
 4. **Map or drop donor sound and palette operations** explicitly.
 
-**Coverage:** Static-confirmed rules; no translator implementation exists yet.
+**Coverage:** Static-confirmed rules. **Step 0 tooling is Implementation/CI-confirmed (2026-11-07):** `src/mkmszr/fighter_import` provides the shared grammar (both dialects), a phase-aware decoder, a label-relocating assembler and verifier, a byte-exact MKMSZ file-`0x87` model, the MKT donor reader (heaps, dictionaries, slot tables, frame records, command catalogue including robot inline handlers) and rule-based fragment translation. Its ROM-backed tests reproduce:
+
+- stock file `0x87` byte for byte;
+- Sektor's four special commands;
+- the Runtime-confirmed v05 live Run script from the donor Run fragment.
+
+The frame map for the Run test is taken from v05. No ROM is patched by this tooling, and asset generation and host phase fitting are not yet automated.
 
 ## Strike and reaction translation
 
