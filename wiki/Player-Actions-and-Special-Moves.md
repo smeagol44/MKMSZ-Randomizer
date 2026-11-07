@@ -481,6 +481,24 @@ The durable conclusion is the **v6 lifecycle model**, not the v8 movement behavi
 
 The old forced-X crossover attempt is not a reusable host primitive and is not accepted donor behavior. Donor-side pass-through/no-repel semantics are documented in [MKT adapter primitives](MKT-Adapter-Primitives).
 
+## Teleport-uppercut host findings (2026-11-07)
+
+These host facts came out of the Sektor teleport proof line, v01–v08 ([proof history](Sektor-Takeover-Proof-History#teleport-uppercut-proof-line-v01v08-2026-11-07)). Each is labelled. "Runtime-confirmed" means the user observed it on bounded routes with the named proof.
+
+| Finding | Evidence |
+|---|---|
+| **Uncancellable special.** `0x80049F90` (native special begin) stops the actor and faces the opponent. It sets actor `+0x64 \|= 4` and ctrl `+0x6BE \|= 0x10`, and swaps the player input map `0x802E7DFC` to the busy map `0x8009F988` via `0x8002B05C`. The normal map `0x8009F9E8` comes back through the exit chain. Setting only the lock `0x800BF308` leaves the move cancellable by every button and special. | Static-confirmed; **Runtime-confirmed** in v06 (v05 negative control). |
+| **Descriptor selector and condition.** Selector 0 refuses an airborne start (ctrl `+0x6B2` or `+0x6B0` set); selector 1 refuses only when `+0x6BE & 0x1C`. A condition function returns `0x8000` (accept) or `0x4000` (reject); the parser `0x8004A0E0` stops on `0x4000`. A condition that rejects up front prevents the "airborne start with no target falls as if hit" failure. | Static-confirmed; Runtime-confirmed in v05/v06. |
+| **Strike record pointer must be KSEG0.** `0x8002BADC` refuses records whose top nibble is not `8` (check at `0x8002BB24`), so a KSEG1 payload record never hits. A copy on the stack works. | Static-confirmed; Runtime-confirmed in v02. |
+| **Strike record fields.** The record is 16 bytes: box `x, y, w, h`, then `+0x08` reaction (high byte) and aux. `+0x0A` holds damage (high byte) and chip damage (low byte, block path `0x8002DD5C`), and `+0x0E/+0x0F` is a trailer. Player attacks pick records through `0x8002E978` with the per-type table `0x800AF340`. Stock uppercut: animation slot `0x0B`, selector 8, record `0030 FFEE 002A 003B 0802 2409 0001 0E02`, reaction `0x08` → victim routine `0x800507D0` (reaction table `0x800A1190`, block table `0x800A1290`). Reactions `0x04` and `0x05` are sweep and crouch-punch. | Static-confirmed; reaction `0x08` Runtime-confirmed as an uppercut in v04+. |
+| **Airborne counter keeps a custom air action alive.** The per-tick controller check `0x80024BA8` installs the stock fall routine `0x80025230`, replacing the running callback, when no floor region (`0x80025ED4`) or attach object matches and the ctrl `+0x6B0` word (attach flag + airborne counter `+0x6B2`) is zero. The stock jump increments `+0x6B2` every air tick (`0x80032308`). A custom air arc must do the same and clear it on landing and before `0x800328FC`, because `0x8002B690` makes the exit play the airborne fall `0x80053D28` while it is set. | Static-confirmed; **Runtime-confirmed** in v07 (v03–v06 negative controls). |
+| **Corner pushback.** Uppercut flight callback `0x80052E88` → `0x80052700(1)`: if the victim is within `0x82` (`0x104` for type `0xB`) of a wall in the knock direction (`0x80052788` → `0x80034C8C`) and victim `+0x6CC ≥ 1`, it installs `0x80052EA8` on the attacker (victim `+0x640`). That routine is a backward hop-fall when airborne and a slide when grounded. Placing the attacker on the wall side of the victim avoids it. | Static-confirmed; trigger Runtime-observed in v07, avoidance Runtime-confirmed in v08. |
+| **Walls.** These are boxes at `*(0x802E729C)`: count `0x802C0D58`, stride `0x3C`, active byte `0x800C2458[i]`, with x/y/z centre and size fields. `0x80034C8C(actor, &left, &right)` returns the distance from the actor's x to the nearest wall edge on each side, in whole world units (default 100000). Wall collision `0x80025498` tests the actor's **centre point** only. | Static-confirmed. |
+| **Relative placement units.** `0x80031208(actor, dx, dy)` takes whole world units and negates `dx` when the actor is flipped (`+0x8C & 0x10`). A path actor's (`+0xDC ≠ 0`) offset becomes a path-parameter step; otherwise it is rotated by yaw and added as `<<8`. `0x8003188C` toggles facing. | Static-confirmed; used Runtime-confirmed in v08. |
+| **Integrator and gravity.** Engine physics `0x80024F3C` adds `grav << 1` to velocity (or `>> 1` with `+0x8C & 0x800`) unless the actor is attached. The integrator `0x80018080` adds `(v >> 8) + (v >> 7)`, snaps to the ground, and applies a zero-gravity ground stick unless `+0xF0` is set. Animation advance `0x800304C0` clears `+0xF0` on entry. An adapter that adds gravity in its own loop doubles it. | Static-confirmed; Runtime-confirmed in v02/v06. |
+| **Visibility.** Hiding through actor `+0x64` bit `0x20` left Sektor invisible in Wind (v01). Sink/emerge instead use descriptor-only aliases plus a transparent frame. Actors flagged `+0x8C & 0x2000` copy the player every frame but are **not** the drop shadow; hiding them had no visible effect. The drop-shadow renderer is still unlocated. | Runtime-observed v01/v05; shadow: Pending. |
+| **Camera width.** On ordinary stages the camera depth (`0x802C1BB4`) is `0x200` and F (`0x8009A8E8`) is `0x100`, so the visible ground width is 640 world units. The off-screen test is `0x80035260`, with projection `0x80024754`. | Static-confirmed. |
+
 ## Current host-side boundaries
 
 Established:
@@ -494,6 +512,8 @@ Established:
 - strike dispatch and collision/reaction entry points;
 - native action lock and exit/control restoration;
 - callback self-reentry hazard and bounded cleanup requirement.
+
+- one complete imported special (Sektor teleport uppercut, proof v08): uncancellable begin, airborne-start descriptor, custom air arc with the airborne counter, stock uppercut strike, wall-aware placement ([findings](#teleport-uppercut-host-findings-2026-11-07)).
 
 Not established here:
 

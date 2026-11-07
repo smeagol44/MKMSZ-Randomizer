@@ -15,3 +15,13 @@ The 50 original builder scripts from the user-supplied `MKMSZR_sektor-investigat
 They are preserved for provenance and are excluded from `ruff`. Most builders take a previous proof ROM as input, and several need the PS1 MKT members `CHARS1/ROBOT.DAT` and `CODE/ROBOT.BIN`. The kit's `build.py`, its `recipes.json` dependency chain, the v53/v54 recovery bridge and the 73 archival XOR replays are **not** copied here; the full kit stays in the Library. Reproduced identities and the takeover change map are recorded in the Wiki under [Sektor takeover proof history](../../wiki/Sektor-Takeover-Proof-History.md#build-kit-reproduction-and-takeover-change-map-2026-11-07).
 
 These are disposable investigation builders, not production code. Do not apply their proof caves or allocations to production compositions.
+
+## `teleport/` (added 2026-11-07)
+
+Builders `MKMSZR_build_sektor_teleport_v01.py` … `v19.py` for the Sektor teleport-uppercut proof line, the first imported MKT special (`F,F + LK`). Each one is self-contained and takes only the two clean ROMs:
+
+```bash
+python3 MKMSZR_build_sektor_teleport_v08.py <clean MKMSZ USA Rev. 0 .z64> <MKT USA Rev. 2 .z64> -o MKMSZR_sektor-teleport_common-proof_v08.z64
+```
+
+They hash-guard both inputs and every patched site. All of them reproduce their issued ROMs byte-for-byte. v08 is the Runtime-confirmed bounded move. v09 adds Sektor's MKT teleport sound, which is Runtime-confirmed. v10 drops the landing thud. v11 matches MKT's juggle timing. v12–v15 import Sektor's MKT voice set (v15 accepted). v16–v18 add Sektor's MKT combos (v18 restores the late-knee frames). From v19 the action code comes from `src/mkmszr/fighter_import` (the builder adds the repository's `src` to `sys.path`); v19's ROM is byte-identical to v18's. Identities, version changes, the proof-only footprint and known limits are in the Wiki under [Sektor takeover proof history](../../wiki/Sektor-Takeover-Proof-History.md#teleport-uppercut-proof-line-v01v08-2026-11-07). They are excluded from `ruff` like `original_builders/`. The payload arena, loader stub and descriptor replacement are Reverse Elbow v6 proof infrastructure, not production allocations.

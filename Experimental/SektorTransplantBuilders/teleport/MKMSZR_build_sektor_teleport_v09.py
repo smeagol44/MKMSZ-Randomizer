@@ -1,0 +1,1196 @@
+from pathlib import Path
+from collections import Counter
+from functools import lru_cache
+import argparse, bisect, hashlib
+
+parser = argparse.ArgumentParser(description='Build MKMSZR Sektor teleport proof v09: v05-equivalent Sektor body repacked as 16-colour 4-bpp Type-5, plus the genuine MKT Sektor F,F+LK teleport uppercut on the Reverse Elbow v6 host lifecycle, with the donor teleport and landing sounds.')
+parser.add_argument('clean_rom', type=Path, help='Clean supported MKMSZ USA Rev. 0 .z64')
+parser.add_argument('mkt_rom', type=Path, help='MKT USA Rev. 2 N64 donor .z64')
+parser.add_argument('-o', '--output', type=Path, default=Path('MKMSZR_sektor-teleport_common-proof_v09.z64'))
+parser.add_argument('--v53', type=Path, default=None, help='Optional runtime-confirmed v53 ROM for an additional 129-frame inheritance cross-check')
+args = parser.parse_args()
+clean_path = args.clean_rom
+mkt_path = args.mkt_rom
+out_path = args.output
+
+clean = clean_path.read_bytes()
+mkt = mkt_path.read_bytes()
+assert hashlib.sha256(clean).hexdigest() == '9c18254abf6722b95aa782fcd310bd95f6bcf147da66beb77ce32ca90673ffc6'
+assert hashlib.sha256(mkt).hexdigest() == '30efdbe266dda8b8b12652a8d0a71b3b4bfec88bdf11ed12c219f5c4e1eaf7bb'
+
+
+
+MB = 0x8881C0
+ROBO_DICT = mkt[0x906A90:0x906B90]
+assert len(ROBO_DICT) == 0x100
+ORIG_FILE87_ROM = 0x748920
+CLEAN_SIZE = 0x459E0
+RR = 0xF40000
+TYPE_START = 0x14AC
+TYPE_END = 0x41684
+PALETTE_OFF = 0x4584C
+SAFE_V49 = 0x4E544
+ZERO_BLOCK = b'\0' * 8
+# Exact runtime-confirmed v53 native Sektor TLUT lower half.
+SEKTOR_PALETTE32 = bytes.fromhex(
+    '0000defec63cb5baa95898f790b2843a88568014842f842d842b800880048003'
+    'f7bdef7be739d6b5ce73bdefb5adad6ba52998c690848c638842842180008000'
+)
+assert len(SEKTOR_PALETTE32) == 64
+
+
+def be16(b, o): return int.from_bytes(b[o:o+2], 'big')
+def be32(b, o): return int.from_bytes(b[o:o+4], 'big')
+def put32(b, o, v): b[o:o+4] = int(v & 0xffffffff).to_bytes(4, 'big')
+def s16(v): return v - 0x10000 if v & 0x8000 else v
+def s32(v): return v - 0x100000000 if v & 0x80000000 else v
+def align4(v): return (v + 3) & ~3
+def align2(v): return (v + 1) & ~1
+
+def m32(rel): return be32(mkt, MB + rel)
+def is_donor_shape(rel):
+    return isinstance(rel, int) and rel > 0 and MB + rel + 8 <= len(mkt) and m32(rel) == rel + 8 and m32(rel + 4) == 0
+
+
+class BitReader:
+    def __init__(self, data): self.data = data; self.bit = 0
+    def read(self, n):
+        v = 0
+        for _ in range(n):
+            byte = self.data[self.bit >> 3]
+            sh = 7 - (self.bit & 7)
+            self.bit += 1
+            v = (v << 1) | ((byte >> sh) & 1)
+        return v
+
+
+class BitWriter:
+    def __init__(self): self.out = bytearray(); self.cur = 0; self.n = 0; self.bits = 0
+    def write(self, v, n):
+        assert n >= 0 and (n == 0 or 0 <= v < (1 << n))
+        self.bits += n
+        for sh in range(n-1, -1, -1):
+            self.cur = (self.cur << 1) | ((v >> sh) & 1)
+            self.n += 1
+            if self.n == 8:
+                self.out.append(self.cur); self.cur = 0; self.n = 0
+    def finish(self):
+        if self.n:
+            self.out.append(self.cur << (8-self.n)); self.cur = 0; self.n = 0
+        return bytes(self.out)
+
+
+def dec_15(src):
+    n = int.from_bytes(src[:4], 'big') & 0xffffff
+    p = 4; out = bytearray()
+    while len(out) < n:
+        ch = src[p]; p += 1
+        if ch & 0x80:
+            out += bytes((0,)) * ((ch & 0x7f) + 1)
+        elif ch & 0x40:
+            out.append((ch >> 3) & 7)
+            if len(out) < n: out.append(ch & 7)
+        else:
+            pix = ch & 7
+            if pix == 0:
+                pix = (ch >> 3) & 7
+                cnt = src[p]; p += 1
+                out += bytes((pix,)) * cnt
+            else:
+                cnt = ((ch >> 3) & 7) + 3
+                out += bytes((pix,)) * cnt
+    assert len(out) == n
+    return bytes(out)
+
+
+def dec_22_24(src, dictb=ROBO_DICT):
+    typ = src[0]
+    n = int.from_bytes(src[:4], 'big') & 0xffffff
+    if typ == 24:
+        top = src[4:8]; fp = 8; mini = None
+    elif typ == 23:
+        top = None; mini = src[4]; fp = 5
+    elif typ == 22:
+        top = None; mini = 0; fp = 4
+    else:
+        raise ValueError(typ)
+    flip_len = src[fp]; fp += 1
+    if flip_len & 0x80:
+        flip_len = ((flip_len & 0x7f) << 8) | src[fp]; fp += 1
+    flip_data = src[fp:]
+    sp = fp + flip_len
+    bit_count = 8
+    fi = 0
+    flip = flip_data[fi] if flip_data else 0
+    fi += 1 if flip_data else 0
+    out = bytearray()
+    while len(out) < n:
+        ch = src[sp]; sp += 1
+        if ch & 0x80:
+            idx = (ch & 0x7f) << 1
+            if flip & 0x80: out.extend((dictb[idx+1], dictb[idx]))
+            else: out.extend((dictb[idx], dictb[idx+1]))
+            bit_count -= 1
+            if bit_count == 0:
+                flip = flip_data[fi]; fi += 1; bit_count = 8
+            else:
+                flip = (flip << 1) & 0xff
+        else:
+            sw = ch >> 5; ch &= 0x1f
+            if sw == 3:
+                cnt = src[sp]; sp += 1; out += bytes((ch,)) * cnt
+            elif sw == 2:
+                if top is None:
+                    cnt = ch + 3; pix = mini
+                else:
+                    cnt = (ch & 7) + 3; pix = top[(ch >> 3) & 3]
+                out += bytes((pix,)) * cnt
+            elif sw == 1:
+                out.append(ch); out.append(ch)
+            else:
+                out.append(ch)
+    assert len(out) == n
+    return bytes(out)
+
+
+def make_blocks(padded, stride, eh):
+    assert stride % 4 == 0 and eh % 2 == 0
+    out = []
+    for by in range(0, eh, 2):
+        for bx in range(0, stride, 4):
+            out.append(
+                padded[by*stride+bx:by*stride+bx+4] +
+                padded[(by+1)*stride+bx:(by+1)*stride+bx+4]
+            )
+    return out
+
+
+def donor_frame(rel):
+    o = MB + rel
+    assert be32(mkt, o) == rel + 8 and be32(mkt, o+4) == 0, hex(rel)
+    sub = o + 8
+    image_rel = be32(mkt, sub)
+    packed = be32(mkt, sub+4)
+    anchor = be32(mkt, sub+8)
+    h = (packed >> 16) & 0xffff
+    w = packed & 0xffff
+    x = s16((anchor >> 16) & 0xffff)
+    y = s16(anchor & 0xffff)
+    src = mkt[MB + image_rel:]
+    typ = src[0]
+    if typ == 15: raw = dec_15(src)
+    elif typ in (22, 23, 24): raw = dec_22_24(src)
+    else: raise ValueError((hex(rel), typ, hex(image_rel)))
+    stride = align4(w)
+    assert len(raw) == h * stride, (hex(rel), typ, w, h, len(raw))
+    eh = align2(h)
+    if eh > h: raw += bytes(stride * (eh-h))
+    return dict(w=w,h=h,x=x,y=y,stride=stride,eh=eh,padded=raw,blocks=make_blocks(raw,stride,eh),codec=typ,donor=rel)
+
+
+def visible_rows(fr):
+    return [fr['padded'][y*fr['stride']:y*fr['stride']+fr['w']] for y in range(fr['h'])]
+
+
+# MKT mechanical arm has its own 8-color MECARM_P palette. Convert the donor
+# RGBA5551 colors into MKMSZ's A1BGR555 color space, then bind them to the closest
+# entries already present in the runtime-confirmed native Sektor TLUT.
+MECARM_RGBA5551=[0x07C0,0xD6B9,0xB5B1,0x94A9,0x6B5F,0x4215,0x294F,0x18CB]
+TARGET_TLUT=[int.from_bytes(SEKTOR_PALETTE32[i:i+2],'big') for i in range(0,64,2)]
+def target_rgb(v): return (v&31,(v>>5)&31,(v>>10)&31)
+def rgba5551_to_target(v):
+    r=(v>>11)&31; g=(v>>6)&31; b=(v>>1)&31; a=v&1
+    return (a<<15)|(b<<10)|(g<<5)|r
+ARM_TO_SEKTOR={0:0}
+for i,v in enumerate(MECARM_RGBA5551[1:],1):
+    c=target_rgb(rgba5551_to_target(v))
+    ARM_TO_SEKTOR[i]=min(range(1,32),key=lambda j:sum((a-b)**2 for a,b in zip(c,target_rgb(TARGET_TLUT[j]))))
+assert ARM_TO_SEKTOR=={0:0,1:17,2:19,3:20,4:22,5:24,6:25,7:26}
+
+def composite(body, arm):
+    # MKT anchors are actor-relative; nonzero arm pixels overlay the full body.
+    bx0, by0 = -body['x'], -body['y']
+    ax0, ay0 = -arm['x'], -arm['y']
+    minx = min(bx0, ax0); miny = min(by0, ay0)
+    maxx = max(bx0+body['w'], ax0+arm['w'])
+    maxy = max(by0+body['h'], ay0+arm['h'])
+    w = maxx-minx; h = maxy-miny
+    stride = align4(w); eh = align2(h)
+    out = bytearray(stride*eh)
+    def blit(fr, x0, y0, remap=None):
+        ox=x0-minx; oy=y0-miny
+        for yy,row in enumerate(visible_rows(fr)):
+            dst=(oy+yy)*stride+ox
+            for xx,p in enumerate(row):
+                if p:
+                    out[dst+xx] = remap[p] if remap is not None else p
+    blit(body,bx0,by0); blit(arm,ax0,ay0,ARM_TO_SEKTOR)
+    raw=bytes(out)
+    return dict(w=w,h=h,x=-minx,y=-miny,stride=stride,eh=eh,padded=raw,blocks=make_blocks(raw,stride,eh),codec='flattened-22+15')
+
+
+
+# v53 common takeover mapping.
+slot_cfg = {
+    0x00: dict(name='idle', donor=0x1D4, target=0x2EC, words=[0x1768,0x1780,0x1794,0x17A8,0x17BC,1,0x1D4], mode='inplace'),
+    0x01: dict(name='walk-f', donor=0x230, target=0x3C0, n=9, mode='inplace'),
+    0x02: dict(name='walk-b', donor=0x254, target=0x3EC, n=9, mode='inplace'),
+    0x03: dict(name='turn', donor=0x21C, target=0x418, n=5, mode='inplace'),
+    0x04: dict(name='crouch', donor=0x278, target=0x42C, n=4, mode='inplace'),
+    0x05: dict(name='crouch-turn', donor=0x2FC, target=0x43C, n=6, mode='inplace'),
+    0x06: dict(name='crouch-block', donor=0x288, target=0x458, n=4, mode='inplace'),
+    0x07: dict(name='crouch-hit', donor=0x298, target=0x468, n=4, mode='inplace'),
+    0x08: dict(name='crouch-punch', donor=0x314, target=0x47C, n=8, mode='inplace'),
+    0x09: dict(name='crouch-high-kick', donor=0x354, n=10, mode='relocated'),
+    0x0A: dict(name='crouch-low-kick', donor=0x334, target=0x4C0, n=8, mode='inplace'),
+    0x0B: dict(name='uppercut', donor=0x37C, target=0x49C, n=9, mode='inplace'),
+    0x0C: dict(name='standing-block', donor=0x50C, target=0x624, n=4, mode='inplace'),
+    0x0E: dict(name='high-punch', donor=0x3A0, target=0x504, n=28, mode='inplace'),
+    0x0F: dict(name='low-punch', donor=0x410, target=0x574, n=27, mode='inplace'),
+    0x11: dict(name='standing-high-kick', donor=0x5EC, n=13, mode='packed'),
+    0x12: dict(name='standing-low-kick', donor=0x51C, n=13, mode='relocated'),
+    0x13: dict(name='knee', donor=0x550, target=0x684, n=7, mode='inplace'),
+    0x14: dict(name='sweep', donor=0x594, target=0x704, n=12, mode='inplace'),
+    0x15: dict(name='roundhouse', donor=0x5C4, target=0x6DC, n=10, mode='inplace'),
+    0x16: dict(name='jump', donor=0x620, target=0x734, n=4, mode='inplace'),
+    0x17: dict(name='jump-kick', donor=0x630, target=0x744, n=7, mode='inplace'),
+    0x18: dict(name='flip-punch', donor=0x668, target=0x77C, n=7, mode='inplace'),
+    0x19: dict(name='flip-kick', donor=0x64C, target=0x760, n=7, mode='inplace'),
+    0x1A: dict(name='forward-flip', donor=0x684, n=8, mode='relocated'),
+    0x1B: dict(name='back-flip', donor=0x6A4, n=8, mode='relocated'),
+    0x1C: dict(name='hit-high', donor=0x70C, target=0x7E8, n=5, mode='inplace'),
+    0x1D: dict(name='hit-low', donor=0x720, target=0x7FC, n=5, mode='inplace'),
+    0x1E: dict(name='knockdown', donor=0x808, target=0x874, n=9, mode='inplace'),
+    0x1F: dict(name='sweep-fall', donor=0x1100, target=0x8B4, n=9, mode='inplace'),
+    0x20: dict(name='stumble', donor=0x734, n=17, mode='relocated'),
+    0x21: dict(name='getup', donor=0x82C, target=0x898, n=7, mode='inplace'),
+    0x22: dict(name='sweep-getup', donor=0x1124, target=0x8D8, n=6, mode='inplace'),
+}
+for cfg in slot_cfg.values():
+    if 'words' not in cfg: cfg['words'] = [m32(cfg['donor'] + 4*i) for i in range(cfg['n'])]
+    else: cfg['n'] = len(cfg['words'])
+    cfg['shapes'] = [v for v in cfg['words'] if is_donor_shape(v)]
+assert slot_cfg[0x0B]['words'] == [0x1A54,0x1A68,0x1A7C,0x1A90,5,0x1AA4,0,0x1A90,0]
+assert slot_cfg[0x14]['words'] == [0x1E28,0x1E3C,0x1E50,6,1,0x1E64,0x1E78,0,0x1E8C,0x1EA0,0x1EB4,0]
+assert slot_cfg[0x20]['words'] == [0x21AC,0x21C0,0x21D4,0x21E8,0x21AC,0x21FC,0x2210,0,0x21AC,0x21C0,0x21D4,0x21E8,0x21AC,0x21FC,0x2210,1,0x754]
+
+old_shapes=[]
+for slot in sorted(slot_cfg):
+    for rel in slot_cfg[slot]['shapes']:
+        if rel not in old_shapes: old_shapes.append(rel)
+assert len(old_shapes)==129
+old_frames={rel:donor_frame(rel) for rel in old_shapes}
+
+# New v54 visuals.
+RUN_RELS=[0x2708,0x271C,0x2730,0x2744,0x2758,0x276C]  # RBRUN1,3,5,7,9,11
+COMBO_RELS=[0x1C0C+i*0x14 for i in range(10)]            # RBELBOCOMBO1..10
+BODY_REL=0x22EC                                           # RBSHOLDER4
+ARM_RELS=[0x2318,0x2340,0x237C,0x2390,0x23B8,0x23CC,0x2408]  # seven sampled poses across Sektor's mechanical-arm arc
+TELE_RELS=[0x2F08,0x2B48,0x2B5C,0x2B70,0x2B84]  # teleport: last frame of donor slot 0x0D + secondary slot 3
+new_frames={r:donor_frame(r) for r in RUN_RELS+COMBO_RELS+[BODY_REL]+ARM_RELS+TELE_RELS}
+THROW_KEYS=[('throw-composite',r) for r in ARM_RELS]
+throw_frames={k:composite(new_frames[BODY_REL],new_frames[k[1]]) for k in THROW_KEYS}
+assert (throw_frames[('throw-composite',0x23B8)]['w'],throw_frames[('throw-composite',0x23B8)]['h'],throw_frames[('throw-composite',0x23B8)]['x'],throw_frames[('throw-composite',0x23B8)]['y'])==(114,115,88,-5)
+
+# Compact v05 corpus: retail N64 MKT is the sole Run-pose authority.
+# Keep only RBRUN1,3,5,7,9,11. The six WIMP-derived even poses and the
+# rejected PS1 Run path are intentionally absent from both data and build inputs.
+base_frame_cache={**old_frames}
+for r in RUN_RELS+COMBO_RELS+TELE_RELS: base_frame_cache[r]=new_frames[r]
+base_frame_cache.update(throw_frames)
+base_keys=old_shapes+RUN_RELS+COMBO_RELS+THROW_KEYS+TELE_RELS
+base_patterns=set()
+for k in base_keys: base_patterns.update(p for p in base_frame_cache[k]['blocks'] if p!=ZERO_BLOCK)
+frame_cache=dict(base_frame_cache)
+# 16-colour normalization: exact 32->16 index map recovered from the visually accepted
+# MKMSZR_sektor-16color_common-proof_v01 (every source index maps to exactly one target).
+MAP32TO16=[0,12,11,3,3,14,9,13,5,5,7,7,7,7,1,1,2,2,12,6,6,10,10,4,4,15,8,8,1,1,1,1]
+for k in list(frame_cache):
+    fr=dict(frame_cache[k]); fr['padded']=bytes(MAP32TO16[p] for p in fr['padded'])
+    fr['blocks']=make_blocks(fr['padded'],fr['stride'],fr['eh']); frame_cache[k]=fr
+    assert max(fr['padded'])<16
+# v04: the only generated asset is a transparent frame; sink/emerge use descriptor-only aliases
+# of resident frames (anchor shifted, image shared), emitted in the teleport section.
+EMPTY_KEY=('empty',0)
+frame_cache[EMPTY_KEY]=dict(w=4,h=2,x=0,y=0,stride=4,eh=2,padded=bytes(8),blocks=make_blocks(bytes(8),4,2),codec='derived')
+DERIVED_KEYS=[EMPTY_KEY]
+
+def split_even(seq,n):
+    L=len(seq); return [seq[(i*L)//n:((i+1)*L)//n] for i in range(n) if (i*L)//n<((i+1)*L)//n]
+# 58 inherited entropy groups + 4 Run groups + Throw + Combo = 64 model records.
+# Frame count falls from 158 to 152 solely by deleting the six non-retail Run poses.
+old_groups=split_even(old_shapes,58); run_groups=split_even(RUN_RELS,4)
+groups=old_groups+run_groups+[THROW_KEYS,COMBO_RELS+TELE_RELS+DERIVED_KEYS]
+all_keys=old_shapes+RUN_RELS+COMBO_RELS+THROW_KEYS+TELE_RELS+DERIVED_KEYS
+assert len(groups)==64 and len(all_keys)==158
+
+freqs=[]
+for g in groups:
+    c=Counter()
+    for k in g:c.update(p for p in frame_cache[k]['blocks'] if p!=ZERO_BLOCK)
+    freqs.append(c)
+all_patterns=set().union(*(set(c) for c in freqs))
+# Ordering priority found statically best for this exact shared dictionary: new Combo,
+# Throw, restored Run, then inherited corpus. It changes compression only, never pixels.
+order=[len(groups)-1,len(groups)-2]+list(range(58,62))+list(range(58))
+patterns=sorted(all_patterns,key=lambda p:tuple(-freqs[i].get(p,0) for i in order)+(p,))
+pidx={p:i for i,p in enumerate(patterns)}
+
+
+
+def best_partition(mf,K=13):
+    used=sorted((pidx[p],w,p) for p,w in mf.items())
+    idx=[x[0] for x in used]; wt=[x[1] for x in used]; pref=[0]
+    for w in wt: pref.append(pref[-1]+w)
+    n=len(used)
+    @lru_cache(None)
+    def dp(pos,k):
+        if pos>=n:return (0,())
+        if k==0:return (10**30,None)
+        base=idx[pos];best=(10**30,None)
+        for bits in range(1,17):  # native decoder safety: never emit a 0-bit normal class
+            q=bisect.bisect_left(idx,base+(1<<bits),pos,n)
+            if q==pos:continue
+            rc,rp=dp(q,k-1);cost=bits*(pref[q]-pref[pos])+rc
+            if rp is not None and cost<best[0]:best=(cost,((base,bits,pos,q),)+rp)
+        return best
+    _cost,plan=dp(0,K); assert plan is not None
+    if len(plan)<K:
+        base=plan[-1][0] if plan else 0
+        plan=plan+tuple((base,1,n,n) for _ in range(K-len(plan)))
+    cmap={}
+    for ci,(base,bits,a,q) in enumerate(plan):
+        for j in range(a,q):ix,w,p=used[j];cmap[p]=(ci,ix-base,bits)
+    assert len(cmap)==len(mf) and len(plan)==13 and all(x[1]>=1 for x in plan)
+    return plan,cmap
+
+model_plans=[];model_maps=[]
+for mf in freqs:
+    pl,cm=best_partition(mf);model_plans.append(pl);model_maps.append(cm)
+assert all(bits>=1 for pl in model_plans for _base,bits,_a,_q in pl)
+ZERO_BITS=[2,2,3];ZERO_BASES=[0,4,8]
+@lru_cache(None)
+def zero_plan(n):
+    if n==0:return (0,())
+    best=(10**9,None)
+    for zi,(bits,base) in enumerate(zip(ZERO_BITS,ZERO_BASES)):
+        for extra in range(1<<bits):
+            cnt=base+extra+1
+            if cnt<=n:
+                pc,pp=zero_plan(n-cnt);cost=pc+4+bits
+                if cost<best[0]:best=(cost,pp+((13+zi,extra,bits,cnt),))
+    return best
+
+streams={};frame_model={}
+for mid,g in enumerate(groups):
+    cm=model_maps[mid]
+    for k in g:
+        fr=frame_cache[k];bw=BitWriter();bw.write(mid,6);bl=fr['blocks'];i=0
+        while i<len(bl):
+            if bl[i]==ZERO_BLOCK:
+                j=i+1
+                while j<len(bl) and bl[j]==ZERO_BLOCK:j+=1
+                _,zp=zero_plan(j-i)
+                for sym,extra,bits,_ in zp:bw.write(sym,4);bw.write(extra,bits)
+                i=j
+            else:
+                ci,extra,bits=cm[bl[i]];bw.write(ci,4);bw.write(extra,bits);i+=1
+        stream=bw.finish()
+        while len(stream)&3:stream+=b'\0'
+        streams[k]=stream;frame_model[k]=mid
+STREAM_BYTES=sum(map(len,streams.values()))
+
+
+# Shared table: every model record points to the same physical pattern array.
+
+def pack_pattern(block):
+    bw=BitWriter()
+    for px in block:
+        assert 0<=px<16; bw.write(px,4)
+    out=bw.finish(); assert len(out)==4; return out
+
+table=bytearray((2).to_bytes(2,'big')+len(groups).to_bytes(2,'big'))
+for pl in model_plans:
+    rec=bytearray(104)
+    rec[0:4]=(0).to_bytes(4,'big')
+    rec[4:6]=(4).to_bytes(2,'big')
+    for i,(_base,bits,_a,_q) in enumerate(pl): rec[6+i*2:8+i*2]=bits.to_bytes(2,'big')
+    for i,bits in enumerate(ZERO_BITS): rec[32+i*2:34+i*2]=bits.to_bytes(2,'big')
+    for i,(base,_bits,_a,_q) in enumerate(pl): rec[40+i*4:44+i*4]=base.to_bytes(4,'big')
+    for i,base in enumerate(ZERO_BASES): rec[92+i*4:96+i*4]=base.to_bytes(4,'big')
+    table+=rec
+for p in patterns: table+=pack_pattern(p)
+TABLE_BYTES=len(table)
+
+
+# Clean-derived ROM + v53 selector/logo convenience, no helper and stock arena.
+rom=bytearray(clean)
+def words_bytes(vals): return b''.join(int(v&0xffffffff).to_bytes(4,'big') for v in vals)
+def jal(va): return 0x0C000000|((va>>2)&0x03ffffff)
+DEBUG_MENU_VA=0x8000D0B8; A_ROUTE_JAL_ROM=0xE028; WRAP_LAST_ROM=0xDD60; COUNT_ROM=0xDD64
+MENU_TABLE_ROM=0x9B7DC; SELECTION_LOAD_ROM=0x15CD0; MAPPER_ROM=0x9A700; MAPPER_VA=0x80099B00
+ORIGINAL_MENU_POINTERS=(0x800AA034,0x800AA02C,0x800AA024,0x800AA01C,0x800AA014,0x800AA00C,0x800AA004,0x800A9FF4,0x800A9FEC,0x800A9FE0,0x800A9FD0,0)
+SAFE_MENU_POINTERS=(0x800AA034,0x800AA02C,0x800AA024,0x800AA01C,0x800AA014,0x800AA00C,0x800A9FEC,0x800A9FE0,0,0,0,0)
+MAPPER_WITH_SKIP=bytes.fromhex('3C03800C 8C6311E0 2C610006 50200001 24630002 3C028029 03E00008 A0441C0C')
+assert be32(rom,A_ROUTE_JAL_ROM)==0x0C00A0C3 and be32(rom,WRAP_LAST_ROM)==0x2414000A and be32(rom,COUNT_ROM)==0x2A82000B
+assert bytes(rom[MENU_TABLE_ROM:MENU_TABLE_ROM+48])==words_bytes(ORIGINAL_MENU_POINTERS)
+put32(rom,A_ROUTE_JAL_ROM,jal(DEBUG_MENU_VA)); put32(rom,WRAP_LAST_ROM,0x24140007); put32(rom,COUNT_ROM,0x2A820008)
+rom[MENU_TABLE_ROM:MENU_TABLE_ROM+48]=words_bytes(SAFE_MENU_POINTERS)
+put32(rom,SELECTION_LOAD_ROM,jal(MAPPER_VA)); put32(rom,SELECTION_LOAD_ROM+4,0)
+rom[MAPPER_ROM:MAPPER_ROM+len(MAPPER_WITH_SKIP)]=MAPPER_WITH_SKIP
+BOOT=0x7A3F4
+assert bytes(rom[BOOT:BOOT+24])==bytes.fromhex('0C01F113 00000000 0C01F143 00000000 0C018576 24040080')
+put32(rom,BOOT,0x10000003)
+assert bytes(rom[0x1C9A0:0x1C9A8])==clean[0x1C9A0:0x1C9A8] and be32(rom,0x66F64)==0x2442F420
+assert bytes(rom[0xA5154:0xA5160])==bytes(12) and bytes(rom[0x9AD84:0x9ADD4])==bytes(0x50)
+assert set(rom[0xF10000:0xF10400])=={0xFF}
+
+clean_f87=bytes(clean[ORIG_FILE87_ROM:ORIG_FILE87_ROM+CLEAN_SIZE])
+assert set(rom[RR:RR+CLEAN_SIZE])=={0xFF}
+rom[RR:RR+CLEAN_SIZE]=clean_f87
+put32(rom,0xA5664,RR); put32(rom,0xA566C,0)
+assert bytes(rom[RR+PALETTE_OFF:RR+PALETTE_OFF+128])==clean_f87[PALETTE_OFF:PALETTE_OFF+128]
+# Accepted 16-colour Sektor palette (entries 0..15 of MKMSZR_sektor-16color_common-proof_v01); 16..31 unused.
+SEKTOR_PALETTE16=bytes.fromhex('00008001f39cad79a94a8435d294842c908490b2b9cec63ce73a843a98f798c6')
+rom[RR+PALETTE_OFF:RR+PALETTE_OFF+64]=SEKTOR_PALETTE16+SEKTOR_PALETTE32[32:]
+
+# Stock Type-5 corpus and stock direct script references.
+def f32(off): return int.from_bytes(clean_f87[off:off+4],'big')
+stock_shapes=[]
+for off in range(TYPE_START,TYPE_END,4):
+    if off+20<=CLEAN_SIZE and f32(off)==off+8 and f32(off+4)==0:
+        image=f32(off+8)
+        if 0<=image<CLEAN_SIZE and clean_f87[image:image+4]==b'\x05\0\0\0': stock_shapes.append(off)
+assert len(stock_shapes)==341
+stock_shape_set=set(stock_shapes)
+stock_ref_positions=[off for off in range(0x1B0,TYPE_START,4) if f32(off) in stock_shape_set]
+assert len(stock_ref_positions)==584
+
+# The four original append-script areas are externally dead once their six primary roots are redirected.
+dead_regions=[(0x4E0,0x504),(0x634,0x684),(0x798,0x7E8),(0x810,0x84C)]
+redirect_slots={0x09,0x11,0x12,0x1A,0x1B,0x20}
+for lo,hi in dead_regions:
+    for p in range(0,TYPE_START,4):
+        v=f32(p)
+        if lo<=v<hi and not (lo<=p<hi) and not (p<0x104 and p//4 in redirect_slots):
+            raise AssertionError(('external dead-script reference',hex(p),hex(v),hex(lo),hex(hi)))
+
+# Reclaim stock fighter corpus and write optimized shared table.
+rom[RR+TYPE_START:RR+TYPE_END]=b'\xFF'*(TYPE_END-TYPE_START)
+rom[RR+TYPE_START:RR+TYPE_START+len(table)]=table
+reclaim_cursor=align4(TYPE_START+len(table))
+
+# Item packer: 152 frame blobs + one 52-byte exact high-kick script. Maximize reclaimed bytes.
+item_sizes={k:32+len(streams[k]) for k in all_keys}
+HIGH_KICK_ITEM=('script',0x11); item_sizes[HIGH_KICK_ITEM]=13*4
+items=list(all_keys)+[HIGH_KICK_ITEM]
+cap=TYPE_END-reclaim_cursor
+capu=cap//4
+reachable=[False]*(capu+1); parent=[None]*(capu+1); reachable[0]=True
+for ii,k in enumerate(items):
+    u=item_sizes[k]//4; assert item_sizes[k]%4==0
+    for s in range(capu-u,-1,-1):
+        if reachable[s] and not reachable[s+u]:
+            reachable[s+u]=True; parent[s+u]=(s,ii)
+best=max(i for i,v in enumerate(reachable) if v)
+packed=set(); cur=best
+while cur:
+    prev,ii=parent[cur]; packed.add(items[ii]); cur=prev
+assert sum(item_sizes[k] for k in packed)==best*4
+
+item_offsets={}; append_cursor=align4(CLEAN_SIZE)
+for k in items:
+    if k in packed:
+        off=reclaim_cursor; reclaim_cursor+=item_sizes[k]
+    else:
+        off=append_cursor; append_cursor+=item_sizes[k]
+    item_offsets[k]=off
+assert reclaim_cursor<=TYPE_END
+NEW_END=append_cursor
+# Exact compact six-retail-pose footprint from the prior static audit.
+assert NEW_END<SAFE_V49, (hex(NEW_END),hex(SAFE_V49))
+assert NEW_END==align4(CLEAN_SIZE) or set(clean[RR+CLEAN_SIZE:RR+NEW_END])=={0xFF}
+put32(rom,0xA5668,RR+NEW_END)
+
+# Emit all frame blobs at their packed locations.
+shape_map={}
+for k in all_keys:
+    fr=frame_cache[k]; shape=item_offsets[k]; stream=streams[k]
+    sub=shape+8; image=sub+12; shape_map[k]=shape
+    put32(rom,RR+shape,sub); put32(rom,RR+shape+4,0); put32(rom,RR+sub,image)
+    rom[RR+sub+4:RR+sub+6]=fr['w'].to_bytes(2,'big'); rom[RR+sub+6:RR+sub+8]=fr['h'].to_bytes(2,'big')
+    rom[RR+sub+8:RR+sub+10]=(fr['x']&0xffff).to_bytes(2,'big'); rom[RR+sub+10:RR+sub+12]=(fr['y']&0xffff).to_bytes(2,'big')
+    rom[RR+image:RR+image+4]=b'\x05\0\0\0'; put32(rom,RR+image+4,TYPE_START-image); put32(rom,RR+image+8,(fr['eh']<<16)|fr['stride'])
+    rom[RR+image+12:RR+image+12+len(stream)]=stream
+assert all((x&3)==0 for x in shape_map.values())
+
+# Physical script layout: five former append scripts live in their now-dead stock regions; only High Kick is packed as an item.
+script_targets={
+    0x09:0x798,   # Crouch High Kick in old Forward-Flip region
+    0x11:item_offsets[HIGH_KICK_ITEM],
+    0x12:0x810,   # Low Kick in old Stumble region
+    0x1A:0x4E0,   # Forward Flip in old Crouch-High-Kick region
+    0x1B:0x7C0,   # Back Flip at its original body, after relocated Crouch HK
+    0x20:0x634,   # Stumble across the two dead standing-kick bodies
+}
+assert script_targets[0x09]+40==0x7C0
+assert script_targets[0x1B]+32<=0x7E8
+assert script_targets[0x20]+68<=0x684
+assert script_targets[0x12]+52<=0x84C
+assert script_targets[0x1A]+32<=0x504
+
+capacity={0x00:11,0x01:11,0x02:11,0x03:5,0x04:4,0x05:7,0x06:4,0x07:5,0x08:8,0x0A:8,0x0B:9,0x0C:4,0x0E:28,0x0F:27,0x13:7,0x14:12,0x15:10,0x16:4,0x17:7,0x18:7,0x19:7,0x1C:5,0x1D:5,0x1E:9,0x1F:9,0x21:7,0x22:8}
+hybrid_slots={0x0E,0x0F,0x14}
+owned_script_positions=set(); translated={}
+for slot,cfg in slot_cfg.items():
+    target = script_targets.get(slot,cfg.get('target'))
+    donor_words=cfg['words']
+    if slot in hybrid_slots:
+        stock_words=[f32(cfg['target']+4*i) for i in range(cfg['n'])]
+        vals=[shape_map[v] if is_donor_shape(v) else stock_words[i] for i,v in enumerate(donor_words)]
+    else:
+        vals=[]
+        for value in donor_words:
+            if is_donor_shape(value): vals.append(shape_map[value])
+            elif cfg['donor']<=value<cfg['donor']+cfg['n']*4 and (value-cfg['donor'])%4==0:
+                vals.append(target+(value-cfg['donor']))
+            else: vals.append(value)
+    if slot in script_targets:
+        put32(rom,RR+slot*4,target)
+        for i,v in enumerate(vals): put32(rom,RR+target+4*i,v); owned_script_positions.add(target+4*i)
+    else:
+        target=cfg['target']; capw=capacity[slot]; assert len(vals)<=capw
+        for i in range(capw):
+            put32(rom,RR+target+4*i,vals[i] if i<len(vals) else 0); owned_script_positions.add(target+4*i)
+    translated[slot]=vals
+
+# Existing v53 semantic guards remain true under relocation.
+assert translated[0x00]==[shape_map[x] for x in (0x1768,0x1780,0x1794,0x17A8,0x17BC)]+[1,0x2EC]
+assert translated[0x05]==[shape_map[0x1928],shape_map[0x193C],2,shape_map[0x1928],shape_map[0x1914],0]
+assert translated[0x0B][4]==5 and translated[0x14][3:5]==[6,0]
+assert translated[0x1A][-2:]==[1,script_targets[0x1A]+4]
+assert translated[0x1B][-2:]==[1,script_targets[0x1B]+4]
+assert translated[0x20][-2:]==[1,script_targets[0x20]+0x20]
+
+# Push: MKMSZ's 7-frame +0x1B0 sequence is the pushing animation. Sektor has no
+# dedicated push set in MKT, so retain the closest semantic substitute: the six
+# genuine Sektor Run poses across the seven native Push ticks.
+PUSH_TARGET=0x1B0
+clean_push=[f32(PUSH_TARGET+4*i) for i in range(9)]
+assert clean_push[7:]==[1,0x1B4]
+push_visual=[RUN_RELS[0],RUN_RELS[1],RUN_RELS[2],RUN_RELS[3],RUN_RELS[4],RUN_RELS[5],RUN_RELS[0]]
+push_words=[shape_map[x] for x in push_visual]+clean_push[7:]
+for i,v in enumerate(push_words): put32(rom,RR+PUSH_TARGET+4*i,v); owned_script_positions.add(PUSH_TARGET+4*i)
+assert be32(rom,RR+0x104+0x27*4)==0x1B0
+
+# Compact v05 live Run script: exactly six genuine retail N64 pose pointers,
+# followed immediately by the native MKMSZ loop token + root. No duplicated Run
+# pointers and no non-retail even-pose assets are generated or referenced.
+RUN_TARGET=0xEE8
+clean_run=[f32(RUN_TARGET+4*i) for i in range(14)]
+assert clean_run[12:]==[1,0xEE8]
+run_words=[shape_map[x] for x in RUN_RELS]+[1,RUN_TARGET]
+assert len(run_words)==8 and len(set(run_words[:6]))==6
+for i,v in enumerate(run_words):
+    put32(rom,RR+RUN_TARGET+4*i,v); owned_script_positions.add(RUN_TARGET+4*i)
+
+# Elbow/full combo: preserve all four MKMSZ native segments (3/2/3/5 visuals) and zeros.
+COMBO_TARGET=0x5E0
+combo_visual_pos=[0,1,2,4,5,7,8,9,11,12,13,14,15]
+combo_seq=[0,1,2,1,0,3,4,5,6,7,8,9,8]  # 1,2,3 / 2,1 / 4,5,6 / 7,8,9,10,9
+combo_words=[f32(COMBO_TARGET+4*i) for i in range(17)]
+assert [i for i,v in enumerate(combo_words) if v==0]==[3,6,10,16]
+for pos,ix in zip(combo_visual_pos,combo_seq): combo_words[pos]=shape_map[COMBO_RELS[ix]]
+for i,v in enumerate(combo_words): put32(rom,RR+COMBO_TARGET+4*i,v); owned_script_positions.add(COMBO_TARGET+4*i)
+assert be32(rom,RR+0x10*4)==COMBO_TARGET
+
+# Throw: the actual MKMSZ a_throw body is exactly 12 words / 9 visual shapes in three zero-terminated parts.
+# The command-heavy words beginning at +0x928 are a separate adjacent reaction/flip animation block and must not be rewritten as Throw.
+THROW_TARGET=0x8F8
+throw_visual_pos=[0,1,3,4,5,6,7,9,10]
+throw_stance=shape_map[0x17A8]  # RBSTANCE7; retail Sektor throw itself enters from this already-resident pose.
+throw_shapes={r:shape_map[('throw-composite',r)] for r in ARM_RELS}
+# MKMSZ has nine attacker visual slots in three zero-terminated parts. Downsample Sektor's much
+# longer throw into seven genuine mechanical-arm phases plus the genuine stance at entry/exit,
+# preserving every target separator/control word.
+# Runtime v54 observation: arm choreography leads the actual grab by one visual tick.
+# Shift the seven arm phases right by one MKMSZ visual slot; gameplay/victim timing is untouched.
+throw_sequence={
+    0:throw_stance,
+    1:throw_stance,
+    3:throw_shapes[0x2318],
+    4:throw_shapes[0x2340],
+    5:throw_shapes[0x237C],
+    6:throw_shapes[0x2390],
+    7:throw_shapes[0x23B8],
+    9:throw_shapes[0x23CC],
+    10:throw_shapes[0x2408],
+}
+for pos in throw_visual_pos:
+    put32(rom,RR+THROW_TARGET+4*pos,throw_sequence[pos]); owned_script_positions.add(THROW_TARGET+4*pos)
+# Exact non-shape words in the 12-word Throw body remain stock.
+for i in range(12):
+    if i not in throw_visual_pos: assert be32(rom,RR+THROW_TARGET+4*i)==f32(THROW_TARGET+4*i)
+assert be32(rom,RR+0x23*4)==THROW_TARGET
+# Adjacent +0x928 reaction/flip block is NOT part of Throw and must remain fallback-managed, never throw-owned.
+for p in (14,17,20,23,26,29):
+    assert THROW_TARGET+4*p not in owned_script_positions
+
+# Redirect every remaining direct stock Type-5 art reference to safe Sektor stance.
+fallback=shape_map[0x1768]; fallback_positions=[]
+for pos in stock_ref_positions:
+    if pos in owned_script_positions: continue
+    put32(rom,RR+pos,fallback); fallback_positions.append(pos)
+
+# Runtime-unported primary roots remain stock except 0x10/0x23 now explicitly mapped.
+for slot in (0x0D,0x24,0x25): assert be32(rom,RR+slot*4)==f32(slot*4)
+
+# Independent Type-5 decoder verifies all 152 emitted frames byte-for-byte against their chosen target buffers.
+def decode_generated(shape_off):
+    assert be32(rom,RR+shape_off)==shape_off+8 and be32(rom,RR+shape_off+4)==0
+    sub=shape_off+8; image=be32(rom,RR+sub)
+    assert bytes(rom[RR+image:RR+image+4])==b'\x05\0\0\0'
+    table_off=image+s32(be32(rom,RR+image+4)); assert table_off==TYPE_START
+    dims=be32(rom,RR+image+8); height=(dims>>16)&0xffff; width=dims&0xffff
+    rows=be16(rom,RR+table_off); mc=be16(rom,RR+table_off+2); assert rows==2 and mc==len(groups)
+    pbase=table_off+4+104*mc
+    br=BitReader(bytes(rom[RR+image+12:RR+NEW_END]))
+    mid=br.read(6); assert mid<mc
+    mo=table_off+4+104*mid; prel=be32(rom,RR+mo); bpp=be16(rom,RR+mo+4); assert bpp==4 and prel==0
+    nbits=[be16(rom,RR+mo+6+i*2) for i in range(13)]
+    zbits=[be16(rom,RR+mo+32+i*2) for i in range(3)]
+    bases=[be32(rom,RR+mo+40+i*4) for i in range(13)]
+    zbases=[be32(rom,RR+mo+92+i*4) for i in range(3)]
+    out=bytearray(width*height); bw=width//4; total=bw*(height//rows); bi=0
+    while bi<total:
+        code=br.read(4)
+        if code<13:
+            pi=bases[code]+br.read(nbits[code]); po=pbase+prel+pi*4; pbr=BitReader(bytes(rom[RR+po:RR+po+4])); vals=[pbr.read(4) for _ in range(8)]
+            by,bx=divmod(bi,bw)
+            for ry in range(2):
+                dst=(by*2+ry)*width+bx*4; out[dst:dst+4]=bytes(vals[ry*4:ry*4+4])
+            bi+=1
+        else:
+            zi=code-13; bi+=zbases[zi]+br.read(zbits[zi])+1; assert bi<=total
+    return bytes(out),mid,width,height
+
+for k in all_keys:
+    dec,mid,w,h=decode_generated(shape_map[k]); fr=frame_cache[k]
+    assert mid==frame_model[k] and w==fr['stride'] and h==fr['eh'] and dec==fr['padded']
+
+# Every original direct stock-shape site not explicitly rewritten by a mapped script is now the safe generated fallback.
+generated_shapes=set(shape_map.values())
+for pos in fallback_positions:
+    assert be32(rom,RR+pos)==fallback
+assert all((s&3)==0 for s in generated_shapes)
+# Every selected throw composite really contains visible mechanical-arm pixels beyond the body.
+for k in THROW_KEYS:
+    assert throw_frames[k]['padded']!=new_frames[BODY_REL]['padded']
+assert ARM_RELS==[0x2318,0x2340,0x237C,0x2390,0x23B8,0x23CC,0x2408]
+
+# Helper remains absent and stock arena restored.
+assert bytes(rom[0x1C9A0:0x1C9A8])==clean[0x1C9A0:0x1C9A8] and be32(rom,0x66F64)==0x2442F420
+assert bytes(rom[0xA5154:0xA5160])==bytes(12) and bytes(rom[0x9AD84:0x9ADD4])==bytes(0x50)
+assert set(rom[0xF10000:0xF10400])=={0xFF}
+
+# Optional cross-check: if runtime-confirmed v53 is beside the builder, verify all 129 inherited frame pixels/geometry exactly.
+v53_path = args.v53
+if v53_path is not None:
+    assert v53_path.exists(), v53_path
+    v53=v53_path.read_bytes(); assert hashlib.sha256(v53).hexdigest()=='65181aa5a270ec2ba404d01d02a8054ffba923991408a87465a25515b6b99e7f'
+    VF=v53[RR:RR+0x473D8]
+    def valid_v53_shape(s):
+        return 0<=s+20<len(VF) and be32(VF,s)==s+8 and be32(VF,s+4)==0 and 0<=be32(VF,s+8)<len(VF)-12 and VF[be32(VF,s+8):be32(VF,s+8)+4]==b'\x05\0\0\0'
+    v53_shapes=sorted({be32(VF,p) for p in range(0,len(VF)-3,4) if valid_v53_shape(be32(VF,p))})
+    assert len(v53_shapes)==129
+    # Decode with the same generic routine logic against v53's two-model table.
+    def decode_v53(s):
+        sub=s+8; image=be32(VF,sub); w=be16(VF,sub+4); h=be16(VF,sub+6); x=s16(be16(VF,sub+8)); y=s16(be16(VF,sub+10)); dims=be32(VF,image+8); eh=(dims>>16)&0xffff; stride=dims&0xffff
+        table=image+s32(be32(VF,image+4)); rows=be16(VF,table); mc=be16(VF,table+2); pb=table+4+104*mc; br=BitReader(VF[image+12:]); mid=br.read(6); mo=table+4+104*mid; prel=be32(VF,mo); bpp=be16(VF,mo+4)
+        nb=[be16(VF,mo+6+i*2) for i in range(13)]; zb=[be16(VF,mo+32+i*2) for i in range(3)]; bases=[be32(VF,mo+40+i*4) for i in range(13)]; zbase=[be32(VF,mo+92+i*4) for i in range(3)]
+        out=bytearray(stride*eh); bw=stride//4; total=bw*(eh//rows); bi=0
+        while bi<total:
+            code=br.read(4)
+            if code<13:
+                pi=bases[code]+br.read(nb[code]); po=pb+prel+pi*5; pbr=BitReader(VF[po:po+5]); vals=[pbr.read(5) for _ in range(8)]; by,bx=divmod(bi,bw)
+                for ry in range(2): out[(by*2+ry)*stride+bx*4:(by*2+ry)*stride+bx*4+4]=bytes(vals[ry*4:ry*4+4])
+                bi+=1
+            else:
+                zi=code-13; bi+=zbase[zi]+br.read(zb[zi])+1
+        return dict(w=w,h=h,x=x,y=y,stride=stride,eh=eh,padded=bytes(out))
+    for rel,s in zip(old_shapes,v53_shapes):
+        a=frame_cache[rel]; b=decode_v53(s)
+        assert all(a[k]==b[k] for k in ('w','h','x','y','stride','eh','padded')), (hex(rel),hex(s))
+
+# Preserve the v03 donor-equivalent cadence: ordinary MKMSZ Run rate 2 -> 3.
+# v05 preserves the runtime-confirmed v04 live script and rate; only physical Run storage is compacted.
+RUN_RATE_ROM = 0x2F7A0
+assert bytes(rom[RUN_RATE_ROM:RUN_RATE_ROM+4]) == bytes.fromhex('24040002')
+rom[RUN_RATE_ROM:RUN_RATE_ROM+4] = bytes.fromhex('24040003')
+
+
+# ============================================================================
+# Teleport v01 section (appended to the 16-colour/4-bpp v05-equivalent build).
+# Donor: MKT Rev. 2 Sektor F,F+LK -> do_body_propell(8) -> 0x80048368.
+# Host lifecycle: exact Runtime-confirmed Reverse Elbow v6 infrastructure
+# (file-0x1B raw payload at 0x801AF420, uncached entry, selector-3 bridge,
+# lock 0x800BF308, exit 0x800328FC + v6 non-returning fallback).
+# Disposable proof only. Silent (no SFX).
+# ============================================================================
+
+# ---- extra teleport scripts appended to file 0x87 ---------------------------
+TELE_POSE_REL = 0x2F08                       # last frame of donor slot 0x0D
+TELE_DROP_RELS = [0x2B48, 0x2B5C, 0x2B70, 0x2B70, 0x2B84]   # donor secondary slot 3
+LAND_RELS = [0x1EDC, 0x1EC8]                 # donor slot 0x16 frames [1], [0] (already resident)
+for r in [TELE_POSE_REL] + TELE_DROP_RELS + LAND_RELS + DERIVED_KEYS:
+    assert r in shape_map, r
+
+SCRIPT_BASE = align4(NEW_END)
+scripts = {}
+cur = SCRIPT_BASE
+def emit(name, words_):
+    global cur
+    scripts[name] = cur
+    for i, v in enumerate(words_):
+        put32(rom, RR + cur + 4 * i, v)
+    cur += 4 * len(words_)
+# Each script holds its last frame with a self-jump so later advances cannot run past it.
+DROP_RATE = 3                     # donor rate 5 @60 Hz ~= 2.5 target ticks
+# Descriptor-only aliases: shape [sub, 0] + sub [image, w|h, x|y'] sharing the base image.
+# Donor anchor convention: feet = h - anchor_y; moving the image down by d is anchor_y - d.
+# MKT sinks the sprite down over the floor and off the bottom of the screen (no floor clip).
+SINK_DEPTHS = [13, 28, 46, 66, 89, 113, 140, 170, 202, 236, 273, 311]   # donor 5.95 px/t60 + 0.584 px/t60^2, every 2 donor ticks
+EMERGE_DEPTHS = [311, 236, 170, 113, 66, 28]                              # rises back over ~the donor emerge time
+def alias(base_key, d):
+    global cur
+    shape = cur; sub = shape + 8; base_sub = shape_map[base_key] + 8
+    put32(rom, RR + shape, sub); put32(rom, RR + shape + 4, 0)
+    rom[RR + sub:RR + sub + 10] = rom[RR + base_sub:RR + base_sub + 10]          # image, w, h, x
+    y = int.from_bytes(rom[RR + base_sub + 10:RR + base_sub + 12], 'big', signed=True)
+    rom[RR + sub + 10:RR + sub + 12] = ((y - d) & 0xFFFF).to_bytes(2, 'big')
+    cur += 20
+    return shape
+sink_alias = [alias(TELE_POSE_REL, d) for d in SINK_DEPTHS]
+emerge_alias = [alias(TELE_DROP_RELS[0], d) for d in EMERGE_DEPTHS]
+sink = cur
+sink_words = [shape_map[TELE_POSE_REL]] + sink_alias + [shape_map[EMPTY_KEY]]
+emit('SINK', sink_words + [1, sink + 4 * (len(sink_words) - 1)])      # holds the transparent frame
+SINK_STEPS = len(sink_words) - 1
+drop = cur
+emerge_words = emerge_alias + [shape_map[TELE_DROP_RELS[0]]]
+EMERGE_STEPS = len(emerge_words) - 1                                   # last step shows the full first rise frame
+rise_words = [shape_map[r] for r in TELE_DROP_RELS[1:]]
+drop_words = emerge_words + [6, 1, DROP_RATE] + rise_words             # callback 1: set rate for the rise
+emit('DROP', drop_words + [1, drop + 4 * (len(drop_words) - 1)])
+landa = cur
+emit('LANDA', [shape_map[LAND_RELS[0]], 1, landa])
+landb = cur
+emit('LANDB', [shape_map[LAND_RELS[1]], 1, landb])
+TELE_END = cur
+assert set(clean[RR + SCRIPT_BASE:RR + TELE_END]) == {0xFF}
+NEW_END_TELE = align4(TELE_END)
+assert NEW_END_TELE < SAFE_V49, (hex(NEW_END_TELE), hex(SAFE_V49))
+put32(rom, 0xA5668, RR + NEW_END_TELE)
+
+# ---- tiny MIPS assembler ---------------------------------------------------
+REG = {n: i for i, n in enumerate(
+    'zero at v0 v1 a0 a1 a2 a3 t0 t1 t2 t3 t4 t5 t6 t7 s0 s1 s2 s3 s4 s5 s6 s7 t8 t9 k0 k1 gp sp fp ra'.split())}
+PAYLOAD_VA = 0xA01AF420                      # KSEG1 execution / data alias
+PAYLOAD_LIMIT = 0x800                         # v03: arena reservation widened to 0x801AF420..0x801AFC20 (same prefix mechanism as production's 16 KiB)
+
+class Asm:
+    def __init__(self, base):
+        self.base = base; self.code = []; self.labels = {}; self.fix = []
+    def pc(self): return self.base + 4 * len(self.code)
+    def label(self, n): assert n not in self.labels; self.labels[n] = self.pc()
+    def raw(self, w): self.code.append(w & 0xffffffff)
+    def i(self, op, rs, rt, imm): self.raw((op << 26) | (REG[rs] << 21) | (REG[rt] << 16) | (imm & 0xffff))
+    def r(self, rs, rt, rd, sh, fn): self.raw((REG[rs] << 21) | (REG[rt] << 16) | (REG[rd] << 11) | ((sh & 31) << 6) | fn)
+    def nop(self): self.raw(0)
+    def mult(self, rs, rt): self.r(rs, rt, 'zero', 0, 0x18)
+    def div(self, rs, rt): self.r(rs, rt, 'zero', 0, 0x1A)
+    def mflo(self, rd): self.r('zero', 'zero', rd, 0, 0x12)
+    def sra(self, rd, rt, sh): self.r('zero', rt, rd, sh, 0x03)
+    def subu(self, rd, rs, rt): self.r(rs, rt, rd, 0, 0x23)
+    def xor(self, rd, rs, rt): self.r(rs, rt, rd, 0, 0x26)
+    def sll(self, rd, rt, sh): self.r('zero', rt, rd, sh, 0x00)
+    def lhu(self, rt, off, rs): self.i(0x25, rs, rt, off)
+    def lh(self, rt, off, rs): self.i(0x21, rs, rt, off)
+    def jr_ra(self): self.raw(0x03E00008)   # caller supplies the delay-slot instruction next
+    def lui(self, rt, imm): self.i(0x0F, 'zero', rt, imm)
+    def ori(self, rt, rs, imm): self.i(0x0D, rs, rt, imm)
+    def addiu(self, rt, rs, imm): assert -0x8000 <= imm < 0x8000; self.i(0x09, rs, rt, imm)
+    def andi(self, rt, rs, imm): self.i(0x0C, rs, rt, imm)
+    def lw(self, rt, off, rs): self.i(0x23, rs, rt, off)
+    def sw(self, rt, off, rs): self.i(0x2B, rs, rt, off)
+    def sh(self, rt, off, rs): self.i(0x29, rs, rt, off)
+    def addu(self, rd, rs, rt): self.r(rs, rt, rd, 0, 0x21)
+    def and_(self, rd, rs, rt): self.r(rs, rt, rd, 0, 0x24)
+    def slt(self, rd, rs, rt): self.r(rs, rt, rd, 0, 0x2A)
+    def move(self, rd, rs): self.addu(rd, rs, 'zero')
+    def li(self, rt, v):
+        v &= 0xffffffff
+        if v < 0x8000 or v >= 0xFFFF8000: self.addiu(rt, 'zero', v - (1 << 32) if v >= 0x80000000 else v)
+        else:
+            self.lui(rt, v >> 16)
+            if v & 0xffff: self.ori(rt, rt, v & 0xffff)
+    def jal(self, va): self.raw((3 << 26) | ((va >> 2) & 0x03ffffff)); self.nop()
+    def sb(self, rt, off, rs): self.i(0x28, rs, rt, off)
+    def jal_label(self, n): self.fix.append((len(self.code), 'jal', n)); self.raw(3 << 26); self.nop()
+    def j_label(self, n): self.fix.append((len(self.code), 'j', n)); self.raw(2 << 26); self.nop()
+    def b(self, op, rs, rt, n): self.fix.append((len(self.code), 'b', n)); self.i(op, rs, rt, 0); self.nop()
+    def beq(self, a, b_, n): self.b(0x04, a, b_, n)
+    def bne(self, a, b_, n): self.b(0x05, a, b_, n)
+    def beqz(self, a, n): self.b(0x04, a, 'zero', n)
+    def bnez(self, a, n): self.b(0x05, a, 'zero', n)
+    def blez(self, a, n): self.b(0x06, a, 'zero', n)
+    def la(self, rt, n):
+        self.fix.append((len(self.code), 'la', n)); self.lui(rt, 0); self.ori(rt, rt, 0)
+    def bltz(self, a, n): self.fix.append((len(self.code), 'b', n)); self.raw((1 << 26) | (REG[a] << 21)); self.nop()
+    def bgez(self, a, n): self.fix.append((len(self.code), 'b', n)); self.raw((1 << 26) | (REG[a] << 21) | (1 << 16)); self.nop()
+    def link(self):
+        for idx, kind, n in self.fix:
+            tgt = self.labels[n]; pc = self.base + 4 * idx
+            if kind == 'la':
+                self.code[idx] = (self.code[idx] & 0xffff0000) | (tgt >> 16)
+                self.code[idx + 1] = (self.code[idx + 1] & 0xffff0000) | (tgt & 0xffff)
+            elif kind == 'b':
+                d = (tgt - (pc + 4)) // 4; assert -0x8000 <= d < 0x8000
+                self.code[idx] = (self.code[idx] & 0xffff0000) | (d & 0xffff)
+            else:
+                assert (tgt & 0xF0000000) == (pc & 0xF0000000)
+                op = 3 if kind == 'jal' else 2
+                self.code[idx] = (op << 26) | ((tgt >> 2) & 0x03ffffff)
+        return b''.join(w.to_bytes(4, 'big') for w in self.code)
+
+# ---- donor -> target physics (60 Hz donor ticks folded into 30 Hz target ticks) ----
+# MKMSZ Y integrates as y += vel*3/256 (world<<8) per tick; donor y += vel per tick (16.16).
+# Target per-tick displacement = 2 donor ticks x 0.85 (shared N64 Y script scale).
+# v02: calibrate by the same semantic action in both engines (the standard jump), not by assumed
+# pixel units. Donor jump: 0x8006EC50(yvel -0x88000, grav 0x6CCC); MKMSZ jump: 0x800321D0(yvel
+# -0xB47AE, grav 0x7851). The MKMSZ actor physics pass (0x80024F3C) applies gravity itself, so the
+# adapter only sets the fields. v01 added gravity again in its loop (3x effective gravity).
+VEL_RATIO = 0xB47AE / 0x88000
+GRAV_RATIO = 0x7851 / 0x6CCC
+def conv_vel(v): return int(v * VEL_RATIO)
+def conv_acc(a): return int(a * GRAV_RATIO)
+EMERGE_VEL = -int(conv_vel(0xC6666) * 0.9)   # v05: v04 apex was ~1.04 enemy heights vs MKT ~0.92 (user captures); 0.9x velocity
+GRAV_NOHIT = conv_acc(0xF000)     # donor post-emergence gravity
+GRAV_HIT = conv_acc(0xB000)       # donor gravity after a connected strike
+DROP_RATE = 3                     # donor rate 5 @60 Hz ~= 2.5 target ticks
+SINK_TICKS = 3                    # donor sink-to-screen-bottom ~5-6 donor ticks (ground snap prevents a real sink)
+HIDDEN_TICKS = 1                  # one settle tick at the target (v02: no hide bit; the donor is simply off-screen underground)
+AIR_CAP = 60                      # bounded airborne loop (2 s)
+X_OFFSET = -10                    # donor adjust_x(-12) x 0.80 X script scale (velocity lead omitted)
+
+STRIKE_WORDS = (0x0049FFF7, 0x00490057, 0x08021803, 0x00010E02)   # v08: damage 0x10->0x18, chip 2->3 (1.5x, user request)
+BEHIND = 40          # v08: emerge past the target (donor: match target, adjust_x(-12) behind, turn to face; MKT body push widens it)
+WALL_MARGIN = 4      # keep Sektor's centre this far outside a wall box (wall collision 0x80025498 is a centre-point test)
+MIN_SEP = 16         # if the far side has less room, nudge the target this far out of the corner
+F_WALLDIST = 0x80034C8C   # (actor, &left, &right): distance from actor x to the nearest wall box on each side
+#   # reaction/aux/trailer of stock uppercut record (selector 8)
+CUR = 0x802ECE20
+F_STOP, F_FIND, F_FACE, F_ADV, F_SLEEP = 0x8002B1C0, 0x80031D00, 0x80031EF0, 0x800304C0, 0x80028794
+F_RATE_INIT, F_RATE_ADV, F_OFFSET, F_STRIKE, F_EXIT = 0x80031724, 0x8003174C, 0x80031208, 0x8002BA04, 0x800328FC
+
+a = Asm(PAYLOAD_VA)
+RANGE_UNITS = 592   # 0.925 x starting-camera ground width: 2 * depth 0x200 * 160 / F 0x100 = 640 world units
+FRAME = 0x40
+REC = 0x30
+GROUND_FALL_VEL = conv_vel(0x5F333)    # donor phase-1 downward velocity (airborne start)
+GROUND_FALL_ACC = conv_acc(0x9599)
+FALL_CAP = 45
+ACTION_ID = 0x603                      # stock uppercut action id (0x800337E0)
+ACTOR_LIST = 0x80111C98                # active actor list head (0x80024650); next pointer at +0x00
+PLAYER_CTRL = 0x802C1AC0
+
+def set_cursor(off):
+    a.lw('t0', 0x98, 's1'); a.li('t1', off); a.addu('t0', 't0', 't1'); a.sw('t0', 0x6E4, 's0')
+def sleep_n(n, lbl):
+    a.li('s2', n); a.label(lbl); a.li('a0', 1); a.jal(F_SLEEP); a.addiu('s2', 's2', -1); a.bnez('s2', lbl)
+def in_range(fail):
+    for off in (0x2C, 0x30):
+        a.lw('t0', off, 's4'); a.lw('t1', off, 's1'); a.subu('t0', 't0', 't1')
+        a.sra('t9', 't0', 31); a.xor('t0', 't0', 't9'); a.subu('t0', 't0', 't9')
+        a.li('t1', RANGE_UNITS << 8); a.slt('t2', 't1', 't0'); a.bnez('t2', fail)
+def find_target(fail):
+    a.jal(F_FIND); a.beqz('v0', fail); a.lw('s4', 0x6E0, 'v0'); a.beqz('s4', fail)
+    a.lw('t0', 0xDC, 's4'); a.lw('t1', 0xDC, 's1'); a.bne('t0', 't1', fail)
+    in_range(fail)
+def strike_once(skip):
+    a.bnez('s3', skip); a.addiu('a0', 'sp', REC); a.move('a1', 'zero'); a.jal(F_STRIKE)
+    a.andi('v0', 'v0', 0xFFFF); a.li('t0', 0x4000); a.beq('v0', 't0', skip)
+    a.li('s3', 1); a.li('t0', GRAV_HIT); a.sw('t0', 0x10, 's1')
+def shadow_hide(tag):
+    # Player shadows are actors flagged +0x8C bit 0x2000 that copy the player record every frame
+    # (0x800186E0). Detach (clear 0x2000) and hide (+0x66 bit 0x20); remember it in s6.
+    a.li('s6', 0); a.lui('t0', ACTOR_LIST >> 16); a.lw('t0', ACTOR_LIST & 0xFFFF, 't0'); a.li('t3', 64)
+    a.label(tag + '_l'); a.beqz('t0', tag + '_d')
+    a.lhu('t1', 0x8C, 't0'); a.andi('t2', 't1', 0x2000); a.beqz('t2', tag + '_n')
+    a.andi('t1', 't1', 0xDFFF); a.sh('t1', 0x8C, 't0'); a.lhu('t2', 0x66, 't0'); a.ori('t2', 't2', 0x20); a.sh('t2', 0x66, 't0')
+    a.move('s6', 't0'); a.beq('zero', 'zero', tag + '_d')
+    a.label(tag + '_n'); a.lw('t0', 0, 't0'); a.addiu('t3', 't3', -1); a.bnez('t3', tag + '_l')
+    a.label(tag + '_d')
+def shadow_restore(tag):
+    a.beqz('s6', tag)
+    a.lhu('t1', 0x8C, 's6'); a.ori('t1', 't1', 0x2000); a.sh('t1', 0x8C, 's6')
+    a.lhu('t2', 0x66, 's6'); a.andi('t2', 't2', 0xFFDF); a.sh('t2', 0x66, 's6'); a.li('s6', 0)
+    a.label(tag)
+
+# ---------------- v09 donor sounds ----------------
+# MKT teleport 0x80048368 calls ft_sound(7): Sektor's fighter table 0x800A1D88[7] = event 0x104 (260)
+#   -> patch 141 -> subpatch 176 -> waveform 159. Landing 0x80076E48 calls triple_sound(0x18) = 0x8092
+#   (event 146, positional pan) -> patch 63 -> subpatch 109 -> waveform 75. The strike path plays no
+#   attacker-side sound (the MKMSZ victim reaction plays its own impact/voice).
+# Hosts: fully isolated MKMSZ chains (no descriptor or raw-call owner; patch number appears nowhere else
+#   in the sequence data; patch/subpatch/waveform uniquely owned), excluding the production Toasty
+#   (52/68/608/533) and Temple (329/486/329/319) hosts.
+SND_PARAM = 0x802C1188                 # parameter block used by 0x80064C18
+F_AUD_A, F_AUD_B, F_RAW_SOUND = 0x800008D4, 0x800008DC, 0x80080A88
+TELE_EVENT, LAND_EVENT = 335, 437
+# ---------------- action ----------------
+a.addiu('sp', 'sp', -FRAME)
+for n_, w_ in enumerate(STRIKE_WORDS):
+    a.li('t0', w_); a.sw('t0', REC + 4 * n_, 'sp')
+a.li('s6', 0)
+a.lui('t0', 0x802F); a.lw('s0', -0x31E0, 't0'); a.lw('s1', 0x6E0, 's0')
+a.lui('t0', 0x800C); a.li('t1', 1); a.sh('t1', -0xCF8, 't0')          # lock 0x800BF308 = 1
+a.li('t0', ACTION_ID); a.sh('t0', 0x6AA, 's0')                         # busy: uppercut action id
+a.move('a0', 's1'); a.jal(0x80049F90)                                  # native special-action begin
+a.li('a0', TELE_EVENT); a.jal_label('play')                               # v09: donor teleport sound
+find_target('exit')                                                     # condition already checked; re-check here
+set_cursor(scripts['SINK']); a.li('a0', 1); a.jal(F_RATE_INIT); a.move('a0', 's1'); a.jal(F_ADV)   # pose
+a.li('s7', 0)                                                           # donor sink-curve index reached while falling
+a.lw('t0', 0x30, 's1'); a.lw('t1', 0x6B4, 's0'); a.slt('t2', 't0', 't1'); a.beqz('t2', 'grounded')
+a.li('t0', GROUND_FALL_VEL); a.sw('t0', 0x18, 's1'); a.li('t0', GROUND_FALL_ACC); a.sw('t0', 0x10, 's1')
+a.li('s2', FALL_CAP)
+a.label('fall'); a.li('a0', 1); a.jal(F_SLEEP); a.addiu('s7', 's7', 1)
+a.lw('t0', 0x30, 's1'); a.lw('t1', 0x6B4, 's0'); a.slt('t2', 't0', 't1'); a.beqz('t2', 'fallen')
+a.addiu('s2', 's2', -1); a.bnez('s2', 'fall')
+a.label('fallen'); a.move('a0', 's1'); a.jal(F_STOP); a.sw('zero', 0x10, 's1'); a.sw('zero', 0x18, 's1')
+a.sh('zero', 0x6B2, 's0')
+a.label('grounded')
+# continue the sink at the same point of the donor curve the fall already reached
+a.li('t0', SINK_STEPS - 1); a.slt('t1', 't0', 's7'); a.beqz('t1', 'kok'); a.move('s7', 't0')
+a.label('kok')
+a.sll('t0', 's7', 2); a.lw('t1', 0x98, 's1'); a.addu('t0', 't0', 't1'); a.li('t1', scripts['SINK']); a.addu('t0', 't0', 't1')
+a.sw('t0', 0x6E4, 's0'); a.move('a0', 's1'); a.jal(F_ADV)
+a.li('s2', SINK_STEPS); a.subu('s2', 's2', 's7')
+a.label('sink'); a.li('a0', 1); a.jal(F_SLEEP); a.jal(F_RATE_ADV); a.addiu('s2', 's2', -1); a.bnez('s2', 'sink')
+find_target('emerge')
+# v08 placement (donor 0x80048368: match target, step behind it, face it). Sektor emerges on the far side
+# of the target, so the uppercut knocks the target away from any wall behind it; the stock corner pushback
+# (uppercut flight callback 0x80052E88 -> 0x80052700 -> attacker routine 0x80052EA8) needs the victim
+# within 0x82 of a wall in the knock direction.
+a.move('a0', 's1'); a.jal(F_FACE)                                       # forward = toward the target
+a.lw('t0', 0x2C, 's4'); a.lw('t1', 0x2C, 's1'); a.slt('s6', 't0', 't1')  # s6=1: target is on Sektor's -x side
+for off in (0xE0, 0x2C, 0x30, 0x34):
+    a.lw('t0', off, 's4'); a.sw('t0', off, 's1')
+a.move('a0', 's4'); a.addiu('a1', 'sp', 0x10); a.addiu('a2', 'sp', 0x14); a.jal(F_WALLDIST)
+a.lw('t0', 0x14, 'sp'); a.beqz('s6', 'far_ok'); a.lw('t0', 0x10, 'sp')   # wall room on the far side
+a.label('far_ok'); a.addiu('s5', 't0', -WALL_MARGIN)
+a.li('t1', BEHIND); a.slt('t2', 't1', 's5'); a.beqz('t2', 'r_le'); a.move('s5', 't1')   # s5 = min(BEHIND, room)
+a.label('r_le'); a.bgez('s5', 'r_pos'); a.li('s5', 0)
+a.label('r_pos')
+a.move('a0', 's1'); a.move('a1', 's5'); a.move('a2', 'zero'); a.jal(F_OFFSET)     # step forward past the target
+a.li('t1', MIN_SEP); a.slt('t2', 's5', 't1'); a.beqz('t2', 'placed')
+a.li('t1', MIN_SEP); a.subu('s2', 't1', 's5')                           # cornered: nudge the target out
+a.lw('s3', 0x2C, 's4')
+a.move('a0', 's4'); a.move('a1', 's2'); a.move('a2', 'zero'); a.jal(F_OFFSET)
+a.lw('t0', 0x2C, 's4'); a.slt('t1', 's3', 't0'); a.beq('t1', 's6', 'placed')        # moved toward Sektor's start side?
+a.move('a0', 's4'); a.subu('a1', 'zero', 's2'); a.sll('a1', 'a1', 1); a.move('a2', 'zero'); a.jal(F_OFFSET)
+a.label('placed')
+a.move('a0', 's1'); a.jal(F_FACE)                                       # turn around to face the target
+a.label('emerge')
+sleep_n(HIDDEN_TICKS, 'hidden')
+a.lw('s7', 0x30, 's1')                                                  # own ground reference for landing
+a.li('s3', 0)
+set_cursor(scripts['DROP']); a.li('a0', 1); a.jal(F_RATE_INIT); a.move('a0', 's1'); a.jal(F_ADV)
+a.li('s2', EMERGE_STEPS)
+a.label('emg'); a.li('a0', 1); a.jal(F_SLEEP); a.jal(F_RATE_ADV); a.addiu('s2', 's2', -1); a.bnez('s2', 'emg')
+# Uppercut arc driven by the adapter itself (engine-equivalent integration), so contact side effects
+# cannot alter it: v += 2g (0x80024F3C), y += (v>>8)+(v>>7) (integrator 0x80018080), velocity and
+# gravity fields kept 0, and +0xF0 re-set after every animation step (it suppresses the integrator's
+# zero-gravity ground stick; 0x800304C0 clears it on entry).
+a.li('s5', EMERGE_VEL); a.sw('zero', 0x18, 's1'); a.sw('zero', 0x10, 's1')
+a.sw('zero', 0x14, 's1'); a.sw('zero', 0x58, 's1')
+a.li('s2', AIR_CAP)
+# Airborne counter: the per-tick floor check 0x80024BA8 installs the stock fall routine 0x80025230 on the
+# player (replacing this process) when no floor region is found and the word at ctrl+0x6B0 (attach flag +
+# airborne counter +0x6B2) is zero. The stock jump increments +0x6B2 every airborne tick (0x80032308); do the same.
+a.label('air'); a.lhu('t0', 0x6B2, 's0'); a.addiu('t0', 't0', 1); a.sh('t0', 0x6B2, 's0')
+a.li('a0', 1); a.jal(F_SLEEP); a.jal(F_RATE_ADV)
+a.li('t0', 1); a.sw('t0', 0xF0, 's1')
+a.li('t1', GRAV_NOHIT); a.beqz('s3', 'g_ok'); a.li('t1', GRAV_HIT)
+a.label('g_ok'); a.sll('t1', 't1', 1); a.addu('s5', 's5', 't1')
+a.sra('t0', 's5', 8); a.sra('t1', 's5', 7); a.addu('t0', 't0', 't1')
+a.lw('t1', 0x30, 's1'); a.addu('t1', 't1', 't0'); a.sw('t1', 0x30, 's1')
+a.sw('zero', 0x18, 's1'); a.sw('zero', 0x10, 's1')
+a.bgez('s5', 'landcheck')
+a.bnez('s3', 'landcheck'); a.addiu('a0', 'sp', REC); a.move('a1', 'zero'); a.jal(F_STRIKE)
+a.andi('v0', 'v0', 0xFFFF); a.li('t0', 0x4000); a.beq('v0', 't0', 'landcheck'); a.li('s3', 1)
+a.label('landcheck'); a.bltz('s5', 'airnext')
+a.lw('t0', 0x30, 's1'); a.slt('t2', 't0', 's7'); a.beqz('t2', 'snap')
+a.label('airnext'); a.addiu('s2', 's2', -1); a.bnez('s2', 'air')
+a.label('snap'); a.sw('s7', 0x30, 's1'); a.sw('zero', 0xF0, 's1')
+a.label('landed'); a.move('a0', 's1'); a.jal(F_STOP); a.sw('zero', 0x10, 's1'); a.sw('zero', 0x18, 's1'); a.sh('zero', 0x6B2, 's0')
+a.li('a0', LAND_EVENT); a.jal_label('play')                               # v09: donor landing sound
+set_cursor(scripts['LANDA']); a.move('a0', 's1'); a.jal(F_ADV); sleep_n(2, 'la')
+set_cursor(scripts['LANDB']); a.move('a0', 's1'); a.jal(F_ADV); sleep_n(2, 'lb')
+a.label('exit')
+a.sh('zero', 0x6B2, 's0')                                               # never exit through the airborne fall reaction
+a.move('a0', 's1'); a.jal(F_EXIT)
+a.lui('t0', 0x802F); a.lw('s0', -0x31E0, 't0'); a.lui('t1', 0x8004); a.addiu('t1', 't1', -0x70C4)
+a.sw('t1', 0x6F0, 's0'); a.move('a0', 's0'); a.move('a1', 't1'); a.jal(0x80032CD4)
+a.addiu('a0', 's0', 8); a.jal(0x8007CB84)
+a.label('hang'); a.beq('zero', 'zero', 'hang')
+
+# ---------------- sound player (v09) ----------------
+# Same tail as stock 0x80064C18 for a descriptor {event, 0x7F, 0, 0, 0} with a2 = 0x40.
+a.label('play')
+a.addiu('sp', 'sp', -0x18); a.sw('ra', 0x14, 'sp'); a.sw('s0', 0x10, 'sp'); a.move('s0', 'a0')
+a.li('t0', SND_PARAM); a.li('t1', 0xB); a.sw('t1', 0, 't0'); a.li('t1', 0x7F); a.sb('t1', 4, 't0')
+a.li('t1', 0x40); a.sb('t1', 5, 't0'); a.sh('zero', 8, 't0')
+a.jal(F_AUD_A); a.jal(F_AUD_B)
+a.move('a0', 's0'); a.move('a1', 'zero'); a.li('a2', SND_PARAM); a.jal(F_RAW_SOUND)
+a.jal(F_AUD_A); a.jal(F_AUD_B)
+a.lw('ra', 0x14, 'sp'); a.lw('s0', 0x10, 'sp'); a.jr_ra(); a.addiu('sp', 'sp', 0x18)
+
+# ---------------- descriptor condition ----------------
+# Returns 0x4000 (reject) or 0x8000 (accept), like stock conditions; parser 0x8004A0E0 exits on 0x4000.
+a.label('cond')
+a.addiu('sp', 'sp', -0x20); a.sw('ra', 0x1C, 'sp'); a.sw('s1', 0x18, 'sp'); a.sw('s4', 0x14, 'sp')
+a.jal(0x8004A4A4); a.andi('v0', 'v0', 0xFFFF); a.li('t0', 0x4000); a.beq('v0', 't0', 'c_rej')
+a.lui('t0', 0x800C); a.lh('t1', -0xCF8, 't0'); a.bnez('t1', 'c_rej')     # another special/our move in progress
+a.lui('t0', PLAYER_CTRL >> 16); a.lw('t0', PLAYER_CTRL & 0xFFFF, 't0'); a.lw('s1', 0x6E0, 't0')
+find_target('c_rej')
+a.li('v0', 0x8000); a.beq('zero', 'zero', 'c_ret')
+a.label('c_rej'); a.li('v0', 0x4000)
+a.label('c_ret'); a.lw('ra', 0x1C, 'sp'); a.lw('s1', 0x18, 'sp'); a.lw('s4', 0x14, 'sp')
+a.jr_ra(); a.addiu('sp', 'sp', 0x20)
+payload = a.link()
+COND_VA = a.labels['cond']
+assert len(payload) <= PAYLOAD_LIMIT, hex(len(payload))
+PAYLOAD_ROM = 0x00F10000
+assert set(rom[PAYLOAD_ROM:PAYLOAD_ROM + PAYLOAD_LIMIT]) == {0xFF}
+rom[PAYLOAD_ROM:PAYLOAD_ROM + PAYLOAD_LIMIT] = payload + b'\0' * (PAYLOAD_LIMIT - len(payload))
+
+# ---- exact Reverse Elbow v6 infrastructure (guarded against clean bytes) ----
+def guarded(off, old_hex, new_hex):
+    old = bytes.fromhex(old_hex); new = bytes.fromhex(new_hex)
+    assert bytes(rom[off:off + len(old)]) == old, hex(off)
+    rom[off:off + len(new)] = new
+guarded(0x4B654, '2cc20003', '2cc20004')                                  # permit selector 3
+guarded(0x66F64, '2442f420', '2442fc20')                                  # arena prefix reservation (0x800)
+guarded(0x66FE0, '27bdffe83c02801b2442f420', '08026861000000002442fc20')  # loader hook
+guarded(0x9AD84, '00' * 0x50, (
+    '27bdffe83c02801b2442fc20afbf00103c04800fac82ecd00c0198e400000000'
+    '2404001b3c05801b24a5f4200c01975900000000'
+    '3c0880113409270fa509200e8fbf001027bd001803e0000800000000'
+).ljust(0xA0, '0'))                                                        # loader stub (+ v6 max EXP)
+guarded(0xA1C5C, '00' * 16, 'a01af42024040003' + '08012a93' + '00000000')  # table[3] + thunk
+guarded(0xA5154, '00' * 8, f'{PAYLOAD_ROM:08x}{PAYLOAD_ROM + PAYLOAD_LIMIT:08x}')  # file 0x1B
+for off, old in ((0xA6FFC, '0104036b'), (0xA7000, '09470591'), (0xA7004, '11ad0d16'), (0xA700C, '1ccf4e20')):
+    guarded(off, old, '270f270f')                                         # v6 EXP caps
+# Low Kick descriptor -> F,F + LK teleport (stock condition retained, as in v6)
+def descriptor(masks, sel, cond, action, window, right, left):
+    b = bytearray(0x2C)
+    b[0:2] = masks[0].to_bytes(2, 'big'); b[2:4] = masks[1].to_bytes(2, 'big')
+    b[4:8] = sel.to_bytes(4, 'big'); b[8:12] = cond.to_bytes(4, 'big'); b[12:16] = action.to_bytes(4, 'big')
+    b[16:18] = window.to_bytes(2, 'big')
+    for n, t in enumerate(right): b[0x12 + 2 * n:0x14 + 2 * n] = t.to_bytes(2, 'big')
+    for n, t in enumerate(left): b[0x1E + 2 * n:0x20 + 2 * n] = t.to_bytes(2, 'big')
+    return bytes(b)
+STOCK_LK = descriptor((0x40, 0x40), 0, 0x8004A4A4, 0x80049CB0, 0x14, (8, 7), (9, 7))
+TELE_LK = descriptor((0x40, 0x40), 1, COND_VA, 0x800A1060, 0x18, (9, 9), (8, 8))
+guarded(0xB1B68, STOCK_LK.hex(), TELE_LK.hex())
+assert be16(rom, 0xB1B94) == 0                                            # table sentinel intact
+
+# ---- v09: donor sounds into isolated MKMSZ hosts (guarded) ----
+import zlib as _zlib
+_ctl = _zlib.decompress(mkt[0xA8F588:0xA8F588 + 0x17AE0], -15)
+_defs = _zlib.decompress(mkt[0xAA7090:0xAA7090 + 0x7A6], -15)
+assert hashlib.sha256(_ctl).hexdigest().startswith('8dc6f036dc795cba')
+assert hashlib.sha256(_defs).hexdigest().startswith('6cdfcf946ba78f49')
+def _donor(event_id):
+    d = _defs[event_id * 16:event_id * 16 + 16]
+    ln = int.from_bytes(d[4:8], 'big'); off = int.from_bytes(d[8:12], 'big')
+    track = _zlib.decompress(mkt[0xAA7836 + off:], -15)[:ln]
+    pid = int.from_bytes(track[0:4], 'big'); sid = int.from_bytes(_ctl[pid * 4 + 2:pid * 4 + 4], 'big')
+    sub = _ctl[0x6E0 + sid * 20:0x6E0 + sid * 20 + 20]; wid = int.from_bytes(sub[10:12], 'big')
+    wav = _ctl[0x2828 + wid * 24:0x2828 + wid * 24 + 24]; pred = _ctl[0x4F48 + wid * 264:0x4F48 + wid * 264 + 264]
+    so = 0xAB4370 + int.from_bytes(wav[0:4], 'big'); sl = int.from_bytes(wav[4:8], 'big')
+    return track, sub, wav, pred, mkt[so:so + sl]
+MSZ_SSEQ_TRACKS, MSZ_PATCH, MSZ_SUB, MSZ_WAVE, MSZ_PRED, MSZ_TBL = 0x979240, 0x947CB8, 0x948768, 0x94C138, 0x950490, 0x9B0650
+SOUND_ROM = 0xF20000
+SOUND_LIMIT = 0xF21000
+# (donor event, sample sha256 prefix, host event, host patch, host subpatch, host wave, host track, patch, subpatch, wave, pred sha prefix)
+SOUNDS = (
+    (0x104, '7e039ca338e13838', TELE_EVENT, 492, 335, 325,
+     '000001ec00007f4000000078007800000000000c00113c7f8105123c00227820', '0100014f',
+     '647340003c00007f0505014500017d00000a7f7f', '0018ce8c00000d5400000000fffffb50ffffffff00000000', '1fee28ccadb934a1'),
+    (0x92, '596f60b9326b5ca0', LAND_EVENT, 594, 437, 427,
+     '0000025200007f4000000078007800000000000c00113c7f6e123c0022237820', '010001b5',
+     '647340003c00007f050501ab00017d00000a7f7f', '001fed1c00000b0200000000fffffb50ffffffff00000000', 'c9761f4132f8b151'),
+)
+assert set(rom[SOUND_ROM:SOUND_LIMIT]) == {0xFF}
+_cur = SOUND_ROM
+for (dev, ssha, hev, hp, hs, hw, htrk, hpat, hsub, hwav, hpred) in SOUNDS:
+    track, sub, wav, pred, smp = _donor(dev)
+    assert hashlib.sha256(smp).hexdigest().startswith(ssha), hex(dev)
+    toff = int.from_bytes(clean[0x976D60 + hev * 16 + 8:0x976D60 + hev * 16 + 12], 'big')
+    assert int.from_bytes(clean[0x976D60 + hev * 16 + 4:0x976D60 + hev * 16 + 8], 'big') == 0x20 == len(track)
+    trk_rom = MSZ_SSEQ_TRACKS + toff
+    assert int.from_bytes(clean[trk_rom:trk_rom + 4], 'big') == hp
+    assert hashlib.sha256(clean[MSZ_PRED + hw * 264:MSZ_PRED + hw * 264 + 264]).hexdigest().startswith(hpred)
+    t = bytearray(track); t[0:4] = hp.to_bytes(4, 'big')
+    sb = bytearray(sub); sb[10:12] = hw.to_bytes(2, 'big')
+    wv = bytearray(wav); wv[0:4] = (_cur - MSZ_TBL).to_bytes(4, 'big')
+    guarded(trk_rom, htrk, bytes(t).hex())
+    assert clean[MSZ_PATCH + hp * 4:MSZ_PATCH + hp * 4 + 4].hex() == hpat          # patch kept: -> host subpatch
+    guarded(MSZ_SUB + hs * 20, hsub, bytes(sb).hex())
+    guarded(MSZ_WAVE + hw * 24, hwav, bytes(wv).hex())
+    rom[MSZ_PRED + hw * 264:MSZ_PRED + hw * 264 + 264] = pred
+    assert _cur + len(smp) <= SOUND_LIMIT
+    rom[_cur:_cur + len(smp)] = smp
+    print('SOUND', hex(dev), '-> event', hev, 'patch', hp, 'sub', hs, 'wave', hw, 'sample ROM', hex(_cur), hex(len(smp)))
+    _cur = (_cur + len(smp) + 0xF) & ~0xF
+
+# CIC-6102 CRC.
+def rol32(v,s):
+    s&=31
+    return v&0xffffffff if s==0 else ((v<<s)|(v>>(32-s)))&0xffffffff
+seed=0xF8CA4DDC; t1=t2=t3=t4=t5=t6=seed
+for off in range(0x1000,0x101000,4):
+    value=be32(rom,off); total=(t6+value)&0xffffffff
+    if total<t6:t4=(t4+1)&0xffffffff
+    t6=total; t3^=value; r=rol32(value,value&31); t5=(t5+r)&0xffffffff; t2^=r if t2>value else (t6^value); t1=(t1+(t5^value))&0xffffffff
+crc1=(t6^t4^t3)&0xffffffff; crc2=(t5^t2^t1)&0xffffffff
+put32(rom,0x10,crc1); put32(rom,0x14,crc2)
+out_path.write_bytes(rom)
+
+print('OUT',out_path)
+print('SHA256',hashlib.sha256(rom).hexdigest())
+print('CRC',f'{crc1:08X} / {crc2:08X}')
+print('FILE87_SIZE',hex(NEW_END),'HEADROOM_V49',hex(SAFE_V49-NEW_END))
+print('FRAMES',len(all_keys),'OLD',len(old_shapes),'RUN_ASSETS',len(RUN_RELS),'RUN_VISUAL_UNIQUE',len(set(run_words[:6])),'COMBO',len(COMBO_RELS),'THROW_KEYFRAMES',len(THROW_KEYS))
+print('THROW_ARMS',[hex(r) for r in ARM_RELS]); print('THROW_GEOMETRY',{hex(r):(throw_frames[('throw-composite',r)]['w'],throw_frames[('throw-composite',r)]['h'],throw_frames[('throw-composite',r)]['x'],throw_frames[('throw-composite',r)]['y']) for r in ARM_RELS})
+print('THROW_SEQUENCE',{pos:('RBSTANCE7' if shp==throw_stance else next(hex(r) for r,v in throw_shapes.items() if v==shp)) for pos,shp in throw_sequence.items()})
+print('MODELS',len(groups),'PATTERNS',len(patterns),'TABLE',hex(TABLE_BYTES),'STREAMS',hex(STREAM_BYTES))
+print('TYPE_TABLE_ALIGN_PAD',hex(align4(TYPE_START+len(table))-(TYPE_START+len(table))))
+print('RECLAIM_PACK_USED',hex(best*4),'RECLAIM_CAP',hex(cap),'SLACK',hex(cap-best*4))
+print('APPENDED_ITEMS',sum(1 for k in items if k not in packed),'APPENDED_BYTES',hex(sum(item_sizes[k] for k in items if k not in packed)))
+print('SCRIPT_PACK','five former append scripts in dead pre-Type5 regions; High Kick packed item only')
+print('PUSH_SCRIPT',[hex(x) for x in push_words]); print('RUN_LIVE_SCRIPT',[hex(x) for x in run_words]); print('RUN_POLICY','six genuine retail N64 poses only, immediate loop to +0xEE8, MKMSZ Run rate 3')
+print('RUN_RATE_PATCH','ROM 0x2F7A0: 24040002 -> 24040003')
+print('COMPACT_REPACK',len(all_keys),'frames /',len(patterns),'patterns / 16-colour 4-bpp')
+print('TELEPORT_SCRIPTS',{k:hex(v) for k,v in scripts.items()},'FILE87_END',hex(NEW_END_TELE),'HEADROOM_V49',hex(SAFE_V49-NEW_END_TELE))
+print('TELEPORT_PAYLOAD',hex(len(payload)),'bytes at ROM',hex(PAYLOAD_ROM),'-> 0x801AF420; strike record on stack (KSEG0)', [hex(x) for x in STRIKE_WORDS])
+print('ALIASES','sink',[hex(x) for x in sink_alias][:3],'... emerge',[hex(x) for x in emerge_alias][:3],'...','depths',SINK_DEPTHS,EMERGE_DEPTHS,'range',RANGE_UNITS)
+print('TELEPORT_PHYSICS',dict(emerge_vel=hex(EMERGE_VEL&0xffffffff),grav_nohit=hex(GRAV_NOHIT),grav_hit=hex(GRAV_HIT),drop_rate=DROP_RATE,sink=SINK_TICKS,hidden=HIDDEN_TICKS,cap=AIR_CAP,x_offset=X_OFFSET))
+print('COND',hex(COND_VA))
+print('TEST_INPUT','Forward, Forward + Low Kick (classic controls, ground or air), target within 592 world units (square) on the same path')
+print('COMBO_SEQUENCE','RBELBOCOMBO 1,2,3 / 2,1 / 4,5,6 / 7,8,9,10,9')
+print('THROW_VISUAL_POSITIONS',throw_visual_pos)
+print('FALLBACK_STOCK_SHAPE_REFS',len(fallback_positions))
+print('ARM_PALETTE_MAP',ARM_TO_SEKTOR); print('RUN_SUPPLEMENTAL_DEPENDENCIES','NONE'); print('SWEEP_FALL_MODELS',[frame_model[x] for x in slot_cfg[0x1F]['shapes']]); print('HELPER','REMOVED / native v53 palette architecture retained')

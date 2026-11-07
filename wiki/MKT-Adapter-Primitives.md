@@ -264,7 +264,7 @@ Interpreter field correspondence. These offsets are engine-local, not a portable
 
 Callbacks 17 and 23 change the cursor, and callback 22 reads the following frame, so a static walker must model them.
 
-**Corpus census (linear sweep).** The fighter-ID-indexed heap table `0x800A247C` (start/end pairs) and dictionary table `0x800A2578` list 19 unique heaps for IDs 0–31. Token totals across them: `1:374, 2:96, 3:224, 4:305, 5:47, 6:159, 7:5, 8:22, 9:16, 10:2634, 11:59, 12:116, 13:9, 14:187, 15:8`. Every heap decodes completely except 43 words in the shared male-ninja heap `0x6298A0`; that block is probably embedded non-script data (Pending). Token 10 is concentrated in victim/reaction slots.
+**Corpus census (linear sweep).** The fighter-ID-indexed heap table `0x800A247C` (start/end pairs) and dictionary table `0x800A257C` (directly after it; corrected 2026-11-07 from an off-by-one `0x800A2578`, cross-checked against the male-ninja dictionary `0x6B8550` and the robot dictionary `0x906A90` used by the preserved builders) list 19 unique heaps for IDs 0–31. Token totals across them: `1:374, 2:96, 3:224, 4:305, 5:47, 6:159, 7:5, 8:22, 9:16, 10:2634, 11:59, 12:116, 13:9, 14:187, 15:8`. Every heap decodes completely except 43 words in the shared male-ninja heap `0x6298A0`; that block is probably embedded non-script data (Pending). Token 10 is concentrated in victim/reaction slots.
 
 **Robot heap** (ROM `0x8881C0..0x8E79B0`; IDs 7 Sektor, 8 Cyrax, 14 Smoke):
 
@@ -283,7 +283,13 @@ No other callback is reachable from Sektor's attacker-side scripts.
 3. **Fold token 8** for the imported fighter ID.
 4. **Map or drop donor sound and palette operations** explicitly.
 
-**Coverage:** Static-confirmed rules; no translator implementation exists yet.
+**Coverage:** Static-confirmed rules. **Step 0 tooling is Implementation/CI-confirmed (2026-11-07):** `src/mkmszr/fighter_import` provides the shared grammar (both dialects), a phase-aware decoder, a label-relocating assembler and verifier, a byte-exact MKMSZ file-`0x87` model, the MKT donor reader (heaps, dictionaries, slot tables, frame records, command catalogue including robot inline handlers) and rule-based fragment translation. Its ROM-backed tests reproduce:
+
+- stock file `0x87` byte for byte;
+- Sektor's four special commands;
+- the Runtime-confirmed v05 live Run script from the donor Run fragment.
+
+The frame map for the Run test is taken from v05. No ROM is patched by this tooling, and asset generation and host phase fitting are not yet automated.
 
 ## Strike and reaction translation
 
@@ -383,7 +389,7 @@ Direction tokens are stored **newest first**: `9`/`8` are Right/Left (forward/ba
 
 Only mask `0x40` is cross-checked; the `0x80`/`0x10` button names (LP/HP by lineage) are **Hypothesis**. Sektor's other grid entries hold only the shared selector-`2/3/4/6/7` records. The teleport uses the same body-propell machinery as Reverse Elbow (selector `0x17` → `0x800467D0`), so the Reverse Elbow host lifecycle is the natural adapter for it.
 
-**Translation rule:** lower both donor declarative records and imperative robot handlers into MKMSZ descriptor records. Express handler predicates as small native condition functions (descriptor `+0x08`) and point actions at adapter-owned entries. Exclude versus-only selectors unless a requirement adds them. **Coverage:** Static-confirmed format and Sektor inventory; implementation Pending.
+**Translation rule:** lower both donor declarative records and imperative robot handlers into MKMSZ descriptor records. Express handler predicates as small native condition functions (descriptor `+0x08`) and point actions at adapter-owned entries. Exclude versus-only selectors unless a requirement adds them. **Coverage:** Static-confirmed format and Sektor inventory. The teleport (`F,F + LK`) is implemented and Runtime-confirmed bounded in teleport proof v08 as a hand-written descriptor: selector 1 plus a native condition function that rejects the move when no target is in range ([Sektor teleport uppercut translation](#sektor-teleport-uppercut-translation)). The rockets and the generic lowering remain Pending.
 
 ## Cleanup and action lifecycle
 
@@ -401,6 +407,29 @@ Reusable target-side lessons from the Reverse Elbow proof line are:
 The failed v3 self-reentry and incomplete v5 lifecycle remain in [Player actions and special moves](Player-Actions-and-Special-Moves). This page keeps only their reusable adapter lesson.
 
 **Coverage:** **Known target lifecycle primitives; generic action runner Pending.**
+
+## Sektor teleport uppercut translation
+
+**Donor routine Static-confirmed (clean MKT Rev. 2); the translation is Runtime-confirmed bounded in teleport proof v08** ([proof history](Sektor-Takeover-Proof-History#teleport-uppercut-proof-line-v01v08-2026-11-07)). `F,F + LK` reaches `do_body_propell(8)` → propell entry `0x80048368`. The process is `*(0x8014C31C)` and the object is `+0x418`. Donor Y grows downward, and object `+0x08/+0x0C/+0x10/+0x14/+0x18` are gravity / x-velocity / y-velocity / x / y (16.16). This is confirmed by the object integrator at `0x8000152C`.
+
+| Donor phase | Exact donor behaviour | MKMSZ translation (v08) |
+|---|---|---|
+| Start | Action `+0x3F6 = 0x208`; `get_char_ani(0, 0xD)` pose | Native special begin `0x80049F90` (busy input map), lock `0x800BF308`, action ID `0x603`; first SINK pose |
+| Sink | Velocity `+0x5F333` and gravity `+0x9599`. It sleeps one tick per step until the object y reaches the line at `0x802576CE`, which is strong inference for the screen-bottom line. | Descriptor-only aliases of resident frames with `anchor_y − d`, sampled from the donor curve. The image leaves the screen without a floor clip. An airborne start first falls on the same donor curve and continues from that index. |
+| Reposition | `0x8006D9E8` → `0x8000DD94(opponent, self)` copies x/y and sets the facing equal to the opponent's. `0x8000DD3C` then adds `dx = (opp xvel × 16 >> 16) − 12` px along that facing, which is behind the target with a 16-tick velocity lead. `0x8006D1CC` turns to face the opponent. | Copy the target's position (`+0xE0/+0x2C/+0x30/+0x34`), step forward `min(40, wall room − 4)` world units past it with `0x80031208`, then face it with `0x80031EF0`. A cornered target is nudged to 16 units. The velocity lead is omitted. |
+| Rise to surface | Y snaps to the bottom line; velocity `−0x7A666` and gravity `−0x5199` (accelerating upward); `get_char_ani(1, 3)` at rate 5. Each tick within `0x29` px of the ground line calls the strike check `0x8004859C`. | EMERGE aliases ending on the first rise frame; DROP rate 3 (≈ donor 5 @ 60 Hz) |
+| Flight | Gravity `0xF000`, or `0xB000` after a hit. The flight callback `+0x438 = 0x80048564` calls the strike check while y-velocity < 0. Flight runs through the stock jump routine `0x8006EC50` (animation `0xD`); exit is via `0x8004C13C`. | The adapter integrates the arc itself, starting from the donor velocity anchored at the surface and calibrated jump-to-jump (×0.9). It strikes while rising, holds the last uppercut frame while falling, and lands on its own ground reference. |
+| Strike | `0x8004859C`: action `0x622`, fighter strike through `0x8003E620`; a hit sets `+0x3CC = 1` | Stack (KSEG0) record with the stock MKMSZ uppercut reaction `0x08`, aux and trailer, a custom box, and damage `0x18` / chip 3 (1.5× of the earlier `0x10/2`, user request) |
+
+Calibration rule: velocities and accelerations are scaled by the ratio of the two engines' **standard jumps**: donor `0x8006EC50(−0x88000, 0x6CCC)`, host `0x800321D0(−0xB47AE, 0x7851)`. This replaced an assumed pixel-unit ratio, which v01 shows was wrong.
+
+**Donor sounds (Static-confirmed; teleport sound Runtime-confirmed in v09).** The teleport scripts contain no sound tokens. The routine plays two sounds of its own:
+- At the start, `ft_sound(7)` (`0x80005760`): the per-fighter table `0x800A1ED4[fighter]` gives Sektor's table `0x800A1D88`, and entry 7 is event `0x104`. That resolves to patch 141 → subpatch 176 → waveform 159, a 0.90 s sample at ROM `0xB423D4`, length `0xBE2`.
+- At landing, inside `0x80076E48`: `triple_sound(0x18)` (`0x800054A8`, table `0x800A1AA8`) gives `0x8092`. That is event `0x92` with position-based pan, resolving to patch 63 → subpatch 109 → waveform 75.
+
+Neither the strike check `0x8004859C` nor its callees play an attacker sound; hit and impact audio belongs to the victim reaction. The proof imports only the teleport sound, through an [isolated MKMSZ host chain](Sounds-and-Music#isolated-sound-host-chains-2026-11-07). The landing thud was dropped at the user's request because the stock landing sound already plays.
+
+**Coverage:** this specific move is translated and runtime-accepted. It is a hand-written adapter, not output of a generic action runner (gap 1 below).
 
 
 ## Sektor straight-missile translation
@@ -711,6 +740,66 @@ The v86–v89 sequence now resolves the first-visible rocket contract. v86 prove
 | normal action exit | donor action/reaction exit | Native exit/control restore | **Covered primitive; composition partial** | Player Actions |
 
 “Covered primitive” means an appropriate target mechanism is established. It does **not** mean arbitrary donor code can call it without an adapter or that the complete donor move is production-integrated.
+
+## Importer direction: donor special-move recipes (2026-11-07)
+
+**Analysis (Static-confirmed donor facts; plan Pending).** The project goal is an **MKT → MKMSZ fighter importer**, with Sektor as the test case, not a hand-built Sektor. In those terms, here is where things stand:
+
+| Layer | Generic now | Sektor-specific now |
+|---|---|---|
+| Script grammar, donor reader, translation rules | Step 0 tooling (`src/mkmszr/fighter_import/`) | — |
+| Body (frames, slot mapping, 16-colour Type-5) | 16-colour policy | Takeover builders hand-curate which donor frames go where (`RUN_RELS`, `KNEE_LATE_MAP`, …) |
+| Commands | Record format and lowering rule documented | Teleport descriptor written by hand |
+| Special actions | Host primitives documented | Teleport adapter is move-specific MIPS |
+| Voice | Rule driven by MKT's voice-group table ([Audio system](Sounds-and-Music#imported-fighter-voice-rule-2026-11-07)) | — |
+| Combos | Record-compatibility rule (this page) | v62 records copied by hand |
+
+**Key observation.** MKT specials are native code, not data, so they cannot be run on MKMSZ. But each one is a short composition of a small, shared set of engine primitives. Sektor's straight rocket from the arcade lineage (`MKZAP.ASM`) shows this; the retail N64 numbers are those already recorded above:
+
+```text
+do_robo_zap:   zap_init_special_act -> robo_open_chest_fast (ochar_sound 0x0B; anim table 2 slot 0; 2 or 4 ticks/frame)
+               -> setup_proj_obj -> ozval 0 -> adjust_xy(7,45) [retail (+5,+38)] -> create_proj_proc(rocket1_proc)
+               -> i_am_a_sitting_duck -> sleep 0x20 -> robo_close_chest (same anim backwards)
+rocket1_proc:  ochar_sound 3 (robo fast rocket) -> anim 0x37 part 4 (flat rocket)
+               -> set_proj_vel(0x40000, or 0x70000 if the opponent is reacting; retail 0x33333/0x59999), anirate 3
+               -> projectile_flight_call(rocket1_flight_call, strike 0x12) -> rocket_explode_fx
+rocket1_flight_call: rocket_smoke (create_fx 4 every other tick) -> vel += vel>>4, cap 0xE0000 (retail 0xB3333)
+rocket_explode_fx:   ochar_sound 0x0A (metal ball BOOM) -> create_fx 5 (shared explosion) at rocket x/y -> delete
+```
+
+**Proposed importer architecture.**
+1. **Primitive library.** Implement each donor engine primitive once as MKMSZ-native code: special entry, face, play a donor animation (forward, backward, by part), sleep, velocity/gravity with jump-calibrated units, projectile create/place/flight/flight-callback/strike/delete, `ochar_sound` via isolated host chains, `create_fx` via an effect map, the sitting-duck lock, and exit. The teleport adapter already contains half of these as ad-hoc code.
+2. **Recipes.** Express each donor special as a recipe: a list of primitive calls with donor parameters, plus small donor callbacks written in the same vocabulary. Recipes are extracted from the retail code (jal targets plus immediates, as the Step 0 reader already does for command handlers), checked against the arcade source, and compiled by the builder.
+3. **Asset closure.** The body importer includes every donor animation a recipe references: the chest (table 2 slot 0), the rocket (`0x37` part 4), and later the homing rocket and others. Projectile art keeps its own palette (`ROCKET_P`), following the v87/v89 texture-slot lessons.
+4. **Translation tables.** Three engine-local maps, each validated in a bounded proof:
+   - donor strike semantic → MKMSZ reaction (rocket strike `0x12` still needs its donor meaning);
+   - donor `create_fx(n)` → MKMSZ effect;
+   - donor `ochar_sound(n)` → per-fighter sound host.
+5. **Command lowering and tiers.** Lower donor command handlers to MKMSZ descriptors. Sektor's specials fill power tiers 1–4 (user decision, 2026-11-07); with Shuffle Power Progression enabled, they follow the shuffled order.
+
+**Effects.** `create_fx(4)` (smoke puff) and `create_fx(5)` (explosion) are shared MK effects, not robot art. For `fx 5` the user suggests the PRIS GRUNT3 (`0x16`) launcher explosion. That art is already MKMSZ 4-bpp Type-5 with an exact 16-colour palette (file `0x90` secondary model, palette `+0x1C49C`), so it needs no format conversion. But file `0x90` is a Prison-paged resource, so using it everywhere means carrying its frames in the imported fighter's resources, as the rocket is carried. Still to trace (Pending): which `0x90` frames are the impact explosion rather than the projectile in flight, and how the stock grunt spawns it.
+
+**R1 done (2026-11-07, Implementation/CI-confirmed).** The primitive library exists in `src/mkmszr/fighter_import/`:
+- `mips.py`: assembler;
+- `host.py`: MKMSZ host ABI primitives (action entry, controller/lock/action ID, uncancellable special begin, animation cursor/rate, sleep, find target, strike, sound player, exit with the v6 fallback);
+- `physics.py`: jump-calibrated units and `retime`;
+- `actions/robo_teleport.py`: the teleport as a composition of these primitives, with donor constants as named fields.
+
+Builder v19 calls the package. Its payload and its whole ROM are **byte-identical** to the Runtime-confirmed v18, so behaviour is unchanged by construction. `tests/test_fighter_import_actions.py` pins the payload hash without needing a ROM.
+
+**R2 analysis notes (2026-11-07, Static; arcade MK3 REV13 lineage):**
+- **Strike.** The rocket's strike `0x12` reaches `proj_strike_check` → `strike_check_a0` as offset `0x12` into the **attacker's own strike table**, so its reaction meaning has to be read from the robot strike table (Pending). The combo `stk_*` codes (`MKCOMBO.ASM`: `stk_0` hit in face, `stk_1` stumble, `stk_2` knocked on back, `stk_4` nailed, `stk_5` uppercutted, …) are a separate namespace.
+- **Sounds.** Launch `ochar_sound 3` ("robo fast rocket"), chest `0x0B`, boom `0x0A`. All three are entries in Sektor's MKT fighter table at the same indices, as was verified for the teleport.
+- **Effects.** `rocket_smoke` is `create_fx(4)` every other tick; the explosion is `create_fx(5)` at the rocket's x/y.
+- **Still open.** The Prison GRUNT3 explosion frames and their spawn path, and which v63–v89 seams to reuse.
+
+**Increments (each is a bounded proof).**
+- **R1.** Refactor the teleport adapter onto the primitive library with no behaviour change.
+- **R2.** The straight rocket as the first recipe: chest open/close, projectile with `ROCKET_P`, donor acceleration and cap at the v75 calibration, translated strike, launch/chest/boom sounds, and the `fx 5` explosion. Smoke comes later. It replaces the tier-1 Ice Blast LP record (`F,F + LP`, one live rocket at a time, as the donor's predicate does).
+- **R3.** Smoke and the heat-seeking rocket (`rocket2_proc`, `F,D,B + HP`), reusing the same library.
+- **R4.** Tier gating and the full command-table swap.
+
+The v63–v89 line remains the evidence base for the projectile seams (texture-slot preupload, palette source, placement and velocity calibration). It hooked the stock Ice action; the importer instead owns its action, as the teleport does.
 
 ## Known missing generic adapter functions
 
