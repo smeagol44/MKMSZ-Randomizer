@@ -31,4 +31,4 @@ addopts = "-q"
 line-length = 100
 target-version = "py311"
 # Preserved historical proof builders are kept byte-for-byte unchanged for provenance.
-extend-exclude = ["Experimental/SektorTransplantBuilders/original_builders"]
+extend-exclude = ["Experimental/SektorTransplantBuilders/original_builders", "Experimental/SektorTransplantBuilders/teleport"]

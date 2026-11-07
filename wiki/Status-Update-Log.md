@@ -4,6 +4,15 @@
 
 ## From Project status
 
+### PS-21 (2026-11-07)
+
+**2026-11-07 first imported MKT special — Sektor teleport uppercut proof v08: Runtime-confirmed bounded; silent; shadow Pending.**
+
+- **Move.** MKT `F,F + LK` (`do_body_propell(8)`, donor `0x80048368`) on the Sektor takeover body: sink off-screen, reappear past the target facing it, uppercut hop with stock MKMSZ uppercut reaction `0x08`, fall on the last uppercut frame. It can start airborne, cannot be cancelled, and has a 592-unit square range. Damage is `0x18`.
+- **Body.** The v05-equivalent Sektor repacked as a 16-colour 4-bpp Type-5 works (file `0x87` end `0x45BE0`).
+- **Host findings.** Uncancellable specials need the native begin `0x80049F90`. Custom air arcs must keep the airborne counter `+0x6B2` counting, or the per-tick floor check installs the stock fall. Strike records must be KSEG0. Near-side placement triggers the stock corner pushback `0x80052EA8`. See [Player actions and special moves](Player-Actions-and-Special-Moves#teleport-uppercut-host-findings-2026-11-07).
+- **Identity.** `MKMSZR_sektor-teleport_common-proof_v08.z64`, SHA-256 `85f09d8a99d9f5aa2c4aba631e3d042922ed24915c0213da99cb6305cf5edebd`. v01–v08 builders reproduce byte-for-byte ([proof history](Sektor-Takeover-Proof-History#teleport-uppercut-proof-line-v01v08-2026-11-07)). Proof-only allocations; not production.
+
 ### PS-20 (2026-11-07)
 
 **2026-11-07 MKT→MKMSZ move/character recompiler analysis — Static/Implementation-confirmed; no runtime claims.**
@@ -90,6 +99,10 @@
 **Focused lifecycle update (2026-10-01): lifecycle v06 is Runtime-confirmed and promoted to the shared production pipeline.** The exact accepted reference is Very Hard / 9 total lives / 5 continues / persistent HP ON. The shared core now parameterizes that same lifecycle control flow for build-time difficulty, starting lives (1..10), starting continues (0..5), and persistent HP ON/OFF; browser defaults are Very Hard / 5 / 3 / HP ON. Non-reference combinations are Implementation/CI-confirmed pending representative runtime coverage. v04 remains **Rejected / unsafe composition**. See [Lifecycle static closure](Lifecycle-Static-Closure-v05), [Persistence/inventory/lifecycle](Persistence-Inventory-and-Lifecycle), and [Web patcher/product behavior](Web-Patcher-and-Product).
 
 ## From Runtime validation status
+
+### RV-17 (2026-11-07)
+
+**2026-11-07 Sektor teleport uppercut proof v08 — Runtime-confirmed bounded.** `MKMSZR_sektor-teleport_common-proof_v08.z64` (SHA-256 `85f09d8a99d9f5aa2c4aba631e3d042922ed24915c0213da99cb6305cf5edebd`, CRC `A983665E / 36E3F2EF`), built from the clean MKMSZ and MKT Rev. 2 ROMs. The user reported "Everything looks and works really good", listing only the missing sound (silent by decision) and the shadow. Earlier user reports: v06 not cancellable; v07 hop/arc/landing working, with the cornered-enemy fall-back then fixed in v08. No exhaustive stage, enemy or state coverage is claimed.
 
 ### RV-16 (2026-11-06)
 

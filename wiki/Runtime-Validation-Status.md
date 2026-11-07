@@ -8,6 +8,7 @@ Current project maturity and priorities are owned by [Project status](Project-St
 
 | Proof | Status | Evidence |
 |---|---|---|
+| Sektor teleport uppercut v08 (2026-11-07) | **Runtime-confirmed bounded** | First imported MKT special on the Sektor body: sink, far-side reappearance, uppercut hop, last-frame descent, airborne start, uncancellable, range, corner behaviour and 1.5× damage all reported working; silent by decision; drop shadow unchanged. See [Sektor takeover proof history](Sektor-Takeover-Proof-History#teleport-uppercut-proof-line-v01v08-2026-11-07). |
 | Water scripted boss-area checkpoint v02 (2026-11-06) | **Runtime-confirmed bounded owner report** | Maintainer reported the water-checkpoint-edited test ROM "Working fine now." Stock relative `+1` at Water overlay ROM `0xB9330` was changed to constant selector `6`; the production patch copies this exact guarded opcode. Exact route/seed and return-to-Water selector >6 remain untested; the independent Bridge/Temple Inventory crashes are deferred. See [Water catalog](Stage-Catalog-Water). |
 | RUN-state uncached proof v01 (2026-11-06) | **Runtime-confirmed bounded** | RUN in HOLD and AUTO, before and after a stage change, behaved as before. See [Memory and allocation map](Memory-and-Allocation-Map). |
 | Audio reserve 272 proof v01 (2026-11-06) | **Runtime-confirmed bounded fix** | Speed-up first reproduced in the unmodified vanilla ROM idling at the password screen; the proof ran the same scenario plus usual triggers without speed-up. Occasional very short pops noted, source Pending. See [Audio system](Sounds-and-Music). |
@@ -30,6 +31,7 @@ Current project maturity and priorities are owned by [Project status](Project-St
 
 Dated update notes are kept verbatim in the [Status update log](Status-Update-Log); newest first.
 
+- 2026-11-07 Sektor teleport uppercut proof v08 — Runtime-confirmed bounded. ([RV-17](Status-Update-Log#rv-17-2026-11-07))
 - 2026-11-06 RUN-state uncached proof v01 — Runtime-confirmed bounded. ([RV-16](Status-Update-Log#rv-16-2026-11-06))
 - 2026-11-06 vanilla audio speed-up reproduced; audio reserve proof v01 — Runtime-confirmed bounded. ([RV-15](Status-Update-Log#rv-15-2026-11-06))
 - 2026-11-06 lifecycle transport v07 proof v01 — Runtime-confirmed bounded. ([RV-14](Status-Update-Log#rv-14-2026-11-06))

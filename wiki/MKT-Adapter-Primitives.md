@@ -389,7 +389,7 @@ Direction tokens are stored **newest first**: `9`/`8` are Right/Left (forward/ba
 
 Only mask `0x40` is cross-checked; the `0x80`/`0x10` button names (LP/HP by lineage) are **Hypothesis**. Sektor's other grid entries hold only the shared selector-`2/3/4/6/7` records. The teleport uses the same body-propell machinery as Reverse Elbow (selector `0x17` → `0x800467D0`), so the Reverse Elbow host lifecycle is the natural adapter for it.
 
-**Translation rule:** lower both donor declarative records and imperative robot handlers into MKMSZ descriptor records. Express handler predicates as small native condition functions (descriptor `+0x08`) and point actions at adapter-owned entries. Exclude versus-only selectors unless a requirement adds them. **Coverage:** Static-confirmed format and Sektor inventory; implementation Pending.
+**Translation rule:** lower both donor declarative records and imperative robot handlers into MKMSZ descriptor records. Express handler predicates as small native condition functions (descriptor `+0x08`) and point actions at adapter-owned entries. Exclude versus-only selectors unless a requirement adds them. **Coverage:** Static-confirmed format and Sektor inventory. The teleport (`F,F + LK`) is implemented and Runtime-confirmed bounded in teleport proof v08 as a hand-written descriptor: selector 1 plus a native condition function that rejects the move when no target is in range ([Sektor teleport uppercut translation](#sektor-teleport-uppercut-translation)). The rockets and the generic lowering remain Pending.
 
 ## Cleanup and action lifecycle
 
@@ -407,6 +407,23 @@ Reusable target-side lessons from the Reverse Elbow proof line are:
 The failed v3 self-reentry and incomplete v5 lifecycle remain in [Player actions and special moves](Player-Actions-and-Special-Moves). This page keeps only their reusable adapter lesson.
 
 **Coverage:** **Known target lifecycle primitives; generic action runner Pending.**
+
+## Sektor teleport uppercut translation
+
+**Donor routine Static-confirmed (clean MKT Rev. 2); the translation is Runtime-confirmed bounded in teleport proof v08** ([proof history](Sektor-Takeover-Proof-History#teleport-uppercut-proof-line-v01v08-2026-11-07)). `F,F + LK` reaches `do_body_propell(8)` → propell entry `0x80048368`. The process is `*(0x8014C31C)` and the object is `+0x418`. Donor Y grows downward, and object `+0x08/+0x0C/+0x10/+0x14/+0x18` are gravity / x-velocity / y-velocity / x / y (16.16). This is confirmed by the object integrator at `0x8000152C`.
+
+| Donor phase | Exact donor behaviour | MKMSZ translation (v08) |
+|---|---|---|
+| Start | Action `+0x3F6 = 0x208`; `get_char_ani(0, 0xD)` pose | Native special begin `0x80049F90` (busy input map), lock `0x800BF308`, action ID `0x603`; first SINK pose |
+| Sink | Velocity `+0x5F333` and gravity `+0x9599`. It sleeps one tick per step until the object y reaches the line at `0x802576CE`, which is strong inference for the screen-bottom line. | Descriptor-only aliases of resident frames with `anchor_y − d`, sampled from the donor curve. The image leaves the screen without a floor clip. An airborne start first falls on the same donor curve and continues from that index. |
+| Reposition | `0x8006D9E8` → `0x8000DD94(opponent, self)` copies x/y and sets the facing equal to the opponent's. `0x8000DD3C` then adds `dx = (opp xvel × 16 >> 16) − 12` px along that facing, which is behind the target with a 16-tick velocity lead. `0x8006D1CC` turns to face the opponent. | Copy the target's position (`+0xE0/+0x2C/+0x30/+0x34`), step forward `min(40, wall room − 4)` world units past it with `0x80031208`, then face it with `0x80031EF0`. A cornered target is nudged to 16 units. The velocity lead is omitted. |
+| Rise to surface | Y snaps to the bottom line; velocity `−0x7A666` and gravity `−0x5199` (accelerating upward); `get_char_ani(1, 3)` at rate 5. Each tick within `0x29` px of the ground line calls the strike check `0x8004859C`. | EMERGE aliases ending on the first rise frame; DROP rate 3 (≈ donor 5 @ 60 Hz) |
+| Flight | Gravity `0xF000`, or `0xB000` after a hit. The flight callback `+0x438 = 0x80048564` calls the strike check while y-velocity < 0. Flight runs through the stock jump routine `0x8006EC50` (animation `0xD`); exit is via `0x8004C13C`. | The adapter integrates the arc itself, starting from the donor velocity anchored at the surface and calibrated jump-to-jump (×0.9). It strikes while rising, holds the last uppercut frame while falling, and lands on its own ground reference. |
+| Strike | `0x8004859C`: action `0x622`, fighter strike through `0x8003E620`; a hit sets `+0x3CC = 1` | Stack (KSEG0) record with the stock MKMSZ uppercut reaction `0x08`, aux and trailer, a custom box, and damage `0x18` / chip 3 (1.5× of the earlier `0x10/2`, user request) |
+
+Calibration rule: velocities and accelerations are scaled by the ratio of the two engines' **standard jumps**: donor `0x8006EC50(−0x88000, 0x6CCC)`, host `0x800321D0(−0xB47AE, 0x7851)`. This replaced an assumed pixel-unit ratio, which v01 shows was wrong.
+
+**Coverage:** this specific move is translated and runtime-accepted. It is a hand-written adapter, not output of a generic action runner (gap 1 below). Donor sound tokens are dropped by decision.
 
 
 ## Sektor straight-missile translation
