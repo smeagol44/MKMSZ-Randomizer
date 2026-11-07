@@ -423,7 +423,13 @@ The failed v3 self-reentry and incomplete v5 lifecycle remain in [Player actions
 
 Calibration rule: velocities and accelerations are scaled by the ratio of the two engines' **standard jumps**: donor `0x8006EC50(−0x88000, 0x6CCC)`, host `0x800321D0(−0xB47AE, 0x7851)`. This replaced an assumed pixel-unit ratio, which v01 shows was wrong.
 
-**Coverage:** this specific move is translated and runtime-accepted. It is a hand-written adapter, not output of a generic action runner (gap 1 below). Donor sound tokens are dropped by decision.
+**Donor sounds (Static-confirmed; teleport sound Runtime-confirmed in v09).** The teleport scripts contain no sound tokens. The routine plays two sounds of its own:
+- At the start, `ft_sound(7)` (`0x80005760`): the per-fighter table `0x800A1ED4[fighter]` gives Sektor's table `0x800A1D88`, and entry 7 is event `0x104`. That resolves to patch 141 → subpatch 176 → waveform 159, a 0.90 s sample at ROM `0xB423D4`, length `0xBE2`.
+- At landing, inside `0x80076E48`: `triple_sound(0x18)` (`0x800054A8`, table `0x800A1AA8`) gives `0x8092`. That is event `0x92` with position-based pan, resolving to patch 63 → subpatch 109 → waveform 75.
+
+Neither the strike check `0x8004859C` nor its callees play an attacker sound; hit and impact audio belongs to the victim reaction. The proof imports only the teleport sound, through an [isolated MKMSZ host chain](Sounds-and-Music#isolated-sound-host-chains-2026-11-07). The landing thud was dropped at the user's request because the stock landing sound already plays.
+
+**Coverage:** this specific move is translated and runtime-accepted. It is a hand-written adapter, not output of a generic action runner (gap 1 below).
 
 
 ## Sektor straight-missile translation
