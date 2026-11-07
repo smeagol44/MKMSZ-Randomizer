@@ -18,10 +18,10 @@ These are disposable investigation builders, not production code. Do not apply t
 
 ## `teleport/` (added 2026-11-07)
 
-Builders `MKMSZR_build_sektor_teleport_v01.py` … `v10.py` for the Sektor teleport-uppercut proof line, the first imported MKT special (`F,F + LK`). Each one is self-contained and takes only the two clean ROMs:
+Builders `MKMSZR_build_sektor_teleport_v01.py` … `v18.py` for the Sektor teleport-uppercut proof line, the first imported MKT special (`F,F + LK`). Each one is self-contained and takes only the two clean ROMs:
 
 ```bash
 python3 MKMSZR_build_sektor_teleport_v08.py <clean MKMSZ USA Rev. 0 .z64> <MKT USA Rev. 2 .z64> -o MKMSZR_sektor-teleport_common-proof_v08.z64
 ```
 
-They hash-guard both inputs and every patched site. All of them reproduce their issued ROMs byte-for-byte. v08 is the Runtime-confirmed bounded move. v09 adds Sektor's MKT teleport sound, which is Runtime-confirmed. v10 drops the landing thud. Identities, version changes, the proof-only footprint and known limits are in the Wiki under [Sektor takeover proof history](../../wiki/Sektor-Takeover-Proof-History.md#teleport-uppercut-proof-line-v01v08-2026-11-07). They are excluded from `ruff` like `original_builders/`. The payload arena, loader stub and descriptor replacement are Reverse Elbow v6 proof infrastructure, not production allocations.
+They hash-guard both inputs and every patched site. All of them reproduce their issued ROMs byte-for-byte. v08 is the Runtime-confirmed bounded move. v09 adds Sektor's MKT teleport sound, which is Runtime-confirmed. v10 drops the landing thud. v11 matches MKT's juggle timing. v12–v15 import Sektor's MKT voice set (v15 accepted). v16–v18 add Sektor's MKT combos (v18 restores the late-knee frames). Identities, version changes, the proof-only footprint and known limits are in the Wiki under [Sektor takeover proof history](../../wiki/Sektor-Takeover-Proof-History.md#teleport-uppercut-proof-line-v01v08-2026-11-07). They are excluded from `ruff` like `original_builders/`. The payload arena, loader stub and descriptor replacement are Reverse Elbow v6 proof infrastructure, not production allocations.

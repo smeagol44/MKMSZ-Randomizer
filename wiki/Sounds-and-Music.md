@@ -199,6 +199,39 @@ To host a donor sound:
 
 The donor's `−2253`-cent waveform correction is kept as is; MKMSZ honours it, as Toasty already showed. Chains are proof allocations until a production reservation claims them in the [Memory and allocation map](Memory-and-Allocation-Map).
 
+## Imported fighter voice rule (2026-11-07)
+
+**Runtime-confirmed bounded for Sektor (teleport proof v15: "It's fantastic now").** This rule is meant to apply to any MKT donor fighter.
+
+**Donor side.** MKT keeps a voice-group table at `0x800A19D4[group]`: a `u16` count, then `count` entries for each voice group. The fighter's voice group is `0x800A19FC[fighter]`, and `0xFFFF` means no sound. The group meanings follow the arcade MK3 source (`MKSOUND.ASM` `group_table`): 0 attack, 1 jump, 2 wasted, 3 grab, 4 throw voice, 5 tripped, 6 face hit, 7 run, 8 shook, 9 death scream. The reactions that play each group come from `MKREACT.ASM`:
+- light hits (`rsnd_react_voice`) play group 6;
+- launching hits (high kick, roundhouse, uppercut, launching combos) play group 2;
+- sweeps and slides play group 5;
+- landing on the back plays only `rsnd_ground` (no voice);
+- every quick attack plays group 0 followed by `rsnd_whoosh`.
+
+**Target side.** The player (type 4) voice table `0x800A2EC8` (ROM `0xA3AC8`) maps 12 categories to descriptors `0x20..0x2C`, which play events 30–43. No enemy table and no other descriptor uses them. Category 10 also gets descriptor `0x2A`, which is stock-unreferenced. Each category is matched to a donor group by the reactions that play it:
+
+| Player category | Played by | Donor source |
+|---|---|---|
+| 0–1 | attack routines **and the somersault jump** (`0x8002FB08`) | group 0 voice, else MKT whoosh #1/#3 (triple slots 6/7) |
+| 2–3, 4–5 | stand-up reactions | group 6 face hit |
+| 6–7 | launching reactions (uppercut and others) | group 2 wasted |
+| 8 | jump `0x80031FB4` | group 1 |
+| 9 | sweep-family reactions | group 5 tripped |
+| 10 | knockdown landing `0x800546E8` (after its own thud, descriptor `0x10`) and zero-HP death | none (MK3 lands with no voice; a KO has no extra voice) |
+| 11 | slide/special yell | none for robots |
+
+How it is implemented:
+- **Empty groups:** a donor group with no sound sets that category's table entry to 0, which `0x80064B00` skips.
+- **Re-pointing:** each used Sub-Zero event keeps its slot, and its `0x20`-byte track is replaced by the donor track pointing at an isolated host chain.
+- **Random picks:** MKMSZ picks 1 of 2 where MKT picks 1 of `count`. Distinct donor sounds are kept in table order. MKT face-hit entries 62/63 share waveform 158.
+
+Rejected along the way:
+- v14 used group 9 for category 10, which played a human pit/fatality scream on knockdown landings.
+- v13's run sound (group 7, one shot per Run start through Run-script callback 2 and spare descriptor `0x22`) was correct but annoying in MKMSZ.
+- v16 scaled categories 0/1 to 85% volume, which turned down the somersault rather than the attack sounds the user meant.
+
 ## Music
 
 **Partially mapped, broader behavior Pending.** The [2026-10-08 production Inventory investigation](Production-Rich-Inventory-Music-Static-Investigation) statically/snapshot-confirms bounded WESS track/voice structures, current Fortress sequence data, bank/sample-cache ownership, and the synthesis-to-AI call path. It does not establish the complete sequence/control API, all sequence command semantics, or the accelerated-music cause. Preserve the distinction between bounded native evidence and a general subsystem closure.

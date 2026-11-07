@@ -2275,6 +2275,14 @@ User decisions that define the target behaviour:
 | v08 | `85f09d8a99d9f5aa2c4aba631e3d042922ed24915c0213da99cb6305cf5edebd` | `A983665E / 36E3F2EF` | **Accepted:** everything works; only sound (deliberately silent) and the shadow remain |
 | v09 | `51007a411ef9ed2646e28a8eba50bc9bc077b120de3cd5a6c5cabb60ff4afdf3` | `A983623E / B90F3AC2` | **Teleport sound "just perfect".** The added landing thud was too loud and redundant with the stock landing sound |
 | v10 | `913ebc2b02ed935515848d1615bc81538620e2f7cd4c678c4ea11bfbd882f56b` | `A983622E / 64626E81` | v09 without the landing thud; built and statically checked, quick runtime check pending |
+| v11 | `1682507985ce89199e5844442a750577dec97fbf64d74d4f2119ab70d21cde5a` | `A983622E / 64626E81` | **Worked perfectly:** post-hit timing matched to MKT, so the standing-LK juggle connects |
+| v12 | `12e15eb39a92456f5025700fe81794ef5bc613e575320864ae50268134535733` | `A9CB6252 / E3A446C6` | **"Everything sounds perfect"** (a bit loud): Sektor's MKT voice set replaces Sub-Zero's |
+| v13 | `af951e47789ff58942feb0b8a3b5a532ad72cd4619178a8b033e814536dbbcfb` | `A9CB6252 / E3A446C6` | Adds the robot run sound. Correct, but repetitive and annoying in MKMSZ, so dropped |
+| v14 | `c62dc1a9baad3fc3e4cac884587300d38ff4d7183d7c8983dd5a242583a82ebf` | `A9CB6580 / AF5E62DB` | Voice from MKT's voice-group table. **Rejected:** the group-9 "death scream" is a human pit/fatality scream and played on knockdown landings |
+| v15 | `06e3d306f89c7c5b4e6cc3bfabcfd4f805a1865630c7c012756368d8db1b0918` | `A93F6580 / E79F491A` | **"It's fantastic now":** knockdown landing and death silent; run sound removed |
+| v16 | `7e6b15597d838c299f91804f6f5900881151b90db44a4d0e523a599ecbcf27bc` | `EF26B815 / 7A9A1448` | Adds Sektor's MKT combos (v62 graph). **Rejected volume change:** player categories 0/1 also play the somersault jump, so the "attack whoosh" ×0.85 lowered the somersault instead |
+| v17 | `104e13ff9d92592b803d926b96470b66e7be6fd200781c1cbe4106a0421f4574` | `EF26B815 / 7A9A1448` | v16 with the volume change reverted. Combos work, but the kick endings lack their animation |
+| v18 | `4335e1ad03c7c6a06a761cd34e7c92a071064a12a533d184b8ab5bedd875ea02` | `EF26B815 / 7A9A1448` | Adds v59's late-Knee frames (`KNEE_LATE_MAP`); runtime check pending |
 
 ### Version changes
 
@@ -2325,6 +2333,9 @@ User decisions that define the target behaviour:
   - Both hosts are fully isolated stock chains ([Audio system](Sounds-and-Music#isolated-sound-host-chains-2026-11-07)).
   - Playback copies the stock `0x80064C18` sequence: parameter block `0x802C1188` = `{0xB, volume 0x7F, 0x40, 0}`, then `0x80080A88(event, 0, block)` between the `0x800008D4/0x800008DC` pairs.
 - **v10:** the landing thud is removed and its host chain left stock.
+- **v11:** the post-hit arc keeps the accepted apex but matches MKT's real-time airtime. Launch velocity is ÷0.924 and gravity ÷0.924² (donor 0.602 s; v10 0.633 s). The landing hold drops from 4 to 3 ticks, matching the donor `0x80076E48` hold of 2×3 ticks at 60 Hz. Sektor can act 2 frames sooner.
+- **v12–v15 (voice):** Sub-Zero's player-only voice events are re-pointed at isolated host chains carrying Sektor's MKT sounds. The final v15 rule is in [Audio system](Sounds-and-Music#imported-fighter-voice-rule-2026-11-07).
+- **v16–v18 (combos):** v62's six Sektor combo records at `0xB1CB0` (byte-identical to v62). The standalone `HK,HK` record moves from `0x9AD90`, which is now this line's loader stub, into the payload arena (KSEG1 `0xA01AFB38`), with knee root `0xA1CE8` pointing at it. The combo walker `0x8004D4C0` follows any negative `+0x0C` pointer and fetches strike records from its own table `0x800B0D48`, so KSEG1 is accepted. v18 adds v59's late-Knee shape ownership, which this lineage had never received, so the knee's parts 3–5 show Sektor frames instead of the stance fallback.
 
 ### Proof-only footprint (v08)
 
