@@ -741,6 +741,52 @@ The v86–v89 sequence now resolves the first-visible rocket contract. v86 prove
 
 “Covered primitive” means an appropriate target mechanism is established. It does **not** mean arbitrary donor code can call it without an adapter or that the complete donor move is production-integrated.
 
+## Importer direction: donor special-move recipes (2026-11-07)
+
+**Analysis (Static-confirmed donor facts; plan Pending).** The project goal is an **MKT → MKMSZ fighter importer**, with Sektor as the test case, not a hand-built Sektor. In those terms, here is where things stand:
+
+| Layer | Generic now | Sektor-specific now |
+|---|---|---|
+| Script grammar, donor reader, translation rules | Step 0 tooling (`src/mkmszr/fighter_import/`) | — |
+| Body (frames, slot mapping, 16-colour Type-5) | 16-colour policy | Takeover builders hand-curate which donor frames go where (`RUN_RELS`, `KNEE_LATE_MAP`, …) |
+| Commands | Record format and lowering rule documented | Teleport descriptor written by hand |
+| Special actions | Host primitives documented | Teleport adapter is move-specific MIPS |
+| Voice | Rule driven by MKT's voice-group table ([Audio system](Sounds-and-Music#imported-fighter-voice-rule-2026-11-07)) | — |
+| Combos | Record-compatibility rule (this page) | v62 records copied by hand |
+
+**Key observation.** MKT specials are native code, not data, so they cannot be run on MKMSZ. But each one is a short composition of a small, shared set of engine primitives. Sektor's straight rocket from the arcade lineage (`MKZAP.ASM`) shows this; the retail N64 numbers are those already recorded above:
+
+```text
+do_robo_zap:   zap_init_special_act -> robo_open_chest_fast (ochar_sound 0x0B; anim table 2 slot 0; 2 or 4 ticks/frame)
+               -> setup_proj_obj -> ozval 0 -> adjust_xy(7,45) [retail (+5,+38)] -> create_proj_proc(rocket1_proc)
+               -> i_am_a_sitting_duck -> sleep 0x20 -> robo_close_chest (same anim backwards)
+rocket1_proc:  ochar_sound 3 (robo fast rocket) -> anim 0x37 part 4 (flat rocket)
+               -> set_proj_vel(0x40000, or 0x70000 if the opponent is reacting; retail 0x33333/0x59999), anirate 3
+               -> projectile_flight_call(rocket1_flight_call, strike 0x12) -> rocket_explode_fx
+rocket1_flight_call: rocket_smoke (create_fx 4 every other tick) -> vel += vel>>4, cap 0xE0000 (retail 0xB3333)
+rocket_explode_fx:   ochar_sound 0x0A (metal ball BOOM) -> create_fx 5 (shared explosion) at rocket x/y -> delete
+```
+
+**Proposed importer architecture.**
+1. **Primitive library.** Implement each donor engine primitive once as MKMSZ-native code: special entry, face, play a donor animation (forward, backward, by part), sleep, velocity/gravity with jump-calibrated units, projectile create/place/flight/flight-callback/strike/delete, `ochar_sound` via isolated host chains, `create_fx` via an effect map, the sitting-duck lock, and exit. The teleport adapter already contains half of these as ad-hoc code.
+2. **Recipes.** Express each donor special as a recipe: a list of primitive calls with donor parameters, plus small donor callbacks written in the same vocabulary. Recipes are extracted from the retail code (jal targets plus immediates, as the Step 0 reader already does for command handlers), checked against the arcade source, and compiled by the builder.
+3. **Asset closure.** The body importer includes every donor animation a recipe references: the chest (table 2 slot 0), the rocket (`0x37` part 4), and later the homing rocket and others. Projectile art keeps its own palette (`ROCKET_P`), following the v87/v89 texture-slot lessons.
+4. **Translation tables.** Three engine-local maps, each validated in a bounded proof:
+   - donor strike semantic → MKMSZ reaction (rocket strike `0x12` still needs its donor meaning);
+   - donor `create_fx(n)` → MKMSZ effect;
+   - donor `ochar_sound(n)` → per-fighter sound host.
+5. **Command lowering and tiers.** Lower donor command handlers to MKMSZ descriptors. Sektor's specials fill power tiers 1–4 (user decision, 2026-11-07); with Shuffle Power Progression enabled, they follow the shuffled order.
+
+**Effects.** `create_fx(4)` (smoke puff) and `create_fx(5)` (explosion) are shared MK effects, not robot art. For `fx 5` the user suggests the PRIS GRUNT3 (`0x16`) launcher explosion. That art is already MKMSZ 4-bpp Type-5 with an exact 16-colour palette (file `0x90` secondary model, palette `+0x1C49C`), so it needs no format conversion. But file `0x90` is a Prison-paged resource, so using it everywhere means carrying its frames in the imported fighter's resources, as the rocket is carried. Still to trace (Pending): which `0x90` frames are the impact explosion rather than the projectile in flight, and how the stock grunt spawns it.
+
+**Increments (each is a bounded proof).**
+- **R1.** Refactor the teleport adapter onto the primitive library with no behaviour change.
+- **R2.** The straight rocket as the first recipe: chest open/close, projectile with `ROCKET_P`, donor acceleration and cap at the v75 calibration, translated strike, launch/chest/boom sounds, and the `fx 5` explosion. Smoke comes later. It replaces the tier-1 Ice Blast LP record (`F,F + LP`, one live rocket at a time, as the donor's predicate does).
+- **R3.** Smoke and the heat-seeking rocket (`rocket2_proc`, `F,D,B + HP`), reusing the same library.
+- **R4.** Tier gating and the full command-table swap.
+
+The v63–v89 line remains the evidence base for the projectile seams (texture-slot preupload, palette source, placement and velocity calibration). It hooked the stock Ice action; the importer instead owns its action, as the teleport does.
+
 ## Known missing generic adapter functions
 
 1. **Donor action-phase runner** — express donor phase ordering, sleeps, branch-on-contact, timeout, facing changes, and guaranteed native cleanup without rewriting scheduler glue per move.
