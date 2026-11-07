@@ -179,6 +179,51 @@ The decoder consumes the stream MSB-first. The first 6 bits select the model. Ea
 
 Sektor-specific encoder benchmarks, donor conversion history, palette binding, proof-version storage results, and whole-resource packing policy are owned by [MKT fighter asset translation](MKT-Fighter-Asset-Translation).
 
+## Fighter animation script grammar
+
+**Static-confirmed (clean ROM disassembly, 2026-11-07).** Fighter animation scripts are interpreted by `0x800304C0`. The current controller is global `0x802ECE20`, its script cursor is controller `+0x6E4`, and the interpreted actor's resource base is actor `+0x98`. Fighter file `0x87` begins with primary table 0 (65 words at `+0x000`) and secondary table 1 at `+0x104`; selector `0x8002FE54` performs no bounds check, so table-0 index `0x41+n` aliases table-1 index `n`.
+
+Scripts are big-endian 32-bit words. Each `0x800304C0` call consumes control words until it shows one frame or reaches a terminator:
+
+- **`0`** — end of the current phase; returns `0x4002`. A terminator is **not necessarily the end of the physical script**. Host action code may keep advancing past it into later phases. For example, the stock Ice script at `+0xDA0` places token `0x0B` after a `0` terminator, and the Ice action consumes it with a later advance. Any rewrite must preserve the number and order of phases that the host action code consumes.
+- **`1..16`** — control tokens, below.
+- **any value above 16** — a frame-record offset relative to actor `+0x98`, bound through `0x8001BDA0`; returns `0x4001`.
+
+| Token | Operand words | MKMSZ semantics |
+|---:|---:|---|
+| `1` | 1 | Jump: cursor = actor `+0x98` + operand; continue |
+| `2` | 0 | Horizontal flip: `0x8003188C` toggles actor `+0x8C bit 0x10` and refreshes the frame |
+| `3` | 1 | X offset: signed low halfword × 80/100 → `0x80031208(actor, x, 0)` |
+| `4` | 1 | XY offset: signed high halfword × 80/100, signed low halfword × 85/100 → `0x80031208` |
+| `5` | 1 | Show frame at base + operand through `0x8001BDA0`; returns `0x8001` (distinct from `0x4001`; consumer meaning Pending) |
+| `6` | 1 (+ callback-owned) | Callback: index into the 9-entry pointer table at `0x8009F95C` (index `0` is a no-op). Callbacks 1 and 2 consume one additional word |
+| `7` | 1 | Operand skipped (no effect) |
+| `8` | 2 | Type-conditional jump: if operand 1 == actor `+0x78` (fighter type), cursor = base + operand 2; otherwise both are skipped |
+| `9` | 0 | Vertical flip: `0x800318B8` toggles actor `+0x8C bit 0x20` and refreshes the frame |
+| `10` | 1 | Partner-relative placement: sets actor `+0xF0=1`; X (high halfword × 80/100, mirrored when facing bit `0x10` is set) and Y (low halfword × 85/100) are placed relative to the actor at controller `+0x63C` |
+| `11` | 1 | Secondary resource actor: `0x80030974` constructs a resource-backed actor from the operand entry (`0x80034510`), binds the **fixed Ice palette record `0x800B1A24`** through `0x8001C528`, stores it at controller `+0x714/+0x648`, copies owner position/facing/flags and inserts it through `0x80024650` |
+| `12` | 0 | Helper step: make controller `+0x648` current at `+0x714`, align it to the owner through `0x80031394`, recursively run `0x800304C0` on it, restore `+0x6E0`; continue |
+| `13` | 0 | No-op |
+| `14` | 0 | As token 12, but returns `0x4001` (counts as the shown frame) |
+| `15` | 1 | Operand skipped (no effect) |
+| `16` | 2 | Companion double frame: ensures companion actor controller `+0x650` (created through `0x800245A4` when absent), copies owner colour/flags, binds the companion frame (operand 1) and the owner frame (operand 2); returns `0x4001` |
+
+On entry, `0x800304C0` clears actor `+0xF0`. For the player actor, any first word other than token `16` hides an existing companion by setting companion `+0x64 bit 0x20`, unless global `0x8009F744` is set.
+
+The callback table at `0x8009F95C`:
+
+| Index | Function | Semantics |
+|---:|---:|---|
+| `1` | `0x80028BF4` | Consumes one word; its low halfword becomes animation period `+0x6A6` and countdown `+0x6A8` |
+| `2` | `0x80028C18` | Consumes one word: gameplay SFX descriptor index for `0x80064C18`, with pan `0x7F` when facing bit `0x10` is clear, otherwise `0` |
+| `3` / `4` | `0x800288E0` / `0x800288FC` | Set / clear actor `+0x64 bit 0x2000` |
+| `5` / `6` | `0x8002891C` / `0x80028938` | Set / clear actor `+0x64 bit 0x20` |
+| `7` | `0x80028958` | Actor `+0x2C -= 0x19000`; for actor type `0x0B` it then wraps the value by `±0x32000` into `[0x5D00, 0x333CB]` |
+| `8` | `0x800289FC` | Spawns a class-`0x100` process at `0x80028A24` that builds a resource actor with a randomly chosen variant; identity Pending |
+| `9` | `0x800289E0` | Set actor `+0x64 bit 0x100` |
+
+Stock Sub-Zero file `0x87` uses only tokens `1, 2, 3, 5, 6, 10, 11, 16` and callback `1` in its script region `+0x1B0..+0xFD4` (linear sweep; no undecodable words). The MKT donor comparison of this grammar is owned by [MKT adapter primitives](MKT-Adapter-Primitives#animation-script-grammar-translation).
+
 ## Dynamic gameplay texture-slot record
 
 **Static-confirmed for the fields below.** Dynamic texture IDs `0x200..0x2FF` index 16-byte records at `0x802E83F0 + id*0x10`; backing pointers are stored separately at `0x800ED940[id]`.

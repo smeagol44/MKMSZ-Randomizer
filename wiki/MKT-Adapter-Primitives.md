@@ -12,6 +12,8 @@ The reusable unit is a donor semantic such as yield, movement, facing, animation
 
 Current evidence supports the architecture, but not every category has a complete generic adapter function. Generic no-repel handling, generic victim-reaction translation, donor animation-control-token translation, and a production-ready donor action runner remain incomplete.
 
+**Shared lineage (Static-confirmed 2026-11-07).** The fighter animation-script grammar and the special-move command record are the same in both games: token numbers, terminators, return codes, coordinate scaling and the `0x2C`-byte command layout all match. The animation-control-token translator therefore reduces to the short rule list in [Animation script grammar translation](#animation-script-grammar-translation); [Special-move command translation](#special-move-command-translation) covers commands. Neither translator is implemented yet.
+
 ## Evidence boundary
 
 Current donor findings are tied primarily to:
@@ -213,6 +215,76 @@ Therefore the time-domain translation for this Run is:
 
 The generic adapter must translate animation **rate/cadence** as well as frame sequence. For this exact Sektor Run, the target-equivalent setting is native Run rate **3** with the six donor poses repeated in order. Duplicating each pose at stock target rate 2 produces ~133.3 ms/pose; using each once at stock rate 2 produces ~66.7 ms/pose. Both are expected mismatches and match the reported slow/fast observations.
 
+## Animation script grammar translation
+
+**Static-confirmed for retail MKT USA Rev. 2 and clean MKMSZ USA Rev. 0 (2026-11-07).** Donor interpreter `do_next_a9_frame` `0x8000D408` and target interpreter `0x800304C0` share one grammar lineage:
+
+- the same token numbers `1..15` and the same `0` phase terminator;
+- the same return codes: `0x4001` frame shown, `0x4002` phase end, `0x8001` token 5;
+- base-relative jumps and frame offsets;
+- the same 80/100 (X) and 85/100 (Y) scaling of script offsets;
+- the same two-table slot layout. Donor `get_char_ani` `0x8000F910` uses table 0 at heap `+0x000` and table 1 at heap `+0x168`; the target places table 1 at `+0x104`.
+
+MKT dispatches tokens `1..15` through `0x800F8C10`; MKMSZ dispatches `1..16` through `0x800AD450`. The exact target grammar is owned by [Data structures and encodings](Data-Structures-and-Encodings#fighter-animation-script-grammar).
+
+Interpreter field correspondence. These offsets are engine-local, not a portable ABI:
+
+| MKT | MKMSZ | Meaning |
+|---|---|---|
+| object `+0x58` | actor `+0x98` | script/frame base |
+| object `+0x50` bits `0x10/0x20` | actor `+0x8C` bits `0x10/0x20` | horizontal / vertical flip |
+| object `+0x34` | actor `+0x74` | current frame entry |
+| object `+0x38` | actor `+0x78` | fighter ID / fighter type compared by token 8 |
+| process `+0x41C` | controller `+0x6E4` | script cursor |
+| process `+0x3C4` / `+0x440` | controller `+0x648` / `+0x714` | helper object used by tokens 11, 12 and 14 |
+| `0x8000D2A4` / `0x8000DD3C` / `0x8000DD94` | `0x8001BDA0` / `0x80031208` / `0x80031394` | frame bind / facing-aware offset (2D donor, track-aware target) / align helper to owner |
+
+| Token | MKT | MKMSZ | Translation rule |
+|---:|---|---|---|
+| `0,1,2,3,4,5,9,12,14`, frames | end, jump, H-flip, X offset, XY offset, frame without wait, V-flip, helper step, helper step as frame | same semantics | **Identity**; relocate jump operands and frame offsets |
+| `6` | callback index into the 44-entry table `0x800A3530` (entries 30–32 null) | callback index into the 9-entry table `0x8009F95C`; target callbacks 1 and 2 consume an extra word | **Per-callback semantic map.** Never copy a donor index numerically |
+| `7` | sound `0x800054A8(id)` | operand skipped | Length-compatible: a copy is silent. An audible translation is target callback 2 plus an SFX index, which changes length |
+| `8` | jump if fighter ID == operand | jump if fighter type == operand | Different ID spaces; **fold at import time** for the known donor fighter |
+| `10` | position relative to the process `+0x3BC` object (opponent) | position relative to the controller `+0x63C` actor, X mirrored, track-aware | Victim/throw-side only; translate together with the grab/throw adapter |
+| `11` | create helper object from a frame (`0x8006DA14`) and register it as `+0x3C4` | create helper actor, but bind the **fixed Ice palette `0x800B1A24`** | **Translation required.** The helper must take the imported fighter's palette; the v81–v89 missile line worked around exactly this binding |
+| `13` | bind the next frame record's palette (`0x8006D5DC`); no operand | no-op; no operand | Length-compatible drop under the 16-colour policy |
+| `15` | sound pair `0x800057C0/0x80005760` | operand skipped | as token 7 |
+| `16` | — | companion double frame | Host-only |
+
+**Donor callbacks that matter for import:**
+
+- `1` `0x800052CC`: random sound from a two-entry group plus `0x80004FE4`.
+- `6` `0x8006C7FC` `sans_repell_3`: the no-repel semantic is also reachable from scripts.
+- `8` `0x8000518C`: random one of four sounds from group table `0x800A1A3C`; the Run footstep.
+- `14`: process `+0x3CC=1`.
+- `16`: `0x8000F9B0` plus rate 9.
+- `17`: loop counter that skips or rewinds three words.
+- `18` / `19`: retarget the helper-step object to the opponent (`+0x3BC`) or own helper (`+0x3C4`).
+- `23`: counter, then `get_char_ani` jump.
+
+Callbacks 17 and 23 change the cursor, and callback 22 reads the following frame, so a static walker must model them.
+
+**Corpus census (linear sweep).** The fighter-ID-indexed heap table `0x800A247C` (start/end pairs) and dictionary table `0x800A2578` list 19 unique heaps for IDs 0–31. Token totals across them: `1:374, 2:96, 3:224, 4:305, 5:47, 6:159, 7:5, 8:22, 9:16, 10:2634, 11:59, 12:116, 13:9, 14:187, 15:8`. Every heap decodes completely except 43 words in the shared male-ninja heap `0x6298A0`; that block is probably embedded non-script data (Pending). Token 10 is concentrated in victim/reaction slots.
+
+**Robot heap** (ROM `0x8881C0..0x8E79B0`; IDs 7 Sektor, 8 Cyrax, 14 Smoke):
+
+- Run P4A uses callback 8 (footstep).
+- Sweep P14 uses callback 1.
+- Throw P23 uses callbacks 18/19, tokens 11/12/14, and token-8 branches on IDs 8 and 14 (Cyrax/Smoke-only, never taken for Sektor).
+- Dizzy P25 uses callbacks 14/16/17; no current import requirement.
+- Token 10 appears only in slots `0x26..0x48`.
+
+No other callback is reachable from Sektor's attacker-side scripts.
+
+**Importer rules derived from this:**
+
+1. **Assembler, not in-place patching.** Callback and sound translation can change operand length, so emitted scripts need label-based jump relocation.
+2. **Preserve the host phase layout.** MKMSZ action code advances scripts by phase count. A donor script can be translated directly only where its phase structure matches the target slot's host consumer; otherwise fit the donor frames and timing into the host's phases. The Runtime-confirmed Sektor compositions (v54–v62, Run v05, missile v89) keep the stock Sub-Zero control structure: identical non-loop token and callback counts, substituted frame references, five redirected slot roots, and looping scripts cut to donor length with a new loop jump. Run (v04/v05) is the directly translated case: the donor Run sequence with callback `6,8` dropped and the loop jump retained. See [Sektor takeover proof history](Sektor-Takeover-Proof-History#build-kit-reproduction-and-takeover-change-map-2026-11-07).
+3. **Fold token 8** for the imported fighter ID.
+4. **Map or drop donor sound and palette operations** explicitly.
+
+**Coverage:** Static-confirmed rules; no translator implementation exists yet.
+
 ## Strike and reaction translation
 
 MKT strike numbers are donor-table indices, **not MKMSZ strike IDs**.
@@ -286,6 +358,32 @@ For every donor combo edge:
 4. validate the translated selector in a bounded proof.
 
 Numeric equality alone is insufficient.
+
+## Special-move command translation
+
+**Static-confirmed (2026-11-07).** The MKT special-move command record has exactly the `0x2C`-byte layout of the MKMSZ descriptor in [Player actions and special moves](Player-Actions-and-Special-Moves#low-kick-descriptor-and-special-action-path). That layout is: two `u16` button masks, `u32` transfer selector, condition pointer, action pointer, `u16` input window, six facing-right and seven facing-left `u16` tokens, and a zero `u16` table sentinel.
+
+Direction tokens are stored **newest first**: `9`/`8` are Right/Left (forward/back when facing right) and `7` is Down. Reptile record `0x800ACA5C` has mask `0x40`, right tokens `9,8`, and action `do_reptile_dash`; that decodes to the documented Back→Forward + Low Kick command. MKMSZ's Low Kick table `0x800B0F68` also uses mask `0x40`, and its High Kick table `0x800B0F98` uses `0x20`.
+
+**Donor dispatch:**
+
+- The fighter ID at object `+0x38` indexes two event grids: `0x800A8780` (10 events × 32 fighters, used when the caller's `a2==1`) and `0x800A8AB8` (6 events).
+- Grid entries are small wrappers. Most call the declarative parser `0x8004BEB0(table)`, which covers 108 tables, 205 records and 84 distinct actions.
+- Special-move IDs dispatch through `0x80076F70(id)` → the 56-entry table `0x800AB140` via `context_jump` `0x80080A84`.
+- Selectors seen in MKT are `0,1,2,3,4,6,7`. Selectors `2,3,4,6,7` appear in records shared by almost every fighter (versus-mode finishers and similar). MKMSZ stock implements only `0` and `1`.
+
+**Robot handlers are imperative.** The robots use per-fighter handlers built on the inline sequence checker `0x8004BFD4(mask, mask, table)`. It takes compact `0x1A`-byte tables (`u16` window, six right, six left) plus custom predicates. Sektor (ID 7):
+
+| Grid event / mask | Sequence (oldest→newest, facing right) | Predicate | Action |
+|---|---|---|---|
+| 1 / `0x80` | F, F | no live process `0x705` (`0x805` for player 2), via `0x8005A614` | special 9 → `0x8007BF84` `do_robo_zap` → `rzap3 0x8007C068(rocket1_proc 0x8007C100, 0)` |
+| 1 / `0x80` | B, B, F | same | special 51 → `0x8007BFC8` → `rzap3(0x8007C100, 1)` |
+| 0 / `0x10` | F, D, B | fewer than three live `0x704` projectile processes | special 10 → `0x8007BF38` → `rzap3(0x8007C25C, 0)` (homing process) |
+| 4 / `0x40` (LK) | F, F | opponent action `+0x3F6 != 0x616` and `+0x408 < 2` | `0x8004FDDC(1, 0x8004F0C0)` → `do_body_propell(8)` → propell table entry `0x80048368` |
+
+Only mask `0x40` is cross-checked; the `0x80`/`0x10` button names (LP/HP by lineage) are **Hypothesis**. Sektor's other grid entries hold only the shared selector-`2/3/4/6/7` records. The teleport uses the same body-propell machinery as Reverse Elbow (selector `0x17` → `0x800467D0`), so the Reverse Elbow host lifecycle is the natural adapter for it.
+
+**Translation rule:** lower both donor declarative records and imperative robot handlers into MKMSZ descriptor records. Express handler predicates as small native condition functions (descriptor `+0x08`) and point actions at adapter-owned entries. Exclude versus-only selectors unless a requirement adds them. **Coverage:** Static-confirmed format and Sektor inventory; implementation Pending.
 
 ## Cleanup and action lifecycle
 
@@ -603,7 +701,8 @@ The v86–v89 sequence now resolves the first-visible rocket contract. v86 prove
 | projectile flight callback | `projectile_flight_call(callback)` | MKMSZ projectile loop `0x8004CC50`: child `+0x70C` is latched into `+0x680` and invoked once per flight iteration before strike resolution | **Runtime-confirmed callback/cadence and bounded magnitude through v75; universal spatial scale Pending** | This page + Player Actions |
 | projectile per-tick state | donor `p_store*` fields | adapter-owned child-process scratch/state | **Missing generic ABI** | This page |
 | projectile effect | `rocket_smoke`, `rocket_explode_fx` | target-native effect/SFX semantics | **Missing generic effect translation** | This page |
-| animation callback/control token | donor script callback semantics | Equivalent MKMSZ-native control token/callback | **Missing generic translator** | This page |
+| animation callback/control token | donor script callback semantics | Shared grammar; per-token/per-callback rules in [Animation script grammar translation](#animation-script-grammar-translation) | **Rules Static-confirmed; translator implementation Pending** | This page + Data Structures |
+| special-move command record | donor `0x2C` records / robot inline handlers | MKMSZ descriptor (identical layout) + native condition | **Format Static-confirmed; lowering Pending** | This page + Player Actions |
 | strike check | donor strike index + record | Native strike dispatch with translated semantics | **Partial adapter** | This page + Player Actions |
 | victim reaction | donor selector/function | MKMSZ-native semantically equivalent reaction | **Missing generic map** | This page |
 | no-repel | `sans_repell_3` / three-tick countdown | Narrow target separation bypass | **Missing generic shim** | This page |
@@ -622,7 +721,7 @@ The v86–v89 sequence now resolves the first-visible rocket contract. v86 prove
 5. **Projectile effect/palette translation** — bind projectile-local palette semantics and map donor smoke/explosion/SFX effects without inheriting Ice presentation.
 6. **No-repel gate** — implement the donor three-tick countdown at a narrow MKMSZ separation hook, without forced crossover or teleport behavior.
 7. **Strike/reaction translator** — map donor geometry/damage/flags/reaction meaning to MKMSZ-native strike and victim-reaction primitives.
-8. **Animation-control-token translator** — map donor animation callbacks/control tokens; visual-frame import alone is insufficient for scripts containing engine callbacks.
+8. **Animation-control-token translator** — map donor animation callbacks/control tokens; visual-frame import alone is insufficient for scripts containing engine callbacks. The rules are now Static-confirmed ([Animation script grammar translation](#animation-script-grammar-translation)); a label-relocating assembler that preserves host phase layout remains to be built.
 9. **Generic combo semantic mapper** — preserve proven normal-combo structure while resolving every game-local strike/reaction selector semantically and validating it.
 
 These are design gaps, not permission to invent target semantics. Each becomes covered only when the MKMSZ-side behavior is established and validated at the appropriate scope.

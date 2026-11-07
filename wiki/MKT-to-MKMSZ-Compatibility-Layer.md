@@ -93,6 +93,7 @@ Donor table indices and selectors must be identified by meaning and mapped to MK
 - **Movement / stop / face / animation selection / animation advance:** target primitives identified.
 - **Fighter asset translation:** donor descriptors/pixels/palettes can be converted into MKMSZ-native target assets for proven formats; generated Type-5 is the accepted target storage direction.
 - **Normal-combo grammar:** transferable at the bounded Sektor v62 scope when game-local reaction semantics are translated.
+- **Animation-script grammar and special-move command record:** Static-confirmed as one shared lineage (same tokens, terminators, return codes, coordinate scaling and `0x2C`-byte command layout). Game-local differences are confined to the callback tables, sound tokens, fighter-ID branches, helper-actor palette binding (token `0x0B`) and robot-style imperative command handlers. See [Animation script grammar translation](MKT-Adapter-Primitives#animation-script-grammar-translation) and [Special-move command translation](MKT-Adapter-Primitives#special-move-command-translation).
 - **Projectile host primitives:** resource-backed secondary-actor creation, facing-aware relative placement, child projectile-process binding, and the generic projectile collision/strike path are statically identified. v69 Runtime-confirms the resolved player-animation cursor path; v70 Runtime-confirms a genuine donor rocket frame can reach the live projectile.
 - **Rejected-path lessons:** forced crossover, raw selector reuse, blind callback-token reuse, unsafe callback returns, and direct donor codec consumption all remain reusable architectural constraints.
 
@@ -102,7 +103,7 @@ Donor table indices and selectors must be identified by meaning and mapped to MK
 - generic donor movement-unit conversion policy;
 - generic three-tick no-repel shim in MKMSZ;
 - general donor strike/reaction semantic map;
-- generic donor animation-control-token translator;
+- generic donor animation-control-token translator (rules Static-confirmed; a label-relocating assembler that preserves host phase layout is not yet built);
 - generic projectile actor/process wrapper and donor projectile callback/state/effect translation;
 - arbitrary donor special-move command/action integration;
 - production-safe allocation/composition for imported fighters or moves.

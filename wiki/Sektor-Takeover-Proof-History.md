@@ -32,6 +32,58 @@ A separate 2026-09-25 branch tested reducing ordinary Run presentation back to t
 
 - **Owner-probe common-proof v06 — Runtime-confirmed on the tested rope route.** `MKMSZR_sektor-p28-p29-owner-probe_common-proof_v06.z64`, SHA-256 `b4b098a411ad5712b3574cc96f8667a7684d2927e9c4df900af52792e9ede644`, CRC1/CRC2 `A6256BDA / C01C8AB6`; builder SHA-256 `1820ddae85304699a987ee3ea0e9771a7ad6002f1f1c58b49b89ffc9441cb0eb`. This is a bounded diagnostic derived from the compact common-animation line, not a finished visual mapping. It preserves the stock P28/P29 token-`0x10` grammar, timing, facing flip, attachment logic and narrow companion visual controls, while substituting only the first owner-side descriptor in P28/P29 with genuine retail N64 Sektor art. The user observed the stock Sub-Zero arm companion moving while attached; both Sektor and the arm turned together; the arm vanished on detach and returned on reattach; no duplication, lingering image, corruption or freeze was observed. This Runtime-confirms owner/companion coexistence and normal park/reuse on the tested rope route. It does not establish complete interruption, death-while-attached, stage-exit or old-actor teardown behavior, and the mixed Sektor/stock-arm presentation is not an accepted final fallback pose manifest.
 
+## Build-kit reproduction and takeover change map (2026-11-07)
+
+**Implementation/static-confirmed reproduction; no new runtime evidence.**
+
+**The kit.** The user supplied `MKMSZR_sektor-investigation_build-kit_v01.zip` (SHA-256 `776b29700a7b52312e7dc00d682fcf88b74d7eada25b3250b6dd370180af4b77`). It contains:
+
+- 50 unchanged original builders (takeover v53/v54 legacy, v54–v62, missiles v63–v89, Run v01–v05, the palette and owner probes);
+- 14 historical v57 scripts;
+- the recovered-source bridge for v53/v54;
+- exact XOR-delta replays of 73 earlier artifacts (Sektor v01–v53, Reverse Elbow v1–v8.3, Reptile A1–v08);
+- an entry point `build.py` that hash-checks every output.
+
+The kit is research provenance and belongs in the Library. Only its original builders are mirrored in the repository under `Experimental/SektorTransplantBuilders/original_builders/`.
+
+**Reproduced in a cloud session from the clean MKMSZ and MKT inputs.** Targets v55–v62 and v64 onward also need the user-supplied PS1 MKT members `CHARS1/ROBOT.DAT` (`99c5ae8c…bedd0`) and `CODE/ROBOT.BIN` (`d5c2752c…935d6`). Every output below matched its recorded identity; CRC1/CRC2 are read from the rebuilt ROMs.
+
+| Target | Output SHA-256 | CRC1 / CRC2 |
+|---|---|---|
+| Run v05 | `3073bd0b77e88a8bb1ea22a5a45ce1fe933512434188e9c578c35adb4f4f5363` | `A624B5FA / 2240BC7D` |
+| Owner probe v06 | `b4b098a411ad5712b3574cc96f8667a7684d2927e9c4df900af52792e9ede644` | `A6256BDA / C01C8AB6` |
+| Takeover v53 (recovered source) | `65181aa5a270ec2ba404d01d02a8054ffba923991408a87465a25515b6b99e7f` | `A6246DD8 / 513DCBF9` |
+| Takeover v54 | `7f11e7e462a8e9a5fb028a62e5281989480dd3eb19bdc5d281241113caf1876a` | `A6256DA8 / 9F9B13D5` |
+| Takeover v62 (via v59 → v60) | `689862a64ab2cfe04041fae357a19774e335cea39eff6c9d6f5ae143f601e1fd` | `B4234446 / 80A601BE` |
+| Missile v75 (via v70 → v72 → v73) | `e77b334ffa8cc2d55500b22d2047560190ceec935cb390b256fe939244e9c2fb` | `29C9C3E6 / 61EE1EE8` |
+| Missile v89 | `582b255ca3c5ef2cc008444403c1bb5b0379c91c16e6d5f9079da2cdc5ac0d89` | `9F889E81 / 0EDEC067` |
+| 16-colour palette proof v01 (from v75) | `e339d75c396b09a10b8c6a4fd1cab76efb5a99dda30d98c6524c029ad6fa3a59` | `29C9C3E6 / 61EE1EE8` |
+| Reverse Elbow v8.3 (replay) | `37c58380396eaadd36bd9441a5aac0b0504b0628420cd97adb4a5df204365cc2` | `700C2641 / A5F16487` |
+| Reptile v08 (replay) | `1ea40452cdf6e8866b48544fc57f27b065dace75fa0416d52fb4987db61f936d` | `70135E41 / BB4C161F` |
+
+The 16-colour proof is `MKMSZR_sektor-16color_common-proof_v01.z64`, built by `MKMSZR_build_sektor_16color_v01.py` (SHA-256 `73fa9318a757989847cc6e7a9e9e439fd6099ce43f12c69d415e9ff129a9b305`). It was previously recorded only as the visually accepted policy proof in [MKT fighter asset translation](MKT-Fighter-Asset-Translation#accepted-generic-16-color-normalization-direction). Its CRCs equal v75's because it changes only data beyond the first MiB.
+
+**Takeover change map (word diff against the clean ROM, outside the relocated file).** Static-confirmed for these exact builds.
+
+| Region | Present in | Meaning |
+|---|---|---|
+| `0xA5664/0xA5668` | all | File-`0x87` table entry relocated to `0xF40000` (end `+0x4CD68` in v05, `+0x4E154` in v54) |
+| `0xDD60`, `0xE028`, `0x15CD0` → `0x9A700` cave, `0x7A3F4`, `0x9B7F4` | all | Early randomizer test harness, not fighter code: stage clamp, Safe Stage Select callback, stage-selector mapper, logo bypass and the selector list. See [Stage flow and selector](Stage-Flow-and-Selector) |
+| `0x2F7A0` | Run v03–v05 | Run rate `2 → 3` |
+| `0xA1CE8`, `0xB1CB4..0xB1D10` | v62 line | Combo-table data |
+| `0x4AFAC..0x4C48C`, `0x9AD90..0x9AF1C`, `0xB1B4C` | v75 / v89 | Ice-action hooks, proof code in the bootstrap-conflict interval, and Ice-path data |
+| `0x315C8`, `0x316C8` | v89 only | Token-`0x0B` palette-call and actor-insertion call sites |
+
+The fighter-body takeover itself is therefore **data only**: a replacement file `0x87`.
+
+**Script structure.** v54, v62, v05 and v89 keep the stock Sub-Zero script control structure across `+0x1B0..+0x1000`:
+
+- **Unchanged:** the counts of tokens `2, 3, 5, 6, 10, 11, 16` and the callbacks.
+- **Frame references:** most of the roughly 500 changed words are frame references.
+- **Redirected roots:** five slot roots point elsewhere (`0x09`, `0x11`, `0x12`, `0x1A`, `0x20`).
+- **Shortened loops:** six looping scripts are cut to donor length by a new loop jump right after the donor frames. These are `+0x300→+0x2EC` (Idle), `+0x3DC→+0x3C0` and `+0x408→+0x3EC` (Walk), plus `+0x4F8→+0x4E4`, `+0x670→+0x654` and `+0x7D8→+0x7C4`. Some stock jumps become unreachable as a result.
+- **Run (v05):** the Run script is exactly the donor robot Run sequence with donor callback `6,8` removed and the loop jump retained, adding `+0xF00→+0xEE8`. This directly evidences the importer rule that donor scripts must be fitted into the host phase layout except where the layouts already match; see [MKT adapter primitives](MKT-Adapter-Primitives#animation-script-grammar-translation).
+
 ## Reconciled status rules
 
 A proof entry may preserve its historical **pre-test** status, but the section's final status is always the latest recorded evidence. In particular:

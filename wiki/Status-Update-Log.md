@@ -4,6 +4,15 @@
 
 ## From Project status
 
+### PS-20 (2026-11-07)
+
+**2026-11-07 MKT→MKMSZ move/character recompiler analysis — Static/Implementation-confirmed; no runtime claims.**
+
+- **Shared grammar.** Clean-ROM disassembly shows the donor (`0x8000D408`) and target (`0x800304C0`) fighter animation interpreters share one grammar: the same tokens `1..15`, terminator, return codes and 80/100 / 85/100 coordinate scaling.
+- **Translation rules.** Game-local differences are confined to the callback tables, sound tokens, fighter-ID branches, token-`0x0B` helper palette binding and companion token `16`. The rules are in [MKT adapter primitives](MKT-Adapter-Primitives#animation-script-grammar-translation); the target grammar is in [Data structures](Data-Structures-and-Encodings#fighter-animation-script-grammar).
+- **Command records.** MKT's special-move command record matches the MKMSZ `0x2C` descriptor layout. Sektor's four specials (straight, variant and homing rockets; body-propel-8 teleport) are inventoried.
+- **Build kit.** The user-supplied Sektor build kit v01 reproduced v05, v06, v53, v54, v62, v75, v89, the 16-colour proof and two replays with exact hashes. The takeover is data-only apart from the missile hooks and the early test harness, and it fits donor frames into the host phase layout ([proof history](Sektor-Takeover-Proof-History#build-kit-reproduction-and-takeover-change-map-2026-11-07)).
+
 ### PS-19 (2026-11-06)
 
 **Water boss-area scripted checkpoint — Runtime-confirmed bounded owner report; production integration, revisit coverage Pending.** The existing Water overlay instruction at raw ROM `0xB9330` increments live selector `0x802C18F8` before stock reconstruction, causing an incorrect predecessor+1 destination when an earlier physical checkpoint is skipped (maintainer observation). The disposable debug-composition v02 ROM changes only `24420001` to `24020006` (constant target 6), with CRC adjustment; output SHA-256 `5a9a3e7802e9d1487acb046b677fa8f66fb448a1965e355f5bf545a4f5018fcc`. The maintainer subsequently reported "Working fine now" and requested promotion. The current shared product pipeline applies the identical guarded single-word edit, preserving all other Water script effects. Static analysis suggests the event advances a one-shot `0x802F2EAC` flag 1→2; this does not establish safety if a late Water re-entry retriggers the script with selector >6. No emulator run by assistant and no full-seed/current-main runtime validation; Bridge dinosaur and Temple Scorpion Inventory crashes remain independently Pending. Audio FIFO speed-up has since been addressed by PS-17 and must not be described as merely paused.
