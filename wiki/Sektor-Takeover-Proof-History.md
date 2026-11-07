@@ -2283,6 +2283,7 @@ User decisions that define the target behaviour:
 | v16 | `7e6b15597d838c299f91804f6f5900881151b90db44a4d0e523a599ecbcf27bc` | `EF26B815 / 7A9A1448` | Adds Sektor's MKT combos (v62 graph). **Rejected volume change:** player categories 0/1 also play the somersault jump, so the "attack whoosh" ×0.85 lowered the somersault instead |
 | v17 | `104e13ff9d92592b803d926b96470b66e7be6fd200781c1cbe4106a0421f4574` | `EF26B815 / 7A9A1448` | v16 with the volume change reverted. Combos work, but the kick endings lack their animation |
 | v18 | `4335e1ad03c7c6a06a761cd34e7c92a071064a12a533d184b8ab5bedd875ea02` | `EF26B815 / 7A9A1448` | Adds v59's late-Knee frames (`KNEE_LATE_MAP`); runtime check pending |
+| v19 | `4335e1ad03c7c6a06a761cd34e7c92a071064a12a533d184b8ab5bedd875ea02` | `EF26B815 / 7A9A1448` | Importer refactor (R1): the action comes from the `fighter_import` primitive library. The ROM is byte-identical to v18, so no runtime test is needed |
 
 ### Version changes
 

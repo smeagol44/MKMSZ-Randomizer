@@ -39,6 +39,7 @@ The test workflow uses Python 3.11 for pushes to `main`, `refactor/**`, and `fea
 | `test_runtime_v1.py` | Historical/compatibility Runtime V1 layout, reference payload, and Fire persistence pipeline contract |
 | `test_runtime_v2.py` | Current Runtime V2 0x3B0-code/0x50-state repartition and versioned state-header contract |
 | `test_fighter_import.py` | Fighter-importer Step 0: script grammar decode/assemble round trip, label relocation, dialect differences, translation rules. **ROM-backed** (skipped unless `MKMSZR_CLEAN_ROM` / `MKMSZR_MKT_ROM` name the supported clean ROMs): stock file-`0x87` byte-identical re-encode, Sektor donor tables and special commands, and donor Run → the Runtime-confirmed v05 live Run script |
+| `test_fighter_import_actions.py` | Importer action library (no ROM needed): MIPS assembler encodings, branch/label and segment rules, `%hi/%lo`, jump-calibrated motion, and the teleport action assembling to the Runtime-confirmed Sektor proof v18 payload (pinned SHA-256) |
 
 ## What CI proves
 

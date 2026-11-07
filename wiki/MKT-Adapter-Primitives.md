@@ -779,6 +779,14 @@ rocket_explode_fx:   ochar_sound 0x0A (metal ball BOOM) -> create_fx 5 (shared e
 
 **Effects.** `create_fx(4)` (smoke puff) and `create_fx(5)` (explosion) are shared MK effects, not robot art. For `fx 5` the user suggests the PRIS GRUNT3 (`0x16`) launcher explosion. That art is already MKMSZ 4-bpp Type-5 with an exact 16-colour palette (file `0x90` secondary model, palette `+0x1C49C`), so it needs no format conversion. But file `0x90` is a Prison-paged resource, so using it everywhere means carrying its frames in the imported fighter's resources, as the rocket is carried. Still to trace (Pending): which `0x90` frames are the impact explosion rather than the projectile in flight, and how the stock grunt spawns it.
 
+**R1 done (2026-11-07, Implementation/CI-confirmed).** The primitive library exists in `src/mkmszr/fighter_import/`:
+- `mips.py`: assembler;
+- `host.py`: MKMSZ host ABI primitives (action entry, controller/lock/action ID, uncancellable special begin, animation cursor/rate, sleep, find target, strike, sound player, exit with the v6 fallback);
+- `physics.py`: jump-calibrated units and `retime`;
+- `actions/robo_teleport.py`: the teleport as a composition of these primitives, with donor constants as named fields.
+
+Builder v19 calls the package. Its payload and its whole ROM are **byte-identical** to the Runtime-confirmed v18, so behaviour is unchanged by construction. `tests/test_fighter_import_actions.py` pins the payload hash without needing a ROM.
+
 **Increments (each is a bounded proof).**
 - **R1.** Refactor the teleport adapter onto the primitive library with no behaviour change.
 - **R2.** The straight rocket as the first recipe: chest open/close, projectile with `ROCKET_P`, donor acceleration and cap at the v75 calibration, translated strike, launch/chest/boom sounds, and the `fx 5` explosion. Smoke comes later. It replaces the tier-1 Ice Blast LP record (`F,F + LP`, one live rocket at a time, as the donor's predicate does).
