@@ -101,3 +101,53 @@ def test_teleport_action_matches_runtime_confirmed_v18_payload() -> None:
     assert hashlib.sha256(blob).hexdigest() == (
         "edb5cf64258208677ebf0f2ad276ac4a664b75e264f808ae53381bbdc8ea19ba"
     )
+
+
+# ---------------------------------------------------------------- lifter
+
+
+def _code(*values: int) -> bytes:
+    return b"".join(v.to_bytes(4, "big") for v in values)
+
+
+def test_lifter_relocates_internal_jumps_only() -> None:
+    from mkmszr.fighter_import import lifter
+
+    src = 0x8004AB84
+    code = _code(
+        0x10400002,  # beqz v0, +2 (internal, PC-relative)
+        0x08000000 | ((src + 0x10) >> 2) & 0x03FFFFFF,  # j src+0x10 (internal)
+        0x0C00A1E5,  # jal 0x80028794 (external)
+        0x00000000,
+        0x03E00008,  # jr ra
+        0x00000000,
+    )
+    out = lifter.lift(code, src, 0xA01AFBA8, patches={src + 0x0C: 0x24040004})
+    lifter.verify(code, out)
+    words = [int.from_bytes(out.code[i : i + 4], "big") for i in range(0, len(out.code), 4)]
+    assert words[0] == 0x10400002 and words[2] == 0x0C00A1E5
+    assert words[1] == 0x08000000 | ((0xA01AFBA8 + 0x10) >> 2) & 0x03FFFFFF
+    assert out.relocated == [src + 4] and words[3] == 0x24040004
+
+
+def test_lifter_rejects_non_self_contained_code() -> None:
+    from mkmszr.fighter_import import lifter
+
+    src = 0x80049C34
+    with pytest.raises(lifter.LiftError):  # branch leaving the routine
+        lifter.lift(_code(0x10400010, 0, 0x03E00008, 0), src, 0xA01AF000)
+    with pytest.raises(lifter.LiftError):  # computed jump
+        lifter.lift(_code(0x03200008, 0), src, 0xA01AF000)
+    with pytest.raises(lifter.LiftError):  # address constant inside the routine (lui/addiu)
+        lifter.lift(_code(0x3C058005, 0x24A59C38, 0x03E00008, 0), src, 0xA01AF000)
+
+
+def test_transfer_thunk_enters_kseg0() -> None:
+    a = Assembler(0xA01AFB48)
+    host.emit_transfer_thunk(a, "t", 3)
+    assert words(a) == [
+        0x3C198005,
+        0x2739AA4C,
+        0x03200008,
+        0x24040003,
+    ]  # lui/addiu 0x8004AA4C, jr t9

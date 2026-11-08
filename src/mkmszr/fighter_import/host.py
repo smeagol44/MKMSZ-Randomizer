@@ -43,6 +43,9 @@ F_AUDIO_A = 0x800008D4
 F_AUDIO_B = 0x800008DC
 F_RAW_SOUND = 0x80080A88  # (event, 0, params)
 PLAYER_CONTROL_CALLBACK = 0x80038F3C
+F_TRANSFER = 0x8004AA4C  # (selector): install TRANSFER_TABLE[selector] as the action root
+TRANSFER_TABLE = 0x800A1050  # stock selectors 0..2; proof selectors 3+ are added by builders
+TRANSFER_LIMIT_ROM = 0x4B654  # 'sltiu v0, a2, 3' bound check inside F_TRANSFER
 
 # Controller (process) fields
 CTRL_ACTOR = 0x6E0
@@ -273,3 +276,17 @@ def exit_action(a: Assembler, hang: str = "hang") -> None:
     a.jal(F_CONTEXT_SWITCH)
     a.label(hang)
     a.beq("zero", "zero", hang)
+
+
+def emit_transfer_thunk(a: Assembler, label: str, selector: int) -> None:
+    """Descriptor action: ``F_TRANSFER(selector)``, entered at its KSEG0 address.
+
+    A plain ``j`` from a KSEG1 payload would reach the uncached alias of the shim;
+    ``jr`` keeps the stock KSEG0 entry.
+    """
+
+    a.label(label)
+    a.lui("t9", hi(F_TRANSFER))
+    a.addiu("t9", "t9", lo(F_TRANSFER))
+    a.jr("t9")
+    a.addiu("a0", "zero", selector)
