@@ -77,3 +77,53 @@ def check_stock(result: LiftResult) -> None:
             raise LiftError(
                 f"stock word at {va:#x} is {old:#010x}, expected {STOCK_WORDS[va]:#010x}"
             )
+
+
+# ---- Chest open / hold / close (MKZAP.ASM robo_open_chest_fast, sleep 0x20, robo_close_chest)
+# Donor robot secondary animation slot 0: RBCHEST1, RBCHEST2. MKT (60 Hz): open with
+# mframew 4 ticks/frame (2 if the opponent is reacting: not modelled yet), rocket created,
+# hold 0x20, close with backwards_ani 4 ticks/frame, then the action ends.
+CHEST_FRAMES = (0x29A0, 0x29B4)  # robot heap offsets: RBCHEST1, RBCHEST2
+
+# Stock Zap script (fighter file 0x87, animation slot 0x24) as the lifted root plays it on
+# the parent (host ticks): phase 1 (+0xDA0..+0xDB0) at 2 ticks/frame via 0x80030E98(3);
+# sleep 2; token 0x0B (+0xDB8, constructor +0xDBC) creates the projectile; sleep 2 in
+# 0x8004B584; the projectile process starts; recovery frames +0xDCC..+0xDE0 with sleeps
+# 2, 2, 3, 4, 5, 5 (root 0x8004B108..0x8004B1A0, or 0x8004B650.. on a point-blank hit).
+ZAP_SCRIPT = 0xDA0
+ZAP_TOKEN = 0xDB8
+ZAP_RECOVERY = (0xDCC, 0xDD0, 0xDD4, 0xDD8, 0xDDC, 0xDE0)
+
+
+def chest_script_words(open1: int, open2: int) -> dict[int, int]:
+    """Zap script words (file offset -> word) for the chest open, hold and close.
+
+    Phase 1 becomes RBCHEST1, RBCHEST2 (2 + 2 ticks, donor 4 + 4 at 60 Hz), then jumps
+    to the unchanged token so the projectile hooks keep their offsets. From projectile
+    creation RBCHEST2 holds 2 + 2 + 2 + 3 + 4 + 5 = 18 ticks (donor 32 + 4) and the last
+    recovery frame shows RBCHEST1 (closing).
+    """
+
+    words = {
+        ZAP_SCRIPT: open1,
+        ZAP_SCRIPT + 4: open2,
+        ZAP_SCRIPT + 8: 0,  # end of phase 1
+        ZAP_SCRIPT + 0xC: 1,  # jump
+        ZAP_SCRIPT + 0x10: ZAP_TOKEN,
+        ZAP_SCRIPT + 0x14: 0,  # unreachable
+    }
+    for pos in ZAP_RECOVERY[:-1]:
+        words[pos] = open2
+    words[ZAP_RECOVERY[-1]] = open1
+    return words
+
+
+# Root patch: the last recovery frame (RBCHEST1, closing) holds 2 ticks (donor 4), not 5.
+CLOSE_HOLD_SITE = {0x8004B1A0: 0x24040005}  # addiu a0, zero, 5 (sleep delay slot)
+
+
+def close_patches(ticks: int = 2) -> dict[int, int]:
+    return {0x8004B1A0: _addiu("a0", ticks)}
+
+
+STOCK_WORDS.update(CLOSE_HOLD_SITE)

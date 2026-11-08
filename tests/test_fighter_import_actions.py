@@ -240,3 +240,14 @@ def test_teleport_emerge_on_floor_is_opt_in() -> None:
     assert new[i - 1] == 0 and new[i - 2] >> 26 == 0x05  # right after find_target (bnez; nop)
     j = new.index(0x8FA8001C)  # lw t0, 0x1C(sp)
     assert new[j + 1] == 0x8E890030  # lw t1, 0x30(s4): target y (fallback)
+
+
+def test_robo_zap_chest_choreography() -> None:
+    from mkmszr.fighter_import.actions import robo_zap
+
+    w = robo_zap.chest_script_words(0x111, 0x222)
+    assert [w[robo_zap.ZAP_SCRIPT + 4 * i] for i in range(6)] == [0x111, 0x222, 0, 1, 0xDB8, 0]
+    assert [w[p] for p in robo_zap.ZAP_RECOVERY] == [0x222] * 5 + [0x111]
+    assert robo_zap.ZAP_TOKEN not in w and 0xDBC not in w  # token and hook offsets untouched
+    assert robo_zap.close_patches() == {0x8004B1A0: 0x24040002}
+    assert robo_zap.STOCK_WORDS[0x8004B1A0] == 0x24040005
