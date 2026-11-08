@@ -11,7 +11,7 @@ Donor facts are MKT USA Rev. 2 N64 retail values (not the arcade source lineage)
 
 from __future__ import annotations
 
-from ..host import F_OFFSET
+from ..host import F_OFFSET, UNITS_PER_TEXEL
 from ..lifter import LiftError, LiftResult
 from ..mips import REG
 
@@ -20,8 +20,9 @@ ICE_CALLBACK_SRC, ICE_CALLBACK_END = 0x80049C34, 0x80049C84  # LP record action
 ICE_CALLBACK_GROUND_SELECTOR = 0x80049C70  # 'move a0, zero' -> transfer selector
 ICE_ROOT_SRC, ICE_ROOT_END = 0x8004AB84, 0x8004B1D0  # transfer selector 0 (all Ice modes)
 
-# Donor: retail placement of the rocket relative to Sektor, whole local units
-# (source adjust_xy_a5(SCX(7), SCY(45)); Runtime-confirmed placement in missile v72).
+# Donor: retail placement of the rocket relative to Sektor, in sprite pixels (source
+# adjust_xy_a5(SCX(7), SCY(45))). The host helper takes world units: x UNITS_PER_TEXEL.
+# (v72/v24 passed the pixel values unscaled: half the distance, too high and inward.)
 PLACEMENT = (5, 38)
 
 
@@ -45,8 +46,12 @@ PLACEMENT_SITE = {
 
 
 def placement_patches(dx: int = PLACEMENT[0], dy: int = PLACEMENT[1]) -> dict[int, int]:
-    """Root patches: place the projectile at donor ``(dx, dy)`` (facing-aware host helper)."""
+    """Root patches: place the projectile at donor pixel offset ``(dx, dy)``.
 
+    Converted to host world units; the host helper applies facing.
+    """
+
+    dx, dy = dx * UNITS_PER_TEXEL, dy * UNITS_PER_TEXEL
     for value in (dx, dy):
         if not -0x8000 <= value < 0x8000:
             raise ValueError("placement offsets are signed 16-bit whole units")

@@ -47,6 +47,10 @@ F_TRANSFER = 0x8004AA4C  # (selector): install TRANSFER_TABLE[selector] as the a
 TRANSFER_TABLE = 0x800A1050  # stock selectors 0..2; proof selectors 3+ are added by builders
 TRANSFER_LIMIT_ROM = 0x4B654  # 'sltiu v0, a2, 3' bound check inside F_TRANSFER
 
+# Sprites: the renderer emits corner offsets as texel offsets << 1 (0x800188F8, 0x8001890C),
+# so one sprite pixel spans 2 world units. Donor pixel offsets convert with this factor.
+UNITS_PER_TEXEL = 2
+
 # Controller (process) fields
 CTRL_ACTOR = 0x6E0
 CTRL_SCRIPT_CURSOR = 0x6E4

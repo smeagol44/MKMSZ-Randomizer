@@ -203,11 +203,40 @@ def test_robo_zap_placement_patches_lifted_root() -> None:
     lifter.verify(code, out)
     robo_zap.check_stock(out)
     w = [int.from_bytes(out.code[i : i + 4], "big") for i in range(0, len(out.code), 4)]
-    assert w[(0x8004AFF0 - src) // 4] == 0x24050005  # addiu a1, zero, 5
-    assert w[(0x8004AFFC - src) // 4] == 0x24060026  # addiu a2, zero, 38
+    assert w[(0x8004AFF0 - src) // 4] == 0x2405000A  # addiu a1, zero, 10 (5 px)
+    assert w[(0x8004AFFC - src) // 4] == 0x2406004C  # addiu a2, zero, 76 (38 px)
     assert w[(0x8004B000 - src) // 4] == 0x0C00C482  # jal 0x80031208 kept
     bad = lifter.lift(code, src, 0xA01AFBA8, patches={0x8004AF00: 0})
     with pytest.raises(lifter.LiftError):
         robo_zap.check_stock(bad)
     with pytest.raises(ValueError):
         robo_zap.placement_patches(0x8000, 0)
+
+
+def test_projectile_behind_owner_sublayer() -> None:
+    from mkmszr.fighter_import import projectile
+
+    art = projectile.ProjectileArt(39, 9, 26, 3, bytes(360), (0,) * 16)
+    plain, behind = Assembler(0x8009A1E0), Assembler(0x8009A1E0)
+    projectile.emit_preupload_hook(plain, "u", 0x45DD0, art)
+    projectile.emit_preupload_hook(behind, "u", 0x45DD0, art, behind_owner=True)
+    w = words(behind)
+    assert w[7:10] == [0x964800EC, 0x25080001, 0xA60800EC]  # lhu/addiu/sh +0xEC: parent + 1
+    assert len(w) == len(words(plain)) + 3
+
+
+def test_teleport_emerge_on_floor_is_opt_in() -> None:
+    from dataclasses import replace
+
+    from mkmszr.fighter_import.actions import robo_teleport as rt
+
+    scripts = rt.TeleportScripts(0x100, 0x200, 0x300, 0x310, 4, 6)
+    base = rt.TeleportParams(scripts, (1, 2, 3, 4), 400)
+    old = words(rt.assemble(0xA01AF420, base))
+    new = words(rt.assemble(0xA01AF420, replace(base, emerge_on_floor=True)))
+    assert 0x8C4806B4 not in old and 0x8C4806B4 in new  # lw t0, 0x6B4(v0): target floor
+    i = new.index(0x8C4806B4)
+    assert new[i + 1] == 0xAFA8001C  # saved at once: the next call clobbers v0
+    assert new[i - 1] == 0 and new[i - 2] >> 26 == 0x05  # right after find_target (bnez; nop)
+    j = new.index(0x8FA8001C)  # lw t0, 0x1C(sp)
+    assert new[j + 1] == 0x8E890030  # lw t1, 0x30(s4): target y (fallback)

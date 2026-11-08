@@ -42,6 +42,7 @@ F_FRAME_SETUP = 0x8001BDA0
 F_ACTOR_INSERT = 0x80024650
 TEXTURE_BUMP = 0x801AE478  # texture-storage bump pointer advanced by F_TEXTURE_SLOT_LOAD
 ACTOR_LIST_HEAD = 0x80111C98
+ACTOR_SUBLAYER = 0xEC  # draw sub-layer within the actor priority +0x5C
 TOKEN_0B_RETURN = 0x80030AD0  # stock return point after the insert call
 
 TOKEN_PALETTE_CALL_ROM = 0x000315C8  # jal 0x8001C528 (delay: sw v0, 0x6E4(a3))
@@ -136,11 +137,18 @@ def emit_palette_hook(a: Assembler, label: str, cursor_offset: int, palette_offs
     a.j(F_PALETTE_BIND)
 
 
-def emit_preupload_hook(a: Assembler, label: str, shape_offset: int, art: ProjectileArt) -> None:
+def emit_preupload_hook(
+    a: Assembler, label: str, shape_offset: int, art: ProjectileArt, behind_owner: bool = False
+) -> None:
     """Token insert call: for the imported projectile only, fill its texture slot first.
 
     No allocation: the pixels go into the slot's existing (stock) storage, exactly as
     the render pass's deferred upload would one frame later.
+
+    ``behind_owner``: draw the projectile one sub-layer behind its owner (MKT ``ozval``
+    0). The sprite layer is ``+0x5C * 32 + +0xEC`` and higher layers draw first
+    (0x80018AF0, ordering table 0x802D0E40 drawn 0x3FF..0); the stock idiom for an
+    attached object behind its owner is ``+0xEC = owner +0xEC + 1`` (0x80030D18).
     """
 
     a.label(label)
@@ -149,6 +157,10 @@ def emit_preupload_hook(a: Assembler, label: str, shape_offset: int, art: Projec
     a.addu("t0", "t0", "t1")
     a.lw("t2", 0x74, "s0")
     a.bne("t0", "t2", label + "_publish")
+    if behind_owner:
+        a.lhu("t0", ACTOR_SUBLAYER, "s2")  # parent actor
+        a.addiu("t0", "t0", 1)
+        a.sh("t0", ACTOR_SUBLAYER, "s0")
     a.move("a0", "s0")
     a.lw("a1", 0x74, "s0")
     a.jal(F_FRAME_SETUP)  # render record, slot dimensions, deferred-upload flag
