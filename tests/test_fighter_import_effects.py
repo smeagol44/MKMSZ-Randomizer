@@ -223,3 +223,10 @@ def test_process_without_texture_slot_exits() -> None:
     m.regs[2] = 0xFFFFFFFF
     stop = m.run(stop.resume)
     assert stop.target & 0x1FFFFFFF == effects.F_PROCESS_EXIT & 0x1FFFFFFF
+
+
+def test_pad_to_stride_keeps_pixels_and_anchor() -> None:
+    frame = effects.EffectFrame(69, 2, 42, 1, bytes(range(144)))
+    padded = effects.pad_to_stride(frame)
+    assert (padded.width, padded.height, padded.anchor_x, padded.anchor_y) == (72, 2, 42, 1)
+    assert padded.indices == frame.indices and padded.stride == 72

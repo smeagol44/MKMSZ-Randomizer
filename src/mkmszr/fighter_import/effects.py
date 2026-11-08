@@ -130,6 +130,13 @@ class EffectFrame:
         return (self.width + 3) & ~3
 
 
+def pad_to_stride(frame: EffectFrame) -> EffectFrame:
+    """Widen a frame to its 4-aligned row stride (transparent columns on the right,
+    same anchor). The pixels already carry the stride, so only the width changes."""
+
+    return EffectFrame(frame.stride, frame.height, frame.anchor_x, frame.anchor_y, frame.indices)
+
+
 def _mkt_u32(mkt: bytes, va: int) -> int:
     return int.from_bytes(mkt[va - 0x80000000 : va - 0x80000000 + 4], "big")
 
