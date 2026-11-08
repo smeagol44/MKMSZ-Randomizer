@@ -151,3 +151,30 @@ def test_transfer_thunk_enters_kseg0() -> None:
         0x03200008,
         0x24040003,
     ]  # lui/addiu 0x8004AA4C, jr t9
+
+
+# ---------------------------------------------------------------- projectile
+
+
+def test_codec16_and_colours() -> None:
+    from mkmszr.fighter_import import projectile
+
+    # size 8: run of 3 x idx1 (high nibble 3), literal pair run (0x70 -> 3 nibbles), 2 zeros via 0x00/len
+    stream = bytes([16, 0, 0, 8, 0x31, 0x70, 0x23, 0x40, 0x05, 0x02])
+    indices, used = projectile.decode_mkt_codec16(stream)
+    assert indices == bytes([1, 1, 1, 2, 3, 4, 5, 5]) and used == len(stream)
+    assert projectile.mkt_color_to_host(0xF7BD) == 0xFBDE  # opaque light grey, RGBA5551 -> BGR555
+    assert projectile.mkt_color_to_host(0x07C0) == 0  # ROCKET_P entry 0: alpha clear = transparent
+
+
+def test_projectile_hooks_fall_through_to_stock_calls() -> None:
+    from mkmszr.fighter_import import projectile
+
+    art = projectile.ProjectileArt(39, 9, 26, 3, bytes(360), (0,) * 16)
+    a = Assembler(0x8009A1E0)
+    projectile.emit_palette_hook(a, "p", 0xDC0, 0x45D50)
+    projectile.emit_preupload_hook(a, "u", 0x45DD0, art)
+    w = words(a)
+    assert w[8] == 0x08000000 | (projectile.F_PALETTE_BIND >> 2) & 0x03FFFFFF  # j 0x8001C528
+    assert w[-2] == 0x08000000 | (projectile.F_ACTOR_INSERT >> 2) & 0x03FFFFFF  # j 0x80024650
+    assert art.stride == 40 and len(art.palette_record()) == 4 + 128

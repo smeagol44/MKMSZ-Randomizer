@@ -164,6 +164,10 @@ class Assembler:
         self.raw((3 << 26) | ((address >> 2) & 0x03FFFFFF))
         self.nop()
 
+    def j(self, address: int) -> None:
+        self.raw((2 << 26) | ((address >> 2) & 0x03FFFFFF))
+        self.nop()
+
     def jal_label(self, name: str) -> None:
         self.fixups.append((len(self.code), "jal", name))
         self.raw(3 << 26)
