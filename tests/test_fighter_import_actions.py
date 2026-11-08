@@ -505,7 +505,7 @@ def test_robo_zap_strike_record() -> None:
     from mkmszr.fighter_import.actions import robo_zap
 
     rec = robo_zap.strike_record()
-    assert rec.hex() == "0010fff10023001f2405140200010000"
+    assert rec.hex() == "0010fff10023001f2305140200010000"
     assert rec[:8] == robo_zap.DONOR_STRIKE[:8] and rec[10:] == robo_zap.DONOR_STRIKE[10:]
     a = Assembler(0xA01AF420)
     robo_zap.emit_strike_record(a)
@@ -517,3 +517,13 @@ def test_robo_zap_point_blank_uses_rocket_record() -> None:
 
     assert robo_zap.point_blank_strike_patch() == {0x8004B5D4: 0x8C44004C}
     assert robo_zap.STOCK_WORDS[0x8004B5D4] == 0x8C440060
+
+
+def test_robo_zap_stumble_patches() -> None:
+    from mkmszr.fighter_import.actions import robo_zap
+
+    assert robo_zap.stumble_patches() == {
+        0x800588C0: 0x3C060004,
+        0x800588C8: 0x34C64444,
+        0x800588CC: 0x24040002,
+    }
