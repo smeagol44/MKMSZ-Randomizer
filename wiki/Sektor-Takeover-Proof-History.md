@@ -2284,6 +2284,16 @@ User decisions that define the target behaviour:
 | v17 | `104e13ff9d92592b803d926b96470b66e7be6fd200781c1cbe4106a0421f4574` | `EF26B815 / 7A9A1448` | v16 with the volume change reverted. Combos work, but the kick endings lack their animation |
 | v18 | `4335e1ad03c7c6a06a761cd34e7c92a071064a12a533d184b8ab5bedd875ea02` | `EF26B815 / 7A9A1448` | Adds v59's late-Knee frames (`KNEE_LATE_MAP`); runtime check pending |
 | v19 | `4335e1ad03c7c6a06a761cd34e7c92a071064a12a533d184b8ab5bedd875ea02` | `EF26B815 / 7A9A1448` | Importer refactor (R1): the action comes from the `fighter_import` primitive library. The ROM is byte-identical to v18, so no runtime test is needed |
+| v20 | `669424a1e5aa5f5ee7666405f01a4fc89458ad09dbeea4377eca3c4e0c179f9e` | `2FF93E88 / C088FDC8` | **Runtime-confirmed:** stock Ice Blast re-hosted as a lifted copy (selector 4) behaves exactly as before |
+| v21 | `3b7695ddce69526acb69f963d90a4aa3a1b4d3655ece583515011150cbafecb7` | `3F8F746B / F4E1AD85` | Rocket art and palette correct from the first frame. One unreproduced inventory glyph corruption (per-shot texture-storage growth) |
+| v22 | `3771cc920ed0768d9c12152fe6966f8a04efcdc14dc28db5930b9ebca50c0ca6` | `03B8BECA / 16310335` | **Rejected / failed:** hangs on D,F+LP then D,F+HK (the up-shot's 56×113 stance frame overran the fixed 368-byte slot buffer) |
+| v23 | `06e46044da64fa5aa3b2822a436ee4916d4a5844c22f3251ba83848eba3b8b89` | `C8DC78F2 / 288B36F3` | **Runtime-confirmed:** no hang, no allocation; first frame still correct |
+| v24 | `3bae3da809045d7327a6995364bfaa616c8f9d4d4ffc8ca3199089a52eecde24` | `C8DC78F2 / 288B36F3` | MKT placement passed unscaled: rocket too high, slightly inward, drawn over Sektor |
+| v25 | `8f419a02ea315355763cb2e957ac416120257dc6329a57d159e5c8dc5f8b3b05` | `3E3C6526 / AF74FA90` | Height and draw order accepted; teleport reappears on the target's floor |
+| v26 | `bf195177e8388119b3e87b1d9189dad96c6349c52ef5bfcf6a6bc1fbe8ddfd13` | `3E3C6526 / AF74FA90` | **Runtime-confirmed:** MKT chest open/hold/close animation |
+| v27 | `0a0f44b7f09e4b24c9ae9915aa4547e41ededf79903bf32b7ff051ee17151905` | `D9436343 / AF11EC0E` | **Runtime-confirmed:** MKT flight (two frames, speeds, reacting start, acceleration, cap). Flame still visible behind Sektor at launch; ending lag reported short |
+| v28 | `383aca9481a757bbae217883c612fa2f0f716aa3587b53ca33d97e914b49ae74` | `D9436343 / AF11EC0E` | Spawn +4 px outward (runtime-observed correction); runtime check pending |
+| v29 | `a158c19faf62b84ddf68e3d7736cec3c88f848959b78b1c1000746c67ddf5e98` | `2FFA6768 / DC6270B5` | Same behaviour as v28; code moved out of the graphics-microcode area, 16 KiB arena; runtime check pending |
 
 ### Version changes
 
@@ -2337,6 +2347,22 @@ User decisions that define the target behaviour:
 - **v11:** the post-hit arc keeps the accepted apex but matches MKT's real-time airtime. Launch velocity is ÷0.924 and gravity ÷0.924² (donor 0.602 s; v10 0.633 s). The landing hold drops from 4 to 3 ticks, matching the donor `0x80076E48` hold of 2×3 ticks at 60 Hz. Sektor can act 2 frames sooner.
 - **v12–v15 (voice):** Sub-Zero's player-only voice events are re-pointed at isolated host chains carrying Sektor's MKT sounds. The final v15 rule is in [Audio system](Sounds-and-Music#imported-fighter-voice-rule-2026-11-07).
 - **v16–v18 (combos):** v62's six Sektor combo records at `0xB1CB0` (byte-identical to v62). The standalone `HK,HK` record moves from `0x9AD90`, which is now this line's loader stub, into the payload arena (KSEG1 `0xA01AFB38`), with knee root `0xA1CE8` pointing at it. The combo walker `0x8004D4C0` follows any negative `+0x0C` pointer and fetches strike records from its own table `0x800B0D48`, so KSEG1 is accepted. v18 adds v59's late-Knee shape ownership, which this lineage had never received, so the knee's parts 3–5 show Sektor frames instead of the stance fallback.
+
+### Straight rocket (R2) v20–v29
+
+Sektor's MKT straight rocket is built by re-hosting stock Ice Blast and swapping donor behaviour in one piece per proof. The recipe is `fighter_import.actions.robo_zap`; every edit to the lifted Ice root is a declared word patch checked against the stock word it replaces.
+
+- **v20:** the LP Ice Blast callback and root (`0x80049C34`, `0x8004AB84..0x8004B1D0`) are lifted into the payload; the callback transfers to selector 4 (the lifted root). Runtime-identical to stock.
+- **v21:** ROCKETD1 (robot `+0x2668`, 39×9, anchor (26,3)) and ROCKET_P appended to file `0x87`; token-`0x0B` palette and pre-upload hooks (v87/v89 design). The pre-upload's `0x8001BF70` allocates from the texture bump pointer `0x801AE478` on every shot (no bounds check, reset only at stage setup), which can grow into the top-down dynamic textures (`0x8001C2B4`).
+- **v22:** fixed 368-byte slot buffer. **Rejected:** the render pass's deferred upload (`0x800185B8`) copies each new frame into the slot's current storage with that frame's size; the still-stock up-shot script builds its projectile on the 56×113 stance frame and overran the buffer (hang).
+- **v23:** no allocation: frame refresh (`0x8001BDA0`) plus the stock deferred copy done early (`0x8001D6EC` mode 1, `0x8001D7F0`) into slot `0x24`'s stock storage.
+- **v24–v25:** sprite pixels are 2 world units (renderer `sll 1` at `0x800188F8`/`0x8001890C`), so MKT (+5,+38) px = (+10,+76). Draw order: sprite layer = `+0x5C×32 + +0xEC`, ordering table drawn from high to low; behind-owner idiom `+0xEC = owner + 1` (`0x80030D18`). Teleport: reappear at the target controller's floor `+0x6B4`.
+- **v26:** chest open/hold/close (MKZAP.ASM `robo_open_chest_fast`, `sleep 0x20`, `robo_close_chest`): RBCHEST1/RBCHEST2 in the Zap script phases, closing frame 2 ticks.
+- **v27:** flight: ROCKETD1/ROCKETD2 resampled to one frame per host tick (D1 D1 D2 D1 D2 D2); host speed per tick = 2 × (two donor speeds) / 3 from MKT's integer recurrence (start `0x46666`, reacting `0x7B332`, cap `0xEEEEE`; v75's accepted values, now derived); reacting = opponent `+0x6BE` bit `0x04`; flight child replaces `0x8004B82C`.
+- **v28:** +4 px outward from the user's frame-by-frame MKT captures (not explained by anchor arithmetic).
+- **v29:** see [RSP microcode text](Memory-and-Allocation-Map#rsp-microcode-text-inside-the-main-segment-2026-11-08). The token hooks are removed and the rocket setup runs from the lifted root after its token advance (`0x8004AEE4`); arena 16 KiB.
+
+Pending: ending lag (N64 retail hold/close timing), sounds, strike/reaction, smoke and explosion, Ice helper ghosts, MKT's faster chest open when the opponent is reacting.
 
 ### Proof-only footprint (v08)
 
