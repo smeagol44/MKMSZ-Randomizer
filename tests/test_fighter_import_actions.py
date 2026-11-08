@@ -510,3 +510,10 @@ def test_robo_zap_strike_record() -> None:
     a = Assembler(0xA01AF420)
     robo_zap.emit_strike_record(a)
     assert a.link() == rec
+
+
+def test_robo_zap_point_blank_uses_rocket_record() -> None:
+    from mkmszr.fighter_import.actions import robo_zap
+
+    assert robo_zap.point_blank_strike_patch() == {0x8004B5D4: 0x8C44004C}
+    assert robo_zap.STOCK_WORDS[0x8004B5D4] == 0x8C440060

@@ -466,3 +466,14 @@ def emit_strike_record(a: Assembler, label: str = "zap_strike") -> None:
     a.label(label)
     for i in range(0, 16, 4):
         a.raw(int.from_bytes(strike_record()[i : i + 4], "big"))
+
+
+# The straight helper's spawn (point-blank) strike test loads type-table entry 0x18 (the
+# Ice freeze record 0x800AF644) at 0x8004B5D4; the lifted copy reads entry 0x13 (the
+# rocket record) instead.
+POINT_BLANK_STRIKE_LOAD = {0x8004B5D4: 0x8C440060}  # lw a0, 0x60(v0)
+STOCK_WORDS.update(POINT_BLANK_STRIKE_LOAD)
+
+
+def point_blank_strike_patch() -> dict[int, int]:
+    return {0x8004B5D4: 0x8C440000 | (4 * 0x13)}  # lw a0, 0x4C(v0)
