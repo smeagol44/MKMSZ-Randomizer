@@ -355,3 +355,63 @@ def test_robo_zap_child_patch_and_stock_words() -> None:
 
     assert robo_zap.child_patches(0xA01AFF00) == {0x8004B0D8: 0x3C04A01B, 0x8004B0DC: 0x2484FF00}
     assert robo_zap.STOCK_WORDS[0x8004B0D8] == 0x3C048005  # lui a0, 0x8005 (0x8004B82C)
+
+
+def test_bind_after_creation_routine_executes() -> None:
+    from mips_eval import Machine
+
+    from mkmszr.fighter_import import host, projectile
+    from mkmszr.fighter_import.actions import robo_zap
+
+    art = projectile.ProjectileArt(39, 9, 26, 3, bytes(360), (0,) * 16)
+    base = 0xA01B0000
+    a = Assembler(base)
+    projectile.emit_bind_after_creation(
+        a,
+        "bind",
+        0x45D50,
+        art,
+        on_create=robo_zap.emit_initial_speed,
+        epilogue=robo_zap.emit_mode_reload,
+    )
+    m = Machine(a.link(), base)
+    ctrl, actor, owner, fbase, render = 0x80300000, 0x80310000, 0x80330000, 0x80400000, 0x80310108
+    m.store(host.CURRENT_CTRL, ctrl)
+    m.store(ctrl + 0x714, actor)
+    m.store(ctrl + host.CTRL_ACTOR, owner)
+    m.store(actor + 0x98, fbase)
+    m.store(actor + 0x74, fbase + 0x45DD0)
+    m.store(actor + 0x7C, render)
+    m.store(render, fbase + 0x45BE0)
+    m.store(actor + 0x9C, 0x00240000)  # +0x9C slot 0x24, +0x9E selector
+    m.store(owner + 0xEC, 0x00010000)
+    m.store(0x80111F98, 0x00000000)  # mode 0 (halfword at +0x1F98)
+    m.regs[29], m.regs[31], m.regs[16], m.regs[18] = 0x80200000, 0x8004AEEC, 0x1111, 0x2222
+    calls = []
+    stop = m.run(base)
+    while stop.kind == "call":
+        f = stop.target & 0x1FFFFFFF
+        calls.append((f, m.regs[4:8]))
+        if f == projectile.F_PALETTE_BIND & 0x1FFFFFFF:
+            m.regs[2] = 0xC5  # handle
+        stop = m.run(stop.resume)
+    assert stop.target == 0x8004AEEC and m.regs[29] == 0x80200000
+    assert m.regs[16] == 0x1111 and m.regs[18] == 0x2222  # s0/s2 restored
+    assert [c[0] for c in calls] == [
+        projectile.F_PALETTE_BIND & 0x1FFFFFFF,
+        projectile.F_FRAME_SETUP & 0x1FFFFFFF,
+        projectile.F_UPLOAD_QUEUE & 0x1FFFFFFF,
+        projectile.F_UPLOAD_DRAIN & 0x1FFFFFFF,
+    ]
+    assert calls[0][1][:3] == [fbase + 0x45D50, 0x100, 0]
+    assert calls[2][1] == [1, fbase + 0x45BE4, 0x24, 40] and m.load(0x80200000 - 0x28 + 0x10) == 9
+    assert m.load(actor + 0x9C) & 0xFFFF == 0xC5 - 0x80  # selector = handle - 0x80
+    assert m.load(actor + 0xEC) >> 16 == 2  # owner sub-layer + 1
+    assert m.load(actor + host.ACTOR_XVEL) == robo_zap.host_speeds(robo_zap.SPEED_NORMAL)[0]
+    assert m.regs[3] == 0  # v1 = mode, reloaded for the root
+
+
+def test_post_token_patch() -> None:
+    from mkmszr.fighter_import.actions import robo_zap
+
+    assert robo_zap.post_token_patches(0xA01AF800) == {0x8004AEE4: 0x0C06BE00, 0x8004AEE8: 0}

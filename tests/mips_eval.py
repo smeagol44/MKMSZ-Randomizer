@@ -2,8 +2,8 @@
 
 Executes the small instruction subset the fighter-import assembler emits, against a
 dict-backed memory, so a generated routine's data effects can be checked in CI. It
-is not an N64 or game emulator: calls that leave the code block stop evaluation and
-are reported to the caller, who stubs their effects.
+is not an N64 or game emulator: calls that leave the code block stop evaluation (after
+their delay slot) and are reported to the caller, who stubs their effects.
 """
 
 from __future__ import annotations
@@ -50,6 +50,7 @@ class Machine:
 
     def run(self, pc: int, limit: int = 10000) -> Stop:
         r = self.regs
+        pending: tuple[str, int, int] | None = None  # (kind, target, jump pc)
         for _ in range(limit):
             w = self.load(pc)
             op, rs, rt, rd = w >> 26, (w >> 21) & 31, (w >> 16) & 31, (w >> 11) & 31
@@ -88,34 +89,44 @@ class Machine:
                 r[rt] = self.load(r[rs] + simm)
             elif op == 0x2B:
                 self.store(r[rs] + simm, r[rt])
-            elif op in (0x25, 0x29):
+            elif op in (0x21, 0x25, 0x29):
                 address = (r[rs] + simm) & MASK
                 shift = 16 if address & 2 == 0 else 0
                 word = self.load(address)
                 if op == 0x25:
                     r[rt] = (word >> shift) & 0xFFFF
+                elif op == 0x21:
+                    half = (word >> shift) & 0xFFFF
+                    r[rt] = (half - 0x10000 if half & 0x8000 else half) & MASK
                 else:
                     word = (word & ~(0xFFFF << shift)) | ((r[rt] & 0xFFFF) << shift)
                     self.store(address, word)
             elif op in (0x04, 0x05):
                 if (r[rs] == r[rt]) == (op == 0x04):
                     jump = ("b", pc + 4 + 4 * simm)
+            elif op == 0x01 and rt in (0, 1):  # bltz / bgez
+                if (_s32(r[rs]) < 0) == (rt == 0):
+                    jump = ("b", pc + 4 + 4 * simm)
             elif op == 0x03:
                 jump = ("jal", (pc & 0xF0000000) | ((w & 0x03FFFFFF) << 2))
             else:
                 raise NotImplementedError(f"{w:#010x} at {pc:#x}")
             r[0] = 0
-            if jump is None:
-                pc += 4
+            if pending is not None:  # this was a delay slot: now take the jump
+                if jump is not None:
+                    raise NotImplementedError(f"jump in a delay slot at {pc:#x}")
+                kind, target, at = pending
+                pending = None
+                if kind == "jal" and not self.inside(target):
+                    return Stop("call", target, at + 8)
+                if kind == "jr" and not self.inside(target):
+                    return Stop("return", target)
+                pc = target
                 continue
-            if self.load(pc + 4) != 0:
-                raise NotImplementedError(f"filled delay slot at {pc + 4:#x}")
-            kind, target = jump
-            if kind == "jal":
-                if not self.inside(target):
-                    return Stop("call", target, pc + 8)
-                r[31] = pc + 8
-            elif kind == "jr" and not self.inside(target):
-                return Stop("return", target)
-            pc = target
+            if jump is not None:
+                kind, target = jump
+                if kind == "jal":
+                    r[31] = pc + 8
+                pending = (kind, target, pc)
+            pc += 4
         raise RuntimeError("step limit")

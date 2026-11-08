@@ -195,3 +195,79 @@ def emit_preupload_hook(
     a.lui("ra", TOKEN_0B_RETURN >> 16)
     a.ori("ra", "ra", TOKEN_0B_RETURN & 0xFFFF)
     a.j(F_ACTOR_INSERT)
+
+
+def emit_bind_after_creation(
+    a: Assembler,
+    label: str,
+    palette_offset: int,
+    art: ProjectileArt,
+    behind_owner: bool = True,
+    on_create: Callable[[Assembler], None] | None = None,
+    epilogue: Callable[[Assembler], None] | None = None,
+) -> None:
+    """Subroutine run by the owning action right after its token ``0x0B`` advance.
+
+    Same effects as the two token hooks, without patching the global token handler:
+    the projectile is the action's staged actor (controller ``+0x714``) and the owner is
+    ``+0x6E0``. It runs in the same process tick as the creation, before any render, so
+    the first visible frame already has the donor palette and pixels.
+
+    * palette: ``0x8001C528(file base + palette_offset, 0x100, 0)``; on success the
+      actor selector ``+0x9E`` = handle - ``0x80`` (as the token does for the Ice record);
+      palette binds are cached by source, so the token's Ice bind does not grow;
+    * optional ``behind_owner`` sub-layer and ``on_create`` recipe code (``s0`` = actor,
+      ``s2`` = owner);
+    * frame refresh (``0x8001BDA0``) and the synchronous slot copy into the slot's stock
+      storage (``0x8001D6EC`` mode 1 + ``0x8001D7F0``), as :func:`emit_preupload_hook`.
+
+    ``epilogue`` emits code just before the return (e.g. the patched-over instructions of
+    the call site). Saves ``ra``, ``s0``, ``s2``.
+    """
+
+    a.label(label)
+    a.addiu("sp", "sp", -0x28)
+    a.sw("ra", 0x24, "sp")
+    a.sw("s0", 0x20, "sp")
+    a.sw("s2", 0x1C, "sp")
+    a.lui("t0", 0x802F)
+    a.lw("t0", -0x31E0, "t0")  # current controller (the owner's process)
+    a.lw("s0", 0x714, "t0")  # staged projectile actor
+    a.lw("s2", 0x6E0, "t0")  # owner actor
+    a.lw("a0", 0x98, "s0")
+    a.li("t1", palette_offset)
+    a.addu("a0", "a0", "t1")
+    a.li("a1", 0x100)
+    a.move("a2", "zero")
+    a.jal(F_PALETTE_BIND)
+    a.bltz("v0", label + "_pal_kept")
+    a.addiu("v0", "v0", -0x80)
+    a.sh("v0", 0x9E, "s0")
+    a.label(label + "_pal_kept")
+    if behind_owner:
+        a.lhu("t0", ACTOR_SUBLAYER, "s2")
+        a.addiu("t0", "t0", 1)
+        a.sh("t0", ACTOR_SUBLAYER, "s0")
+    if on_create is not None:
+        on_create(a)
+    a.move("a0", "s0")
+    a.lw("a1", 0x74, "s0")
+    a.jal(F_FRAME_SETUP)
+    a.lw("t1", 0x7C, "s0")
+    a.lw("a1", 0, "t1")
+    a.addiu("a1", "a1", 4)
+    a.li("a0", 1)
+    a.lh("a2", 0x9C, "s0")
+    a.li("a3", (art.stride + 3) & ~3)
+    a.li("t1", art.height)
+    a.sw("t1", 0x10, "sp")
+    a.jal(F_UPLOAD_QUEUE)
+    a.li("a0", 1)
+    a.jal(F_UPLOAD_DRAIN)
+    if epilogue is not None:
+        epilogue(a)
+    a.lw("ra", 0x24, "sp")
+    a.lw("s0", 0x20, "sp")
+    a.lw("s2", 0x1C, "sp")
+    a.jr_ra()
+    a.addiu("sp", "sp", 0x28)

@@ -298,3 +298,22 @@ def emit_flight(a: Assembler, loop_offset: int, table: str = "zap_speeds") -> No
     a.nop()
 
     _emit_next_speed(a, table)
+
+
+# ---- Creation-time setup from the lifted root (no global token-handler patch) ------
+# The root advances the Zap script at 0x8004AEDC; the token 0x0B there creates the
+# rocket. The next two words (mode reload) become a call to the payload routine, which
+# re-does that reload before returning (projectile.emit_bind_after_creation epilogue).
+POST_TOKEN_SITE = {0x8004AEE4: 0x3C038011, 0x8004AEE8: 0x84631F98}  # lui/lh v1 = mode
+STOCK_WORDS.update(POST_TOKEN_SITE)
+
+
+def post_token_patches(routine_va: int) -> dict[int, int]:
+    return {0x8004AEE4: (3 << 26) | ((routine_va >> 2) & 0x03FFFFFF), 0x8004AEE8: 0}
+
+
+def emit_mode_reload(a: Assembler) -> None:
+    """The two root instructions replaced by the post-token call."""
+
+    a.lui("v1", 0x8011)
+    a.lh("v1", 0x1F98, "v1")
