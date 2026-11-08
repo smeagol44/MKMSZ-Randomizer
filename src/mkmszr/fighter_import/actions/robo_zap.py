@@ -432,3 +432,37 @@ def on_create(launch_event: int, player: str = "play") -> Callable[[Assembler], 
         host.play_sound(a, launch_event, player)
 
     return emit
+
+
+# ---- Strike (rocket1_proc: projectile_flight_call strike 0x12 -> robot stk_ro_zap) -----
+# Donor record (MKT Rev. 2 robot strike table, 16 bytes; the same layout as MKMSZ):
+# box (16, -15, 35, 31), reaction 0x3B r_rocket (zap_stumble: stumble back; airborne ->
+# generic airborne hit), block 0x04, damage 0x14, chip 0x02, trailer 0001 0000.
+DONOR_STRIKE = bytes.fromhex("0010fff10023001f3b04140200010000")
+# Reaction/block selectors are game-local (v61/v62): mapped by meaning to MKMSZ natives.
+# 0x24 (0x80058884): reaction preamble 0x80053028, push away from the attacker at 0x28000
+# (0x80032734), stumble phase (slot 0x20). Rejected: 0x18 (spawns stage-overlay code),
+# 0x3B (pulls the victim in), 0x1B (12x5-tick stagger with its own sound/process).
+# Block 0x05 (0x800539CC): generic block stun, as the stock Ice projectile record.
+HOST_REACTION, HOST_BLOCK = 0x24, 0x05
+# Player (type 4) strike-pointer table 0x800AF484: selector 0x13 is the straight Ice
+# projectile (0x8004CE6C reads table[type][selector]); its record 0x800AF634 is also used
+# by type 2 selector 0x32, so the pointer is repointed instead of rewriting the record.
+STRIKE_SELECTOR_SLOT_ROM = 0xB00D0  # 0x800AF484 + 4 * 0x13
+STOCK_STRIKE_POINTER = 0x800AF634
+
+
+def strike_record() -> bytes:
+    """The rocket's MKMSZ strike record: donor box/damage/trailer, host selectors."""
+
+    rec = bytearray(DONOR_STRIKE)
+    rec[8], rec[9] = HOST_REACTION, HOST_BLOCK
+    return bytes(rec)
+
+
+def emit_strike_record(a: Assembler, label: str = "zap_strike") -> None:
+    if a.pc() & 3:
+        raise ValueError("strike record must be word aligned")
+    a.label(label)
+    for i in range(0, 16, 4):
+        a.raw(int.from_bytes(strike_record()[i : i + 4], "big"))

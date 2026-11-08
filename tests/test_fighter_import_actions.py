@@ -499,3 +499,14 @@ def test_robo_zap_sound_wrappers_and_patches() -> None:
     }
     assert robo_zap.hit_child_patches(0xA01AF200) == {0x8004BB94: 0x0C06BC80}
     assert robo_zap.straight_patches(0xA01B0000) == {0x8004B62C: 0x3C04A01B, 0x8004B630: 0x24840000}
+
+
+def test_robo_zap_strike_record() -> None:
+    from mkmszr.fighter_import.actions import robo_zap
+
+    rec = robo_zap.strike_record()
+    assert rec.hex() == "0010fff10023001f2405140200010000"
+    assert rec[:8] == robo_zap.DONOR_STRIKE[:8] and rec[10:] == robo_zap.DONOR_STRIKE[10:]
+    a = Assembler(0xA01AF420)
+    robo_zap.emit_strike_record(a)
+    assert a.link() == rec
