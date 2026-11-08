@@ -415,3 +415,32 @@ def test_post_token_patch() -> None:
     from mkmszr.fighter_import.actions import robo_zap
 
     assert robo_zap.post_token_patches(0xA01AF800) == {0x8004AEE4: 0x0C06BE00, 0x8004AEE8: 0}
+
+
+def test_sound_install_rewrites_one_isolated_chain() -> None:
+    from mkmszr.fighter_import import sound
+
+    chain = sound.HostChain(event=173, patch=330, subpatch=173, wave=163)
+    clean = bytearray(b"\xff" * 0x9C0000)
+    d = sound.MSZ_EVENT_DEFS + chain.event * 16
+    clean[d + 4 : d + 12] = (0x20).to_bytes(4, "big") + (0x100).to_bytes(4, "big")
+    track = sound.MSZ_TRACKS + 0x100
+    clean[track : track + 0x20] = chain.patch.to_bytes(4, "big") + bytes(0x1C)
+    p = sound.MSZ_PATCHES + chain.patch * 4
+    clean[p : p + 4] = bytes([1, 0]) + chain.subpatch.to_bytes(2, "big")
+    s = sound.MSZ_SUBPATCHES + chain.subpatch * 20
+    clean[s : s + 20] = bytes(10) + chain.wave.to_bytes(2, "big") + bytes(8)
+    donor = sound.DonorSound(
+        0x108, (102).to_bytes(4, "big") + b"T" * 0x1C, b"S" * 20, b"W" * 24, b"B" * 264, b"x" * 100
+    )
+    rom = bytearray(clean)
+    nxt = sound.install(rom, bytes(clean), donor, chain, 0x9B8000)
+    assert nxt == 0x9B8070
+    assert rom[track : track + 4] == chain.patch.to_bytes(4, "big")  # host patch kept
+    assert rom[track + 4 : track + 0x20] == b"T" * 0x1C
+    assert rom[s + 10 : s + 12] == chain.wave.to_bytes(2, "big")  # host waveform kept
+    w = sound.MSZ_WAVES + chain.wave * 24
+    assert rom[w : w + 4] == (0x9B8000 - sound.MSZ_TBL).to_bytes(4, "big")
+    assert rom[0x9B8000:0x9B8064] == b"x" * 100
+    with pytest.raises(ValueError):  # a chain may be hosted only once
+        sound.install(rom, bytes(clean), donor, chain, 0x9B8080)
