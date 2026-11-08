@@ -101,7 +101,12 @@ POWER_HELP = {
 
 
 def _slti(rt: str, rs: str, imm: int) -> int:
-    return (0x0A << 26) | (REGISTERS[rs] << 21) | (REGISTERS[rt] << 16) | (imm & 0xFFFF)
+    return (
+        (0x0A << 26)
+        | (REGISTERS[rs] << 21)
+        | (REGISTERS[rt] << 16)
+        | (imm & 0xFFFF)
+    )
 
 
 def power_order_is_valid(order: tuple[str, ...]) -> bool:
@@ -138,7 +143,8 @@ def build_power_order(seed: str) -> tuple[tuple[str, ...], int]:
             return order, attempt + 1
 
     raise PatchError(
-        f"no valid Power Up order after {MAX_POWER_ORDER_ATTEMPTS} deterministic attempts"
+        "no valid Power Up order after "
+        f"{MAX_POWER_ORDER_ATTEMPTS} deterministic attempts"
     )
 
 

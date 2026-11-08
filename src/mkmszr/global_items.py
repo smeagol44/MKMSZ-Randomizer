@@ -76,7 +76,8 @@ FIXED_CALLBACK_ITEMS: dict[int, tuple[str, str, AwardKind, int | None]] = {
 
 def _identity_words(identity: bytes) -> tuple[int, ...]:
     return tuple(
-        int.from_bytes(identity[index : index + 4], "big") for index in range(0, len(identity), 4)
+        int.from_bytes(identity[index : index + 4], "big")
+        for index in range(0, len(identity), 4)
     )
 
 
@@ -134,7 +135,9 @@ def build_stock_logical_pool() -> tuple[LogicalItem, ...]:
     result: list[LogicalItem] = []
     for stage in STAGE_PICKUPS:
         for record_index, record in enumerate(stage.records):
-            result.append(logical_item_from_record(stage.stage_id, record_index, record))
+            result.append(
+                logical_item_from_record(stage.stage_id, record_index, record)
+            )
     return tuple(result)
 
 
@@ -173,10 +176,14 @@ def build_global_logical_pool(*, powers_as_pickups: bool) -> tuple[LogicalItem, 
     result = list(build_stock_logical_pool())
     result.append(TEMPLE_SPECIAL_BASE_REWARD)
     if len(result) != TOTAL_GLOBAL_REWARDS:
-        raise AssertionError(f"global reward pool drifted: {len(result)} != {TOTAL_GLOBAL_REWARDS}")
+        raise AssertionError(
+            f"global reward pool drifted: {len(result)} != {TOTAL_GLOBAL_REWARDS}"
+        )
 
     if powers_as_pickups:
-        herb_indices = [index for index, item in enumerate(result) if item.key == "herbs"]
+        herb_indices = [
+            index for index, item in enumerate(result) if item.key == "herbs"
+        ]
         if len(herb_indices) < TOTAL_POWER_UPGRADES:
             raise AssertionError(
                 f"global pool has only {len(herb_indices)} Herbs; "

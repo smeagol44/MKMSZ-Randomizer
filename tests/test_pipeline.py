@@ -33,9 +33,7 @@ def test_core_native_patches_are_always_first() -> None:
 def test_debug_all_keys_configures_both_initial_and_reset_inventory() -> None:
     for enabled in (False, True):
         pipeline = build_pipeline(RandomizerConfig(seed="DEBUG-KEYS", debug_all_keys=enabled))
-        owners = [
-            p for p in pipeline.patches if isinstance(p, (FourBoxInventoryPatch, RunLifecyclePatch))
-        ]
+        owners = [p for p in pipeline.patches if isinstance(p, (FourBoxInventoryPatch, RunLifecyclePatch))]
         assert len(owners) == 2
         assert all(p.debug_all_keys is enabled for p in owners)
 
@@ -68,7 +66,9 @@ def test_power_order_shuffle_is_optional_and_runs_after_controls() -> None:
     disabled = build_pipeline(RandomizerConfig(seed="POWER"))
     assert PowerOrderPatch not in [type(patch) for patch in disabled.patches]
 
-    enabled = build_pipeline(RandomizerConfig(seed="POWER", shuffle_power_progression=True))
+    enabled = build_pipeline(
+        RandomizerConfig(seed="POWER", shuffle_power_progression=True)
+    )
     types = [type(patch) for patch in enabled.patches]
     assert types[-1] is PowerOrderPatch
 
@@ -80,22 +80,24 @@ def test_progression_presentation_follows_lifecycle_only_in_pickup_mode() -> Non
     assert types.index(XPProgressionPatch) < types.index(ProgressionPickupPresentationPatch)
     assert types.index(RunLifecyclePatch) < types.index(ProgressionPickupPresentationPatch)
 
-    disabled = build_pipeline(RandomizerConfig(seed="POWER-FLASH", powers_as_pickups=False))
+    disabled = build_pipeline(
+        RandomizerConfig(seed="POWER-FLASH", powers_as_pickups=False)
+    )
     disabled_types = [type(patch) for patch in disabled.patches]
     assert ProgressionPickupPresentationPatch not in disabled_types
     assert EarnedXPPersistencePatch in disabled_types
-    assert disabled_types.index(RunLifecyclePatch) < disabled_types.index(EarnedXPPersistencePatch)
+    assert disabled_types.index(RunLifecyclePatch) < disabled_types.index(
+        EarnedXPPersistencePatch
+    )
 
 
 def test_powers_as_pickups_and_required_count_are_independent() -> None:
     for shuffle in (False, True):
         pipeline = build_pipeline(
             RandomizerConfig(
-                seed="POWER",
-                powers_as_pickups=False,
+                seed="POWER", powers_as_pickups=False,
                 shuffle_power_progression=shuffle,
-                required_powers_mode="custom",
-                custom_required_powers=0,
+                required_powers_mode="custom", custom_required_powers=0,
             )
         )
         types = [type(patch) for patch in pipeline.patches]
@@ -115,7 +117,9 @@ def test_enemy_randomization_is_default_off_and_optional_in_shared_pipeline() ->
     disabled = build_pipeline(RandomizerConfig(seed="ENEMIES"))
     assert EnemyRandomizationPatch not in [type(patch) for patch in disabled.patches]
 
-    enabled = build_pipeline(RandomizerConfig(seed="ENEMIES", enemy_randomization=True))
+    enabled = build_pipeline(
+        RandomizerConfig(seed="ENEMIES", enemy_randomization=True)
+    )
     types = [type(patch) for patch in enabled.patches]
     assert EnemyRandomizationPatch in types
     assert types[-1] is EnemyRandomizationPatch
@@ -157,6 +161,7 @@ def test_temple_special_check_runs_after_controls_and_optional_rainbow() -> None
     types = [type(patch) for patch in rainbow.patches]
     assert types.index(ControlsProductionPatch) < types.index(RainbowPalettePatch)
     assert types.index(RainbowPalettePatch) < types.index(TempleSpecialCheckPatch)
+
 
 
 def test_vanilla_fortress_gate_requires_eight_pickup_tiers() -> None:

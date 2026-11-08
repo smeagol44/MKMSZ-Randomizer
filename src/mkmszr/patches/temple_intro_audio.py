@@ -75,9 +75,15 @@ ISOLATED_WAVE_ROM = WAVE_BASE_ROM + ISOLATED_WAVE_ID * 24
 ISOLATED_PRED_ROM = PRED_BASE_ROM + ISOLATED_WAVE_ID * 264
 
 EXPECTED_ISOLATED_PATCH = bytes.fromhex("01000149")
-EXPECTED_ISOLATED_SUBPATCH = bytes.fromhex("647340003c00007f0505013f00017d00000a7f7f")
-EXPECTED_ISOLATED_WAVE = bytes.fromhex("00183232000019aa00000000fffffb50ffffffff00000000")
-EXPECTED_ISOLATED_PRED_SHA256 = "53b481faa8d55595a2496ef453c41cff02ec4ca793b7597972d56ccdf100136d"
+EXPECTED_ISOLATED_SUBPATCH = bytes.fromhex(
+    "647340003c00007f0505013f00017d00000a7f7f"
+)
+EXPECTED_ISOLATED_WAVE = bytes.fromhex(
+    "00183232000019aa00000000fffffb50ffffffff00000000"
+)
+EXPECTED_ISOLATED_PRED_SHA256 = (
+    "53b481faa8d55595a2496ef453c41cff02ec4ca793b7597972d56ccdf100136d"
+)
 
 # Superseded global carrier. These constants are retained only for regression
 # tests proving that the Bridge/Prison-reachable stock route remains untouched.
@@ -91,8 +97,12 @@ EXPECTED_LEGACY_CARRIER_EVENT_TRACK = bytes.fromhex(
     "0000024300007f4000000078007800000000000c00113c7f8159123c00227820"
 )
 EXPECTED_LEGACY_CARRIER_PATCH = bytes.fromhex("010001a6")
-EXPECTED_LEGACY_CARRIER_SUBPATCH = bytes.fromhex("647340004000007f0505019c00017d00000a7f7f")
-EXPECTED_LEGACY_CARRIER_WAVE = bytes.fromhex("001f31a20000115600000000fffffb50ffffffff00000000")
+EXPECTED_LEGACY_CARRIER_SUBPATCH = bytes.fromhex(
+    "647340004000007f0505019c00017d00000a7f7f"
+)
+EXPECTED_LEGACY_CARRIER_WAVE = bytes.fromhex(
+    "001f31a20000115600000000fffffb50ffffffff00000000"
+)
 
 MKMSZ_TBL_BASE = 0x009B0650
 TEMPLE_SAMPLE_ROM = 0x00F6BDF0
@@ -167,7 +177,7 @@ class TempleIntroAudioPatch:
         rom.expect_bytes(ISOLATED_PATCH_ROM, EXPECTED_ISOLATED_PATCH)
         rom.expect_bytes(ISOLATED_SUBPATCH_ROM, EXPECTED_ISOLATED_SUBPATCH)
         rom.expect_bytes(ISOLATED_WAVE_ROM, EXPECTED_ISOLATED_WAVE)
-        pred = bytes(rom.data[ISOLATED_PRED_ROM : ISOLATED_PRED_ROM + 264])
+        pred = bytes(rom.data[ISOLATED_PRED_ROM:ISOLATED_PRED_ROM + 264])
         if hashlib.sha256(pred).hexdigest() != EXPECTED_ISOLATED_PRED_SHA256:
             raise PatchError("Temple intro audio isolated-host predictor guard failed")
 
@@ -176,19 +186,18 @@ class TempleIntroAudioPatch:
             raise PatchError("Temple intro donor sample exceeds production allocation")
         rom.expect_bytes(
             TEMPLE_SAMPLE_ROM,
-            b"\xff" * (TEMPLE_SAMPLE_LIMIT - TEMPLE_SAMPLE_ROM),
+            b"\xFF" * (TEMPLE_SAMPLE_LIMIT - TEMPLE_SAMPLE_ROM),
         )
         for file_id in range(0xAC):
             entry = FILE_TABLE_ROM + file_id * FILE_TABLE_ENTRY_SIZE
             start = rom.read_u32(entry)
             end = rom.read_u32(entry + 4)
-            if (
-                start
-                and end
-                and end > start
-                and not (end <= TEMPLE_SAMPLE_ROM or start >= TEMPLE_SAMPLE_LIMIT)
+            if start and end and end > start and not (
+                end <= TEMPLE_SAMPLE_ROM or start >= TEMPLE_SAMPLE_LIMIT
             ):
-                raise PatchError(f"Temple intro audio allocation overlaps file 0x{file_id:02X}")
+                raise PatchError(
+                    f"Temple intro audio allocation overlaps file 0x{file_id:02X}"
+                )
 
         donor_event = bytearray(clip.event_track)
         if len(donor_event) != len(EXPECTED_TEMPLE_EVENT_A):

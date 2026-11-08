@@ -45,9 +45,7 @@ def _plan(*assignments: MaterializationAssignment) -> GlobalMaterializationPlan:
     return GlobalMaterializationPlan(
         assignments=tuple(assignments),
         placements=tuple(
-            StageResourcePlacement(
-                stage_id=stage_id, rom_start=0x00F00000 + i * 0x10000, capacity=0x10000
-            )
+            StageResourcePlacement(stage_id=stage_id, rom_start=0x00F00000 + i * 0x10000, capacity=0x10000)
             for i, stage_id in enumerate(stages)
         ),
     )
@@ -187,11 +185,14 @@ def test_materialization_composes_with_global_power_upgrade_runtime() -> None:
 
     xp = next(patch for patch in pipeline.patches if isinstance(patch, XPProgressionPatch))
     presentation = next(
-        patch for patch in pipeline.patches if isinstance(patch, ProgressionPickupPresentationPatch)
+        patch
+        for patch in pipeline.patches
+        if isinstance(patch, ProgressionPickupPresentationPatch)
     )
     assert xp.global_mode
     assert presentation.global_mode
     assert any(isinstance(patch, GlobalItemMaterializationPatch) for patch in pipeline.patches)
+
 
 
 def test_power_upgrade_uses_herbs_visual_blue_presentation_and_shared_dispatcher() -> None:
@@ -206,6 +207,7 @@ def test_power_upgrade_uses_herbs_visual_blue_presentation_and_shared_dispatcher
     assert int.from_bytes(identity[0x08:0x0C], "big") == 0xA01B2310
     assert int.from_bytes(identity[0x14:0x18], "big") == 0x123C
     assert int.from_bytes(identity[0x18:0x1C], "big") == 0x800B1E68
+
 
 
 def test_temple_special_fixed_reward_can_force_shared_dispatcher() -> None:
@@ -242,7 +244,9 @@ def test_temple_special_can_alias_appended_visual_to_empty_stock_selector() -> N
 def test_global_materialization_plan_carries_temple_special_reward() -> None:
     plan = GlobalMaterializationPlan(
         assignments=(),
-        placements=(StageResourcePlacement(stage_id=0, rom_start=0x00F00000, capacity=0x10000),),
+        placements=(
+            StageResourcePlacement(stage_id=0, rom_start=0x00F00000, capacity=0x10000),
+        ),
         temple_special_item_key="wind-circle",
     )
     assert plan.temple_special_item_key == "wind-circle"

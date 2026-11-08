@@ -41,7 +41,9 @@ RAINBOW_WRAPPER_END_ROM = 0x00F690B8
 TOASTY_ROM = 0x00F697E0
 
 TEMPLE_MODULE_CACHED_BASE = 0x801B08E0
-TEMPLE_MODULE_ROM = EXPANSION_FILE_ROM + (TEMPLE_MODULE_CACHED_BASE - EXPANSION_FILE_RDRAM)
+TEMPLE_MODULE_ROM = EXPANSION_FILE_ROM + (
+    TEMPLE_MODULE_CACHED_BASE - EXPANSION_FILE_RDRAM
+)
 
 STATE_FLAGS_VA = STATE_UNCACHED_BASE + STATE_FLAGS_OFFSET
 TEMPLE_SPECIAL_CHECK_STATE_MASK = 0x0001
@@ -150,12 +152,13 @@ class TempleSpecialCheckPatch:
         rom.expect_u32(EXPANSION_FILE_ENTRY_ROM + 8, 0)
         if file_end < CONTROLS_END_ROM:
             raise PatchError(
-                "Temple special check requires the production controls/file-0x1A composition first"
+                "Temple special check requires the production controls/file-0x1A "
+                "composition first"
             )
         if TEMPLE_MODULE_ROM < file_end < TEMPLE_MODULE_END_ROM:
             raise PatchError("file 0x1A end falls inside Temple module allocation")
 
-        rom.expect_bytes(TEMPLE_MODULE_ROM, b"\xff" * TEMPLE_MODULE_SIZE)
+        rom.expect_bytes(TEMPLE_MODULE_ROM, b"\xFF" * TEMPLE_MODULE_SIZE)
         for offset, (expected, _replacement) in VISUAL_PATCHES.items():
             rom.expect_u32(offset, expected)
 

@@ -56,22 +56,24 @@ def _selector_shape() -> RomImage:
     data[SELECTOR_CURSOR_PALETTE_ROM - 4 : SELECTOR_CURSOR_PALETTE_ROM] = (
         CURSOR_PALETTE_COUNT.to_bytes(4, "big")
     )
-    data[TITLE_CURSOR_PALETTE_ROM - 4 : TITLE_CURSOR_PALETTE_ROM] = CURSOR_PALETTE_COUNT.to_bytes(
-        4, "big"
+    data[TITLE_CURSOR_PALETTE_ROM - 4 : TITLE_CURSOR_PALETTE_ROM] = (
+        CURSOR_PALETTE_COUNT.to_bytes(4, "big")
     )
     data[
-        SELECTOR_CURSOR_PALETTE_ROM : SELECTOR_CURSOR_PALETTE_ROM
-        + len(EXPECTED_SELECTOR_CURSOR_PALETTE)
+        SELECTOR_CURSOR_PALETTE_ROM:
+        SELECTOR_CURSOR_PALETTE_ROM + len(EXPECTED_SELECTOR_CURSOR_PALETTE)
     ] = EXPECTED_SELECTOR_CURSOR_PALETTE
     data[
-        TITLE_CURSOR_PALETTE_ROM : TITLE_CURSOR_PALETTE_ROM + len(EXPECTED_TITLE_CURSOR_PALETTE)
+        TITLE_CURSOR_PALETTE_ROM:
+        TITLE_CURSOR_PALETTE_ROM + len(EXPECTED_TITLE_CURSOR_PALETTE)
     ] = EXPECTED_TITLE_CURSOR_PALETTE
     data[MOVE_SFX_HOOK_ROM : MOVE_SFX_HOOK_ROM + len(EXPECTED_MOVE_SFX_HOOK)] = (
         EXPECTED_MOVE_SFX_HOOK
     )
-    data[MOVE_SFX_HELPER_ROM : MOVE_SFX_HELPER_ROM + len(DEAD_SELECTOR_EPILOGUE)] = (
-        DEAD_SELECTOR_EPILOGUE
-    )
+    data[
+        MOVE_SFX_HELPER_ROM:
+        MOVE_SFX_HELPER_ROM + len(DEAD_SELECTOR_EPILOGUE)
+    ] = DEAD_SELECTOR_EPILOGUE
 
     return RomImage(data=data, _original=bytes(data))
 
@@ -91,24 +93,21 @@ def test_safe_stage_selector_is_guarded_and_runtime_confirmed_presentation() -> 
         build_selection_mapper()
     )
 
-    assert (
-        rom.data[
-            SELECTOR_CURSOR_PALETTE_ROM : SELECTOR_CURSOR_PALETTE_ROM
-            + len(EXPECTED_TITLE_CURSOR_PALETTE)
-        ]
-        == EXPECTED_TITLE_CURSOR_PALETTE
-    )
+    assert rom.data[
+        SELECTOR_CURSOR_PALETTE_ROM:
+        SELECTOR_CURSOR_PALETTE_ROM + len(EXPECTED_TITLE_CURSOR_PALETTE)
+    ] == EXPECTED_TITLE_CURSOR_PALETTE
     assert rom.read_u32(MOVE_SFX_HOOK_ROM) == jal(MOVE_SFX_HELPER_VA)
-    assert rom.data[MOVE_SFX_HOOK_ROM + 4 : MOVE_SFX_HOOK_ROM + 8] == (EXPECTED_MOVE_SFX_HOOK[4:8])
-    assert (
-        rom.data[MOVE_SFX_HELPER_ROM : MOVE_SFX_HELPER_ROM + len(MOVE_SFX_HELPER)]
-        == MOVE_SFX_HELPER
+    assert rom.data[MOVE_SFX_HOOK_ROM + 4 : MOVE_SFX_HOOK_ROM + 8] == (
+        EXPECTED_MOVE_SFX_HOOK[4:8]
     )
+    assert rom.data[
+        MOVE_SFX_HELPER_ROM:
+        MOVE_SFX_HELPER_ROM + len(MOVE_SFX_HELPER)
+    ] == MOVE_SFX_HELPER
 
     # Confirmation remains stock/deferred: this patch owns no confirmation hook.
-    assert not hasattr(
-        __import__("mkmszr.patches.stage_selector", fromlist=["x"]), "CONFIRM_SFX_HOOK_ROM"
-    )
+    assert not hasattr(__import__("mkmszr.patches.stage_selector", fromlist=["x"]), "CONFIRM_SFX_HOOK_ROM")
 
     assert "Fire" in notes[0]
     assert "title-menu" in notes[1]

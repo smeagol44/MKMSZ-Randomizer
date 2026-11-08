@@ -111,11 +111,15 @@ def test_solver_rejects_self_locked_required_token_location() -> None:
 
     wind_locations = [x for x in GLOBAL_LOCATIONS if x.stage_key == "wind"]
     locked_destination = next(
-        x.global_index for x in wind_locations if x.requirements == frozenset({"wind-circle"})
+        x.global_index
+        for x in wind_locations
+        if x.requirements == frozenset({"wind-circle"})
     )
 
     pool = build_global_logical_pool(powers_as_pickups=False)
-    wind_circle_source = next(index for index, item in enumerate(pool) if item.key == "wind-circle")
+    wind_circle_source = next(
+        index for index, item in enumerate(pool) if item.key == "wind-circle"
+    )
 
     current_source = assignment[locked_destination]
     other_destination = assignment.index(wind_circle_source)
@@ -160,6 +164,7 @@ def test_completion_policy_is_explicit_not_hardcoded() -> None:
     )
 
 
+
 def test_global_run_plan_splits_84_ordinary_and_one_temple_special() -> None:
     plan = build_global_run_plan(
         "RUN-PLAN",
@@ -169,10 +174,7 @@ def test_global_run_plan_splits_84_ordinary_and_one_temple_special() -> None:
     )
 
     assert len(plan.ordinary_assignments) == 84
-    assert (
-        len({(stage_id, record_index) for stage_id, record_index, _ in plan.ordinary_assignments})
-        == 84
-    )
+    assert len({(stage_id, record_index) for stage_id, record_index, _ in plan.ordinary_assignments}) == 84
     assert plan.temple_special_item_key
     assert plan.temple_special_item_key != "map"
     assert len(plan.power_locations) == 9
@@ -194,6 +196,7 @@ def test_global_run_plan_is_retry_reproducible() -> None:
     )
 
 
+
 def test_run_plan_converts_to_84_plus_temple_materializer_schema() -> None:
     from mkmszr.resource_materialization import StageResourcePlacement
 
@@ -204,9 +207,7 @@ def test_run_plan_converts_to_84_plus_temple_materializer_schema() -> None:
         max_attempts=100,
     )
     placements = tuple(
-        StageResourcePlacement(
-            stage_id=stage_id, rom_start=0x100000 + i * 0x10000, capacity=0x10000
-        )
+        StageResourcePlacement(stage_id=stage_id, rom_start=0x100000 + i * 0x10000, capacity=0x10000)
         for i, stage_id in enumerate((0, 1, 2, 3, 4, 5, 8, 9))
     )
     plan = materialization_plan_from_run(run, placements)
@@ -215,6 +216,7 @@ def test_run_plan_converts_to_84_plus_temple_materializer_schema() -> None:
     assert plan.temple_special_item_key == run.temple_special_item_key
     assert {assignment.stage_id for assignment in plan.assignments} == {0, 1, 2, 3, 4, 5, 8, 9}
     assert len(plan.placements) == 8
+
 
 
 def test_completion_modes_are_distinct_and_default_policy_is_stricter() -> None:

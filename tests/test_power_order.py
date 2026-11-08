@@ -33,16 +33,16 @@ def _stock_shape() -> RomImage:
     data = bytearray(end)
     for offset, tier in SIMPLE_TIER_SITES.values():
         data[offset : offset + 4] = _slti("v0", "v0", tier).to_bytes(4, "big")
-    data[ICE_GROUND_TAIL_ROM : ICE_GROUND_TAIL_ROM + len(ICE_GROUND_TAIL_EXPECTED)] = (
-        ICE_GROUND_TAIL_EXPECTED
-    )
+    data[
+        ICE_GROUND_TAIL_ROM : ICE_GROUND_TAIL_ROM + len(ICE_GROUND_TAIL_EXPECTED)
+    ] = ICE_GROUND_TAIL_EXPECTED
     for index, name in enumerate(VANILLA_POWER_ORDER):
-        data[POWER_ICON_TABLE_ROM + 4 * index : POWER_ICON_TABLE_ROM + 4 * index + 4] = POWER_ICONS[
-            name
-        ].to_bytes(4, "big")
-        data[POWER_HELP_TABLE_ROM + 4 * index : POWER_HELP_TABLE_ROM + 4 * index + 4] = POWER_HELP[
-            name
-        ].to_bytes(4, "big")
+        data[POWER_ICON_TABLE_ROM + 4 * index : POWER_ICON_TABLE_ROM + 4 * index + 4] = (
+            POWER_ICONS[name].to_bytes(4, "big")
+        )
+        data[POWER_HELP_TABLE_ROM + 4 * index : POWER_HELP_TABLE_ROM + 4 * index + 4] = (
+            POWER_HELP[name].to_bytes(4, "big")
+        )
     return RomImage(data=data, _original=bytes(data))
 
 
@@ -102,12 +102,12 @@ def test_patch_keeps_gameplay_and_both_ui_tables_in_one_order() -> None:
     for label, (offset, _tier) in SIMPLE_TIER_SITES.items():
         assert rom.read_u32(offset) == _slti("v0", "v0", tier_by_gate[label])
 
-    assert tuple(rom.read_u32(POWER_ICON_TABLE_ROM + index * 4) for index in range(9)) == tuple(
-        POWER_ICONS[name] for name in order
-    )
-    assert tuple(rom.read_u32(POWER_HELP_TABLE_ROM + index * 4) for index in range(9)) == tuple(
-        POWER_HELP[name] for name in order
-    )
+    assert tuple(
+        rom.read_u32(POWER_ICON_TABLE_ROM + index * 4) for index in range(9)
+    ) == tuple(POWER_ICONS[name] for name in order)
+    assert tuple(
+        rom.read_u32(POWER_HELP_TABLE_ROM + index * 4) for index in range(9)
+    ) == tuple(POWER_HELP[name] for name in order)
 
 
 def test_patch_requires_seed() -> None:

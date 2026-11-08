@@ -38,13 +38,17 @@ V07_MODULE = lifecycle_transport_v07(LIFECYCLE_MODULE)
 def _clean_shape() -> RomImage:
     data = bytearray(0x01000000)
     data[EXPANSION_FILE_ENTRY_ROM : EXPANSION_FILE_ENTRY_ROM + 12] = (
-        EXPANSION_FILE_ROM.to_bytes(4, "big") + TEMPLE_MODULE_END_ROM.to_bytes(4, "big") + bytes(4)
+        EXPANSION_FILE_ROM.to_bytes(4, "big")
+        + TEMPLE_MODULE_END_ROM.to_bytes(4, "big")
+        + bytes(4)
     )
-    data[LIFECYCLE_MODULE_ROM:LIFECYCLE_MODULE_END_ROM] = b"\xff" * LIFECYCLE_MODULE_SIZE
+    data[LIFECYCLE_MODULE_ROM:LIFECYCLE_MODULE_END_ROM] = (
+        b"\xFF" * LIFECYCLE_MODULE_SIZE
+    )
     data[CONFIG_ROM : CONFIG_ROM + len(EXPECTED_CONFIG)] = EXPECTED_CONFIG
-    data[FINAL_FULL_HP_STORE_ROM : FINAL_FULL_HP_STORE_ROM + 4] = (
-        EXPECTED_FINAL_FULL_HP_STORE.to_bytes(4, "big")
-    )
+    data[
+        FINAL_FULL_HP_STORE_ROM : FINAL_FULL_HP_STORE_ROM + 4
+    ] = EXPECTED_FINAL_FULL_HP_STORE.to_bytes(4, "big")
     for offset, expected, _replacement, _label in HOOKS:
         data[offset : offset + len(expected)] = expected
     return RomImage(data=data, _original=bytes(data))
@@ -62,7 +66,9 @@ def test_runtime_confirmed_v06_blob_and_allocation_are_exact() -> None:
 
 def test_lifecycle_v06_installs_exact_runtime_confirmed_seams() -> None:
     rom = _clean_shape()
-    result = RunLifecyclePatch(lives=9, continues=5).apply(rom, PatchContext(seed="LIFECYCLE-V06"))
+    result = RunLifecyclePatch(lives=9, continues=5).apply(
+        rom, PatchContext(seed="LIFECYCLE-V06")
+    )
 
     assert rom.data[LIFECYCLE_MODULE_ROM:LIFECYCLE_MODULE_END_ROM] == V07_MODULE
     assert rom.read_u32(EXPANSION_FILE_ENTRY_ROM + 4) == LIFECYCLE_MODULE_END_ROM
@@ -84,7 +90,9 @@ def test_lifecycle_v06_preserves_existing_longer_shared_file() -> None:
     existing_end = TOASTY_ROM + 0x100
     rom.write_u32(EXPANSION_FILE_ENTRY_ROM + 4, existing_end)
 
-    RunLifecyclePatch(lives=9, continues=5).apply(rom, PatchContext(seed="LIFECYCLE-V06"))
+    RunLifecyclePatch(lives=9, continues=5).apply(
+        rom, PatchContext(seed="LIFECYCLE-V06")
+    )
 
     assert rom.read_u32(EXPANSION_FILE_ENTRY_ROM + 4) == existing_end
     assert rom.data[LIFECYCLE_MODULE_ROM:LIFECYCLE_MODULE_END_ROM] == V07_MODULE
@@ -116,7 +124,9 @@ def test_configurable_run_defaults_only_change_v06_immediates() -> None:
 
 def test_hp_persistence_off_keeps_stock_full_hp_store() -> None:
     rom = _clean_shape()
-    RunLifecyclePatch(persist_hp=False).apply(rom, PatchContext(seed="HP-RESET"))
+    RunLifecyclePatch(persist_hp=False).apply(
+        rom, PatchContext(seed="HP-RESET")
+    )
 
     assert rom.read_u32(FINAL_FULL_HP_STORE_ROM) == EXPECTED_FINAL_FULL_HP_STORE
 
@@ -131,7 +141,7 @@ def test_debug_reset_block_reconstructs_exact_initial_backing_with_bounded_store
         assert module[:start] == V07_MODULE[:start]
         assert module[end:] == V07_MODULE[end:]
         code = module[start:end]
-        words = [int.from_bytes(code[i : i + 4], "big") for i in range(0, len(code), 4)]
+        words = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
         registers = [0] * 32
         stores: dict[int, int] = {}
 
@@ -192,8 +202,7 @@ def test_transport_v07_removes_every_k0_k1_use_and_keeps_layout() -> None:
     assert len(V07_MODULE) == len(LIFECYCLE_MODULE) == LIFECYCLE_MODULE_SIZE
     # Only the transport words change: seven 3-word exits and eight reason words.
     changed = [
-        o
-        for o in range(0, LIFECYCLE_MODULE_SIZE, 4)
+        o for o in range(0, LIFECYCLE_MODULE_SIZE, 4)
         if V07_MODULE[o : o + 4] != LIFECYCLE_MODULE[o : o + 4]
     ]
     assert len(changed) == 7 * 3 + 8
@@ -212,13 +221,10 @@ def test_transport_v07_reason_survives_native_calls_on_the_stack() -> None:
         return int.from_bytes(V07_MODULE[o : o + 4], "big")
 
     assert w(0x1C4) == 0xAFB80004  # sw t8,4(sp), delay slot of first test
-    assert w(0x214) >> 26 == 3  # jal into the native-calling helper
+    assert w(0x214) >> 26 == 3     # jal into the native-calling helper
     assert w(0x224) == 0x8FB80004  # lw t8,4(sp) after the call
     assert w(0x230) == 0x27BD0010  # frame released in the first dispatch delay slot
     reason_hooks = [r for _o, _e, r, _l in HOOKS[1:5]]
     assert [int.from_bytes(r[12:16], "big") for r in reason_hooks] == [
-        0x24180001,
-        0x24180002,
-        0x24180003,
-        0x24180004,
+        0x24180001, 0x24180002, 0x24180003, 0x24180004
     ]

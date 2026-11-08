@@ -62,7 +62,7 @@ if FLASH_ACTIVE_FLAG_OFFSET + 4 != FLASH_MODULE_SIZE:
 
 # Exact stock Water-eel white palette: transparent index 0 + 63 white entries.
 WATER_EEL_WHITE_PALETTE_ROM = 0x00615A14
-WHITE_FLASH_PALETTE = b"\x00\x00" + b"\x7f\xff" * 63
+WHITE_FLASH_PALETTE = b"\x00\x00" + b"\x7F\xFF" * 63
 
 # Runtime-confirmed v23 architecture translated to the fixed production
 # allocation. Wrapper entry 0xA01B21E0 awards synchronously and never sleeps.
@@ -96,7 +96,9 @@ class ProgressionPickupPresentationPatch:
         file_end = rom.read_u32(EXPANSION_FILE_ENTRY_ROM + 4)
         rom.expect_u32(EXPANSION_FILE_ENTRY_ROM + 8, 0)
         if FLASH_MODULE_ROM < file_end < FLASH_MODULE_END_ROM:
-            raise PatchError("shared file 0x1A ends inside the progression flash allocation")
+            raise PatchError(
+                "shared file 0x1A ends inside the progression flash allocation"
+            )
 
         rom.expect_bytes(
             WATER_EEL_WHITE_PALETTE_ROM,
@@ -104,7 +106,7 @@ class ProgressionPickupPresentationPatch:
         )
         rom.expect_bytes(
             FLASH_MODULE_ROM,
-            b"\xff" * FLASH_MODULE_SIZE,
+            b"\xFF" * FLASH_MODULE_SIZE,
         )
 
         stage_by_id = {stage.stage_id: stage for stage in STAGE_PICKUPS}
@@ -113,9 +115,15 @@ class ProgressionPickupPresentationPatch:
             selected = build_progression_locations(context.seed)
             for stage_id, destination in selected:
                 record = stage_by_id[stage_id].records[destination]
-                callback_rom = record.rom_base + IDENTITY_OFFSET + CALLBACK_OFFSET_WITHIN_IDENTITY
+                callback_rom = (
+                    record.rom_base
+                    + IDENTITY_OFFSET
+                    + CALLBACK_OFFSET_WITHIN_IDENTITY
+                )
                 presentation_rom = (
-                    record.rom_base + IDENTITY_OFFSET + PRESENTATION_OFFSET_WITHIN_IDENTITY
+                    record.rom_base
+                    + IDENTITY_OFFSET
+                    + PRESENTATION_OFFSET_WITHIN_IDENTITY
                 )
                 rom.expect_u32(callback_rom, PROGRESSION_CALLBACK_ENTRY)
                 rom.expect_u32(
@@ -131,7 +139,11 @@ class ProgressionPickupPresentationPatch:
 
         for stage_id, destination in selected:
             record = stage_by_id[stage_id].records[destination]
-            callback_rom = record.rom_base + IDENTITY_OFFSET + CALLBACK_OFFSET_WITHIN_IDENTITY
+            callback_rom = (
+                record.rom_base
+                + IDENTITY_OFFSET
+                + CALLBACK_OFFSET_WITHIN_IDENTITY
+            )
             rom.write_u32(callback_rom, PROGRESSION_FLASH_CALLBACK_ENTRY)
 
         return (

@@ -48,19 +48,23 @@ def _production_shape() -> RomImage:
         address_words("t9", CODE_UNCACHED_BASE)
     )
 
-    data[PICKUP_MANAGER_CAPTURE_HOOK_ROM : PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4] = jal(
-        CAPTURE_HELPER_VA
-    ).to_bytes(4, "big")
-    data[PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4 : PICKUP_MANAGER_CAPTURE_HOOK_ROM + 8] = (
-        PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED.to_bytes(4, "big")
-    )
+    data[
+        PICKUP_MANAGER_CAPTURE_HOOK_ROM : PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4
+    ] = jal(CAPTURE_HELPER_VA).to_bytes(4, "big")
+    data[
+        PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4 : PICKUP_MANAGER_CAPTURE_HOOK_ROM + 8
+    ] = PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED.to_bytes(4, "big")
 
-    data[DECISION_HOOK_ROM : DECISION_HOOK_ROM + len(DECISION_EXPECTED)] = DECISION_EXPECTED
-    data[RELEASE_HOOK_ROM : RELEASE_HOOK_ROM + len(RELEASE_EXPECTED)] = RELEASE_EXPECTED
+    data[DECISION_HOOK_ROM : DECISION_HOOK_ROM + len(DECISION_EXPECTED)] = (
+        DECISION_EXPECTED
+    )
+    data[RELEASE_HOOK_ROM : RELEASE_HOOK_ROM + len(RELEASE_EXPECTED)] = (
+        RELEASE_EXPECTED
+    )
     data[TURN_HOOK_ROM : TURN_HOOK_ROM + len(TURN_EXPECTED)] = TURN_EXPECTED
 
-    data[EXPANSION_MODULE_ROM : EXPANSION_MODULE_ROM + len(CONTROL_MODULE)] = b"\xff" * len(
-        CONTROL_MODULE
+    data[EXPANSION_MODULE_ROM : EXPANSION_MODULE_ROM + len(CONTROL_MODULE)] = (
+        b"\xFF" * len(CONTROL_MODULE)
     )
     return RomImage(data=data, _original=bytes(data))
 
@@ -106,11 +110,13 @@ def test_control_facing_proof_installs_expansion_transport_and_hooks() -> None:
     assert rom.read_u32(bootstrap_patch_rom) == jal(EXPANSION_LOADER_VA)
     assert rom.read_u32(bootstrap_patch_rom + 4) == 0
 
-    assert (
-        rom.data[STATIC_REGION_ROM : STATIC_REGION_ROM + STATIC_REGION_SIZE] == STATIC_REGION_BLOB
-    )
+    assert rom.data[
+        STATIC_REGION_ROM : STATIC_REGION_ROM + STATIC_REGION_SIZE
+    ] == STATIC_REGION_BLOB
 
-    assert rom.read_u32(PICKUP_MANAGER_CAPTURE_HOOK_ROM) == jal(CAPTURE_TRAMPOLINE_VA)
+    assert rom.read_u32(PICKUP_MANAGER_CAPTURE_HOOK_ROM) == jal(
+        CAPTURE_TRAMPOLINE_VA
+    )
     assert rom.read_u32(DECISION_HOOK_ROM) == jal(DECISION_TRAMPOLINE_VA)
     assert rom.read_u32(RELEASE_HOOK_ROM) == jal(RELEASE_TRAMPOLINE_VA)
     assert rom.read_u32(TURN_HOOK_ROM) == jump(TURN_TRAMPOLINE_VA)

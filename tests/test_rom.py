@@ -51,7 +51,7 @@ def test_rom_output_can_expand_without_relaxing_input_validation() -> None:
     rom.expand_output(32 * 1024 * 1024)
 
     assert len(rom.data) == 32 * 1024 * 1024
-    assert rom.data[0x01000000:] == b"\xff" * (16 * 1024 * 1024)
+    assert rom.data[0x01000000:] == b"\xFF" * (16 * 1024 * 1024)
     assert rom.changed_spans() == ((0x01000000, 0x02000000),)
 
 

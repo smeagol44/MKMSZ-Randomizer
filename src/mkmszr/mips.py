@@ -142,7 +142,12 @@ def jr(rs: str) -> int:
 def branch(opcode: int, rs: str, rt: str, displacement: int) -> int:
     if not -0x8000 <= displacement <= 0x7FFF:
         raise ValueError("branch displacement is out of range")
-    return (opcode << 26) | (_reg(rs) << 21) | (_reg(rt) << 16) | (displacement & 0xFFFF)
+    return (
+        (opcode << 26)
+        | (_reg(rs) << 21)
+        | (_reg(rt) << 16)
+        | (displacement & 0xFFFF)
+    )
 
 
 def split_address(address: int) -> tuple[int, int]:
@@ -204,5 +209,7 @@ class Emitter:
             if fixup.label not in self.labels:
                 raise ValueError(f"missing label: {fixup.label}")
             displacement = self.labels[fixup.label] - (fixup.index + 1)
-            self.words[fixup.index] = branch(fixup.opcode, fixup.rs, fixup.rt, displacement)
+            self.words[fixup.index] = branch(
+                fixup.opcode, fixup.rs, fixup.rt, displacement
+            )
         return words_blob(self.words)

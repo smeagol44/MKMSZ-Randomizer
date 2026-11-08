@@ -23,7 +23,8 @@ class PatchResult:
 class Patch(Protocol):
     name: str
 
-    def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...] | None: ...
+    def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...] | None:
+        ...
 
 
 class PatchPipeline:

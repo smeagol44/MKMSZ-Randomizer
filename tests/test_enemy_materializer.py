@@ -85,7 +85,9 @@ def test_materializer_retries_to_supported_profiles_deterministically():
     second = build_materializable_enemy_plan("ENEMYPLAN05")
 
     assert first == second
-    assert all(stage.profile_key in MATERIALIZABLE_PROFILE_KEYS for stage in first.stages)
+    assert all(
+        stage.profile_key in MATERIALIZABLE_PROFILE_KEYS for stage in first.stages
+    )
 
 
 def test_pris17_seed_materializes_resource_loader_and_keeps_specials_fixed():
@@ -103,7 +105,9 @@ def test_pris17_seed_materializes_resource_loader_and_keeps_specials_fixed():
 
     for assignment in plan.assignments:
         actual = rom.read_u32(assignment.type_word_rom)
-        expected = assignment.stock_type if assignment.special else assignment.generated_type
+        expected = (
+            assignment.stock_type if assignment.special else assignment.generated_type
+        )
         assert actual == expected
 
 
@@ -118,7 +122,10 @@ def test_hulk_profile_nops_only_second_water_transaction():
     assert rom.read_u32(0xB58C8) == 0x3C01801B
     assert rom.read_u32(0xB58CC) == 0xAC25E578
     assert rom.read_u32(0xB58D4) == 0x24040025
-    assert all(rom.read_u32(offset) == 0 for offset, _expected in WATER_SECOND_TRANSACTION)
+    assert all(
+        rom.read_u32(offset) == 0
+        for offset, _expected in WATER_SECOND_TRANSACTION
+    )
 
 
 def test_fast_profile_preserves_second_water_transaction():

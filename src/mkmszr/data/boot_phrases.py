@@ -142,6 +142,8 @@ def select_boot_phrase(seed: str | None) -> tuple[str, str]:
     if seed is None or not seed.strip():
         return DEFAULT_BOOT_PHRASE
 
-    digest = hashlib.sha256(b"MKMSZR:BOOT-PHRASE:V1\0" + seed.encode("utf-8")).digest()
+    digest = hashlib.sha256(
+        b"MKMSZR:BOOT-PHRASE:V1\0" + seed.encode("utf-8")
+    ).digest()
     index = int.from_bytes(digest[:8], "big") % len(BOOT_PHRASES)
     return BOOT_PHRASES[index]

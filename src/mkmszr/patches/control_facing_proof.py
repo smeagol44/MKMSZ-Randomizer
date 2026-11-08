@@ -320,9 +320,7 @@ def _pack_static_region() -> tuple[bytes, dict[str, int]]:
         blob.extend(piece)
 
     if len(blob) > STATIC_REGION_SIZE:
-        raise AssertionError(
-            "control proof static loader/trampolines exceed repurposed helper region"
-        )
+        raise AssertionError("control proof static loader/trampolines exceed repurposed helper region")
     blob.extend(bytes(STATIC_REGION_SIZE - len(blob)))
     return bytes(blob), offsets
 
@@ -349,12 +347,14 @@ class ControlFacingExpansionProofPatch:
 
         # File 0x1A and the proof-only high-ROM source must still be untouched.
         rom.expect_bytes(EXPANSION_FILE_ENTRY_ROM, bytes(FILE_TABLE_ENTRY_SIZE))
-        rom.expect_bytes(EXPANSION_MODULE_ROM, b"\xff" * len(CONTROL_MODULE))
+        rom.expect_bytes(EXPANSION_MODULE_ROM, b"\xFF" * len(CONTROL_MODULE))
 
         # Verify the two bootstrap words we replace are still exactly the
         # established Runtime V2 uncached-entry construction.
         runtime_entry_words = words_blob(address_words("t9", CODE_UNCACHED_BASE))
-        bootstrap_patch_rom = 0x0009AD84 + BOOTSTRAP_RUNTIME_ENTRY_WORDS_OFFSET
+        bootstrap_patch_rom = (
+            0x0009AD84 + BOOTSTRAP_RUNTIME_ENTRY_WORDS_OFFSET
+        )
         rom.expect_bytes(bootstrap_patch_rom, runtime_entry_words)
 
         # Current production capture hook and untouched control seams.

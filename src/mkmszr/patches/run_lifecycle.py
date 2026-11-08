@@ -359,7 +359,7 @@ class RunLifecyclePatch:
 
         rom.expect_bytes(
             LIFECYCLE_MODULE_ROM,
-            b"\xff" * LIFECYCLE_MODULE_SIZE,
+            b"\xFF" * LIFECYCLE_MODULE_SIZE,
         )
         rom.expect_bytes(CONFIG_ROM, EXPECTED_CONFIG)
         rom.expect_u32(FINAL_FULL_HP_STORE_ROM, EXPECTED_FINAL_FULL_HP_STORE)
@@ -367,10 +367,7 @@ class RunLifecyclePatch:
             rom.expect_bytes(offset, expected)
 
         module = configured_lifecycle_module(
-            self.difficulty,
-            self.lives,
-            self.continues,
-            debug_all_keys=self.debug_all_keys,
+            self.difficulty, self.lives, self.continues, debug_all_keys=self.debug_all_keys,
         )
         rom.write_bytes(LIFECYCLE_MODULE_ROM, module)
         if file_end < LIFECYCLE_MODULE_END_ROM:

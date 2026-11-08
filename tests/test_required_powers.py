@@ -20,8 +20,8 @@ def _stock_fortress_shape() -> RomImage:
     data = bytearray(FORTRESS_FILE_END)
     for index, value in enumerate((FORTRESS_FILE_START, FORTRESS_FILE_END, 0)):
         offset = FORTRESS_FILE_ENTRY_ROM + index * 4
-        data[offset : offset + 4] = value.to_bytes(4, "big")
-    data[FORTRESS_GATE_ROM : FORTRESS_GATE_ROM + 4] = FORTRESS_GATE_STOCK.to_bytes(4, "big")
+        data[offset:offset + 4] = value.to_bytes(4, "big")
+    data[FORTRESS_GATE_ROM:FORTRESS_GATE_ROM + 4] = FORTRESS_GATE_STOCK.to_bytes(4, "big")
     return RomImage(data=data, _original=bytes(data))
 
 

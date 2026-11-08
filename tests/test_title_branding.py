@@ -46,21 +46,9 @@ def test_16color_title_palette_contract_is_shared_with_edition_text() -> None:
     assert title.TITLE_16COLOR_INDICES[0] == title.TITLE_BACKGROUND_INDEX == 255
     assert title.TITLE_16COLOR_INDICES[1:] == title.EDITION_PALETTE_INDICES
     assert title.EDITION_PALETTE_WORDS == (
-        0x0821,
-        0x0C41,
-        0x1881,
-        0x2CE2,
-        0x3D41,
-        0x3D44,
-        0x45A6,
-        0x5E28,
-        0x628F,
-        0x6ED1,
-        0x7732,
-        0x7B75,
-        0x7778,
-        0x7FB8,
-        0x7BDB,
+        0x0821, 0x0C41, 0x1881, 0x2CE2, 0x3D41,
+        0x3D44, 0x45A6, 0x5E28, 0x628F, 0x6ED1,
+        0x7732, 0x7B75, 0x7778, 0x7FB8, 0x7BDB,
     )
 
 
@@ -75,11 +63,15 @@ def test_16color_title_palette_contract_is_shared_with_edition_text() -> None:
 )
 def test_title_palette_matches_clothing_transform(outfit: OutfitConfig) -> None:
     context = PatchContext(seed="TITLE-COLOR-SEED")
-    recolor = SubZeroPalettePatch(outfit.mode, hue_degrees=outfit.hue_degrees, rgb=outfit.rgb)
+    recolor = SubZeroPalettePatch(
+        outfit.mode, hue_degrees=outfit.hue_degrees, rgb=outfit.rgb
+    )
     assert title._palette_words_for_outfit(outfit, context) == tuple(
         recolor._transform(word, context) for word in title.EDITION_PALETTE_WORDS
     )
-    assert title._palette_words_for_outfit(OutfitConfig(), context) == (title.EDITION_PALETTE_WORDS)
+    assert title._palette_words_for_outfit(OutfitConfig(), context) == (
+        title.EDITION_PALETTE_WORDS
+    )
 
 
 @pytest.mark.parametrize("mode,hue", [("red", 0.0), ("green", 120.0)])
@@ -96,11 +88,11 @@ def test_fixed_rainbow_keeps_native_index_budget_and_blue_plaque() -> None:
     title._fixed_rainbow_pixels(pixels)
     assert len(title.RAINBOW_PALETTE_WORDS) == 15
     assert set(pixels) <= set(title.TITLE_16COLOR_INDICES)
-    assert pixels[: 39 * 320] == original[: 39 * 320]
-    assert pixels[140 * 320 :] == original[140 * 320 :]
-    assert pixels[80 * 320 : 100 * 320] != original[80 * 320 : 100 * 320]
-    assert pixels[115 * 320 : 128 * 320] != original[115 * 320 : 128 * 320]
-    assert set(pixels[40 * 320 : 70 * 320]) <= (
+    assert pixels[:39 * 320] == original[:39 * 320]
+    assert pixels[140 * 320:] == original[140 * 320:]
+    assert pixels[80 * 320:100 * 320] != original[80 * 320:100 * 320]
+    assert pixels[115 * 320:128 * 320] != original[115 * 320:128 * 320]
+    assert set(pixels[40 * 320:70 * 320]) <= (
         {title.TITLE_BACKGROUND_INDEX} | set(title.EDITION_PALETTE_INDICES[:5])
     )
 
@@ -151,7 +143,7 @@ def test_title_patch_replaces_stock_package_without_code_hook(
         + title.TITLE_STOCK_FLAG.to_bytes(4, "big")
     )
     data[title.TITLE_STOCK_ROM_START : title.TITLE_STOCK_ROM_END] = (
-        b"\xa6" * title.TITLE_STOCK_CAPACITY
+        b"\xA6" * title.TITLE_STOCK_CAPACITY
     )
     for index, expected in zip(
         title.EDITION_PALETTE_INDICES,
@@ -171,7 +163,7 @@ def test_title_patch_replaces_stock_package_without_code_hook(
     monkeypatch.setattr(
         title,
         "TITLE_STOCK_SHA256",
-        hashlib.sha256(b"\xa6" * title.TITLE_STOCK_CAPACITY).hexdigest(),
+        hashlib.sha256(b"\xA6" * title.TITLE_STOCK_CAPACITY).hexdigest(),
     )
     monkeypatch.setattr(
         title,
@@ -186,10 +178,9 @@ def test_title_patch_replaces_stock_package_without_code_hook(
     assert rom.read_u32(title.TITLE_FILE_ENTRY_ROM + 4) == (
         title.TITLE_STOCK_ROM_START + len(fake_package)
     )
-    assert (
-        rom.data[title.TITLE_STOCK_ROM_START : title.TITLE_STOCK_ROM_START + len(fake_package)]
-        == fake_package
-    )
+    assert rom.data[
+        title.TITLE_STOCK_ROM_START : title.TITLE_STOCK_ROM_START + len(fake_package)
+    ] == fake_package
     assert rom.data[
         title.TITLE_STOCK_ROM_START + len(fake_package) : title.TITLE_STOCK_ROM_END
-    ] == b"\xa6" * (title.TITLE_STOCK_CAPACITY - len(fake_package))
+    ] == b"\xA6" * (title.TITLE_STOCK_CAPACITY - len(fake_package))

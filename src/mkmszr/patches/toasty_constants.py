@@ -95,7 +95,9 @@ EXPECTED_ENTRY_524 = bytes.fromhex(
 )
 EXPECTED_PATCH_681 = bytes.fromhex("0100020c")
 EXPECTED_SUBPATCH_524 = bytes.fromhex("646440013000007f0505008500017d00000a7f7f")
-EXPECTED_WAVE_133 = bytes.fromhex("000b832000001efa00000000fffffb50ffffffff00000000")
+EXPECTED_WAVE_133 = bytes.fromhex(
+    "000b832000001efa00000000fffffb50ffffffff00000000"
+)
 
 PATCH_68_ROM = 0x00947DC8
 SUBPATCH_608_ROM = 0x0094B6E8
@@ -110,33 +112,23 @@ EXPECTED_EVENT_52_PATCH = bytes.fromhex("000000d1")
 TOASTY_EVENT_52_PATCH = bytes.fromhex("00000044")
 EXPECTED_PATCH_68 = bytes.fromhex("01000260")
 EXPECTED_SUBPATCH_608 = bytes.fromhex("006e40013700007f0000021500011b5804007f7f")
-EXPECTED_WAVE_533 = bytes.fromhex("0030717e000017500000000000000000ffffffff00000000")
+EXPECTED_WAVE_533 = bytes.fromhex(
+    "0030717e000017500000000000000000ffffffff00000000"
+)
 EXPECTED_PRED_533_SHA256 = "54029ba413d939c0e219ab720d6830dc69ae48b60d26e1afa2fc89e1cd66646c"
 MKMSZ_TBL_BASE = 0x009B0650
 TARGET_WAVE_ID = 533
 EXPECTED_AUDIO_CORRECTION = -2253
 
 PIECE_GEOMETRY = (
-    (7, 32),
-    (64, 32),
-    (7, 32),
-    (7, 32),
-    (64, 32),
-    (7, 32),
-    (7, 21),
-    (64, 21),
-    (7, 21),
+    (7, 32), (64, 32), (7, 32),
+    (7, 32), (64, 32), (7, 32),
+    (7, 21), (64, 21), (7, 21),
 )
 DRAW_ORDER = (
-    (0, 195, 135),
-    (1, 202, 135),
-    (2, 266, 135),
-    (3, 195, 167),
-    (4, 202, 167),
-    (5, 266, 167),
-    (6, 195, 199),
-    (7, 202, 199),
-    (8, 266, 199),
+    (0, 195, 135), (1, 202, 135), (2, 266, 135),
+    (3, 195, 167), (4, 202, 167), (5, 266, 167),
+    (6, 195, 199), (7, 202, 199), (8, 266, 199),
 )
 ALLOCATION_ORDER = (1, 4, 7, 0, 3, 6, 2, 5, 8)
 

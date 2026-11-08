@@ -25,7 +25,9 @@ class GameSettingsConfig:
 
     def __post_init__(self) -> None:
         if self.jump_button and not (self.attack_modern and self.specials_modern):
-            raise ValueError("JUMP: BUTTON requires ATTACK: MODERN and SPECIALS: MODERN")
+            raise ValueError(
+                "JUMP: BUTTON requires ATTACK: MODERN and SPECIALS: MODERN"
+            )
 
 
 @dataclass(frozen=True)

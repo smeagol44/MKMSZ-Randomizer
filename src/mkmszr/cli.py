@@ -25,17 +25,13 @@ def _parse_rgb(value: str) -> tuple[int, int, int]:
 def _build_parser() -> argparse.ArgumentParser:
     modes = ["vanilla", "red", "green", "rainbow", "seeded", "hue", "rgb", *PRESET_HUES]
     parser = argparse.ArgumentParser(description="MKMSZ Randomizer native ROM patcher")
-    parser.add_argument(
-        "source", type=Path, help="clean MKMSZ USA Rev. 0 ROM (.z64/.v64/.n64 byte order)"
-    )
+    parser.add_argument("source", type=Path, help="clean MKMSZ USA Rev. 0 ROM (.z64/.v64/.n64 byte order)")
     parser.add_argument("output", type=Path, help="new disposable output .z64")
     parser.add_argument(
         "--mkt-rom",
         type=Path,
-        help=(
-            "Mortal Kombat Trilogy (USA) Rev. 2 N64 donor .z64; enables "
-            "donor-backed Toasty and seeded Temple intro audio"
-        ),
+        help=("Mortal Kombat Trilogy (USA) Rev. 2 N64 donor .z64; enables "
+              "donor-backed Toasty and seeded Temple intro audio"),
     )
     parser.add_argument(
         "--seed",
@@ -162,7 +158,9 @@ def main(argv: list[str] | None = None) -> int:
         donor_bytes = args.mkt_rom.read_bytes() if args.mkt_rom is not None else None
         toasty_assets = extract_toasty_assets(donor_bytes) if donor_bytes is not None else None
         temple_intro_audio_assets = (
-            extract_temple_intro_audio_assets(donor_bytes) if donor_bytes is not None else None
+            extract_temple_intro_audio_assets(donor_bytes)
+            if donor_bytes is not None
+            else None
         )
         result = patch_file(
             args.source,

@@ -77,9 +77,13 @@ CAPTURE_HELPER_VA = RESTORE_TRAMPOLINE_VA + 0x10
 
 # Canonical v38 permanent-cave data layout.
 DESCRIPTOR_TABLE_VA = 0x8009A2C0
-DESCRIPTOR_TABLE_ROM = NATIVE_BOOTSTRAP_STUB_ROM + (DESCRIPTOR_TABLE_VA - NATIVE_BOOTSTRAP_STUB_VA)
+DESCRIPTOR_TABLE_ROM = NATIVE_BOOTSTRAP_STUB_ROM + (
+    DESCRIPTOR_TABLE_VA - NATIVE_BOOTSTRAP_STUB_VA
+)
 FIRE_TRANSLATION_VA = 0x8009A2E8
-FIRE_TRANSLATION_ROM = NATIVE_BOOTSTRAP_STUB_ROM + (FIRE_TRANSLATION_VA - NATIVE_BOOTSTRAP_STUB_VA)
+FIRE_TRANSLATION_ROM = NATIVE_BOOTSTRAP_STUB_ROM + (
+    FIRE_TRANSLATION_VA - NATIVE_BOOTSTRAP_STUB_VA
+)
 
 FIRE_STAGE_ID = 5
 FIRE_DESCRIPTOR_FLAG_TRANSLATE = 0x01
@@ -87,16 +91,16 @@ FIRE_DESCRIPTOR_FLAG_TRANSLATE = 0x01
 # Descriptor byte layout: expected manager count, bitset state offset,
 # ordinary-pickup count, flags. Direct indexed by native stage ID 0..9.
 STAGE_DESCRIPTORS = (
-    (4, 0x24, 4, 0),  # 0 Temple
-    (6, 0x28, 6, 0),  # 1 Wind
-    (9, 0x2C, 9, 0),  # 2 Water
-    (20, 0x30, 20, 0),  # 3 Earth
-    (10, 0x34, 10, 0),  # 4 Prison
-    (19, 0x20, 16, FIRE_DESCRIPTOR_FLAG_TRANSLATE),  # 5 Fire
-    (0, 0, 0, 0),  # 6 unused
-    (0, 0, 0, 0),  # 7 Fire God room / excluded
-    (10, 0x38, 10, 0),  # 8 Bridge
-    (9, 0x3C, 9, 0),  # 9 Fortress
+    (4, 0x24, 4, 0),   # 0 Temple
+    (6, 0x28, 6, 0),   # 1 Wind
+    (9, 0x2C, 9, 0),   # 2 Water
+    (20, 0x30, 20, 0), # 3 Earth
+    (10, 0x34, 10, 0), # 4 Prison
+    (19, 0x20, 16, FIRE_DESCRIPTOR_FLAG_TRANSLATE), # 5 Fire
+    (0, 0, 0, 0),      # 6 unused
+    (0, 0, 0, 0),      # 7 Fire God room / excluded
+    (10, 0x38, 10, 0), # 8 Bridge
+    (9, 0x3C, 9, 0),   # 9 Fortress
 )
 
 DESCRIPTOR_TABLE = bytes(value for row in STAGE_DESCRIPTORS for value in row)

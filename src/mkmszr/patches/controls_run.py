@@ -2,7 +2,6 @@
 
 The emitters retain their confirmed MIPS instructions and stock callbacks.
 """
-
 from __future__ import annotations
 
 from ..mips import (
@@ -200,29 +199,21 @@ def build_corrected_block_start_helper() -> bytes:
     e = Emitter()
 
     e.emit(*address_words("t0", STATE_VA), lw("t0", 0, "t0"), andi("t0", "t0", MODERN_LP_MASK))
-    e.beq("t0", "zero", "stock")
-    e.emit(NOP)
+    e.beq("t0", "zero", "stock"); e.emit(NOP)
     e.emit(
-        *address_words("t0", CURRENT_CONTROLLER_PTR_VA),
-        lw("t0", 0, "t0"),
-        *address_words("t1", PLAYER_CONTROLLER_PTR_VA),
-        lw("t1", 0, "t1"),
+        *address_words("t0", CURRENT_CONTROLLER_PTR_VA), lw("t0", 0, "t0"),
+        *address_words("t1", PLAYER_CONTROLLER_PTR_VA), lw("t1", 0, "t1"),
     )
-    e.bne("t0", "t1", "stock")
-    e.emit(NOP)
+    e.bne("t0", "t1", "stock"); e.emit(NOP)
     e.emit(*address_words("t1", PLAYER_BLOCK_RETURN_VA))
-    e.bne("ra", "t1", "stock")
-    e.emit(NOP)
-    e.beq("zero", "zero", "modern")
-    e.emit(NOP)
+    e.bne("ra", "t1", "stock"); e.emit(NOP)
+    e.beq("zero", "zero", "modern"); e.emit(NOP)
 
     e.label("stock")
     # Replay displaced 0x80032810..0x8003281C then resume stock.
     e.emit(
-        lui("a0", 0x802F),
-        lw("a0", 0xCE20, "a0"),
-        addiu("sp", "sp", -0x18),
-        sw("ra", 0x10, "sp"),
+        lui("a0", 0x802F), lw("a0", 0xCE20, "a0"),
+        addiu("sp", "sp", -0x18), sw("ra", 0x10, "sp"),
     )
     emit_tail_jump(e, 0x80032820)
 
@@ -233,52 +224,38 @@ def build_corrected_block_start_helper() -> bytes:
     e.emit(lui("t0", 0x802F), sh("zero", 0xCCC8, "t0"))
     e.emit(lui("t0", 0x800C), sh("zero", 0xF308, "t0"))
     e.emit(jal(PREP_ACTION_VA), NOP)
-    e.emit(
-        *address_words("t0", CURRENT_CONTROLLER_PTR_VA), lw("t0", 0, "t0"), lw("a0", 0x6E0, "t0")
-    )
+    e.emit(*address_words("t0", CURRENT_CONTROLLER_PTR_VA), lw("t0", 0, "t0"), lw("a0", 0x6E0, "t0"))
     e.emit(jal(STOP_FIGHTER_VA), NOP)
     e.emit(addu("a0", "zero", "zero"), addiu("a1", "zero", 0x0C), jal(SELECT_ANIM_VA), NOP)
     e.emit(
-        *address_words("t0", CURRENT_CONTROLLER_PTR_VA),
-        lw("t0", 0, "t0"),
-        addiu("t1", "zero", 0x0700),
-        sh("t1", 0x6AA, "t0"),
+        *address_words("t0", CURRENT_CONTROLLER_PTR_VA), lw("t0", 0, "t0"),
+        addiu("t1", "zero", 0x0700), sh("t1", 0x6AA, "t0"),
     )
 
     # Stock rate=3 normalizes to a two-tick wait. Split into sleep(1) ticks to
     # poll Block+Attack during either startup tick without changing cadence.
     e.label("loop")
     e.emit(
-        *address_words("t0", SEMANTIC_INPUT_VA),
-        lhu("t1", 0, "t0"),
-        andi("t1", "t1", 0x0018),
-        addiu("t2", "zero", 0x0018),
+        *address_words("t0", SEMANTIC_INPUT_VA), lhu("t1", 0, "t0"),
+        andi("t1", "t1", 0x0018), addiu("t2", "zero", 0x0018),
     )
-    e.beq("t1", "t2", "cancel")
-    e.emit(NOP)
+    e.beq("t1", "t2", "cancel"); e.emit(NOP)
 
     e.emit(lw("t0", 0x18, "sp"))
-    e.beq("t0", "zero", "advance")
-    e.emit(NOP)
+    e.beq("t0", "zero", "advance"); e.emit(NOP)
     e.emit(addiu("a0", "zero", 1), jal(PROCESS_SLEEP_VA), NOP)
     e.emit(lw("t0", 0x18, "sp"), addiu("t0", "t0", -1), sw("t0", 0x18, "sp"))
-    e.beq("zero", "zero", "loop")
-    e.emit(NOP)
+    e.beq("zero", "zero", "loop"); e.emit(NOP)
 
     e.label("advance")
-    e.emit(
-        *address_words("t0", CURRENT_CONTROLLER_PTR_VA), lw("t0", 0, "t0"), lw("a0", 0x6E0, "t0")
-    )
+    e.emit(*address_words("t0", CURRENT_CONTROLLER_PTR_VA), lw("t0", 0, "t0"), lw("a0", 0x6E0, "t0"))
     e.emit(jal(ADVANCE_ANIM_VA), NOP, addu("t3", "v0", "zero"))
     e.emit(andi("t0", "t3", 0x0003), addiu("t1", "zero", 2))
-    e.beq("t0", "t1", "done")
-    e.emit(NOP)
+    e.beq("t0", "t1", "done"); e.emit(NOP)
     e.emit(andi("t0", "t3", 0xC000), addiu("t1", "zero", 0x4000))
-    e.bne("t0", "t1", "loop")
-    e.emit(NOP)
+    e.bne("t0", "t1", "loop"); e.emit(NOP)
     e.emit(addiu("t0", "zero", 2), sw("t0", 0x18, "sp"))
-    e.beq("zero", "zero", "loop")
-    e.emit(NOP)
+    e.beq("zero", "zero", "loop"); e.emit(NOP)
 
     e.label("done")
     e.emit(lw("ra", 0x1C, "sp"), addiu("sp", "sp", 0x20), jr("ra"), NOP)
@@ -321,22 +298,16 @@ def build_run_decision_helper(run_button_state_va: int) -> bytes:
         lw("t1", 0, "t0"),
         andi("t1", "t1", RUN_AUTO_MASK),
     )
-    e.beq("t1", "zero", "done")
-    e.emit(NOP)
+    e.beq("t1", "zero", "done"); e.emit(NOP)
     e.emit(
-        *address_words("t0", CURRENT_CONTROLLER_PTR_VA),
-        lw("t0", 0, "t0"),
-        *address_words("t1", PLAYER_CONTROLLER_PTR_VA),
-        lw("t1", 0, "t1"),
+        *address_words("t0", CURRENT_CONTROLLER_PTR_VA), lw("t0", 0, "t0"),
+        *address_words("t1", PLAYER_CONTROLLER_PTR_VA), lw("t1", 0, "t1"),
     )
-    e.bne("t0", "t1", "done")
-    e.emit(NOP)
+    e.bne("t0", "t1", "done"); e.emit(NOP)
     e.emit(*address_words("t0", run_button_state_va), lw("t1", 0, "t0"))
-    e.beq("t1", "zero", "auto_run")
-    e.emit(NOP)
+    e.beq("t1", "zero", "auto_run"); e.emit(NOP)
     e.emit(ori("v0", "zero", 0x4000))  # physical Run held => Walk
-    e.beq("zero", "zero", "done")
-    e.emit(NOP)
+    e.beq("zero", "zero", "done"); e.emit(NOP)
     e.label("auto_run")
     e.emit(ori("v0", "zero", 0x8000))  # physical Run released => Run
     e.label("done")
@@ -364,39 +335,26 @@ def build_run_backedge_helper(run_button_state_va: int) -> bytes:
         lw("t1", 0, "t0"),
         andi("t1", "t1", RUN_AUTO_MASK),
     )
-    e.beq("t1", "zero", "normal")
-    e.emit(NOP)
+    e.beq("t1", "zero", "normal"); e.emit(NOP)
     e.emit(
-        *address_words("t0", CURRENT_CONTROLLER_PTR_VA),
-        lw("t0", 0, "t0"),
-        *address_words("t1", PLAYER_CONTROLLER_PTR_VA),
-        lw("t1", 0, "t1"),
+        *address_words("t0", CURRENT_CONTROLLER_PTR_VA), lw("t0", 0, "t0"),
+        *address_words("t1", PLAYER_CONTROLLER_PTR_VA), lw("t1", 0, "t1"),
     )
-    e.bne("t0", "t1", "normal")
-    e.emit(NOP)
+    e.bne("t0", "t1", "normal"); e.emit(NOP)
     e.emit(*address_words("t0", run_button_state_va), lw("t1", 0, "t0"))
-    e.beq("t1", "zero", "normal")
-    e.emit(NOP)
+    e.beq("t1", "zero", "normal"); e.emit(NOP)
 
     e.emit(
-        lw("t2", 0x04, "sp"),
-        lw("t1", 0x08, "sp"),
-        lw("t0", 0x0C, "sp"),
+        lw("t2", 0x04, "sp"), lw("t1", 0x08, "sp"), lw("t0", 0x0C, "sp"),
         addiu("sp", "sp", 0x10),
-        *address_words("t9", WALK_REEVAL_VA),
-        jr("t9"),
-        NOP,
+        *address_words("t9", WALK_REEVAL_VA), jr("t9"), NOP,
     )
 
     e.label("normal")
     e.emit(
-        lw("t2", 0x04, "sp"),
-        lw("t1", 0x08, "sp"),
-        lw("t0", 0x0C, "sp"),
+        lw("t2", 0x04, "sp"), lw("t1", 0x08, "sp"), lw("t0", 0x0C, "sp"),
         addiu("sp", "sp", 0x10),
-        *address_words("t9", RUN_LOOP_START_VA),
-        jr("t9"),
-        NOP,
+        *address_words("t9", RUN_LOOP_START_VA), jr("t9"), NOP,
     )
     return e.finish()
 
@@ -405,8 +363,7 @@ def build_runtime_dispatcher(decision_k1: int, capture_k1: int) -> bytes:
     """JAL trampoline: action-hook RA selects capture; all Run calls use decision."""
     e = Emitter()
     e.emit(*address_words("t0", ACTION_RETURN_VA))
-    e.beq("ra", "t0", "capture")
-    e.emit(NOP)
+    e.beq("ra", "t0", "capture"); e.emit(NOP)
     e.emit(*address_words("t9", decision_k1), jr("t9"), NOP)
     e.label("capture")
     e.emit(*address_words("t9", capture_k1), jr("t9"), NOP)

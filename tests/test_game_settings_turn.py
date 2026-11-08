@@ -90,4 +90,6 @@ def test_enum_value_draws_fit_stock_draw_regions() -> None:
 def test_jump_draw_hook_replaces_all_three_stock_cursor_words() -> None:
     from mkmszr.patches.game_settings_turn import JUMP_DRAW_HOOK_EXPECTED
 
-    assert JUMP_DRAW_HOOK_EXPECTED == bytes.fromhex("24080002 AFD006F4 AFC806F8")
+    assert JUMP_DRAW_HOOK_EXPECTED == bytes.fromhex(
+        "24080002 AFD006F4 AFC806F8"
+    )

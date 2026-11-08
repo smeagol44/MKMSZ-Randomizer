@@ -81,29 +81,35 @@ def _post_core_shape() -> RomImage:
 
     mapper = build_selection_mapper()
     mapper_offset = MAPPER_ROM - SELECTOR_CAVE_ROM
-    data[SELECTOR_CAVE_ROM + mapper_offset : SELECTOR_CAVE_ROM + mapper_offset + len(mapper)] = (
-        mapper
-    )
+    data[
+        SELECTOR_CAVE_ROM + mapper_offset :
+        SELECTOR_CAVE_ROM + mapper_offset + len(mapper)
+    ] = mapper
 
-    data[SELECTION_LOAD_ROM : SELECTION_LOAD_ROM + 4] = jal(MAPPER_VA).to_bytes(4, "big")
-    data[ACTION_HOOK_ROM : ACTION_HOOK_ROM + 8] = bytes.fromhex("3C03802F 9463CE18")
+    data[SELECTION_LOAD_ROM : SELECTION_LOAD_ROM + 4] = jal(MAPPER_VA).to_bytes(
+        4, "big"
+    )
+    data[ACTION_HOOK_ROM : ACTION_HOOK_ROM + 8] = bytes.fromhex(
+        "3C03802F 9463CE18"
+    )
     data[DEFAULT_INV_ROM : DEFAULT_INV_ROM + len(DEFAULT_INV)] = DEFAULT_INV
     data[LIVE_INV_ROM : LIVE_INV_ROM + len(RAW_LIVE_INV)] = RAW_LIVE_INV
     data[SANITIZE_ROM:SANITIZE_END] = EXPECTED_SANITIZER
     data[LOAD_DEFAULT_ROM:LOAD_DEFAULT_END] = EXPECTED_DEFAULT_LOADER
-    data[GLASS_USE_ENTRY_ROM : GLASS_USE_ENTRY_ROM + 4] = CONSUME_USE_STUB_VA.to_bytes(4, "big")
+    data[GLASS_USE_ENTRY_ROM:GLASS_USE_ENTRY_ROM + 4] = CONSUME_USE_STUB_VA.to_bytes(4, "big")
     for scan_rom in (BRIDGE_ALL_KEYS_SCAN_BASE_ROM, FIRE_ALL_KEYS_SCAN_BASE_ROM):
         data[scan_rom : scan_rom + 4] = EXPECTED_ALL_KEYS_SCAN_BASE.to_bytes(4, "big")
     for scan_rom in (BRIDGE_ALL_KEYS_SCAN_LIMIT_ROM, FIRE_ALL_KEYS_SCAN_LIMIT_ROM):
         data[scan_rom : scan_rom + 4] = EXPECTED_ALL_KEYS_SCAN_LIMIT.to_bytes(4, "big")
-    data[MASK_ITEM_NAME_ROM : MASK_ITEM_NAME_ROM + len(EXPECTED_MASK_ITEM_NAME)] = (
-        EXPECTED_MASK_ITEM_NAME
-    )
+    data[
+        MASK_ITEM_NAME_ROM : MASK_ITEM_NAME_ROM + len(EXPECTED_MASK_ITEM_NAME)
+    ] = EXPECTED_MASK_ITEM_NAME
     for call_rom in SANITIZE_CALL_ROMS:
         data[call_rom : call_rom + 4] = jal(SANITIZE_VA).to_bytes(4, "big")
-    data[PERSISTENCE_RESUME_ROM : PERSISTENCE_RESUME_ROM + len(EXPECTED_PERSISTENCE_RESUME)] = (
-        EXPECTED_PERSISTENCE_RESUME
-    )
+    data[
+        PERSISTENCE_RESUME_ROM :
+        PERSISTENCE_RESUME_ROM + len(EXPECTED_PERSISTENCE_RESUME)
+    ] = EXPECTED_PERSISTENCE_RESUME
 
     return RomImage(data=data, _original=bytes(data))
 
@@ -112,27 +118,13 @@ def test_stage_key_map_matches_originating_stage_policy() -> None:
     assert KEY_STAGE_BY_ITEM == bytes(
         [
             0,
-            1,
-            1,
-            1,
-            3,
-            3,
-            3,
-            2,
-            2,
-            2,
-            5,
-            5,
-            5,
-            4,
-            4,
-            4,
-            8,
-            8,
-            8,
-            9,
-            9,
-            9,
+            1, 1, 1,
+            3, 3, 3,
+            2, 2, 2,
+            5, 5, 5,
+            4, 4, 4,
+            8, 8, 8,
+            9, 9, 9,
         ]
     )
     assert len(KEY_STAGE_TABLE) == KEY_STAGE_TABLE_ALLOC_SIZE == 0x20
@@ -154,7 +146,7 @@ def test_four_box_binary_layout_fits_confirmed_regions() -> None:
 
     assert len(INITIAL_BOX_DATA) == BOX_DATA_SIZE == 0xA8
     assert INITIAL_BOX_DATA[:40] == DEFAULT_INV
-    assert INITIAL_BOX_DATA[40:160] == b"\xff" * 120
+    assert INITIAL_BOX_DATA[40:160] == b"\xFF" * 120
     assert int.from_bytes(INITIAL_BOX_DATA[160:164], "big") == 0
     assert int.from_bytes(INITIAL_BOX_DATA[164:168], "big") == MAGIC
     assert RAW_LIVE_INV[:12] == DEFAULT_INV[:12]
@@ -177,15 +169,15 @@ def test_four_box_patch_installs_stage_masking_and_filtered_sync() -> None:
     notes = FourBoxInventoryPatch().apply(rom, PatchContext())
 
     assert rom.read_u32(SELECTION_LOAD_ROM) == jal(RELOCATED_MAPPER_VA)
-    assert (
-        rom.data[RELOCATED_MAPPER_ROM : RELOCATED_MAPPER_ROM + len(RELOCATED_MAPPER)]
-        == RELOCATED_MAPPER
-    )
-    assert (
-        rom.data[SELECTOR_CAVE_ROM : SELECTOR_CAVE_ROM + len(SELECTOR_CAVE_BLOB)]
-        == SELECTOR_CAVE_BLOB
-    )
-    assert rom.data[SECONDARY_CAVE_ROM : SECONDARY_CAVE_ROM + len(ACTION_ROUTINE)] == ACTION_ROUTINE
+    assert rom.data[
+        RELOCATED_MAPPER_ROM : RELOCATED_MAPPER_ROM + len(RELOCATED_MAPPER)
+    ] == RELOCATED_MAPPER
+    assert rom.data[
+        SELECTOR_CAVE_ROM : SELECTOR_CAVE_ROM + len(SELECTOR_CAVE_BLOB)
+    ] == SELECTOR_CAVE_BLOB
+    assert rom.data[
+        SECONDARY_CAVE_ROM : SECONDARY_CAVE_ROM + len(ACTION_ROUTINE)
+    ] == ACTION_ROUTINE
     assert rom.read_u32(ACTION_HOOK_ROM) == jal(ACTION_ROUTINE_VA)
     assert rom.read_u32(ACTION_HOOK_ROM + 4) == 0
 
@@ -203,17 +195,22 @@ def test_four_box_patch_installs_stage_masking_and_filtered_sync() -> None:
     for call_rom in SANITIZE_CALL_ROMS:
         assert rom.read_u32(call_rom) == 0
 
-    assert rom.data[LOAD_DEFAULT_ROM:LOAD_DEFAULT_END] == TRANSITION_SAVE_WRAPPER
-    assert (
-        rom.data[PERSISTENCE_RESUME_ROM : PERSISTENCE_RESUME_ROM + len(PERSISTENCE_RESUME_PATCH)]
-        == PERSISTENCE_RESUME_PATCH
-    )
-    assert (
-        rom.data[PERSISTENCE_SAVE_ROM : PERSISTENCE_SAVE_ROM + len(SAVE_FILTERED_ROUTINE)]
-        == SAVE_FILTERED_ROUTINE
-    )
+    assert rom.data[
+        LOAD_DEFAULT_ROM:LOAD_DEFAULT_END
+    ] == TRANSITION_SAVE_WRAPPER
+    assert rom.data[
+        PERSISTENCE_RESUME_ROM :
+        PERSISTENCE_RESUME_ROM + len(PERSISTENCE_RESUME_PATCH)
+    ] == PERSISTENCE_RESUME_PATCH
+    assert rom.data[
+        PERSISTENCE_SAVE_ROM :
+        PERSISTENCE_SAVE_ROM + len(SAVE_FILTERED_ROUTINE)
+    ] == SAVE_FILTERED_ROUTINE
     assert rom.read_u32(GLASS_USE_ENTRY_ROM) == INERT_USE_STUB_VA
-    assert rom.data[MASK_ITEM_NAME_ROM : MASK_ITEM_NAME_ROM + len(MASK_ITEM_NAME)] == MASK_ITEM_NAME
+    assert (
+        rom.data[MASK_ITEM_NAME_ROM : MASK_ITEM_NAME_ROM + len(MASK_ITEM_NAME)]
+        == MASK_ITEM_NAME
+    )
 
     assert any("SEALED" in note for note in notes)
 
@@ -226,7 +223,7 @@ def test_debug_inventory_adds_every_credential_once_and_preserves_supplies() -> 
         rom, PatchContext()
     )
     backing = rom.data[BOX_DATA_ROM : BOX_DATA_ROM + BOX_DATA_SIZE]
-    slots = [int.from_bytes(backing[i : i + 4], "big") for i in range(0, 160, 4)]
+    slots = [int.from_bytes(backing[i:i + 4], "big") for i in range(0, 160, 4)]
     credentials = sorted(item[1] for item in TOKEN_ITEMS.values())
     assert slots[:3] == [4, 4, 1]
     assert slots[3:24] == credentials == list(range(0x0E, 0x23))
@@ -237,29 +234,25 @@ def test_debug_inventory_adds_every_credential_once_and_preserves_supplies() -> 
     # preserve debug keys rather than overwrite them with empty LIVE slots.
     live = [rom.read_u32(LIVE_INV_ROM + i * 4) for i in range(10)]
     assert live == [4, 4, 1] + [MASK_ITEM] * 7
-    saved = [
-        old if current == MASK_ITEM else current
-        for old, current in zip(slots[:10], live, strict=True)
-    ]
+    saved = [old if current == MASK_ITEM else current for old, current in zip(slots[:10], live, strict=True)]
     assert saved == slots[:10]
 
 
 def _key_table_rom(*, file_end: int) -> RomImage:
     size = KEY_STAGE_TABLE_ROM + KEY_STAGE_TABLE_ALLOC_SIZE + 0x100
     data = bytearray(b"\xff" * size)
-    data[SHARED_FILE_1A_ENTRY_ROM : SHARED_FILE_1A_ENTRY_ROM + 8] = SHARED_FILE_1A_ROM.to_bytes(
-        4, "big"
-    ) + file_end.to_bytes(4, "big")
+    data[SHARED_FILE_1A_ENTRY_ROM : SHARED_FILE_1A_ENTRY_ROM + 8] = (
+        SHARED_FILE_1A_ROM.to_bytes(4, "big") + file_end.to_bytes(4, "big")
+    )
     return RomImage(data=data, _original=bytes(data))
 
 
 def test_key_stage_table_patch_writes_owned_file_1a_slice() -> None:
     rom = _key_table_rom(file_end=KEY_STAGE_TABLE_ROM + 0x100)
     KeyStageTablePatch().apply(rom, PatchContext())
-    assert (
-        rom.data[KEY_STAGE_TABLE_ROM : KEY_STAGE_TABLE_ROM + KEY_STAGE_TABLE_ALLOC_SIZE]
-        == KEY_STAGE_TABLE
-    )
+    assert rom.data[
+        KEY_STAGE_TABLE_ROM : KEY_STAGE_TABLE_ROM + KEY_STAGE_TABLE_ALLOC_SIZE
+    ] == KEY_STAGE_TABLE
 
 
 def test_key_stage_table_patch_refuses_uncovered_or_occupied_slice() -> None:

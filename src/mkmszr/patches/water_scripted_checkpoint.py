@@ -28,7 +28,7 @@ WATER_SCRIPT_CONTEXT_EXPECTED = bytes.fromhex(
     "3C01801B A423E4C0 0C00D7CE 00000000"
 )
 WATER_RELATIVE_INCREMENT = 0x24420001  # addiu v0,v0,1
-WATER_ABSOLUTE_SIX = 0x24020006  # addiu v0,zero,6
+WATER_ABSOLUTE_SIX = 0x24020006      # addiu v0,zero,6
 
 
 class WaterScriptedCheckpointPatch:

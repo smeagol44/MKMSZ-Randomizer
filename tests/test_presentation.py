@@ -83,10 +83,14 @@ def test_runtime_confirmed_box_and_boot_presentation_install_together() -> None:
     assert rom.read_u32(HUD_HOOK_ROM) == BOX_HOOK_CALL
     assert rom.data[BOX_REGION_ROM:BOX_REGION_END] == BOX_REGION
 
-    assert _read_c_string(rom.data, TITLE_LINE_ROM, 27) == ("MORTAL KOMBAT^ MYTHOLOGIES")
+    assert _read_c_string(rom.data, TITLE_LINE_ROM, 27) == (
+        "MORTAL KOMBAT^ MYTHOLOGIES"
+    )
     assert _read_c_string(rom.data, RANDOMIZER_LINE_ROM) == "R A N D O M I Z E R"
     assert _read_c_string(rom.data, EDITION_LINE_ROM, 21) == "SUB-ZERO EDITION"
-    assert _read_c_string(rom.data, COPYRIGHT_LINE_ROM, 21) == ("~2026 LA PAVADA INC.")
+    assert _read_c_string(rom.data, COPYRIGHT_LINE_ROM, 21) == (
+        "~2026 LA PAVADA INC."
+    )
     assert _read_c_string(rom.data, PHRASE1_ROM) == "DO PEOPLE EVEN READ"
     assert _read_c_string(rom.data, PHRASE2_ROM) == "THESE THINGS?"
     assert _read_c_string(rom.data, BY_SMEAG_ROM) == "BY SMEAG"
@@ -123,7 +127,9 @@ def test_boot_edition_worst_case_name_fits_packed_legal_region() -> None:
     BoxIndicatorPatch().apply(rom, PatchContext())
     BootBrandingPatch("W" * 12).apply(rom, PatchContext())
 
-    assert _read_c_string(rom.data, EDITION_LINE_ROM, 21) == ("WWWWWWWWWWWW EDITION")
+    assert _read_c_string(rom.data, EDITION_LINE_ROM, 21) == (
+        "WWWWWWWWWWWW EDITION"
+    )
     assert rom.data[BOOT_TEXT_END - 2 : BOOT_TEXT_END] == b"\x00\x00"
 
 

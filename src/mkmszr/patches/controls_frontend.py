@@ -2,7 +2,6 @@
 
 The emitters retain their confirmed MIPS instructions and stock callbacks.
 """
-
 from __future__ import annotations
 
 from ..mips import (
@@ -499,3 +498,4 @@ def build_specials_value_draw() -> bytes:
             sw("s1", 24, "sp"),
         ]
     )
+

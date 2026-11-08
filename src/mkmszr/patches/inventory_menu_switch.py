@@ -49,7 +49,9 @@ NOP = 0
 # Native Inventory loop seam, before highlight and item-action processing.
 INVENTORY_LOOP_HOOK_ROM = 0x00074324
 INVENTORY_LOOP_HOOK_VA = 0x80073724
-EXPECTED_INVENTORY_LOOP_HOOK = bytes.fromhex("1640000F 00000000 0C01D06D 00000000")
+EXPECTED_INVENTORY_LOOP_HOOK = bytes.fromhex(
+    "1640000F 00000000 0C01D06D 00000000"
+)
 INVENTORY_ITEMS_RESUME_VA = 0x80073734
 INVENTORY_POWERS_RESUME_VA = 0x80073764
 INVENTORY_COUNT_VA = 0x800741B4
@@ -216,7 +218,7 @@ def _guard_generated_output(rom: RomImage, start: int, end: int) -> None:
         raise PatchError("Inventory menu switching requires the normal 32 MiB generated output")
     if not (0 <= start < end <= len(rom.data)):
         raise PatchError("Inventory menu switch transport is outside generated output")
-    if bytes(rom.data[start:end]) != b"\xff" * (end - start):
+    if bytes(rom.data[start:end]) != b"\xFF" * (end - start):
         raise PatchError(
             f"Inventory menu switch transport 0x{start:08X}..0x{end - 1:08X} is not unassigned"
         )

@@ -36,7 +36,7 @@ def _addiu_v0_zero(value: int) -> int:
 
 
 EXPECTED_WORD = _addiu_v0_zero(STOCK_RESERVE)  # 0x24020140
-PATCHED_WORD = _addiu_v0_zero(FIXED_RESERVE)  # 0x24020110
+PATCHED_WORD = _addiu_v0_zero(FIXED_RESERVE)   # 0x24020110
 
 
 class AudioFifoReservePatch:

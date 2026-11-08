@@ -50,7 +50,9 @@ def test_visual_translation_uses_confirmed_ci4_palette_order() -> None:
 
     assert len(slices) == 9
     assert len(tlut) == 0x20
-    expected_tlut = bytearray(b"".join(index.to_bytes(2, "big") for index in CI4_PALETTE_SOURCES))
+    expected_tlut = bytearray(
+        b"".join(index.to_bytes(2, "big") for index in CI4_PALETTE_SOURCES)
+    )
     for index, rgba5551 in CI4_PALETTE_RGBA5551_OVERRIDES.items():
         start = index * 2
         expected_tlut[start : start + 2] = rgba5551.to_bytes(2, "big")
@@ -62,12 +64,10 @@ def test_visual_translation_uses_confirmed_ci4_palette_order() -> None:
         9: 0xA2AD,
     }
     assert slices[0][:4] == bytes(
-        (
-            CI4_INDEX_MAP[0] << 4 | CI4_INDEX_MAP[1],
-            CI4_INDEX_MAP[2] << 4 | CI4_INDEX_MAP[3],
-            CI4_INDEX_MAP[4] << 4 | CI4_INDEX_MAP[5],
-            CI4_INDEX_MAP[6] << 4,
-        )
+        (CI4_INDEX_MAP[0] << 4 | CI4_INDEX_MAP[1],
+         CI4_INDEX_MAP[2] << 4 | CI4_INDEX_MAP[3],
+         CI4_INDEX_MAP[4] << 4 | CI4_INDEX_MAP[5],
+         CI4_INDEX_MAP[6] << 4)
     )
     assert hashlib.sha256(b"".join(slices)).hexdigest()
 

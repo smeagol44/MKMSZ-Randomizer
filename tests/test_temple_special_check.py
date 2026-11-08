@@ -25,15 +25,21 @@ from mkmszr.rom import RomImage
 def _clean_shape() -> RomImage:
     data = bytearray(0x01000000)
     data[EXPANSION_FILE_ENTRY_ROM : EXPANSION_FILE_ENTRY_ROM + 12] = (
-        EXPANSION_FILE_ROM.to_bytes(4, "big") + CONTROLS_END_ROM.to_bytes(4, "big") + bytes(4)
+        EXPANSION_FILE_ROM.to_bytes(4, "big")
+        + CONTROLS_END_ROM.to_bytes(4, "big")
+        + bytes(4)
     )
-    data[TEMPLE_MODULE_ROM:TEMPLE_MODULE_END_ROM] = b"\xff" * TEMPLE_MODULE_SIZE
+    data[TEMPLE_MODULE_ROM:TEMPLE_MODULE_END_ROM] = b"\xFF" * TEMPLE_MODULE_SIZE
 
     for offset, (expected, _replacement) in VISUAL_PATCHES.items():
         data[offset : offset + 4] = expected.to_bytes(4, "big")
 
-    data[MAP_CHECK_HOOK_ROM : MAP_CHECK_HOOK_ROM + 8] = bytes.fromhex("8C420018 30420080")
-    data[MAP_AWARD_CALL_ROM : MAP_AWARD_CALL_ROM + 4] = (0x0C01D512).to_bytes(4, "big")
+    data[MAP_CHECK_HOOK_ROM : MAP_CHECK_HOOK_ROM + 8] = bytes.fromhex(
+        "8C420018 30420080"
+    )
+    data[MAP_AWARD_CALL_ROM : MAP_AWARD_CALL_ROM + 4] = (0x0C01D512).to_bytes(
+        4, "big"
+    )
     return RomImage(data=data, _original=bytes(data))
 
 

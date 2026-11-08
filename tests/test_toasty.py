@@ -25,8 +25,8 @@ from mkmszr.patches.toasty_constants import (
 
 
 def fake_assets() -> ToastyAssets:
-    geometry = ((7, 32), (64, 32), (7, 32), (7, 32), (64, 32), (7, 32), (7, 21), (64, 21), (7, 21))
-    slices = tuple(bytes(((w + 31) & ~31) * h // 2) for w, h in geometry)
+    geometry = ((7,32),(64,32),(7,32),(7,32),(64,32),(7,32),(7,21),(64,21),(7,21))
+    slices = tuple(bytes(((w + 31) & ~31) * h // 2) for w,h in geometry)
     wave = bytearray(24)
     wave[0x0C:0x10] = (-2253).to_bytes(4, "big", signed=True)
     return ToastyAssets(
