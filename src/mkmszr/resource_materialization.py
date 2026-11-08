@@ -51,9 +51,8 @@ GLOBAL_OUTPUT_SIZE = 32 * 1024 * 1024
 GLOBAL_RESOURCE_REGION_START = 0x01000000
 GLOBAL_RESOURCE_SLOT_SIZE = 0x00100000
 GLOBAL_RESOURCE_STAGE_ORDER = (0, 1, 2, 3, 4, 5, 8, 9)
-GLOBAL_RESOURCE_REGION_END = (
-    GLOBAL_RESOURCE_REGION_START
-    + GLOBAL_RESOURCE_SLOT_SIZE * len(GLOBAL_RESOURCE_STAGE_ORDER)
+GLOBAL_RESOURCE_REGION_END = GLOBAL_RESOURCE_REGION_START + GLOBAL_RESOURCE_SLOT_SIZE * len(
+    GLOBAL_RESOURCE_STAGE_ORDER
 )
 
 
@@ -423,9 +422,7 @@ def _decompress_resource_package_cached(blob: bytes) -> bytes:
         previous = entry
 
     if len(output) != expected_size:
-        raise PatchError(
-            f"package size mismatch: expected {expected_size}, decoded {len(output)}"
-        )
+        raise PatchError(f"package size mismatch: expected {expected_size}, decoded {len(output)}")
     return bytes(output)
 
 
@@ -535,9 +532,7 @@ def extract_canonical_bundle(rom: bytes, key: str) -> VisualBundle:
 
         if external_id and not data_offset:
             if donor.package_file_id is None:
-                raise PatchError(
-                    f"{key}: external frame requires an explicit package file ID"
-                )
+                raise PatchError(f"{key}: external frame requires an explicit package file ID")
             if package_images is None:
                 package_images = _package_images_from_rom(rom, donor.package_file_id)
             try:
@@ -551,7 +546,9 @@ def extract_canonical_bundle(rom: bytes, key: str) -> VisualBundle:
         elif data_offset and not external_id:
             image_start = spec.rom_start + data_offset
             if image_start + 8 > spec.rom_end:
-                raise PatchError(f"{key}: frame {frame_index} embedded image header is out of range")
+                raise PatchError(
+                    f"{key}: frame {frame_index} embedded image header is out of range"
+                )
             size = _compressed_image_size(rom, image_start)
             if image_start + size > spec.rom_end:
                 raise PatchError(f"{key}: frame {frame_index} embedded image exceeds source file")
@@ -644,9 +641,7 @@ def build_extended_resource_file(
 
             # Planner-generated external conversions must be self-contained.
             if _compressed_image_size(output, block_offset) != len(frame.image_block):
-                raise PatchError(
-                    f"{bundle.key}: frame {frame_index} image size/header mismatch"
-                )
+                raise PatchError(f"{bundle.key}: frame {frame_index} image size/header mismatch")
 
         visuals.append(
             MaterializedVisual(
@@ -662,8 +657,7 @@ def build_extended_resource_file(
 
     if max_size is not None and len(output) > max_size:
         raise PatchError(
-            f"expanded stage resource file is 0x{len(output):X} bytes; "
-            f"limit is 0x{max_size:X}"
+            f"expanded stage resource file is 0x{len(output):X} bytes; limit is 0x{max_size:X}"
         )
 
     return bytes(output), tuple(visuals)
@@ -729,9 +723,7 @@ def bind_materialized_visual_to_stock_selector(
         raise PatchError("stock selector must be non-negative")
     entry_offset = selector * 4
     if entry_offset + 4 > plan.stock_size:
-        raise PatchError(
-            f"stage {plan.stage_id}: stock selector {selector} is out of range"
-        )
+        raise PatchError(f"stage {plan.stage_id}: stock selector {selector} is out of range")
 
     visual = next((item for item in plan.visuals if item.key == key), None)
     if visual is None:
@@ -739,9 +731,7 @@ def bind_materialized_visual_to_stock_selector(
 
     output = bytearray(plan.resource_file)
     if _be32(output, entry_offset) != 0:
-        raise PatchError(
-            f"stage {plan.stage_id}: stock selector {selector} is not empty"
-        )
+        raise PatchError(f"stage {plan.stage_id}: stock selector {selector} is not empty")
     _write_be32(output, entry_offset, visual.descriptor_offset)
     return StageResourcePlan(
         stage_id=plan.stage_id,
@@ -749,6 +739,7 @@ def bind_materialized_visual_to_stock_selector(
         resource_file=bytes(output),
         visuals=plan.visuals,
     )
+
 
 def apply_stage_resource_plan(
     rom: bytearray,
@@ -772,8 +763,7 @@ def apply_stage_resource_plan(
         target = rom[relocation_start:relocation_end]
         if target != bytes((expected_fill,)) * len(target):
             raise PatchError(
-                f"stage {plan.stage_id}: relocation target is not "
-                f"0x{expected_fill:02X}-filled"
+                f"stage {plan.stage_id}: relocation target is not 0x{expected_fill:02X}-filled"
             )
 
     rom[relocation_start:relocation_end] = plan.resource_file
@@ -801,8 +791,7 @@ def portable_fixed_callback_identity(key: str, selector: int) -> bytes:
     logical = logical_item_from_record(donor.stage_id, donor.record_index, pickup)
     if logical.native_callback is None:
         raise PatchError(
-            f"{key}: stock award callback is stage-bound; "
-            "destination-safe token wrapper required"
+            f"{key}: stock award callback is stage-bound; destination-safe token wrapper required"
         )
     if logical.key != key:
         raise PatchError(
@@ -853,10 +842,9 @@ DEST_PRISON_STRENGTH = 15
 # joins the portable set only because the shared patch now rebuilds its acquired
 # bits after the stock Prison reset and immediately on in-stage acquisition.
 PORTABLE_INVENTORY_TOKENS = frozenset(
-    key for key in CANONICAL_VISUAL_DONORS
-    if key.startswith(
-        ("wind-", "earth-", "water-", "fire-", "prison-", "bridge-", "crystal-")
-    )
+    key
+    for key in CANONICAL_VISUAL_DONORS
+    if key.startswith(("wind-", "earth-", "water-", "fire-", "prison-", "bridge-", "crystal-"))
 )
 
 

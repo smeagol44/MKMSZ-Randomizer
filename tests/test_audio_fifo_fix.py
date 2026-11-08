@@ -25,7 +25,7 @@ def _rom(word: int) -> RomImage:
 def test_reserve_immediate_encoding() -> None:
     assert (STOCK_RESERVE, FIXED_RESERVE) == (320, 272)
     assert EXPECTED_WORD == 0x24020140  # addiu v0,zero,0x140
-    assert PATCHED_WORD == 0x24020110   # addiu v0,zero,0x110
+    assert PATCHED_WORD == 0x24020110  # addiu v0,zero,0x110
     # Keeps the stock 16-sample quantization of the sizing formula.
     assert FIXED_RESERVE % 16 == 0
 

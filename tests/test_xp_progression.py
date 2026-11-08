@@ -63,31 +63,37 @@ def _post_four_box_shape(seed: str) -> RomImage:
         PROGRESSION_HERBS_PALETTE_ROM + len(PROGRESSION_HERBS_PALETTE),
     )
     data = bytearray(end)
-    data[MKMSZR_FILE_ENTRY_ROM:MKMSZR_FILE_ENTRY_ROM + 12] = (
+    data[MKMSZR_FILE_ENTRY_ROM : MKMSZR_FILE_ENTRY_ROM + 12] = (
         PROVEN_PAYLOAD_ROM.to_bytes(4, "big")
         + (PROVEN_PAYLOAD_ROM + CODE_SIZE).to_bytes(4, "big")
         + bytes(4)
     )
-    data[PROGRESSION_EXTENSION_ROM:PROGRESSION_EXTENSION_ROM + 0x100] = bytes(0x100)
+    data[PROGRESSION_EXTENSION_ROM : PROGRESSION_EXTENSION_ROM + 0x100] = bytes(0x100)
     data[
-        PROGRESSION_HERBS_PALETTE_ROM :
-        PROGRESSION_HERBS_PALETTE_ROM + len(PROGRESSION_HERBS_PALETTE)
+        PROGRESSION_HERBS_PALETTE_ROM : PROGRESSION_HERBS_PALETTE_ROM
+        + len(PROGRESSION_HERBS_PALETTE)
     ] = PROGRESSION_HERBS_PALETTE
-    data[PERSISTENCE_RESUME_ROM:PERSISTENCE_RESUME_ROM + len(PERSISTENCE_RESUME_PATCH)] = PERSISTENCE_RESUME_PATCH
+    data[PERSISTENCE_RESUME_ROM : PERSISTENCE_RESUME_ROM + len(PERSISTENCE_RESUME_PATCH)] = (
+        PERSISTENCE_RESUME_PATCH
+    )
 
     for stage in STAGE_PICKUPS:
         assignment, _attempts = build_stage_assignment(stage, seed)
         for destination, source_index in enumerate(assignment):
             target = stage.records[destination]
-            data[target.rom_base + IDENTITY_OFFSET:target.rom_base + IDENTITY_OFFSET + len(target.identity)] = stage.records[source_index].identity
+            data[
+                target.rom_base + IDENTITY_OFFSET : target.rom_base
+                + IDENTITY_OFFSET
+                + len(target.identity)
+            ] = stage.records[source_index].identity
 
     for offset, expected in XP_AWARD_STORE_SITES.items():
-        data[offset:offset + 4] = expected.to_bytes(4, "big")
+        data[offset : offset + 4] = expected.to_bytes(4, "big")
     for offset, expected in COMBO_EXPERIENCE_RENDER_SITES.items():
-        data[offset:offset + 4] = expected.to_bytes(4, "big")
+        data[offset : offset + 4] = expected.to_bytes(4, "big")
     for stage_id, expected in XP_MAIN_STAGE_CAPS.items():
         offset = XP_CAP_TABLE_ROM + stage_id * 2
-        data[offset:offset + 2] = expected.to_bytes(2, "big")
+        data[offset : offset + 2] = expected.to_bytes(2, "big")
     return RomImage(data=data, _original=bytes(data))
 
 
@@ -108,7 +114,9 @@ def test_selection_is_deterministic_and_targets_only_generated_herbs(seed: str) 
         stage = stage_by_id[stage_id]
         assignment, _attempts = build_stage_assignment(stage, seed)
         identity = stage.records[assignment[destination]].identity
-        callback = int.from_bytes(identity[CALLBACK_OFFSET_WITHIN_IDENTITY:CALLBACK_OFFSET_WITHIN_IDENTITY + 4], "big")
+        callback = int.from_bytes(
+            identity[CALLBACK_OFFSET_WITHIN_IDENTITY : CALLBACK_OFFSET_WITHIN_IDENTITY + 4], "big"
+        )
         assert callback == HERBS_CALLBACK_VA
 
 
@@ -130,7 +138,6 @@ def test_stage_restore_does_not_call_unsafe_tier_evaluator() -> None:
     assert words_blob(address_words("t9", LOAD_MASK_WRAPPER_UNCACHED_VA)) in restore
 
 
-
 def _post_lifecycle_off_shape(seed: str = "EARNED-XP-OFF") -> RomImage:
     rom = _post_four_box_shape(seed)
     for offset, _expected, replacement, _label in HOOKS:
@@ -142,10 +149,7 @@ def test_earned_xp_extension_fits_without_touching_optional_runtime_tail() -> No
     assert EARNED_XP_EXTENSION_SIZE == 0xE0
     assert len(EARNED_XP_EXTENSION) == 0xE0
     assert 0 < EARNED_XP_RESTORE_OFFSET < EARNED_XP_EXTENSION_SIZE
-    assert (
-        EARNED_XP_EXTENSION_ROM + EARNED_XP_EXTENSION_SIZE
-        == PROGRESSION_EXTENSION_ROM + 0xE0
-    )
+    assert EARNED_XP_EXTENSION_ROM + EARNED_XP_EXTENSION_SIZE == PROGRESSION_EXTENSION_ROM + 0xE0
 
 
 def test_earned_xp_restore_reuses_safe_stage_init_path() -> None:
@@ -156,27 +160,17 @@ def test_earned_xp_restore_reuses_safe_stage_init_path() -> None:
 
 def test_earned_xp_off_preserves_stock_awards_and_wraps_lifecycle_v06() -> None:
     rom = _post_lifecycle_off_shape()
-    stock_awards = {
-        offset: rom.read_u32(offset) for offset in XP_AWARD_STORE_SITES
-    }
-    stock_combo_ui = {
-        offset: rom.read_u32(offset) for offset in COMBO_EXPERIENCE_RENDER_SITES
-    }
+    stock_awards = {offset: rom.read_u32(offset) for offset in XP_AWARD_STORE_SITES}
+    stock_combo_ui = {offset: rom.read_u32(offset) for offset in COMBO_EXPERIENCE_RENDER_SITES}
 
     EarnedXPPersistencePatch().apply(rom, PatchContext(seed="EARNED-XP-OFF"))
 
     assert (
-        rom.data[
-            EARNED_XP_EXTENSION_ROM :
-            EARNED_XP_EXTENSION_ROM + EARNED_XP_EXTENSION_SIZE
-        ]
+        rom.data[EARNED_XP_EXTENSION_ROM : EARNED_XP_EXTENSION_ROM + EARNED_XP_EXTENSION_SIZE]
         == EARNED_XP_EXTENSION
     )
     assert (
-        rom.data[
-            PERSISTENCE_RESUME_ROM :
-            PERSISTENCE_RESUME_ROM + len(EARNED_XP_RESUME_PATCH)
-        ]
+        rom.data[PERSISTENCE_RESUME_ROM : PERSISTENCE_RESUME_ROM + len(EARNED_XP_RESUME_PATCH)]
         == EARNED_XP_RESUME_PATCH
     )
     for offset, _expected, patched, _label in EARNED_XP_LIFECYCLE_HOOK_PATCHES:
@@ -185,7 +179,9 @@ def test_earned_xp_off_preserves_stock_awards_and_wraps_lifecycle_v06() -> None:
         assert rom.data[offset : offset + len(replacement)] == replacement
 
     assert {offset: rom.read_u32(offset) for offset in XP_AWARD_STORE_SITES} == stock_awards
-    assert {offset: rom.read_u32(offset) for offset in COMBO_EXPERIENCE_RENDER_SITES} == stock_combo_ui
+    assert {
+        offset: rom.read_u32(offset) for offset in COMBO_EXPERIENCE_RENDER_SITES
+    } == stock_combo_ui
     assert all(
         rom.read_u16(XP_CAP_TABLE_ROM + stage_id * 2) == XP_CAP_VALUE
         for stage_id in XP_MAIN_STAGE_CAPS
@@ -211,11 +207,20 @@ def test_patch_disables_xp_caps_and_converts_exactly_nine_callbacks() -> None:
     rom = _post_four_box_shape(seed)
     XPProgressionPatch().apply(rom, PatchContext(seed=seed))
 
-    assert rom.data[PROGRESSION_EXTENSION_ROM:PROGRESSION_EXTENSION_ROM + 0x100] == PROGRESSION_EXTENSION
-    assert rom.data[PERSISTENCE_RESUME_ROM:PERSISTENCE_RESUME_ROM + len(PROGRESSION_RESUME_PATCH)] == PROGRESSION_RESUME_PATCH
+    assert (
+        rom.data[PROGRESSION_EXTENSION_ROM : PROGRESSION_EXTENSION_ROM + 0x100]
+        == PROGRESSION_EXTENSION
+    )
+    assert (
+        rom.data[PERSISTENCE_RESUME_ROM : PERSISTENCE_RESUME_ROM + len(PROGRESSION_RESUME_PATCH)]
+        == PROGRESSION_RESUME_PATCH
+    )
     assert all(rom.read_u32(offset) == 0 for offset in XP_AWARD_STORE_SITES)
     assert all(rom.read_u32(offset) == 0 for offset in COMBO_EXPERIENCE_RENDER_SITES)
-    assert all(rom.read_u16(XP_CAP_TABLE_ROM + stage_id * 2) == XP_CAP_VALUE for stage_id in XP_MAIN_STAGE_CAPS)
+    assert all(
+        rom.read_u16(XP_CAP_TABLE_ROM + stage_id * 2) == XP_CAP_VALUE
+        for stage_id in XP_MAIN_STAGE_CAPS
+    )
 
     selected = set(build_progression_locations(seed))
     changed = 0
@@ -224,14 +229,16 @@ def test_patch_disables_xp_caps_and_converts_exactly_nine_callbacks() -> None:
         for destination, target in enumerate(stage.records):
             base = target.rom_base + IDENTITY_OFFSET
             original = stage.records[assignment[destination]].identity
-            actual = bytes(rom.data[base:base + len(original)])
+            actual = bytes(rom.data[base : base + len(original)])
             if (stage.stage_id, destination) in selected:
-                assert actual[:CALLBACK_OFFSET_WITHIN_IDENTITY] == original[:CALLBACK_OFFSET_WITHIN_IDENTITY]
+                assert (
+                    actual[:CALLBACK_OFFSET_WITHIN_IDENTITY]
+                    == original[:CALLBACK_OFFSET_WITHIN_IDENTITY]
+                )
                 assert (
                     int.from_bytes(
                         actual[
-                            CALLBACK_OFFSET_WITHIN_IDENTITY :
-                            CALLBACK_OFFSET_WITHIN_IDENTITY + 4
+                            CALLBACK_OFFSET_WITHIN_IDENTITY : CALLBACK_OFFSET_WITHIN_IDENTITY + 4
                         ],
                         "big",
                     )
@@ -239,19 +246,17 @@ def test_patch_disables_xp_caps_and_converts_exactly_nine_callbacks() -> None:
                 )
                 assert (
                     actual[
-                        CALLBACK_OFFSET_WITHIN_IDENTITY + 4 :
-                        PRESENTATION_OFFSET_WITHIN_IDENTITY
+                        CALLBACK_OFFSET_WITHIN_IDENTITY + 4 : PRESENTATION_OFFSET_WITHIN_IDENTITY
                     ]
                     == original[
-                        CALLBACK_OFFSET_WITHIN_IDENTITY + 4 :
-                        PRESENTATION_OFFSET_WITHIN_IDENTITY
+                        CALLBACK_OFFSET_WITHIN_IDENTITY + 4 : PRESENTATION_OFFSET_WITHIN_IDENTITY
                     ]
                 )
                 assert (
                     int.from_bytes(
                         actual[
-                            PRESENTATION_OFFSET_WITHIN_IDENTITY :
-                            PRESENTATION_OFFSET_WITHIN_IDENTITY + 4
+                            PRESENTATION_OFFSET_WITHIN_IDENTITY : PRESENTATION_OFFSET_WITHIN_IDENTITY
+                            + 4
                         ],
                         "big",
                     )
@@ -260,8 +265,8 @@ def test_patch_disables_xp_caps_and_converts_exactly_nine_callbacks() -> None:
                 assert (
                     int.from_bytes(
                         original[
-                            PRESENTATION_OFFSET_WITHIN_IDENTITY :
-                            PRESENTATION_OFFSET_WITHIN_IDENTITY + 4
+                            PRESENTATION_OFFSET_WITHIN_IDENTITY : PRESENTATION_OFFSET_WITHIN_IDENTITY
+                            + 4
                         ],
                         "big",
                     )

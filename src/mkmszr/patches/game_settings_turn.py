@@ -131,12 +131,8 @@ DPAD_VALUE_VA = 0x800AEAF0
 # EXIT uses the stock OPTIONS type-0 entry 5 instead of publishing invalid
 # GAME SETTINGS index 4.
 GAME_SETTINGS_CURSOR_TABLE_ROM = 0x000AF824
-GAME_SETTINGS_CURSOR_TABLE_EXPECTED = bytes.fromhex(
-    "00460046 0050006E 00500096 007800D2"
-)
-GAME_SETTINGS_CURSOR_TABLE_COMPACT = bytes.fromhex(
-    "00460037 0050005A 0050007D 005000A0"
-)
+GAME_SETTINGS_CURSOR_TABLE_EXPECTED = bytes.fromhex("00460046 0050006E 00500096 007800D2")
+GAME_SETTINGS_CURSOR_TABLE_COMPACT = bytes.fromhex("00460037 0050005A 0050007D 005000A0")
 
 BOOTSTRAP_RUNTIME_ENTRY_WORDS_OFFSET = 0x34
 
@@ -514,7 +510,6 @@ DECISION_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["decision"]
 RELEASE_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["release"]
 ACTION_TRAMPOLINE_VA = STATIC_REGION_VA + STATIC_OFFSETS["action"]
 MENU_WRAPPER_VA = STATIC_REGION_VA + STATIC_OFFSETS["menu"]
-
 
 
 def _pad_region(blob: bytes, size: int) -> bytes:
@@ -938,10 +933,7 @@ def _patch_game_settings(rom: RomImage) -> None:
     )
     rom.write_bytes(
         0x000AF6CC,
-        b"TOGGLE\x00LOCK\x00"
-        b"ASSIST\x00\x00"
-        b"CLASSIC\x00MODERN\x00\x00"
-        b"DPAD\x00BUTTON\x00",
+        b"TOGGLE\x00LOCK\x00ASSIST\x00\x00CLASSIC\x00MODERN\x00\x00DPAD\x00BUTTON\x00",
     )
 
     expected_value_ptrs = words_blob(
@@ -995,7 +987,7 @@ class GameSettingsTurnPatch:
         )
 
         rom.expect_bytes(EXPANSION_FILE_ENTRY_ROM, bytes(FILE_TABLE_ENTRY_SIZE))
-        rom.expect_bytes(SHARED_EXPANSION_ROM, b"\xFF" * len(CONTROL_MODULE))
+        rom.expect_bytes(SHARED_EXPANSION_ROM, b"\xff" * len(CONTROL_MODULE))
 
         bootstrap_patch_rom = 0x0009AD84 + BOOTSTRAP_RUNTIME_ENTRY_WORDS_OFFSET
         rom.expect_bytes(

@@ -311,8 +311,8 @@ class RainbowPalettePatch:
         rom.expect_bytes(FRAME_SETUP_ROM, FRAME_SETUP_EXPECTED)
         rom.expect_bytes(RAINBOW_HELPER_ROM, bytes(len(RAINBOW_HELPER)))
         rom.expect_bytes(RAINBOW_BANK_FILE_ENTRY_ROM, bytes(FILE_TABLE_ENTRY_SIZE))
-        rom.expect_bytes(RAINBOW_BANK_ROM, b"\xFF" * RAINBOW_PALETTE_BANK_SIZE)
-        rom.expect_bytes(RAINBOW_LOADER_ROM, b"\xFF" * len(RAINBOW_LOADER_WRAPPER))
+        rom.expect_bytes(RAINBOW_BANK_ROM, b"\xff" * RAINBOW_PALETTE_BANK_SIZE)
+        rom.expect_bytes(RAINBOW_LOADER_ROM, b"\xff" * len(RAINBOW_LOADER_WRAPPER))
 
         bank = build_rainbow_bank(rom)
         if len(bank) != RAINBOW_PALETTE_BANK_SIZE:
@@ -335,9 +335,7 @@ class RainbowPalettePatch:
         # and every corresponding raw load routes through the wrapper.
         if len(ALLOC_SIZE_DELAY_SITES) != len(LOAD_JAL_SITES):
             raise AssertionError("rainbow Sub-Zero loader-site tables drifted")
-        for alloc_site, load_site in zip(
-            ALLOC_SIZE_DELAY_SITES, LOAD_JAL_SITES, strict=True
-        ):
+        for alloc_site, load_site in zip(ALLOC_SIZE_DELAY_SITES, LOAD_JAL_SITES, strict=True):
             rom.expect_u32(alloc_site, EXPECTED_ALLOC_DELAY)
             rom.expect_u32(load_site, EXPECTED_RAW_LOADER_JAL)
             rom.expect_u32(load_site + 4, EXPECTED_LOAD_DELAY)

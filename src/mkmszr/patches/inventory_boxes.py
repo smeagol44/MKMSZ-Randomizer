@@ -76,12 +76,8 @@ BOX_DATA_ROM = 0x000A6C48
 BOX_DATA_SIZE = 0xA8
 DEFAULT_INV_ROM = 0x000A6BE4
 LIVE_INV_ROM = 0x000A6C0C
-DEFAULT_INV = words_blob(
-    [0x00000004, 0x00000004, 0x00000001] + [0xFFFFFFFF] * 7
-)
-RAW_LIVE_INV = words_blob(
-    [0x00000004, 0x00000004, 0x00000001] + [0x00000004] * 7
-)
+DEFAULT_INV = words_blob([0x00000004, 0x00000004, 0x00000001] + [0xFFFFFFFF] * 7)
+RAW_LIVE_INV = words_blob([0x00000004, 0x00000004, 0x00000001] + [0x00000004] * 7)
 
 # Stock item ID 0x08 (Glass) is the LIVE-only masking identity. MKMSZR keeps
 # that native ID/dispatch internally but renames its visible inventory label to
@@ -107,8 +103,8 @@ BRIDGE_ALL_KEYS_SCAN_LIMIT_ROM = 0x00072C28
 FIRE_ALL_KEYS_SCAN_BASE_ROM = 0x00072C94
 FIRE_ALL_KEYS_SCAN_LIMIT_ROM = 0x00072CAC
 EXPECTED_ALL_KEYS_SCAN_BASE = 0x2463600C  # addiu v1,v1,0x600C (LIVE)
-PATCHED_ALL_KEYS_SCAN_BASE = 0x24636048   # addiu v1,v1,0x6048 (BOX0)
-EXPECTED_ALL_KEYS_SCAN_LIMIT = 0x2882000A # slti v0,a0,10
+PATCHED_ALL_KEYS_SCAN_BASE = 0x24636048  # addiu v1,v1,0x6048 (BOX0)
+EXPECTED_ALL_KEYS_SCAN_LIMIT = 0x2882000A  # slti v0,a0,10
 PATCHED_ALL_KEYS_SCAN_LIMIT = 0x28820028  # slti v0,a0,40
 
 # Native key IDs 0x0D..0x22 -> the one stage where each key is exposed.
@@ -116,14 +112,28 @@ PATCHED_ALL_KEYS_SCAN_LIMIT = 0x28820028  # slti v0,a0,40
 # though the accepted native rule is "originating stage only".
 KEY_STAGE_BY_ITEM = bytes(
     [
-        0,        # 0D Map -> Temple
-        1, 1, 1, # 0E..10 Wind
-        3, 3, 3, # 11..13 Earth
-        2, 2, 2, # 14..16 Water
-        5, 5, 5, # 17..19 Fire
-        4, 4, 4, # 1A..1C Prison
-        8, 8, 8, # 1D..1F Bridge
-        9, 9, 9, # 20..22 Fortress crystals
+        0,  # 0D Map -> Temple
+        1,
+        1,
+        1,  # 0E..10 Wind
+        3,
+        3,
+        3,  # 11..13 Earth
+        2,
+        2,
+        2,  # 14..16 Water
+        5,
+        5,
+        5,  # 17..19 Fire
+        4,
+        4,
+        4,  # 1A..1C Prison
+        8,
+        8,
+        8,  # 1D..1F Bridge
+        9,
+        9,
+        9,  # 20..22 Fortress crystals
     ]
 )
 if len(KEY_STAGE_BY_ITEM) != KEY_LAST - KEY_FIRST + 1:
@@ -205,9 +215,7 @@ SECONDARY_CAVE_VA = 0x8008EAE8
 SECONDARY_CAVE_SIZE = 0x68
 
 RELOCATED_MAPPER_VA = 0x8009A2FC
-RELOCATED_MAPPER_ROM = NATIVE_BOOTSTRAP_STUB_ROM + (
-    RELOCATED_MAPPER_VA - NATIVE_BOOTSTRAP_STUB_VA
-)
+RELOCATED_MAPPER_ROM = NATIVE_BOOTSTRAP_STUB_ROM + (RELOCATED_MAPPER_VA - NATIVE_BOOTSTRAP_STUB_VA)
 
 ACTION_ROUTINE_VA = SECONDARY_CAVE_VA
 SWITCH_HELPER_VA = SELECTOR_CAVE_VA
@@ -363,6 +371,7 @@ def build_switch_helper(
     e.emit(jump(action_done_va), NOP)
     return e.finish()
 
+
 def build_action_routine(base_va: int, helper_va: int) -> tuple[bytes, int]:
     """Build the remapping-aware four-box gameplay chord hook."""
 
@@ -410,9 +419,7 @@ def build_action_routine(base_va: int, helper_va: int) -> tuple[bytes, int]:
 
 
 def build_selector_cave() -> tuple[bytes, int]:
-    placeholder_action, done_va = build_action_routine(
-        SECONDARY_CAVE_VA, SWITCH_HELPER_VA
-    )
+    placeholder_action, done_va = build_action_routine(SECONDARY_CAVE_VA, SWITCH_HELPER_VA)
     del placeholder_action
 
     helper = build_switch_helper(
@@ -432,9 +439,7 @@ def build_selector_cave() -> tuple[bytes, int]:
 
 
 SELECTOR_CAVE_BLOB, ACTION_DONE_VA = build_selector_cave()
-ACTION_ROUTINE, _ACTION_DONE_CHECK = build_action_routine(
-    ACTION_ROUTINE_VA, SWITCH_HELPER_VA
-)
+ACTION_ROUTINE, _ACTION_DONE_CHECK = build_action_routine(ACTION_ROUTINE_VA, SWITCH_HELPER_VA)
 if _ACTION_DONE_CHECK != ACTION_DONE_VA:
     raise AssertionError("action done address changed between packing passes")
 
@@ -569,8 +574,7 @@ class FourBoxInventoryPatch:
         # Protect the debug keys in box 1 with inert placeholders in LIVE so
         # that filtered save cannot replace them with empty initializer slots.
         initial_live = (
-            DEFAULT_INV[:12] + words_blob([MASK_ITEM] * 7)
-            if self.debug_all_keys else DEFAULT_INV
+            DEFAULT_INV[:12] + words_blob([MASK_ITEM] * 7) if self.debug_all_keys else DEFAULT_INV
         )
         rom.write_bytes(LIVE_INV_ROM, initial_live)
 

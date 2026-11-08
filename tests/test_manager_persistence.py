@@ -40,19 +40,17 @@ def _clean_shape() -> RomImage:
     data[NATIVE_BOOTSTRAP_HOOK_ROM : NATIVE_BOOTSTRAP_HOOK_ROM + 8] = bytes.fromhex(
         "27BDFFE8 3C02801B"
     )
-    data[PICKUP_MANAGER_HOOK_ROM : PICKUP_MANAGER_HOOK_ROM + 8] = (
-        PICKUP_MANAGER_HOOK_EXPECTED
-    )
+    data[PICKUP_MANAGER_HOOK_ROM : PICKUP_MANAGER_HOOK_ROM + 8] = PICKUP_MANAGER_HOOK_EXPECTED
     data[PICKUP_MANAGER_CAPTURE_HOOK_ROM : PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4] = (
         PICKUP_MANAGER_CAPTURE_EXPECTED.to_bytes(4, "big")
     )
-    data[
-        PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4 : PICKUP_MANAGER_CAPTURE_HOOK_ROM + 8
-    ] = PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED.to_bytes(4, "big")
-    data[
-        FIRE_POTION_CALLBACK_FIELD_ROM : FIRE_POTION_CALLBACK_FIELD_ROM + 4
-    ] = FIRE_POTION_CALLBACK_EXPECTED.to_bytes(4, "big")
-    data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] = b"\xFF" * CODE_SIZE
+    data[PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4 : PICKUP_MANAGER_CAPTURE_HOOK_ROM + 8] = (
+        PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED.to_bytes(4, "big")
+    )
+    data[FIRE_POTION_CALLBACK_FIELD_ROM : FIRE_POTION_CALLBACK_FIELD_ROM + 4] = (
+        FIRE_POTION_CALLBACK_EXPECTED.to_bytes(4, "big")
+    )
+    data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] = b"\xff" * CODE_SIZE
 
     return RomImage(data=data, _original=bytes(data))
 
@@ -82,9 +80,7 @@ def test_manager_persistence_binary_layout_is_pinned() -> None:
 def test_manager_persistence_installs_hooks_and_keeps_callback_vanilla() -> None:
     rom = _clean_shape()
 
-    results = PatchPipeline(manager_persistence_fire_patches()).apply(
-        rom, PatchContext()
-    )
+    results = PatchPipeline(manager_persistence_fire_patches()).apply(rom, PatchContext())
 
     assert [result.name for result in results] == [
         "arena-reservation",
@@ -92,9 +88,7 @@ def test_manager_persistence_installs_hooks_and_keeps_callback_vanilla() -> None
         "manager-persistence-fire",
     ]
 
-    assert rom.data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] == (
-        MANAGER_PAYLOAD
-    )
+    assert rom.data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] == (MANAGER_PAYLOAD)
     assert rom.data[MKMSZR_FILE_ENTRY_ROM : MKMSZR_FILE_ENTRY_ROM + 12] == (
         PROVEN_PAYLOAD_ROM.to_bytes(4, "big")
         + (PROVEN_PAYLOAD_ROM + CODE_SIZE).to_bytes(4, "big")
@@ -106,8 +100,7 @@ def test_manager_persistence_installs_hooks_and_keeps_callback_vanilla() -> None
 
     assert rom.read_u32(PICKUP_MANAGER_CAPTURE_HOOK_ROM) == jal(CAPTURE_HELPER_VA)
     assert (
-        rom.read_u32(PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4)
-        == PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED
+        rom.read_u32(PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4) == PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED
     )
 
     assert rom.read_u32(FIRE_POTION_CALLBACK_FIELD_ROM) == FIRE_POTION_CALLBACK_EXPECTED

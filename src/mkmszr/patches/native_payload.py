@@ -122,9 +122,7 @@ class NativePayloadSpec:
             if self.clear_word_rdram & 3:
                 raise ValueError("clear word address must be 4-byte aligned")
             if not (
-                RESERVED_RDRAM_START
-                <= self.clear_word_rdram
-                <= RESERVED_RDRAM_END_EXCLUSIVE - 4
+                RESERVED_RDRAM_START <= self.clear_word_rdram <= RESERVED_RDRAM_END_EXCLUSIVE - 4
             ):
                 raise ValueError("clear word must be inside the reserved MKMSZR block")
             payload_end = self.rdram_start + len(self.payload)
@@ -160,7 +158,7 @@ class NativePayloadPatch:
 
         payload_end_rom = self.spec.rom_start + len(self.spec.payload)
         rom.expect_bytes(MKMSZR_FILE_ENTRY_ROM, bytes(12))
-        rom.expect_bytes(self.spec.rom_start, b"\xFF" * len(self.spec.payload))
+        rom.expect_bytes(self.spec.rom_start, b"\xff" * len(self.spec.payload))
         rom.expect_bytes(NATIVE_BOOTSTRAP_HOOK_ROM, HOOK_EXPECTED)
         rom.expect_bytes(
             NATIVE_BOOTSTRAP_STUB_ROM,

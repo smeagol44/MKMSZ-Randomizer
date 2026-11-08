@@ -52,28 +52,17 @@ def _post_progression_shape(seed: str) -> RomImage:
         + (FLASH_MODULE_ROM - 0x20).to_bytes(4, "big")
         + bytes(4)
     )
-    data[
-        WATER_EEL_WHITE_PALETTE_ROM :
-        WATER_EEL_WHITE_PALETTE_ROM + len(WHITE_FLASH_PALETTE)
-    ] = WHITE_FLASH_PALETTE
-    data[FLASH_MODULE_ROM:FLASH_MODULE_END_ROM] = b"\xFF" * FLASH_MODULE_SIZE
+    data[WATER_EEL_WHITE_PALETTE_ROM : WATER_EEL_WHITE_PALETTE_ROM + len(WHITE_FLASH_PALETTE)] = (
+        WHITE_FLASH_PALETTE
+    )
+    data[FLASH_MODULE_ROM:FLASH_MODULE_END_ROM] = b"\xff" * FLASH_MODULE_SIZE
 
     for stage_id, destination in selected:
         record = stage_by_id[stage_id].records[destination]
-        callback = (
-            record.rom_base
-            + IDENTITY_OFFSET
-            + CALLBACK_OFFSET_WITHIN_IDENTITY
-        )
-        presentation = (
-            record.rom_base
-            + IDENTITY_OFFSET
-            + PRESENTATION_OFFSET_WITHIN_IDENTITY
-        )
-        data[callback:callback + 4] = PROGRESSION_CALLBACK_ENTRY.to_bytes(4, "big")
-        data[presentation:presentation + 4] = (
-            PROGRESSION_HERBS_PRESENTATION_VA.to_bytes(4, "big")
-        )
+        callback = record.rom_base + IDENTITY_OFFSET + CALLBACK_OFFSET_WITHIN_IDENTITY
+        presentation = record.rom_base + IDENTITY_OFFSET + PRESENTATION_OFFSET_WITHIN_IDENTITY
+        data[callback : callback + 4] = PROGRESSION_CALLBACK_ENTRY.to_bytes(4, "big")
+        data[presentation : presentation + 4] = PROGRESSION_HERBS_PRESENTATION_VA.to_bytes(4, "big")
 
     return RomImage(data=data, _original=bytes(data))
 
@@ -83,7 +72,7 @@ def test_async_wrapper_awards_before_spawning_and_contains_no_direct_sleep_jal()
 
     assert hashlib.sha256(PRODUCTION_FLASH_HELPER).hexdigest() == PRODUCTION_FLASH_HELPER_SHA256
     words = [
-        int.from_bytes(PRODUCTION_FLASH_HELPER[offset:offset + 4], "big")
+        int.from_bytes(PRODUCTION_FLASH_HELPER[offset : offset + 4], "big")
         for offset in range(0, len(PRODUCTION_FLASH_HELPER), 4)
     ]
     assert jal(PROGRESSION_CALLBACK_ENTRY) in words
@@ -111,7 +100,7 @@ def test_flash_module_fits_reserved_expansion_pool() -> None:
 def test_white_palette_is_exact_stock_eel_flash_palette() -> None:
     assert len(WHITE_FLASH_PALETTE) == 0x80
     assert WHITE_FLASH_PALETTE[:2] == b"\x00\x00"
-    assert WHITE_FLASH_PALETTE[2:] == b"\x7F\xFF" * 63
+    assert WHITE_FLASH_PALETTE[2:] == b"\x7f\xff" * 63
 
 
 def test_patch_installs_flash_and_wraps_exactly_nine_progression_pickups() -> None:
@@ -120,34 +109,23 @@ def test_patch_installs_flash_and_wraps_exactly_nine_progression_pickups() -> No
     selected = set(build_progression_locations(seed))
     stage_by_id = {stage.stage_id: stage for stage in STAGE_PICKUPS}
 
-    ProgressionPickupPresentationPatch().apply(
-        rom, PatchContext(seed=seed)
-    )
+    ProgressionPickupPresentationPatch().apply(rom, PatchContext(seed=seed))
 
     assert rom.read_u32(EXPANSION_FILE_ENTRY_ROM + 4) == FLASH_MODULE_END_ROM
     assert (
-        rom.data[WHITE_PALETTE_ROM:WHITE_PALETTE_ROM + len(WHITE_FLASH_PALETTE)]
+        rom.data[WHITE_PALETTE_ROM : WHITE_PALETTE_ROM + len(WHITE_FLASH_PALETTE)]
         == WHITE_FLASH_PALETTE
     )
     assert (
-        rom.data[FLASH_HELPER_ROM:FLASH_HELPER_ROM + FLASH_HELPER_SIZE]
-        == PRODUCTION_FLASH_HELPER
+        rom.data[FLASH_HELPER_ROM : FLASH_HELPER_ROM + FLASH_HELPER_SIZE] == PRODUCTION_FLASH_HELPER
     )
     assert rom.read_u32(FLASH_ACTIVE_FLAG_ROM) == 0
 
     changed = 0
     for stage_id, destination in selected:
         record = stage_by_id[stage_id].records[destination]
-        callback = (
-            record.rom_base
-            + IDENTITY_OFFSET
-            + CALLBACK_OFFSET_WITHIN_IDENTITY
-        )
-        presentation = (
-            record.rom_base
-            + IDENTITY_OFFSET
-            + PRESENTATION_OFFSET_WITHIN_IDENTITY
-        )
+        callback = record.rom_base + IDENTITY_OFFSET + CALLBACK_OFFSET_WITHIN_IDENTITY
+        presentation = record.rom_base + IDENTITY_OFFSET + PRESENTATION_OFFSET_WITHIN_IDENTITY
         assert rom.read_u32(callback) == PROGRESSION_FLASH_CALLBACK_ENTRY
         assert rom.read_u32(presentation) == PROGRESSION_HERBS_PRESENTATION_VA
         changed += 1

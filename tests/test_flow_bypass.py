@@ -21,17 +21,12 @@ def _flow_shape() -> RomImage:
         SAFE_SELECTOR_SKIP_SAVE_ROM + len(SAFE_SELECTOR_SKIP_SAVE_EXPECTED),
     )
     data = bytearray(size)
+    data[BOOT_LOGO_BYPASS_ROM : BOOT_LOGO_BYPASS_ROM + len(BOOT_LOGO_GUARD)] = BOOT_LOGO_GUARD
     data[
-        BOOT_LOGO_BYPASS_ROM :
-        BOOT_LOGO_BYPASS_ROM + len(BOOT_LOGO_GUARD)
-    ] = BOOT_LOGO_GUARD
-    data[
-        SAFE_SELECTOR_SKIP_SAVE_ROM :
-        SAFE_SELECTOR_SKIP_SAVE_ROM + len(SAFE_SELECTOR_SKIP_SAVE_EXPECTED)
+        SAFE_SELECTOR_SKIP_SAVE_ROM : SAFE_SELECTOR_SKIP_SAVE_ROM
+        + len(SAFE_SELECTOR_SKIP_SAVE_EXPECTED)
     ] = SAFE_SELECTOR_SKIP_SAVE_EXPECTED
-    data[
-        SELECTION_LOAD_ROM : SELECTION_LOAD_ROM + 4
-    ] = jal(RELOCATED_MAPPER_VA).to_bytes(4, "big")
+    data[SELECTION_LOAD_ROM : SELECTION_LOAD_ROM + 4] = jal(RELOCATED_MAPPER_VA).to_bytes(4, "big")
     return RomImage(data=data, _original=bytes(data))
 
 
@@ -41,16 +36,15 @@ def test_safe_selector_skip_auto_save_rewrites_only_relocated_mapper() -> None:
 
     notes = SafeStageSelectSkipAutoSavePatch().apply(rom, PatchContext())
 
-    assert rom.data[
-        SAFE_SELECTOR_SKIP_SAVE_ROM :
-        SAFE_SELECTOR_SKIP_SAVE_ROM + len(SAFE_SELECTOR_SKIP_SAVE_PATCH)
-    ] == SAFE_SELECTOR_SKIP_SAVE_PATCH
+    assert (
+        rom.data[
+            SAFE_SELECTOR_SKIP_SAVE_ROM : SAFE_SELECTOR_SKIP_SAVE_ROM
+            + len(SAFE_SELECTOR_SKIP_SAVE_PATCH)
+        ]
+        == SAFE_SELECTOR_SKIP_SAVE_PATCH
+    )
 
-    changed = [
-        index
-        for index, (old, new) in enumerate(zip(before, rom.data))
-        if old != new
-    ]
+    changed = [index for index, (old, new) in enumerate(zip(before, rom.data)) if old != new]
     expected = [
         SAFE_SELECTOR_SKIP_SAVE_ROM + index
         for index, (old, new) in enumerate(
@@ -69,11 +63,8 @@ def test_boot_logo_bypass_changes_only_first_instruction() -> None:
     notes = BootLogoBypassPatch().apply(rom, PatchContext())
 
     assert rom.read_u32(BOOT_LOGO_BYPASS_ROM) == BOOT_LOGO_BRANCH
-    assert rom.data[
-        BOOT_LOGO_BYPASS_ROM + 4 :
-        BOOT_LOGO_BYPASS_ROM + len(BOOT_LOGO_GUARD)
-    ] == before[
-        BOOT_LOGO_BYPASS_ROM + 4 :
-        BOOT_LOGO_BYPASS_ROM + len(BOOT_LOGO_GUARD)
-    ]
+    assert (
+        rom.data[BOOT_LOGO_BYPASS_ROM + 4 : BOOT_LOGO_BYPASS_ROM + len(BOOT_LOGO_GUARD)]
+        == before[BOOT_LOGO_BYPASS_ROM + 4 : BOOT_LOGO_BYPASS_ROM + len(BOOT_LOGO_GUARD)]
+    )
     assert "company/logo" in notes[1]

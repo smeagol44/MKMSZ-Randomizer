@@ -2,9 +2,7 @@ from mkmszr.cli import _build_parser
 
 
 def test_enemy_randomization_cli_flag_is_exposed():
-    args = _build_parser().parse_args(
-        ["in.z64", "out.z64", "--enemy-randomization"]
-    )
+    args = _build_parser().parse_args(["in.z64", "out.z64", "--enemy-randomization"])
     assert args.enemy_randomization is True
 
 
@@ -18,10 +16,14 @@ def test_run_settings_cli_defaults_and_overrides():
 
     custom = parser.parse_args(
         [
-            "in.z64", "out.z64",
-            "--difficulty", "hard",
-            "--lives", "10",
-            "--continues", "5",
+            "in.z64",
+            "out.z64",
+            "--difficulty",
+            "hard",
+            "--lives",
+            "10",
+            "--continues",
+            "5",
             "--no-persist-hp",
         ]
     )

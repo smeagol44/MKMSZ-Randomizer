@@ -31,8 +31,7 @@ EXPECTED_BOOT_TEXT = bytes.fromhex(
     "54484520445241474f4e2044455349474e2c205355422d5a45524f00"
 )
 EXPECTED_LICENSE_TEXT = bytes.fromhex(
-    "554e444552204c4943454e53452e00004c4943454e534544204259204e494e54"
-    "454e444f"
+    "554e444552204c4943454e53452e00004c4943454e534544204259204e494e54454e444f"
 )
 
 # Legal-screen text encoding uses stock special glyphs:
@@ -72,9 +71,7 @@ def _write_slot(
 ) -> None:
     encoded = text.encode("ascii")
     if len(encoded) + 1 > size:
-        raise ValueError(
-            f"boot legal line exceeds {size - 1} characters: {text!r}"
-        )
+        raise ValueError(f"boot legal line exceeds {size - 1} characters: {text!r}")
     start = address - BOOT_TEXT_ROM
     region[start : start + size] = encoded + b"\x00" + bytes(size - len(encoded) - 1)
 
@@ -97,8 +94,10 @@ def build_boot_text(
     return bytes(region), phrase
 
 
-LICENSE_TEXT = LICENSE_LINE.encode("ascii") + b"\x00" + bytes(
-    LICENSE_END - LICENSE_ROM - len(LICENSE_LINE.encode("ascii")) - 1
+LICENSE_TEXT = (
+    LICENSE_LINE.encode("ascii")
+    + b"\x00"
+    + bytes(LICENSE_END - LICENSE_ROM - len(LICENSE_LINE.encode("ascii")) - 1)
 )
 
 

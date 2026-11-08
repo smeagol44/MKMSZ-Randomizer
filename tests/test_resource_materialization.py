@@ -22,7 +22,6 @@ def test_canonical_visual_registry_covers_stock_keys_and_power_upgrade() -> None
     assert set(CANONICAL_VISUAL_DONORS) == keys | {"power-upgrade"}
 
 
-
 def test_earth_pickup_resource_mapping_uses_file_30() -> None:
     earth = STAGE_RESOURCES[3]
     assert earth.file_table_entry_rom == 0x000A5250
@@ -31,6 +30,7 @@ def test_earth_pickup_resource_mapping_uses_file_30() -> None:
 
     for key in ("earth-square", "earth-four-square", "earth-triangle"):
         assert CANONICAL_VISUAL_DONORS[key].frame_count == 8
+
 
 def test_literal_type4_encoder_round_trips_without_ring_history() -> None:
     raw = bytes(range(64)) + b"\x00" * 17 + bytes(reversed(range(32)))
@@ -51,15 +51,15 @@ def test_extension_table_is_contiguous_deduplicated_and_self_contained() -> None
         descriptor_control=1,
         frames=(
             VisualFrame(b"\x00\x11\x00\x12\x00\x08\x00\x08", encode_type4_literals(alpha_raw)),
-            VisualFrame(b"\x00\x10\x00\x12\x00\x07\x00\x08", encode_type4_literals(alpha_raw[::-1])),
+            VisualFrame(
+                b"\x00\x10\x00\x12\x00\x07\x00\x08", encode_type4_literals(alpha_raw[::-1])
+            ),
         ),
     )
     beta = VisualBundle(
         key="beta",
         descriptor_control=1,
-        frames=(
-            VisualFrame(b"\x00\x0F\x00\x11\x00\x06\x00\x09", encode_type4_literals(beta_raw)),
-        ),
+        frames=(VisualFrame(b"\x00\x0f\x00\x11\x00\x06\x00\x09", encode_type4_literals(beta_raw)),),
     )
 
     resource_file, visuals = build_extended_resource_file(
@@ -73,9 +73,7 @@ def test_extension_table_is_contiguous_deduplicated_and_self_contained() -> None
 
     for visual in visuals:
         descriptor = int.from_bytes(
-            resource_file[
-                visual.selector_entry_offset : visual.selector_entry_offset + 4
-            ],
+            resource_file[visual.selector_entry_offset : visual.selector_entry_offset + 4],
             "big",
         )
         assert descriptor == visual.descriptor_offset
@@ -89,10 +87,13 @@ def test_extension_table_is_contiguous_deduplicated_and_self_contained() -> None
         (alpha_record_0, alpha_raw),
         (alpha_record_1, alpha_raw[::-1]),
     ):
-        assert int.from_bytes(
-            resource_file[record_offset + 4 : record_offset + 8],
-            "big",
-        ) == 0
+        assert (
+            int.from_bytes(
+                resource_file[record_offset + 4 : record_offset + 8],
+                "big",
+            )
+            == 0
+        )
         block_offset = int.from_bytes(
             resource_file[record_offset + 8 : record_offset + 12],
             "big",
@@ -102,9 +103,7 @@ def test_extension_table_is_contiguous_deduplicated_and_self_contained() -> None
             | (resource_file[block_offset + 1] << 8)
             | (resource_file[block_offset + 2] << 16)
         )
-        assert decode_type4(
-            resource_file[block_offset : block_offset + block_size]
-        ) == expected_raw
+        assert decode_type4(resource_file[block_offset : block_offset + block_size]) == expected_raw
 
 
 def test_extension_selector_order_is_independent_of_input_order() -> None:
@@ -132,7 +131,6 @@ def test_stage_bound_token_identity_fails_closed() -> None:
         assert "destination-safe token wrapper required" in str(exc)
     else:
         raise AssertionError("stage-bound token callback should not be emitted")
-
 
 
 def test_production_global_resource_slots_live_only_in_appended_rom() -> None:

@@ -206,9 +206,7 @@ class RuntimeV1FirePersistencePatch:
             or rom.read_u32(MKMSZR_FILE_ENTRY_ROM + 4) != expected_end
             or rom.read_u32(MKMSZR_FILE_ENTRY_ROM + 8) != 0
         ):
-            raise PatchError(
-                "runtime V1 persistence requires the V1 NativePayloadPatch first"
-            )
+            raise PatchError("runtime V1 persistence requires the V1 NativePayloadPatch first")
 
         rom.expect_bytes(PROVEN_PAYLOAD_ROM, RUNTIME_V1_PAYLOAD)
         rom.expect_bytes(NATIVE_BOOTSTRAP_STUB_ROM, LOADER_STUB)

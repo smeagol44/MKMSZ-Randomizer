@@ -90,8 +90,7 @@ class CompletionPolicy:
     def __post_init__(self) -> None:
         if not 0 <= self.required_powers <= TOTAL_POWER_UPGRADES:
             raise ValueError(
-                f"required_powers must be 0..{TOTAL_POWER_UPGRADES}, "
-                f"got {self.required_powers}"
+                f"required_powers must be 0..{TOTAL_POWER_UPGRADES}, got {self.required_powers}"
             )
 
 
@@ -113,8 +112,7 @@ def build_global_locations() -> tuple[GlobalLocation, ...]:
 
     if len(result) != TOTAL_ORDINARY_PICKUPS:
         raise AssertionError(
-            f"ordinary location catalog drifted: {len(result)} != "
-            f"{TOTAL_ORDINARY_PICKUPS}"
+            f"ordinary location catalog drifted: {len(result)} != {TOTAL_ORDINARY_PICKUPS}"
         )
 
     # The scripted Temple Map location is an explicit randomizer check. Current
@@ -133,8 +131,7 @@ def build_global_locations() -> tuple[GlobalLocation, ...]:
 
     if len(result) != TOTAL_GLOBAL_LOCATIONS:
         raise AssertionError(
-            f"global location catalog drifted: {len(result)} != "
-            f"{TOTAL_GLOBAL_LOCATIONS}"
+            f"global location catalog drifted: {len(result)} != {TOTAL_GLOBAL_LOCATIONS}"
         )
     return tuple(result)
 
@@ -147,9 +144,7 @@ ALL_PROGRESSION_TOKENS = frozenset(
     if item.progression_token is not None
 )
 if len(ALL_PROGRESSION_TOKENS) != 21:
-    raise AssertionError(
-        f"progression-token catalog drifted: {len(ALL_PROGRESSION_TOKENS)} != 21"
-    )
+    raise AssertionError(f"progression-token catalog drifted: {len(ALL_PROGRESSION_TOKENS)} != 21")
 
 
 def build_completion_policy(mode: str, required_powers: int) -> CompletionPolicy:
@@ -176,13 +171,10 @@ def _validate_attempt_index(attempt_index: int) -> None:
 
 def _validate_assignment(assignment: tuple[int, ...]) -> None:
     if len(assignment) != TOTAL_GLOBAL_LOCATIONS:
-        raise ValueError(
-            f"global assignment must contain {TOTAL_GLOBAL_LOCATIONS} sources"
-        )
+        raise ValueError(f"global assignment must contain {TOTAL_GLOBAL_LOCATIONS} sources")
     if set(assignment) != set(range(TOTAL_GLOBAL_REWARDS)):
         raise ValueError(
-            f"global assignment must be a permutation of all "
-            f"{TOTAL_GLOBAL_REWARDS} rewards"
+            f"global assignment must be a permutation of all {TOTAL_GLOBAL_REWARDS} rewards"
         )
 
 
@@ -255,13 +247,9 @@ def required_power_target(seed: str, allowed_counts: Sequence[int]) -> int:
     if len(set(allowed)) != len(allowed):
         raise ValueError("allowed_counts must not contain duplicates")
     if any(not 0 <= value <= TOTAL_POWER_UPGRADES for value in allowed):
-        raise ValueError(
-            f"allowed required-Power counts must be 0..{TOTAL_POWER_UPGRADES}"
-        )
+        raise ValueError(f"allowed required-Power counts must be 0..{TOTAL_POWER_UPGRADES}")
 
-    digest = hashlib.sha256(
-        REQUIRED_POWERS_RNG_DOMAIN + seed.encode("utf-8") + b"\0"
-    ).digest()
+    digest = hashlib.sha256(REQUIRED_POWERS_RNG_DOMAIN + seed.encode("utf-8") + b"\0").digest()
     return allowed[int.from_bytes(digest[:8], "big") % len(allowed)]
 
 
@@ -318,9 +306,7 @@ def completion_satisfied(
         return False
     if not policy.required_tokens.issubset(result.acquired_tokens):
         return False
-    return not (
-        policy.require_all_locations and not result.all_locations_reachable
-    )
+    return not (policy.require_all_locations and not result.all_locations_reachable)
 
 
 def validate_candidate(
@@ -338,7 +324,6 @@ def validate_candidate(
         ),
         policy,
     )
-
 
 
 @dataclass(frozen=True)
@@ -400,7 +385,6 @@ def build_global_run_plan(
         temple_special_item_key=temple_reward.key,
         power_locations=frozenset(power_locations),
     )
-
 
 
 def materialization_plan_from_run(

@@ -173,8 +173,15 @@ def test_projectile_hooks_fall_through_to_stock_calls() -> None:
     art = projectile.ProjectileArt(39, 9, 26, 3, bytes(360), (0,) * 16)
     a = Assembler(0x8009A1E0)
     projectile.emit_palette_hook(a, "p", 0xDC0, 0x45D50)
-    projectile.emit_preupload_hook(a, "u", 0x45DD0, art)
+    projectile.emit_preupload_hook(a, "u", 0x45DD0, art, 0x801B0200)
     w = words(a)
     assert w[8] == 0x08000000 | (projectile.F_PALETTE_BIND >> 2) & 0x03FFFFFF  # j 0x8001C528
     assert w[-2] == 0x08000000 | (projectile.F_ACTOR_INSERT >> 2) & 0x03FFFFFF  # j 0x80024650
     assert art.stride == 40 and len(art.palette_record()) == 4 + 128
+    # v22: the slot load borrows the shared texture-storage pointer and gives it back.
+    load = w.index(0x0C000000 | (projectile.F_TEXTURE_SLOT_LOAD >> 2) & 0x03FFFFFF)
+    bump_sw = 0xAF380000 | (projectile.TEXTURE_BUMP & 0xFFFF)  # sw t8, %lo(bump)(t9)
+    assert w[load - 1] == bump_sw and w[load + 4] == bump_sw
+    assert w[load - 3 : load - 1] == [0x3C18801B, 0x37180200]  # t8 = backing
+    with pytest.raises(ValueError):
+        projectile.emit_preupload_hook(Assembler(0x8009A1E0), "x", 0x45DD0, art, 0x801B0204)

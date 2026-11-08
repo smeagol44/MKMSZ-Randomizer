@@ -28,23 +28,16 @@ NOP = 0
 
 def _post_switch_shape() -> tuple[RomImage, bytes]:
     data = bytearray(GLOBAL_OUTPUT_SIZE)
-    data[TRANSPORT_ROM:TRANSPORT_END_ROM] = b"\xFF" * (
-        TRANSPORT_END_ROM - TRANSPORT_ROM
-    )
+    data[TRANSPORT_ROM:TRANSPORT_END_ROM] = b"\xff" * (TRANSPORT_END_ROM - TRANSPORT_ROM)
     prefix = bytes(
-        (index * 29 + 7) & 0xFF
-        for index in range(SWITCH_TRANSPORT_END_ROM - TRANSPORT_ROM)
+        (index * 29 + 7) & 0xFF for index in range(SWITCH_TRANSPORT_END_ROM - TRANSPORT_ROM)
     )
     data[TRANSPORT_ROM:SWITCH_TRANSPORT_END_ROM] = prefix
-    data[EXPANSION_FILE_ENTRY_ROM : EXPANSION_FILE_ENTRY_ROM + 4] = (
-        TRANSPORT_ROM.to_bytes(4, "big")
-    )
+    data[EXPANSION_FILE_ENTRY_ROM : EXPANSION_FILE_ENTRY_ROM + 4] = TRANSPORT_ROM.to_bytes(4, "big")
     data[EXPANSION_FILE_ENTRY_ROM + 4 : EXPANSION_FILE_ENTRY_ROM + 8] = (
         SWITCH_TRANSPORT_END_ROM.to_bytes(4, "big")
     )
-    data[LEGEND_HOOK_ROM : LEGEND_HOOK_ROM + len(EXPECTED_LEGEND_BLOCK)] = (
-        EXPECTED_LEGEND_BLOCK
-    )
+    data[LEGEND_HOOK_ROM : LEGEND_HOOK_ROM + len(EXPECTED_LEGEND_BLOCK)] = EXPECTED_LEGEND_BLOCK
     return RomImage(data=data, _original=bytes(data)), prefix
 
 
@@ -67,18 +60,13 @@ def test_inventory_legend_appends_without_changing_switch_payload() -> None:
     assert payload_end == LEGEND_ROM + len(INVENTORY_LEGEND_MODULE)
     assert rom.read_u32(EXPANSION_FILE_ENTRY_ROM + 8) == 0
     assert bytes(rom.data[TRANSPORT_ROM:SWITCH_TRANSPORT_END_ROM]) == prefix
-    assert (
-        bytes(rom.data[SWITCH_TRANSPORT_END_ROM:LEGEND_ROM])
-        == b"\x00" * LEGEND_PAD
-    )
+    assert bytes(rom.data[SWITCH_TRANSPORT_END_ROM:LEGEND_ROM]) == b"\x00" * LEGEND_PAD
     assert bytes(rom.data[LEGEND_ROM:payload_end]) == INVENTORY_LEGEND_MODULE
 
     expected_trampoline = words_blob([*address_words("t9", LEGEND_K1), jr("t9"), NOP])
     assert bytes(rom.data[LEGEND_HOOK_ROM : LEGEND_HOOK_ROM + 16]) == expected_trampoline
     assert bytes(
-        rom.data[
-            LEGEND_HOOK_ROM + 16 : LEGEND_HOOK_ROM + len(EXPECTED_LEGEND_BLOCK)
-        ]
+        rom.data[LEGEND_HOOK_ROM + 16 : LEGEND_HOOK_ROM + len(EXPECTED_LEGEND_BLOCK)]
     ) == b"\x00" * (len(EXPECTED_LEGEND_BLOCK) - 16)
     assert "BOX n OF 4" in notes[0]
     assert "L-R POWER" in notes[1]

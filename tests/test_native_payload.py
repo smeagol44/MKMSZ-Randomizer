@@ -53,8 +53,8 @@ def _proof_rom() -> RomImage:
     data[NATIVE_BOOTSTRAP_HOOK_ROM : NATIVE_BOOTSTRAP_HOOK_ROM + 8] = bytes.fromhex(
         "27BDFFE8 3C02801B"
     )
-    data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + len(EXECUTION_PROOF_PAYLOAD)] = (
-        b"\xFF" * len(EXECUTION_PROOF_PAYLOAD)
+    data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + len(EXECUTION_PROOF_PAYLOAD)] = b"\xff" * len(
+        EXECUTION_PROOF_PAYLOAD
     )
     return RomImage(data=data, _original=bytes(data))
 

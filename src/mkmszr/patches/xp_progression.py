@@ -66,9 +66,7 @@ PRESENTATION_OFFSET_WITHIN_IDENTITY = 0x18
 PROGRESSION_HERBS_PRESENTATION_VA = 0x800B1E68
 PROGRESSION_HERBS_PALETTE_ROM = 0x000B2A68
 PROGRESSION_HERBS_PALETTE = bytes.fromhex(
-    "00000010"
-    "0000 FF74 F331 EACE E28C DA2A D1E8 C9A6"
-    "C165 B923 B0E2 A8A1 A080 9840 9020 8800"
+    "000000100000 FF74 F331 EACE E28C DA2A D1E8 C9A6C165 B923 B0E2 A8A1 A080 9840 9020 8800"
 )
 
 XP_THRESHOLDS = (85, 258, 834, 1410, 2323, 3315, 4503, 5911, 7354)
@@ -200,8 +198,7 @@ def build_progression_extension() -> tuple[bytes, int, int]:
     end = restore_offset + len(restore)
     if end > PROGRESSION_EXTENSION_SIZE:
         raise AssertionError(
-            f"progression extension exceeds 0x{PROGRESSION_EXTENSION_SIZE:X} bytes: "
-            f"0x{end:X}"
+            f"progression extension exceeds 0x{PROGRESSION_EXTENSION_SIZE:X} bytes: 0x{end:X}"
         )
 
     blob = bytearray(PROGRESSION_EXTENSION_SIZE)
@@ -229,7 +226,6 @@ if len(PROGRESSION_RESUME_PATCH) != len(PERSISTENCE_RESUME_PATCH):
     raise AssertionError("progression resume patch changed scanner size")
 
 
-
 # Powers-as-pickups OFF keeps the game's stock XP award stores, but stock
 # stage reconstruction does not preserve CURRENT_XP_VA. Reuse the already-owned
 # XP payload/state instead of adding a second authority: snapshot native earned
@@ -251,7 +247,7 @@ def _t9_jump_words(address: int, delay_slot: int = NOP) -> tuple[int, int, int, 
     # exception handler overwrites; t9 is saved/restored and dead at these sites.
     return (
         0x3C190000 | ((address >> 16) & 0xFFFF),  # lui t9,hi
-        0x37390000 | (address & 0xFFFF),          # ori t9,t9,lo
+        0x37390000 | (address & 0xFFFF),  # ori t9,t9,lo
         JR_T9,
         delay_slot,
     )
@@ -289,8 +285,7 @@ def build_earned_xp_extension() -> tuple[bytes, int, int, int]:
     end = restore_offset + len(restore)
     if end > EARNED_XP_EXTENSION_SIZE:
         raise AssertionError(
-            f"earned-XP persistence exceeds 0x{EARNED_XP_EXTENSION_SIZE:X} bytes: "
-            f"0x{end:X}"
+            f"earned-XP persistence exceeds 0x{EARNED_XP_EXTENSION_SIZE:X} bytes: 0x{end:X}"
         )
 
     blob = bytearray(EARNED_XP_EXTENSION_SIZE)
@@ -306,12 +301,8 @@ def build_earned_xp_extension() -> tuple[bytes, int, int, int]:
     EARNED_XP_REASON_SAVE_OFFSET,
     EARNED_XP_RESTORE_OFFSET,
 ) = build_earned_xp_extension()
-EARNED_XP_PAUSE_SAVE_ENTRY = (
-    PROGRESSION_EXTENSION_UNCACHED_VA + EARNED_XP_PAUSE_SAVE_OFFSET
-)
-EARNED_XP_REASON_SAVE_ENTRY = (
-    PROGRESSION_EXTENSION_UNCACHED_VA + EARNED_XP_REASON_SAVE_OFFSET
-)
+EARNED_XP_PAUSE_SAVE_ENTRY = PROGRESSION_EXTENSION_UNCACHED_VA + EARNED_XP_PAUSE_SAVE_OFFSET
+EARNED_XP_REASON_SAVE_ENTRY = PROGRESSION_EXTENSION_UNCACHED_VA + EARNED_XP_REASON_SAVE_OFFSET
 EARNED_XP_RESTORE_ENTRY = PROGRESSION_EXTENSION_UNCACHED_VA + EARNED_XP_RESTORE_OFFSET
 
 EARNED_XP_RESUME_PATCH = words_blob(

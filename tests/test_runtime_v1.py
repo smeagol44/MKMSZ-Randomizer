@@ -48,13 +48,11 @@ def _clean_shape() -> RomImage:
     data[NATIVE_BOOTSTRAP_HOOK_ROM : NATIVE_BOOTSTRAP_HOOK_ROM + 8] = bytes.fromhex(
         "27BDFFE8 3C02801B"
     )
-    data[PICKUP_MANAGER_HOOK_ROM : PICKUP_MANAGER_HOOK_ROM + 8] = (
-        PICKUP_MANAGER_HOOK_EXPECTED
+    data[PICKUP_MANAGER_HOOK_ROM : PICKUP_MANAGER_HOOK_ROM + 8] = PICKUP_MANAGER_HOOK_EXPECTED
+    data[FIRE_POTION_CALLBACK_FIELD_ROM : FIRE_POTION_CALLBACK_FIELD_ROM + 4] = (
+        FIRE_POTION_CALLBACK_EXPECTED.to_bytes(4, "big")
     )
-    data[
-        FIRE_POTION_CALLBACK_FIELD_ROM : FIRE_POTION_CALLBACK_FIELD_ROM + 4
-    ] = FIRE_POTION_CALLBACK_EXPECTED.to_bytes(4, "big")
-    data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] = b"\xFF" * CODE_SIZE
+    data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] = b"\xff" * CODE_SIZE
 
     return RomImage(data=data, _original=bytes(data))
 
@@ -100,17 +98,16 @@ def test_runtime_v1_fire_pipeline_installs_confirmed_hooks() -> None:
         "native-payload-bootstrap",
         "runtime-v1-fire-persistence",
     ]
-    assert rom.data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] == (
-        RUNTIME_V1_PAYLOAD
-    )
+    assert rom.data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] == (RUNTIME_V1_PAYLOAD)
     assert rom.data[MKMSZR_FILE_ENTRY_ROM : MKMSZR_FILE_ENTRY_ROM + 12] == (
         PROVEN_PAYLOAD_ROM.to_bytes(4, "big")
         + (PROVEN_PAYLOAD_ROM + CODE_SIZE).to_bytes(4, "big")
         + bytes(4)
     )
-    assert rom.data[
-        RESTORE_TRAMPOLINE_ROM : RESTORE_TRAMPOLINE_ROM + len(RESTORE_TRAMPOLINE)
-    ] == RESTORE_TRAMPOLINE
+    assert (
+        rom.data[RESTORE_TRAMPOLINE_ROM : RESTORE_TRAMPOLINE_ROM + len(RESTORE_TRAMPOLINE)]
+        == RESTORE_TRAMPOLINE
+    )
     assert rom.read_u32(PICKUP_MANAGER_HOOK_ROM) == jump(RESTORE_TRAMPOLINE_VA)
     assert rom.read_u32(PICKUP_MANAGER_HOOK_ROM + 4) == 0
     assert rom.read_u32(FIRE_POTION_CALLBACK_FIELD_ROM) == CAPTURE_ENTRY

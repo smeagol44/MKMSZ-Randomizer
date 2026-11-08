@@ -54,9 +54,7 @@ class RequiredPowersPatch:
         self.custom_count = custom_count
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
-        count, threshold = resolve_required_powers(
-            self.mode, self.custom_count, context.seed
-        )
+        count, threshold = resolve_required_powers(self.mode, self.custom_count, context.seed)
         if self.mode == "vanilla":
             return ("stock Fortress XP requirement 5100",)
 

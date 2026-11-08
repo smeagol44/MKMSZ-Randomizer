@@ -304,7 +304,9 @@ def build_generic_inventory_award() -> bytes:
     _emit_checkpoint(e, 5, exact_predecessor=4)
 
     e.label("wind_three_bars")
-    e.emit(lui("t0", 0x802F), addiu("t1", "zero", 1), sb("t1", WIND_THREE_BARS_STATE_VA & 0xFFFF, "t0"))
+    e.emit(
+        lui("t0", 0x802F), addiu("t1", "zero", 1), sb("t1", WIND_THREE_BARS_STATE_VA & 0xFFFF, "t0")
+    )
     e.beq("zero", "zero", "action_done")
     e.emit(0)
 
@@ -327,12 +329,18 @@ def build_generic_inventory_award() -> bytes:
     _emit_checkpoint(e, 2, exact_predecessor=None)
 
     e.label("earth_four_square")
-    e.emit(lui("t0", 0x802F), addiu("t1", "zero", 1), sb("t1", EARTH_FOUR_SQUARE_STATE_VA & 0xFFFF, "t0"))
+    e.emit(
+        lui("t0", 0x802F),
+        addiu("t1", "zero", 1),
+        sb("t1", EARTH_FOUR_SQUARE_STATE_VA & 0xFFFF, "t0"),
+    )
     e.beq("zero", "zero", "action_done")
     e.emit(0)
 
     e.label("earth_triangle")
-    e.emit(lui("t0", 0x802F), addiu("t1", "zero", 1), sh("t1", EARTH_TRIANGLE_STATE_VA & 0xFFFF, "t0"))
+    e.emit(
+        lui("t0", 0x802F), addiu("t1", "zero", 1), sh("t1", EARTH_TRIANGLE_STATE_VA & 0xFFFF, "t0")
+    )
     e.beq("zero", "zero", "action_done")
     e.emit(0)
 
@@ -377,8 +385,22 @@ def build_acquisition_remask_helper() -> bytes:
     """Commit LIVE then reconstruct stage-masked LIVE after an ordinary award."""
 
     registers = (
-        "v0", "v1", "a0", "a1", "a2", "a3",
-        "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9",
+        "v0",
+        "v1",
+        "a0",
+        "a1",
+        "a2",
+        "a3",
+        "t0",
+        "t1",
+        "t2",
+        "t3",
+        "t4",
+        "t5",
+        "t6",
+        "t7",
+        "t8",
+        "t9",
     )
     frame = 0x50
     words = [addiu("sp", "sp", -frame)]
@@ -402,9 +424,7 @@ def build_acquisition_remask_helper() -> bytes:
 
 
 ACQUISITION_REMASK = build_acquisition_remask_helper()
-PRISON_RECONSTRUCT_OFFSET = _align(
-    ACQUISITION_REMASK_OFFSET + len(ACQUISITION_REMASK), 0x40
-)
+PRISON_RECONSTRUCT_OFFSET = _align(ACQUISITION_REMASK_OFFSET + len(ACQUISITION_REMASK), 0x40)
 PRISON_RECONSTRUCT_K0 = MATERIALIZER_HELPER_K0 + PRISON_RECONSTRUCT_OFFSET
 
 
@@ -443,9 +463,7 @@ def build_prison_reconstruct_wrapper() -> bytes:
 
 
 PRISON_RECONSTRUCT = build_prison_reconstruct_wrapper()
-TEMPLE_AWARD_OFFSET = _align(
-    PRISON_RECONSTRUCT_OFFSET + len(PRISON_RECONSTRUCT), 0x40
-)
+TEMPLE_AWARD_OFFSET = _align(PRISON_RECONSTRUCT_OFFSET + len(PRISON_RECONSTRUCT), 0x40)
 TEMPLE_AWARD_K0 = MATERIALIZER_HELPER_K0 + TEMPLE_AWARD_OFFSET
 
 
@@ -480,9 +498,7 @@ def build_temple_award_wrapper() -> bytes:
 
 
 TEMPLE_AWARD = build_temple_award_wrapper()
-MATERIALIZER_HELPER_SIZE = _align(
-    TEMPLE_AWARD_OFFSET + len(TEMPLE_AWARD), 0x10
-)
+MATERIALIZER_HELPER_SIZE = _align(TEMPLE_AWARD_OFFSET + len(TEMPLE_AWARD), 0x10)
 MATERIALIZER_HELPER_END_K0 = MATERIALIZER_HELPER_K0 + MATERIALIZER_HELPER_SIZE
 MATERIALIZER_HELPER_END_ROM = MATERIALIZER_HELPER_ROM + MATERIALIZER_HELPER_SIZE
 GENERIC_AWARD_K1 = MATERIALIZER_HELPER_K1 + GENERIC_AWARD_OFFSET
@@ -495,20 +511,16 @@ if MATERIALIZER_HELPER_END_ROM > TOASTY_AUDIO_ROM:
     raise AssertionError("materializer helper overlaps fixed Toasty audio sample")
 
 MATERIALIZER_HELPER = bytearray(MATERIALIZER_HELPER_SIZE)
+MATERIALIZER_HELPER[GENERIC_AWARD_OFFSET : GENERIC_AWARD_OFFSET + len(GENERIC_AWARD)] = (
+    GENERIC_AWARD
+)
 MATERIALIZER_HELPER[
-    GENERIC_AWARD_OFFSET : GENERIC_AWARD_OFFSET + len(GENERIC_AWARD)
-] = GENERIC_AWARD
-MATERIALIZER_HELPER[
-    ACQUISITION_REMASK_OFFSET :
-    ACQUISITION_REMASK_OFFSET + len(ACQUISITION_REMASK)
+    ACQUISITION_REMASK_OFFSET : ACQUISITION_REMASK_OFFSET + len(ACQUISITION_REMASK)
 ] = ACQUISITION_REMASK
 MATERIALIZER_HELPER[
-    PRISON_RECONSTRUCT_OFFSET :
-    PRISON_RECONSTRUCT_OFFSET + len(PRISON_RECONSTRUCT)
+    PRISON_RECONSTRUCT_OFFSET : PRISON_RECONSTRUCT_OFFSET + len(PRISON_RECONSTRUCT)
 ] = PRISON_RECONSTRUCT
-MATERIALIZER_HELPER[
-    TEMPLE_AWARD_OFFSET : TEMPLE_AWARD_OFFSET + len(TEMPLE_AWARD)
-] = TEMPLE_AWARD
+MATERIALIZER_HELPER[TEMPLE_AWARD_OFFSET : TEMPLE_AWARD_OFFSET + len(TEMPLE_AWARD)] = TEMPLE_AWARD
 MATERIALIZER_HELPER = bytes(MATERIALIZER_HELPER)
 
 
@@ -541,15 +553,17 @@ CLOSED_TOKEN_DESTINATIONS = frozenset(
     set(DESTINATION_ACTIONS)
     | {
         (4, 2),  # Prison L3: activation gate only
-        (8, 0), (8, 1), (8, 2),
-        (9, 0), (9, 1), (9, 2),
+        (8, 0),
+        (8, 1),
+        (8, 2),
+        (9, 0),
+        (9, 1),
+        (9, 2),
     }
 )
 
 
-def _has_closed_token_destination_semantics(
-    stage_id: int, destination_index: int
-) -> bool:
+def _has_closed_token_destination_semantics(stage_id: int, destination_index: int) -> bool:
     return (stage_id, destination_index) in CLOSED_TOKEN_DESTINATIONS
 
 
@@ -565,9 +579,7 @@ def _destination_activation_gate(record) -> bool:
 def _validate_destination(stage_id: int, destination_index: int) -> None:
     stage = _stage_by_id(stage_id)
     if not 0 <= destination_index < len(stage.records):
-        raise PatchError(
-            f"{stage.title}: destination index {destination_index} is out of range"
-        )
+        raise PatchError(f"{stage.title}: destination index {destination_index} is out of range")
 
     record = stage.records[destination_index]
     if record.progression_token is not None and not _has_closed_token_destination_semantics(
@@ -595,9 +607,7 @@ def _validate_placements(
             raise PatchError(f"stage {placement.stage_id}: placement capacity must be positive")
         required = planned_sizes.get(placement.stage_id)
         if required is None:
-            raise PatchError(
-                f"stage {placement.stage_id}: placement supplied without assignments"
-            )
+            raise PatchError(f"stage {placement.stage_id}: placement supplied without assignments")
         if required > placement.capacity:
             raise PatchError(
                 f"stage {placement.stage_id}: expanded resource requires 0x{required:X} "
@@ -609,17 +619,14 @@ def _validate_placements(
     for left, right in pairwise(placements):
         if left.rom_end_exclusive > right.rom_start:
             raise PatchError(
-                f"materializer placements overlap: stage {left.stage_id} and "
-                f"stage {right.stage_id}"
+                f"materializer placements overlap: stage {left.stage_id} and stage {right.stage_id}"
             )
 
     assigned_stages = set(planned_sizes)
     if seen_stages != assigned_stages:
         missing = sorted(assigned_stages - seen_stages)
         extra = sorted(seen_stages - assigned_stages)
-        raise PatchError(
-            f"materializer placement mismatch; missing={missing}, extra={extra}"
-        )
+        raise PatchError(f"materializer placement mismatch; missing={missing}, extra={extra}")
 
     # Guard against every currently active global-file allocation.  The caller
     # must still own the otherwise-unclassified placement; this collision scan
@@ -664,7 +671,7 @@ class GlobalItemMaterializationPatch:
             raise PatchError("shared file 0x1A ends inside the materializer helper slice")
         rom.expect_bytes(
             MATERIALIZER_HELPER_ROM,
-            b"\xFF" * MATERIALIZER_HELPER_SIZE,
+            b"\xff" * MATERIALIZER_HELPER_SIZE,
         )
 
         rom.expect_u32(ACQUISITION_HOOK_ROM, ACQUISITION_DISPLACED_0)
@@ -689,13 +696,8 @@ class GlobalItemMaterializationPatch:
             assignments_by_stage[assignment.stage_id].append(assignment)
 
         temple_special_key = self.plan.temple_special_item_key
-        if (
-            temple_special_key is not None
-            and temple_special_key not in CANONICAL_VISUAL_DONORS
-        ):
-            raise PatchError(
-                f"no canonical visual donor registered for {temple_special_key!r}"
-            )
+        if temple_special_key is not None and temple_special_key not in CANONICAL_VISUAL_DONORS:
+            raise PatchError(f"no canonical visual donor registered for {temple_special_key!r}")
 
         # Build every stage plan before any write so failures are atomic.
         baseline = bytes(rom.data)
@@ -764,18 +766,10 @@ class GlobalItemMaterializationPatch:
                 power_upgrade_callback=PROGRESSION_FLASH_CALLBACK_ENTRY,
                 force_shared_award=True,
             )
-            rom.expect_u32(
-                TEMPLE_PRESENTATION_HI_ROM, TEMPLE_POST_PATCH_PRESENTATION_HI
-            )
-            rom.expect_u32(
-                TEMPLE_PRESENTATION_LO_ROM, TEMPLE_POST_PATCH_PRESENTATION_LO
-            )
-            rom.expect_u32(
-                TEMPLE_SELECTOR_A0_ROM, TEMPLE_POST_PATCH_SELECTOR_A0
-            )
-            rom.expect_u32(
-                TEMPLE_SELECTOR_S0_ROM, TEMPLE_POST_PATCH_SELECTOR_S0
-            )
+            rom.expect_u32(TEMPLE_PRESENTATION_HI_ROM, TEMPLE_POST_PATCH_PRESENTATION_HI)
+            rom.expect_u32(TEMPLE_PRESENTATION_LO_ROM, TEMPLE_POST_PATCH_PRESENTATION_LO)
+            rom.expect_u32(TEMPLE_SELECTOR_A0_ROM, TEMPLE_POST_PATCH_SELECTOR_A0)
+            rom.expect_u32(TEMPLE_SELECTOR_S0_ROM, TEMPLE_POST_PATCH_SELECTOR_S0)
             rom.expect_u32(MAP_AWARD_CALL_ROM, TEMPLE_POST_PATCH_AWARD_CALL)
             rom.expect_u32(TEMPLE_AWARD_ARG_ROM, TEMPLE_POST_PATCH_AWARD_ARG)
 
@@ -797,17 +791,13 @@ class GlobalItemMaterializationPatch:
                 placement.rom_start,
                 expected_fill=0xFF,
             )
-            resource_notes.append(
-                f"stage {stage_id}: 0x{start:08X}..0x{end - 1:08X}"
-            )
+            resource_notes.append(f"stage {stage_id}: 0x{start:08X}..0x{end - 1:08X}")
 
         # Publish the scripted Temple special reward after stage-0 resources are
         # resident. The proven Temple progression/persistence owner remains in
         # place; only visual selector/presentation and logical award are changed.
         if temple_special_identity is not None:
-            presentation = int.from_bytes(
-                temple_special_identity[0x18:0x1C], "big"
-            ) + 4
+            presentation = int.from_bytes(temple_special_identity[0x18:0x1C], "big") + 4
             present_words = address_words("a0", presentation)
             rom.write_u32(TEMPLE_PRESENTATION_HI_ROM, present_words[0])
             rom.write_u32(TEMPLE_PRESENTATION_LO_ROM, present_words[1])
@@ -820,9 +810,7 @@ class GlobalItemMaterializationPatch:
                 TEMPLE_SELECTOR_S0_ROM,
                 lw("s0", selector_offset, "s0"),
             )
-            encoded_award = int.from_bytes(
-                temple_special_identity[0x04:0x08], "big"
-            ) & 0x7FFF
+            encoded_award = int.from_bytes(temple_special_identity[0x04:0x08], "big") & 0x7FFF
             rom.write_u32(MAP_AWARD_CALL_ROM, jal(TEMPLE_AWARD_K0))
             rom.write_u32(
                 TEMPLE_AWARD_ARG_ROM,

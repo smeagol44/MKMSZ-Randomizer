@@ -283,12 +283,7 @@ def _srlv(rd: str, rt: str, rs: str) -> int:
         "sp": 29,
         "ra": 31,
     }
-    return (
-        (registers[rs] << 21)
-        | (registers[rt] << 16)
-        | (registers[rd] << 11)
-        | 0x06
-    )
+    return (registers[rs] << 21) | (registers[rt] << 16) | (registers[rd] << 11) | 0x06
 
 
 def _divu(rs: str, rt: str) -> int:
@@ -473,9 +468,9 @@ def _accepted_bridge_palette(stock: bytes) -> bytes:
         rr = round(tr * level)
         gg = round(tg * level)
         bb = round(tb * level)
-        output[offset : offset + 2] = (
-            (rr << 11) | (gg << 6) | (bb << 1) | (source & 1)
-        ).to_bytes(2, "big")
+        output[offset : offset + 2] = ((rr << 11) | (gg << 6) | (bb << 1) | (source & 1)).to_bytes(
+            2, "big"
+        )
     return bytes(output)
 
 
@@ -699,7 +694,8 @@ def _row_code(resolve_va: int, data_layout: dict[str, int]) -> bytes:
     e.emit(
         lw("a1", 0x24, "sp"),
         lw("a2", 0x28, "sp"),
-        jal(TEXT_DRAW_VA),        addiu("a3", "zero", 2),
+        jal(TEXT_DRAW_VA),
+        addiu("a3", "zero", 2),
         lw("ra", 0x2C, "sp"),
         jr("ra"),
         addiu("sp", "sp", 0x30),
@@ -1076,9 +1072,7 @@ def _build_runtime(data_layout: dict[str, int]) -> tuple[bytes, bytes, dict[str,
     permanent[16:32] = _trampoline(dispatch_va)
     ensure_offset = ENSURE_DATA_VA - RETIRED_START_VA
     permanent[ensure_offset : ensure_offset + len(ensure)] = ensure
-    permanent[
-        ensure_offset + len(ensure) : ensure_offset + len(ensure) + len(resolve)
-    ] = resolve
+    permanent[ensure_offset + len(ensure) : ensure_offset + len(ensure) + len(resolve)] = resolve
 
     layout.update(
         {
@@ -1133,10 +1127,12 @@ def _build_portrait_atlas(rom: RomImage) -> tuple[bytes, bytes]:
     return atlas, bytes(seed_record)
 
 
-def _guard_output_span(rom: RomImage, start: int, end: int, *, ignore_file: int | None = None) -> None:
+def _guard_output_span(
+    rom: RomImage, start: int, end: int, *, ignore_file: int | None = None
+) -> None:
     if not 0 <= start < end <= len(rom.data):
         raise PatchError(f"inventory HUD output span [0x{start:X},0x{end:X}) exceeds ROM")
-    if bytes(rom.data[start:end]) != b"\xFF" * (end - start):
+    if bytes(rom.data[start:end]) != b"\xff" * (end - start):
         raise PatchError(f"inventory HUD output span [0x{start:X},0x{end:X}) is not blank")
     for file_id in range(0xAC):
         if file_id == ignore_file:
@@ -1172,7 +1168,7 @@ class InventoryHudPatch:
         rom.expect_u32(EXPANSION_FILE_ENTRY_ROM + 0, 0x00F68000)
         rom.expect_u32(EXPANSION_FILE_ENTRY_ROM + 4, MATERIALIZER_HELPER_END_ROM)
         rom.expect_u32(EXPANSION_FILE_ENTRY_ROM + 8, 0)
-        rom.expect_bytes(HUD_CODE_ROM, b"\xFF" * HUD_CODE_SIZE)
+        rom.expect_bytes(HUD_CODE_ROM, b"\xff" * HUD_CODE_SIZE)
 
         rom.expect_u32(ROW_HOOK_ROM, EXPECTED_ROW_HOOK)
         rom.expect_u32(PREVIEW_HOOK_ROM, EXPECTED_PREVIEW_HOOK)

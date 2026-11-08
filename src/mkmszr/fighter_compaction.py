@@ -22,13 +22,87 @@ FILE_ENTRY_SIZE = 12
 # Accepted source-index -> 16-color body mapping recovered from the validated
 # compact 0x8E/0x90 proof. Index 0 remains transparent.
 BODY_INDEX_MAP = (
-    0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 6,
-    6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 10, 10,
-    10, 11, 11, 11, 11, 9, 12, 12, 9, 12, 12, 12, 10, 12, 12, 13,
-    13, 13, 13, 13, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15,
+    0,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2,
+    3,
+    3,
+    3,
+    4,
+    4,
+    5,
+    5,
+    5,
+    6,
+    6,
+    6,
+    6,
+    7,
+    7,
+    7,
+    8,
+    8,
+    8,
+    9,
+    9,
+    9,
+    10,
+    10,
+    10,
+    10,
+    10,
+    11,
+    11,
+    11,
+    11,
+    9,
+    12,
+    12,
+    9,
+    12,
+    12,
+    12,
+    10,
+    12,
+    12,
+    13,
+    13,
+    13,
+    13,
+    13,
+    14,
+    14,
+    14,
+    14,
+    14,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
 )
 BODY_PALETTE_REPRESENTATIVES = (
-    2, 4, 8, 11, 13, 16, 20, 23, 26, 29, 34, 45, 49, 54, 58,
+    2,
+    4,
+    8,
+    11,
+    13,
+    16,
+    20,
+    23,
+    26,
+    29,
+    34,
+    45,
+    49,
+    54,
+    58,
 )
 
 
@@ -74,9 +148,7 @@ class _BitReader:
     def read(self, count: int) -> int:
         value = 0
         for _ in range(count):
-            value = (value << 1) | (
-                (self.data[self.pos >> 3] >> (7 - (self.pos & 7))) & 1
-            )
+            value = (value << 1) | ((self.data[self.pos >> 3] >> (7 - (self.pos & 7))) & 1)
             self.pos += 1
         return value
 
@@ -126,23 +198,15 @@ def _parse_table(data: bytes, table_offset: int):
                 "pattern_offset": _u32(data, offset),
                 "bpp": int.from_bytes(data[offset + 4 : offset + 6], "big"),
                 "normal_bits": tuple(
-                    int.from_bytes(
-                        data[offset + 6 + i * 2 : offset + 8 + i * 2], "big"
-                    )
+                    int.from_bytes(data[offset + 6 + i * 2 : offset + 8 + i * 2], "big")
                     for i in range(13)
                 ),
                 "zero_bits": tuple(
-                    int.from_bytes(
-                        data[offset + 32 + i * 2 : offset + 34 + i * 2], "big"
-                    )
+                    int.from_bytes(data[offset + 32 + i * 2 : offset + 34 + i * 2], "big")
                     for i in range(3)
                 ),
-                "normal_bases": tuple(
-                    _u32(data, offset + 40 + i * 4) for i in range(13)
-                ),
-                "zero_bases": tuple(
-                    _u32(data, offset + 92 + i * 4) for i in range(3)
-                ),
+                "normal_bases": tuple(_u32(data, offset + 40 + i * 4) for i in range(13)),
+                "zero_bases": tuple(_u32(data, offset + 92 + i * 4) for i in range(3)),
             }
         )
 
@@ -189,34 +253,21 @@ def _decode_type5(data: bytes, image_offset: int):
     while block_index < total_blocks:
         code = reader.read(4)
         if code < 13:
-            pattern_index = (
-                model["normal_bases"][code]
-                + reader.read(model["normal_bits"][code])
-            )
+            pattern_index = model["normal_bases"][code] + reader.read(model["normal_bits"][code])
             bytes_per_pattern = rows * 4 * model["bpp"] // 8
             pattern_offset = (
-                pattern_base
-                + model["pattern_offset"]
-                + pattern_index * bytes_per_pattern
+                pattern_base + model["pattern_offset"] + pattern_index * bytes_per_pattern
             )
-            pattern = _BitReader(
-                data[pattern_offset : pattern_offset + bytes_per_pattern]
-            )
+            pattern = _BitReader(data[pattern_offset : pattern_offset + bytes_per_pattern])
             pixels = [pattern.read(model["bpp"]) for _ in range(rows * 4)]
             by, bx = divmod(block_index, blocks_wide)
             for row in range(rows):
                 target = (by * rows + row) * width + bx * 4
-                output[target : target + 4] = bytes(
-                    pixels[row * 4 : (row + 1) * 4]
-                )
+                output[target : target + 4] = bytes(pixels[row * 4 : (row + 1) * 4])
             block_index += 1
         else:
             zero_index = code - 13
-            run = (
-                model["zero_bases"][zero_index]
-                + reader.read(model["zero_bits"][zero_index])
-                + 1
-            )
+            run = model["zero_bases"][zero_index] + reader.read(model["zero_bits"][zero_index]) + 1
             block_index += run
             if block_index > total_blocks:
                 raise PatchError("Type-5 transparent run exceeds image")
@@ -283,9 +334,7 @@ def build_compact_pris_file(source: bytes, table_offset: int) -> CompactFighterF
         else:
             raise PatchError(f"unsupported PRIS Type-5 bpp {frame['bpp']}")
 
-        frame_blocks = _blocks(
-            target_pixels, frame["width"], frame["height"], frame["rows"]
-        )
+        frame_blocks = _blocks(target_pixels, frame["width"], frame["height"], frame["rows"])
         for block in frame_blocks:
             if any(block):
                 frequencies[frame["model"]][block] += 1
@@ -293,8 +342,7 @@ def build_compact_pris_file(source: bytes, table_offset: int) -> CompactFighterF
         blocks_by_frame.append(frame_blocks)
 
     patterns = [
-        tuple(pattern for pattern, _count in counter.most_common())
-        for counter in frequencies
+        tuple(pattern for pattern, _count in counter.most_common()) for counter in frequencies
     ]
     pattern_indices = [
         {pattern: index for index, pattern in enumerate(model_patterns)}
@@ -311,9 +359,7 @@ def build_compact_pris_file(source: bytes, table_offset: int) -> CompactFighterF
             pattern_blob.extend(_pack_pattern(pattern, 4))
 
         model_offset = 4 + 104 * model_id
-        table[model_offset : model_offset + 4] = pattern_offsets[-1].to_bytes(
-            4, "big"
-        )
+        table[model_offset : model_offset + 4] = pattern_offsets[-1].to_bytes(4, "big")
         table[model_offset + 4 : model_offset + 6] = (4).to_bytes(2, "big")
 
     table_blob = bytearray(table)
@@ -333,9 +379,7 @@ def build_compact_pris_file(source: bytes, table_offset: int) -> CompactFighterF
             if remaining == 0:
                 return 0, ()
             best = None
-            for zero_index, (bits, base) in enumerate(
-                zip(model["zero_bits"], model["zero_bases"])
-            ):
+            for zero_index, (bits, base) in enumerate(zip(model["zero_bits"], model["zero_bases"])):
                 for extra in range(1 << bits):
                     count = base + extra + 1
                     if count > remaining:
@@ -380,9 +424,7 @@ def build_compact_pris_file(source: bytes, table_offset: int) -> CompactFighterF
                 continue
 
             pattern_index = pattern_indices[model_id][blocks[index]]
-            for code, (base, bits) in enumerate(
-                zip(model["normal_bases"], model["normal_bits"])
-            ):
+            for code, (base, bits) in enumerate(zip(model["normal_bases"], model["normal_bits"])):
                 if base <= pattern_index < base + (1 << bits):
                     writer.write(code, 4)
                     writer.write(pattern_index - base, bits)
@@ -418,9 +460,7 @@ def build_compact_pris_file(source: bytes, table_offset: int) -> CompactFighterF
 
     last_shape, _last_image = shapes[-1]
     last_frame = decoded[-1][0]
-    suffix_offset = (
-        last_shape + 32 + _align4(last_frame["stream_bytes"])
-    )
+    suffix_offset = last_shape + 32 + _align4(last_frame["stream_bytes"])
 
     old_palette_offsets = []
     new_palette_offsets = []
@@ -451,8 +491,7 @@ def build_compact_pris_file(source: bytes, table_offset: int) -> CompactFighterF
     suffix.extend(source[cursor:])
     final_size = _align8(table_offset + len(table_blob) + len(frame_blob) + len(suffix))
     suffix.extend(
-        b"\x00"
-        * (final_size - (table_offset + len(table_blob) + len(frame_blob) + len(suffix)))
+        b"\x00" * (final_size - (table_offset + len(table_blob) + len(frame_blob) + len(suffix)))
     )
 
     prefix = bytearray(source[:table_offset])

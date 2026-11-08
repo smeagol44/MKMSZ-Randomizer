@@ -126,7 +126,7 @@ def test_runtime_helpers_fit_exact_production_tail() -> None:
     assert runtime["used"] <= HUD_STATE_DATA_PTR_OFF
     assert len(permanent) == 0xF0
     assert module[HUD_STATE_DATA_PTR_OFF : HUD_STATE_DATA_PTR_OFF + 4] == bytes(4)
-    assert module[HUD_STATE_DATA_PTR_OFF + 4 : HUD_STATE_DATA_PTR_OFF + 8] == b"\xFF" * 4
+    assert module[HUD_STATE_DATA_PTR_OFF + 4 : HUD_STATE_DATA_PTR_OFF + 8] == b"\xff" * 4
 
 
 def test_first_load_initializes_exact_hud_allocation_size() -> None:
@@ -138,11 +138,13 @@ def test_first_load_initializes_exact_hud_allocation_size() -> None:
 def test_ordinary_row_forwards_native_fifth_font_argument() -> None:
     helper = _row_code(0x80074364, {"label_ptrs": 0x100, "font_ptrs": 0x200})
     # Helper frame is -0x30, so native old-sp+0x10 is helper new-sp+0x40.
-    needle = words_blob([
-        lw("t1", 0x40, "sp"),
-        sw("t1", 0x10, "sp"),
-        lw("a0", 0x20, "sp"),
-    ])
+    needle = words_blob(
+        [
+            lw("t1", 0x40, "sp"),
+            sw("t1", 0x10, "sp"),
+            lw("a0", 0x20, "sp"),
+        ]
+    )
     assert needle in helper
 
 
@@ -166,9 +168,12 @@ def test_common_package_append_and_lzw_round_trip() -> None:
 def test_crystal_source_table_shape_is_stable() -> None:
     assert len(CRYSTAL_SOURCE_WORDS) == 16
     assert CRYSTAL_SOURCE_WORDS[0] == 0
-    assert hashlib.sha256(
-        b"".join(word.to_bytes(2, "big") for word in CRYSTAL_SOURCE_WORDS)
-    ).hexdigest() == "70604d5d7e3bb2ab81e844de4f761b3bc1c02f40a253d2d33e5587a6ca3edd6a"
+    assert (
+        hashlib.sha256(
+            b"".join(word.to_bytes(2, "big") for word in CRYSTAL_SOURCE_WORDS)
+        ).hexdigest()
+        == "70604d5d7e3bb2ab81e844de4f761b3bc1c02f40a253d2d33e5587a6ca3edd6a"
+    )
 
 
 def test_pipeline_places_inventory_hud_after_global_runtime_owners() -> None:

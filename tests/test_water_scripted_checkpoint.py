@@ -20,8 +20,7 @@ def _synthetic_stock_rom() -> RomImage:
     data = bytearray(EXPECTED_SIZE)
     data[:4] = N64_Z64_MAGIC.to_bytes(4, "big")
     data[
-        WATER_SCRIPT_CONTEXT_ROM:
-        WATER_SCRIPT_CONTEXT_ROM + len(WATER_SCRIPT_CONTEXT_EXPECTED)
+        WATER_SCRIPT_CONTEXT_ROM : WATER_SCRIPT_CONTEXT_ROM + len(WATER_SCRIPT_CONTEXT_EXPECTED)
     ] = WATER_SCRIPT_CONTEXT_EXPECTED
     return RomImage.from_bytes(bytes(data), require_clean=False)
 
@@ -32,9 +31,10 @@ def test_one_opcode_only_preserves_surrounding_water_script() -> None:
     WaterScriptedCheckpointPatch().apply(rom, PatchContext())
     assert rom.read_u32(WATER_SCRIPTED_CHECKPOINT_ROM) == WATER_ABSOLUTE_SIX
     assert bytes(rom.data[:WATER_SCRIPTED_CHECKPOINT_ROM]) == before[:WATER_SCRIPTED_CHECKPOINT_ROM]
-    assert bytes(rom.data[WATER_SCRIPTED_CHECKPOINT_ROM + 4:]) == before[
-        WATER_SCRIPTED_CHECKPOINT_ROM + 4:
-    ]
+    assert (
+        bytes(rom.data[WATER_SCRIPTED_CHECKPOINT_ROM + 4 :])
+        == before[WATER_SCRIPTED_CHECKPOINT_ROM + 4 :]
+    )
 
 
 @pytest.mark.parametrize("offset", [0, 0x14, 0x1C, 0x28])

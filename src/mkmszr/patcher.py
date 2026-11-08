@@ -95,9 +95,7 @@ def _pickup_mode_required_count(required_count: int | None, required_xp: int) ->
     for count, threshold in enumerate(XP_THRESHOLDS, start=1):
         if threshold >= required_xp:
             return count
-    raise PatchError(
-        f"Fortress XP requirement {required_xp} exceeds the ninth Power Upgrade"
-    )
+    raise PatchError(f"Fortress XP requirement {required_xp} exceeds the ninth Power Upgrade")
 
 
 def _build_production_global_plan(
@@ -166,16 +164,17 @@ def build_pipeline(
     ]
     if materialization_plan is None:
         patches.append(PickupRandomizationPatch())
-    patches.append(FourBoxInventoryPatch(
-        initial_settings_state=settings_state, debug_all_keys=config.debug_all_keys,
-    ))
+    patches.append(
+        FourBoxInventoryPatch(
+            initial_settings_state=settings_state,
+            debug_all_keys=config.debug_all_keys,
+        )
+    )
     if config.powers_as_pickups:
         # Only pickup mode replaces the four-box resume tail. The other mode
         # keeps stock XP stores and ordinary Herbs callbacks. Both remove
         # stage-specific XP limits.
-        patches.append(
-            XPProgressionPatch(global_mode=materialization_plan is not None)
-        )
+        patches.append(XPProgressionPatch(global_mode=materialization_plan is not None))
     patches.extend(
         [
             GameSettingsTurnPatch(),
@@ -213,7 +212,8 @@ def build_pipeline(
         ControlsProductionPatch(
             toasty_size=(
                 len(pack_toasty_module(toasty_assets, toasty_probability_per_thousand).data)
-                if toasty_assets is not None else None
+                if toasty_assets is not None
+                else None
             ),
         )
     )
@@ -253,9 +253,7 @@ def build_pipeline(
         # Presentation is installed late so its shared file-0x1A allocation
         # composes with optional Toasty and all earlier runtime owners.
         patches.append(
-            ProgressionPickupPresentationPatch(
-                global_mode=materialization_plan is not None
-            )
+            ProgressionPickupPresentationPatch(global_mode=materialization_plan is not None)
         )
     # Controls production deliberately verifies the stock Slide/Super Slide
     # gates before installing helpers that call those recognizers. Apply the
@@ -265,9 +263,7 @@ def build_pipeline(
         patches.append(PowerOrderPatch())
     if config.required_powers_mode != "vanilla":
         patches.append(
-            RequiredPowersPatch(
-                config.required_powers_mode, config.custom_required_powers
-            )
+            RequiredPowersPatch(config.required_powers_mode, config.custom_required_powers)
         )
     if materialization_plan is not None:
         # The native randomizer HUD owns the fixed materializer->Toasty tail
@@ -311,8 +307,7 @@ def patch_rom(
         )
         rom.expand_output(GLOBAL_OUTPUT_SIZE)
     elif any(
-        placement.rom_end_exclusive > len(rom.data)
-        for placement in effective_plan.placements
+        placement.rom_end_exclusive > len(rom.data) for placement in effective_plan.placements
     ):
         rom.expand_output(
             max(placement.rom_end_exclusive for placement in effective_plan.placements)
@@ -338,9 +333,7 @@ def patch_rom(
         global_attempt_index=(
             global_run.candidate.attempt_index if global_run is not None else None
         ),
-        global_completion_mode=(
-            config.global_completion_mode if global_run is not None else None
-        ),
+        global_completion_mode=(config.global_completion_mode if global_run is not None else None),
     )
 
 

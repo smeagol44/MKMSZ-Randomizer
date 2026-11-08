@@ -45,19 +45,17 @@ def _clean_shape() -> RomImage:
     data[NATIVE_BOOTSTRAP_HOOK_ROM : NATIVE_BOOTSTRAP_HOOK_ROM + 8] = bytes.fromhex(
         "27BDFFE8 3C02801B"
     )
-    data[PICKUP_MANAGER_HOOK_ROM : PICKUP_MANAGER_HOOK_ROM + 8] = (
-        PICKUP_MANAGER_HOOK_EXPECTED
-    )
+    data[PICKUP_MANAGER_HOOK_ROM : PICKUP_MANAGER_HOOK_ROM + 8] = PICKUP_MANAGER_HOOK_EXPECTED
     data[PICKUP_MANAGER_CAPTURE_HOOK_ROM : PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4] = (
         PICKUP_MANAGER_CAPTURE_EXPECTED.to_bytes(4, "big")
     )
-    data[
-        PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4 : PICKUP_MANAGER_CAPTURE_HOOK_ROM + 8
-    ] = PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED.to_bytes(4, "big")
-    data[
-        FIRE_POTION_CALLBACK_FIELD_ROM : FIRE_POTION_CALLBACK_FIELD_ROM + 4
-    ] = FIRE_POTION_CALLBACK_EXPECTED.to_bytes(4, "big")
-    data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] = b"\xFF" * CODE_SIZE
+    data[PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4 : PICKUP_MANAGER_CAPTURE_HOOK_ROM + 8] = (
+        PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED.to_bytes(4, "big")
+    )
+    data[FIRE_POTION_CALLBACK_FIELD_ROM : FIRE_POTION_CALLBACK_FIELD_ROM + 4] = (
+        FIRE_POTION_CALLBACK_EXPECTED.to_bytes(4, "big")
+    )
+    data[PROVEN_PAYLOAD_ROM : PROVEN_PAYLOAD_ROM + CODE_SIZE] = b"\xff" * CODE_SIZE
 
     return RomImage(data=data, _original=bytes(data))
 
@@ -128,16 +126,17 @@ def test_pickup_persistence_installs_shared_hooks_and_data() -> None:
     assert rom.read_u32(PICKUP_MANAGER_HOOK_ROM + 4) == 0
     assert rom.read_u32(PICKUP_MANAGER_CAPTURE_HOOK_ROM) == jal(CAPTURE_HELPER_VA)
     assert (
-        rom.read_u32(PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4)
-        == PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED
+        rom.read_u32(PICKUP_MANAGER_CAPTURE_HOOK_ROM + 4) == PICKUP_MANAGER_CAPTURE_DELAY_EXPECTED
     )
 
-    assert rom.data[
-        DESCRIPTOR_TABLE_ROM : DESCRIPTOR_TABLE_ROM + len(DESCRIPTOR_TABLE)
-    ] == DESCRIPTOR_TABLE
-    assert rom.data[
-        FIRE_TRANSLATION_ROM : FIRE_TRANSLATION_ROM + len(FIRE_TRANSLATION)
-    ] == FIRE_TRANSLATION
+    assert (
+        rom.data[DESCRIPTOR_TABLE_ROM : DESCRIPTOR_TABLE_ROM + len(DESCRIPTOR_TABLE)]
+        == DESCRIPTOR_TABLE
+    )
+    assert (
+        rom.data[FIRE_TRANSLATION_ROM : FIRE_TRANSLATION_ROM + len(FIRE_TRANSLATION)]
+        == FIRE_TRANSLATION
+    )
 
     # The generalized path must not regress to a per-Potion callback patch.
     assert rom.read_u32(FIRE_POTION_CALLBACK_FIELD_ROM) == FIRE_POTION_CALLBACK_EXPECTED

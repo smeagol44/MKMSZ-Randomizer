@@ -52,16 +52,40 @@ EDITION_FONT_RESOURCE = "title_edition_font.b64"
 # These 15 stock-unused CI8 entries provide a shared title-art/edition ramp.
 EDITION_PALETTE_INDICES = (8, 29, 39, 50, 56, 61, 64, 68, 71, 80, 100, 106, 115, 116, 132)
 EDITION_PALETTE_EXPECTED = (
-    0x77BC, 0x7EEA, 0x6270, 0x7AA7, 0x624D,
-    0x564C, 0x5A2D, 0x5E2C, 0x7666, 0x460E,
-    0x49E9, 0x3DCB, 0x51E6, 0x41C9, 0x3DA8,
+    0x77BC,
+    0x7EEA,
+    0x6270,
+    0x7AA7,
+    0x624D,
+    0x564C,
+    0x5A2D,
+    0x5E2C,
+    0x7666,
+    0x460E,
+    0x49E9,
+    0x3DCB,
+    0x51E6,
+    0x41C9,
+    0x3DA8,
 )
 # Dark -> light 15-entry icy-blue BGR555 ramp. Index 0xFF remains
 # the stock near-black background (0x0001).
 EDITION_PALETTE_WORDS = (
-    0x0821, 0x0C41, 0x1881, 0x2CE2, 0x3D41,
-    0x3D44, 0x45A6, 0x5E28, 0x628F, 0x6ED1,
-    0x7732, 0x7B75, 0x7778, 0x7FB8, 0x7BDB,
+    0x0821,
+    0x0C41,
+    0x1881,
+    0x2CE2,
+    0x3D41,
+    0x3D44,
+    0x45A6,
+    0x5E28,
+    0x628F,
+    0x6ED1,
+    0x7732,
+    0x7B75,
+    0x7778,
+    0x7FB8,
+    0x7BDB,
 )
 TITLE_16COLOR_INDICES = (TITLE_BACKGROUND_INDEX,) + EDITION_PALETTE_INDICES
 
@@ -69,9 +93,21 @@ TITLE_16COLOR_INDICES = (TITLE_BACKGROUND_INDEX,) + EDITION_PALETTE_INDICES
 # shadow/highlight pair for RANDOMIZER and the configurable edition line.
 # Rainbow clothing itself continues to cycle independently during gameplay.
 RAINBOW_PALETTE_WORDS = (
-    0x0821, 0x2CE2, 0x5E28, 0x7B75, 0x7BDB,
-    0x18D4, 0x319E, 0x1A54, 0x339E, 0x1E86,
-    0x37CC, 0x5206, 0x7B0C, 0x50D1, 0x799A,
+    0x0821,
+    0x2CE2,
+    0x5E28,
+    0x7B75,
+    0x7BDB,
+    0x18D4,
+    0x319E,
+    0x1A54,
+    0x339E,
+    0x1E86,
+    0x37CC,
+    0x5206,
+    0x7B0C,
+    0x50D1,
+    0x799A,
 )
 
 TITLE_TILES = (
@@ -96,8 +132,7 @@ def normalize_edition_name(value: str | None) -> str:
     if invalid:
         shown = "".join(invalid)
         raise ValueError(
-            "title character name supports only A-Z, 0-9, spaces and hyphens; "
-            f"invalid: {shown!r}"
+            f"title character name supports only A-Z, 0-9, spaces and hyphens; invalid: {shown!r}"
         )
     return name
 
@@ -140,9 +175,7 @@ def _fixed_rainbow_pixels(pixels: bytearray) -> None:
                 pixels[offset] = EDITION_PALETTE_INDICES[5 + 2 * band + highlight]
 
 
-def _palette_words_for_outfit(
-    outfit: OutfitConfig, context: PatchContext
-) -> tuple[int, ...]:
+def _palette_words_for_outfit(outfit: OutfitConfig, context: PatchContext) -> tuple[int, ...]:
     mode = outfit.mode.lower()
     if mode == "vanilla":
         return EDITION_PALETTE_WORDS
@@ -154,9 +187,7 @@ def _palette_words_for_outfit(
         # corresponding outfit hue while retaining the title's luminance.
         hue = 0.0 if mode == "red" else 120.0
         return tuple(make_hue(word, hue) for word in EDITION_PALETTE_WORDS)
-    recolor = SubZeroPalettePatch(
-        mode, hue_degrees=outfit.hue_degrees, rgb=outfit.rgb
-    )
+    recolor = SubZeroPalettePatch(mode, hue_degrees=outfit.hue_degrees, rgb=outfit.rgb)
     return tuple(recolor._transform(word, context) for word in EDITION_PALETTE_WORDS)
 
 
@@ -172,9 +203,7 @@ def _edition_font() -> dict[str, tuple[int, int, int, int, int, bytes]]:
     for _ in range(count):
         if pos + 6 > len(raw):
             raise AssertionError("embedded edition font is truncated")
-        code, advance, x_offset, y_offset, width, height = struct.unpack_from(
-            ">BBbbBB", raw, pos
-        )
+        code, advance, x_offset, y_offset, width, height = struct.unpack_from(">BBbbBB", raw, pos)
         pos += 6
         size = width * height
         if pos + size > len(raw):
@@ -343,9 +372,7 @@ def _lzw_compress(raw: bytes) -> bytes:
 
     for code in _lzw_codes(raw):
         if code >= 1 << bits:
-            raise PatchError(
-                f"title LZW code {code} cannot fit current {bits}-bit width"
-            )
+            raise PatchError(f"title LZW code {code} cannot fit current {bits}-bit width")
         accumulator = (accumulator << bits) | code
         pending_bits += bits
         while pending_bits >= 8:
@@ -428,9 +455,7 @@ class TitleBrandingPatch:
             + TITLE_STOCK_FLAG.to_bytes(4, "big")
         )
         rom.expect_bytes(TITLE_FILE_ENTRY_ROM, expected_entry)
-        for index, expected in zip(
-            EDITION_PALETTE_INDICES, EDITION_PALETTE_EXPECTED, strict=True
-        ):
+        for index, expected in zip(EDITION_PALETTE_INDICES, EDITION_PALETTE_EXPECTED, strict=True):
             rom.expect_u16(TITLE_PALETTE_ROM + index * 2, expected)
 
         stock_comp = bytes(rom.data[TITLE_STOCK_ROM_START:TITLE_STOCK_ROM_END])
@@ -446,9 +471,7 @@ class TitleBrandingPatch:
         rom.write_bytes(TITLE_STOCK_ROM_START, compressed)
         rom.write_u32(TITLE_FILE_ENTRY_ROM + 4, title_end)
         rom.write_u32(TITLE_FILE_ENTRY_ROM + 8, TITLE_STOCK_FLAG)
-        for index, replacement in zip(
-            EDITION_PALETTE_INDICES, palette_words, strict=True
-        ):
+        for index, replacement in zip(EDITION_PALETTE_INDICES, palette_words, strict=True):
             rom.write_u16(TITLE_PALETTE_ROM + index * 2, replacement)
 
         return (
