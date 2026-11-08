@@ -25,6 +25,12 @@ ICE_ROOT_SRC, ICE_ROOT_END = 0x8004AB84, 0x8004B1D0  # transfer selector 0 (all 
 # adjust_xy_a5(SCX(7), SCY(45))). The host helper takes world units: x UNITS_PER_TEXEL.
 # (v72/v24 passed the pixel values unscaled: half the distance, too high and inward.)
 PLACEMENT = (5, 38)
+# Runtime-observed correction (user frame-by-frame MKT vs MKMSZ captures, proof v27): at
+# the start of its trajectory MKT's flat rocket sits 3-4 px further out than the derived
+# placement, with no flame visible behind Sektor. MKT first shows a vertical rocket frame
+# (a donor glitch, not reproduced); anchor arithmetic does not explain the offset (a
+# top-left-preserving frame switch would give 21 px), so the observed value is used.
+LAUNCH_CORRECTION = (4, 0)
 
 
 def _addiu(rt: str, imm: int) -> int:
@@ -52,7 +58,10 @@ def placement_patches(dx: int = PLACEMENT[0], dy: int = PLACEMENT[1]) -> dict[in
     Converted to host world units; the host helper applies facing.
     """
 
-    dx, dy = dx * UNITS_PER_TEXEL, dy * UNITS_PER_TEXEL
+    dx, dy = (
+        (dx + LAUNCH_CORRECTION[0]) * UNITS_PER_TEXEL,
+        (dy + LAUNCH_CORRECTION[1]) * UNITS_PER_TEXEL,
+    )
     for value in (dx, dy):
         if not -0x8000 <= value < 0x8000:
             raise ValueError("placement offsets are signed 16-bit whole units")

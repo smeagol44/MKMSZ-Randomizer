@@ -203,7 +203,7 @@ def test_robo_zap_placement_patches_lifted_root() -> None:
     lifter.verify(code, out)
     robo_zap.check_stock(out)
     w = [int.from_bytes(out.code[i : i + 4], "big") for i in range(0, len(out.code), 4)]
-    assert w[(0x8004AFF0 - src) // 4] == 0x2405000A  # addiu a1, zero, 10 (5 px)
+    assert w[(0x8004AFF0 - src) // 4] == 0x24050012  # addiu a1, zero, 18 ((5 + 4) px)
     assert w[(0x8004AFFC - src) // 4] == 0x2406004C  # addiu a2, zero, 76 (38 px)
     assert w[(0x8004B000 - src) // 4] == 0x0C00C482  # jal 0x80031208 kept
     bad = lifter.lift(code, src, 0xA01AFBA8, patches={0x8004AF00: 0})
