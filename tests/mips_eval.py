@@ -75,6 +75,8 @@ class Machine:
                     r[rd] = (_s32(r[rt]) >> sh) & MASK
                 elif fn == 0x08:
                     jump = ("jr", r[rs])
+                elif fn == 0x09:
+                    jump = ("jal", r[rs])
                 else:
                     raise NotImplementedError(f"{w:#010x} at {pc:#x}")
             elif op == 0x0F:
@@ -101,6 +103,15 @@ class Machine:
                 else:
                     word = (word & ~(0xFFFF << shift)) | ((r[rt] & 0xFFFF) << shift)
                     self.store(address, word)
+            elif op in (0x20, 0x24, 0x28):  # lb / lbu / sb
+                address = (r[rs] + simm) & MASK
+                shift = 8 * (3 - (address & 3))
+                word = self.load(address)
+                if op == 0x28:
+                    self.store(address, (word & ~(0xFF << shift)) | ((r[rt] & 0xFF) << shift))
+                else:
+                    byte = (word >> shift) & 0xFF
+                    r[rt] = ((byte - 0x100) & MASK) if op == 0x20 and byte & 0x80 else byte
             elif op in (0x04, 0x05):
                 if (r[rs] == r[rt]) == (op == 0x04):
                     jump = ("b", pc + 4 + 4 * simm)

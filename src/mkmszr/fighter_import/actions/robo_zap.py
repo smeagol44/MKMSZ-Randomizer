@@ -11,6 +11,8 @@ Donor facts are MKT USA Rev. 2 N64 retail values (not the arcade source lineage)
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from .. import host, physics
 from ..host import F_OFFSET, UNITS_PER_TEXEL, hi, lo
 from ..lifter import LiftError, LiftResult
@@ -177,6 +179,7 @@ CHILD_SITE = {0x8004B0D8: 0x3C048005, 0x8004B0DC: 0x2484B82C}  # a0 = 0x8004B82C
 CHILD_START_TICKS = 2  # host ticks from creation to the child's first flight tick
 STOCK_WORDS.update(CHILD_SITE)
 FLIGHT_TAIL = 0x8004B9C4  # stock child tail: 0x8004CC50(actor, selector) and cleanup
+F_FLIGHT_LOOP = 0x8004CC50  # (actor, selector): returns on contact
 FLIGHT_STRIKE_SELECTOR = 0x13  # stock straight-Ice selector (strike step pending)
 F_PROJECTILE_SETUP = 0x8004CC14  # (actor, magnitude, rate): facing-signed +0x14, anim rate
 FILE87_BASE_PTR = 0x80291C10  # resident fighter file 0x87 base
@@ -238,7 +241,9 @@ def emit_initial_speed(a: Assembler, actor: str = "s0") -> None:
     a.sw("t0", host.ACTOR_XVEL, actor)
 
 
-def emit_flight(a: Assembler, loop_offset: int, table: str = "zap_speeds") -> None:
+def emit_flight(
+    a: Assembler, loop_offset: int, table: str = "zap_speeds", hit_child: int | None = None
+) -> None:
     """Flight child (process entry, replaces 0x8004B82C) and its per-tick callback.
 
     The child points the animation at the resampled ROCKETD1/ROCKETD2 loop (phase
@@ -276,10 +281,32 @@ def emit_flight(a: Assembler, loop_offset: int, table: str = "zap_speeds") -> No
     a.sw("t1", 0x70C, "t0")
     a.lw("a0", host.CTRL_ACTOR, "t0")
     a.li("a1", FLIGHT_STRIKE_SELECTOR)
-    a.lui("t9", hi(FLIGHT_TAIL))
-    a.addiu("t9", "t9", lo(FLIGHT_TAIL))
-    a.jr("t9")
-    a.nop()
+    if hit_child is None:
+        a.lui("t9", hi(FLIGHT_TAIL))
+        a.addiu("t9", "t9", lo(FLIGHT_TAIL))
+        a.jr("t9")
+        a.nop()
+    else:
+        # The flight loop returns only on contact (offscreen/lifetime exits delete the
+        # actor and end the process). Then do the stock tail's switch to the hit
+        # process (0x8004BA10..0x8004BA38), with the imported hit child. The stock
+        # tail's 0x8004B9D4 block only applies to process ids 2/3 (ours is 0x700).
+        a.lui("t9", hi(F_FLIGHT_LOOP))
+        a.addiu("t9", "t9", lo(F_FLIGHT_LOOP))
+        a.jalr("t9")
+        a.lui("t0", hi(host.CURRENT_CTRL))
+        a.lw("t0", lo(host.CURRENT_CTRL), "t0")
+        a.li("a1", hit_child)
+        a.addiu("a0", "t0", 8)
+        a.addiu("v1", "t0", 0x620)
+        a.sw("a1", host.CTRL_CALLBACK, "t0")
+        a.sw("v1", 0xC, "t0")
+        a.sw("v1", 0x10, "t0")
+        a.sw("a1", 8, "t0")
+        a.jal(host.F_CONTEXT_SWITCH)
+        a.lw("ra", 0x10, "sp")
+        a.jr_ra()
+        a.addiu("sp", "sp", 0x18)
 
     a.label("zap_callback")
     a.lui("t0", hi(host.CURRENT_CTRL))
@@ -317,3 +344,91 @@ def emit_mode_reload(a: Assembler) -> None:
 
     a.lui("v1", 0x8011)
     a.lh("v1", 0x1F98, "v1")
+
+
+# ---- Sounds (MKZAP.ASM): chest-open ochar 0x0B at robo_open_chest_fast, launch ochar 3 at
+# rocket1_proc (creation), boom ochar 0x0A at rocket_explode_fx (contact). Resolved per
+# donor fighter through fighter_import.sound; hosted in isolated chains by the builder.
+SOUND_OCHAR = {"chest": 0x0B, "launch": 3, "boom": 0x0A}
+
+CHEST_OPEN_CALL = {0x8004AD38: 0x0C00C3A6}  # jal 0x80030E98 (play the open phase)
+ICE_LAUNCH_SOUND = {0x8004AD58: 0x0C0203D3}  # jal 0x80080F4C: start of the Ice launch-sound block
+ICE_LAUNCH_SOUND_END = 0x8004AD98
+STRAIGHT_CALL = {0x8004B020: 0x0C012D61}  # jal 0x8004B584 (spawn strike test / point-blank hit)
+STOCK_WORDS.update(CHEST_OPEN_CALL)
+STOCK_WORDS.update(ICE_LAUNCH_SOUND)
+STOCK_WORDS.update(STRAIGHT_CALL)
+
+# Lifted with the root: the straight branch helper and the Ice hit child.
+STRAIGHT_SRC, STRAIGHT_END = 0x8004B584, 0x8004B71C
+HIT_CHILD_REF = {0x8004B62C: 0x3C048005, 0x8004B630: 0x2484BB64}  # a0 = 0x8004BB64
+HIT_CHILD_SRC, HIT_CHILD_END = 0x8004BB64, 0x8004BD28
+HIT_SOUND_CALL = {0x8004BB94: 0x0C019306}  # jal 0x80064C18: Ice hit sound (descriptor 1)
+STOCK_WORDS.update(HIT_CHILD_REF)
+STOCK_WORDS.update(HIT_SOUND_CALL)
+
+
+def root_sound_patches(chest_wrapper_va: int) -> dict[int, int]:
+    """Root: open phase through the chest-sound wrapper; skip the Ice launch sound."""
+
+    skip = (ICE_LAUNCH_SOUND_END - (0x8004AD58 + 4)) // 4
+    return {0x8004AD38: _jal(chest_wrapper_va), 0x8004AD58: (0x04 << 26) | (skip & 0xFFFF)}
+
+
+def root_straight_patch(straight_va: int) -> dict[int, int]:
+    return {0x8004B020: _jal(straight_va)}
+
+
+def straight_patches(hit_child_va: int) -> dict[int, int]:
+    return {
+        0x8004B62C: (0x0F << 26) | (REG["a0"] << 16) | hi(hit_child_va),
+        0x8004B630: (0x09 << 26)
+        | (REG["a0"] << 21)
+        | (REG["a0"] << 16)
+        | (lo(hit_child_va) & 0xFFFF),
+    }
+
+
+def hit_child_patches(boom_va: int) -> dict[int, int]:
+    return {0x8004BB94: _jal(boom_va)}
+
+
+def emit_sound_wrappers(
+    a: Assembler, chest_event: int, boom_event: int, player: str = "play"
+) -> None:
+    """``zap_chest_open``: play the chest sound, then the stock open phase
+    (0x80030E98, same a0/a1, returning to the root). ``zap_boom``: replaces the hit
+    child's Ice hit sound call (its result is unused)."""
+
+    a.label("zap_chest_open")
+    a.addiu("sp", "sp", -0x20)
+    a.sw("ra", 0x1C, "sp")
+    a.sw("a0", 0x18, "sp")
+    a.sw("a1", 0x14, "sp")
+    host.play_sound(a, chest_event, player)
+    a.lw("a0", 0x18, "sp")
+    a.lw("a1", 0x14, "sp")
+    a.lw("ra", 0x1C, "sp")
+    a.addiu("sp", "sp", 0x20)
+    a.lui("t9", 0x8003)
+    a.addiu("t9", "t9", 0x0E98)
+    a.jr("t9")
+    a.nop()
+
+    a.label("zap_boom")
+    a.addiu("sp", "sp", -0x18)
+    a.sw("ra", 0x14, "sp")
+    host.play_sound(a, boom_event, player)
+    a.lw("ra", 0x14, "sp")
+    a.jr_ra()
+    a.addiu("sp", "sp", 0x18)
+
+
+def on_create(launch_event: int, player: str = "play") -> Callable[[Assembler], None]:
+    """Creation-time recipe code: start speed, then the launch sound."""
+
+    def emit(a: Assembler) -> None:
+        emit_initial_speed(a)
+        host.play_sound(a, launch_event, player)
+
+    return emit

@@ -444,3 +444,58 @@ def test_sound_install_rewrites_one_isolated_chain() -> None:
     assert rom[0x9B8000:0x9B8064] == b"x" * 100
     with pytest.raises(ValueError):  # a chain may be hosted only once
         sound.install(rom, bytes(clean), donor, chain, 0x9B8080)
+
+
+def test_robo_zap_flight_hands_hits_to_the_imported_hit_child() -> None:
+    from mips_eval import Machine
+
+    from mkmszr.fighter_import import host
+    from mkmszr.fighter_import.actions import robo_zap
+
+    base = 0xA01AF000
+    a = Assembler(base)
+    robo_zap.emit_flight(a, 0x46000, hit_child=0xA01B1234)
+    robo_zap.emit_speed_table(a, "zap_speeds")
+    m = Machine(a.link(), base)
+    ctrl, actor = 0x80300000, 0x80310000
+    m.store(host.CURRENT_CTRL, ctrl)
+    m.store(ctrl + host.CTRL_ACTOR, actor)
+    m.regs[29] = 0x80200000
+    stop = m.run(a.labels["zap_child"])  # -> 0x8004CC14 setup
+    stop = m.run(stop.resume)
+    assert stop.kind == "call" and stop.target == robo_zap.F_FLIGHT_LOOP  # cached (KSEG0)
+    assert m.regs[4:6] == [actor, robo_zap.FLIGHT_STRIKE_SELECTOR]
+    stop = m.run(stop.resume)  # loop returned: contact
+    assert stop.kind == "call" and stop.target & 0x1FFFFFFF == host.F_CONTEXT_SWITCH & 0x1FFFFFFF
+    assert m.regs[4] == ctrl + 8
+    assert m.load(ctrl + host.CTRL_CALLBACK) == m.load(ctrl + 8) == 0xA01B1234
+    assert m.load(ctrl + 0xC) == m.load(ctrl + 0x10) == ctrl + 0x620
+
+
+def test_robo_zap_sound_wrappers_and_patches() -> None:
+    from mips_eval import Machine
+
+    from mkmszr.fighter_import import host
+    from mkmszr.fighter_import.actions import robo_zap
+
+    base = 0xA01AF000
+    a = Assembler(base)
+    host.emit_sound_player(a)
+    robo_zap.emit_sound_wrappers(a, chest_event=173, boom_event=177)
+    m = Machine(a.link(), base)
+    m.regs[29], m.regs[31], m.regs[4], m.regs[5] = 0x80200000, 0x8004AD40, 3, 0x24
+    events = []
+    stop = m.run(a.labels["zap_chest_open"])
+    while stop.kind == "call":
+        if stop.target & 0x1FFFFFFF == host.F_RAW_SOUND & 0x1FFFFFFF:
+            events.append(m.regs[4])
+        stop = m.run(stop.resume)
+    # tail-jumps into the stock open phase with the root's arguments and return address
+    assert stop.target == 0x80030E98 and m.regs[4:6] == [3, 0x24]
+    assert m.regs[31] == 0x8004AD40 and m.regs[29] == 0x80200000 and events == [173]
+    assert robo_zap.root_sound_patches(0xA01AF100) == {
+        0x8004AD38: 0x0C06BC40,
+        0x8004AD58: 0x1000000F,  # b 0x8004AD98: skip the Ice launch sound block
+    }
+    assert robo_zap.hit_child_patches(0xA01AF200) == {0x8004BB94: 0x0C06BC80}
+    assert robo_zap.straight_patches(0xA01B0000) == {0x8004B62C: 0x3C04A01B, 0x8004B630: 0x24840000}

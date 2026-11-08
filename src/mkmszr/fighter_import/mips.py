@@ -183,6 +183,12 @@ class Assembler:
 
         self.raw((REG[rs] << 21) | 0x08)
 
+    def jalr(self, rs: str) -> None:
+        """``jalr ra, rs`` with a ``nop`` delay slot."""
+
+        self.raw((REG[rs] << 21) | (31 << 11) | 0x09)
+        self.nop()
+
     def jr_ra(self) -> None:
         """``jr ra`` without a delay slot: the caller emits the delay-slot instruction."""
 
