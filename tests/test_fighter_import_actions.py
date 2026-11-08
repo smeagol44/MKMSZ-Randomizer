@@ -186,3 +186,28 @@ def test_projectile_hooks_fall_through_to_stock_calls() -> None:
         0x0C000000 | (projectile.F_UPLOAD_DRAIN >> 2) & 0x03FFFFFF,
     ]
     assert 0xAFA90010 in w[:queue]  # height at sp+0x10
+
+
+# ---------------------------------------------------------------- robo zap (straight rocket)
+def test_robo_zap_placement_patches_lifted_root() -> None:
+    from mkmszr.fighter_import import lifter
+    from mkmszr.fighter_import.actions import robo_zap
+
+    src = robo_zap.ICE_ROOT_SRC
+    words = [0] * ((robo_zap.ICE_ROOT_END - src) // 4)
+    for va, word in robo_zap.PLACEMENT_SITE.items():
+        words[(va - src) // 4] = word
+    code = b"".join(w.to_bytes(4, "big") for w in words)
+    patches = robo_zap.placement_patches()
+    out = lifter.lift(code, src, 0xA01AFBA8, patches=patches)
+    lifter.verify(code, out)
+    robo_zap.check_stock(out)
+    w = [int.from_bytes(out.code[i : i + 4], "big") for i in range(0, len(out.code), 4)]
+    assert w[(0x8004AFF0 - src) // 4] == 0x24050005  # addiu a1, zero, 5
+    assert w[(0x8004AFFC - src) // 4] == 0x24060026  # addiu a2, zero, 38
+    assert w[(0x8004B000 - src) // 4] == 0x0C00C482  # jal 0x80031208 kept
+    bad = lifter.lift(code, src, 0xA01AFBA8, patches={0x8004AF00: 0})
+    with pytest.raises(lifter.LiftError):
+        robo_zap.check_stock(bad)
+    with pytest.raises(ValueError):
+        robo_zap.placement_patches(0x8000, 0)
