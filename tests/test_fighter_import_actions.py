@@ -251,3 +251,107 @@ def test_robo_zap_chest_choreography() -> None:
     assert robo_zap.ZAP_TOKEN not in w and 0xDBC not in w  # token and hook offsets untouched
     assert robo_zap.close_patches() == {0x8004B1A0: 0x24040002}
     assert robo_zap.STOCK_WORDS[0x8004B1A0] == 0x24040005
+
+
+# ---------------------------------------------------------------- rocket flight
+def test_fold_donor_speeds_and_frame_cycle() -> None:
+    from itertools import pairwise
+
+    from mkmszr.fighter_import import physics
+    from mkmszr.fighter_import.actions import robo_zap
+
+    normal = robo_zap.host_speeds(robo_zap.SPEED_NORMAL)
+    reacting = robo_zap.host_speeds(robo_zap.SPEED_REACTING)
+    # v75's runtime-accepted start/cap, now derived: 2 units/px * (d0 + d1) / 3.
+    assert normal[0] == 0x46666 and normal[-1] == reacting[-1] == 0xEEEEE
+    assert reacting[0] == 2 * (0x59999 + 0x59999 + (0x59999 >> 4)) // 3
+    assert all(b > a for a, b in pairwise(normal))
+    table = robo_zap.speed_table()
+    assert table == normal + [0] + reacting + [0]
+    assert physics.resample_frame_cycle([1, 2], 3) == [1, 1, 2, 1, 2, 2]
+    assert physics.resample_frame_cycle([1, 2], 2) == [1, 2]
+
+
+def test_robo_zap_flight_child_and_callback_execute() -> None:
+    from mips_eval import Machine
+
+    from mkmszr.fighter_import import host
+    from mkmszr.fighter_import.actions import robo_zap
+
+    base = 0xA01AF000
+    a = Assembler(base)
+    robo_zap.emit_flight(a, 0x46000)
+    robo_zap.emit_speed_table(a, "zap_speeds")
+    m = Machine(a.link(), base)
+    ctrl, actor = 0x80300000, 0x80310000
+    m.store(host.CURRENT_CTRL, ctrl)
+    m.store(ctrl + host.CTRL_ACTOR, actor)
+    m.store(robo_zap.FILE87_BASE_PTR, 0x80400000)
+
+    def callback(v: int) -> int:
+        m.store(actor + host.ACTOR_XVEL, v)
+        m.regs[31] = 0x8004CD00
+        assert m.run(a.labels["zap_callback"]).target == 0x8004CD00
+        out = m.load(actor + host.ACTOR_XVEL)
+        return out - (1 << 32) if out & 0x80000000 else out
+
+    for start in (robo_zap.SPEED_NORMAL, robo_zap.SPEED_REACTING):
+        seq = robo_zap.host_speeds(start)
+        for sign in (1, -1):
+            v, got = sign * seq[0], []
+            for _ in range(len(seq) + 1):
+                v = callback(v)
+                got.append(v)
+            assert got == [sign * x for x in seq[1:]] + [sign * seq[-1]] * 2
+    assert callback(0) == 0 and callback(12345) == 12345  # unknown speeds are left alone
+
+    seq = robo_zap.host_speeds(robo_zap.SPEED_NORMAL)
+    m.store(actor + host.ACTOR_XVEL, (-seq[0]) & 0xFFFFFFFF)  # set at creation, facing left
+    stop = m.run(a.labels["zap_child"])
+    assert (
+        stop.kind == "call" and stop.target & 0x1FFFFFFF == robo_zap.F_PROJECTILE_SETUP & 0x1FFFFFFF
+    )
+    assert m.regs[4:7] == [actor, seq[robo_zap.CHILD_START_TICKS], 1]
+    assert m.load(ctrl + host.CTRL_SCRIPT_CURSOR) == 0x80446000
+    stop = m.run(stop.resume)
+    assert stop.kind == "return" and stop.target == robo_zap.FLIGHT_TAIL  # cached stock tail
+    assert m.regs[4:6] == [actor, robo_zap.FLIGHT_STRIKE_SELECTOR]
+    assert m.load(ctrl + 0x70C) == a.labels["zap_callback"]
+
+
+def test_robo_zap_initial_speed_reacting_and_facing() -> None:
+    from mips_eval import Machine
+
+    from mkmszr.fighter_import import host
+    from mkmszr.fighter_import.actions import robo_zap
+
+    a = Assembler(0x8009A1E0)
+    robo_zap.emit_initial_speed(a)
+    a.jr_ra()
+    a.nop()
+    normal = robo_zap.host_speeds(robo_zap.SPEED_NORMAL)[0]
+    reacting = robo_zap.host_speeds(robo_zap.SPEED_REACTING)[0]
+    ctrl, opp, actor = 0x80300000, 0x80320000, 0x80310000
+    for opponent, flags, facing, want in (
+        (0, 0, 0, normal),
+        (opp, 0, 0, normal),
+        (opp, 0x04, 0, reacting),
+        (opp, 0x04, 0x10, -reacting),
+        (0, 0x04, 0x10, -normal),
+    ):
+        m = Machine(a.link(), 0x8009A1E0)
+        m.store(host.CURRENT_CTRL, ctrl)
+        m.store(ctrl + host.CTRL_OPPONENT, opponent)
+        m.store(opp + 0x6BC, flags)  # +0x6BE is the low halfword of word +0x6BC
+        m.store(actor + 0x8C, facing << 16)  # +0x8C halfword
+        m.regs[16] = actor  # s0
+        m.regs[31] = 0x80030AC8
+        m.run(0x8009A1E0)
+        assert m.load(actor + host.ACTOR_XVEL) == want & 0xFFFFFFFF, (opponent, flags, facing)
+
+
+def test_robo_zap_child_patch_and_stock_words() -> None:
+    from mkmszr.fighter_import.actions import robo_zap
+
+    assert robo_zap.child_patches(0xA01AFF00) == {0x8004B0D8: 0x3C04A01B, 0x8004B0DC: 0x2484FF00}
+    assert robo_zap.STOCK_WORDS[0x8004B0D8] == 0x3C048005  # lui a0, 0x8005 (0x8004B82C)

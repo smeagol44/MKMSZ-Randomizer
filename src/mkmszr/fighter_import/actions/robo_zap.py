@@ -11,9 +11,10 @@ Donor facts are MKT USA Rev. 2 N64 retail values (not the arcade source lineage)
 
 from __future__ import annotations
 
-from ..host import F_OFFSET, UNITS_PER_TEXEL
+from .. import host, physics
+from ..host import F_OFFSET, UNITS_PER_TEXEL, hi, lo
 from ..lifter import LiftError, LiftResult
-from ..mips import REG
+from ..mips import REG, Assembler
 
 # Stock MKMSZ Ice host (USA Rev. 0)
 ICE_CALLBACK_SRC, ICE_CALLBACK_END = 0x80049C34, 0x80049C84  # LP record action
@@ -127,3 +128,164 @@ def close_patches(ticks: int = 2) -> dict[int, int]:
 
 
 STOCK_WORDS.update(CLOSE_HOLD_SITE)
+
+
+# ---- Flight (rocket1_proc / rocket1_flight_call) ------------------------------------
+# Donor retail N64 (rocket1_proc 0x8007C100): flat-rocket loop = robot frames ROCKETD1,
+# ROCKETD2 at anirate 3; start speed 0x33333, or 0x59999 if the opponent is reacting;
+# every donor tick v += v >> 4, capped at 0xB3333. The rocket flies from its creation.
+ROCKET_FRAMES = (0x2668, 0x267C)  # robot heap offsets: ROCKETD1, ROCKETD2
+ROCKET_ANIRATE = 3  # donor ticks per frame
+SPEED_NORMAL, SPEED_REACTING, SPEED_CAP = 0x33333, 0x59999, 0xB3333
+
+
+def donor_speed_step(d: int) -> int:
+    return d + (d >> 4)
+
+
+def host_speeds(start: int) -> list[int]:
+    """Host per-tick speeds (world units, actor +0x14 magnitude); last entry = cap."""
+
+    return physics.fold_donor_speeds(start, SPEED_CAP, donor_speed_step, UNITS_PER_TEXEL)
+
+
+def speed_table() -> list[int]:
+    """Normal then reacting sequence, each ended by 0: a speed's successor is the next word."""
+
+    normal, reacting = host_speeds(SPEED_NORMAL), host_speeds(SPEED_REACTING)
+    if set(normal) & set(reacting) != {normal[-1]} or normal[-1] != reacting[-1]:
+        raise AssertionError("speed sequences must share only the cap")
+    return normal + [0] + reacting + [0]
+
+
+def flight_frame_cycle(shapes: tuple[int, int]) -> list[int]:
+    return physics.resample_frame_cycle(shapes, ROCKET_ANIRATE)
+
+
+# Stock Ice host: the straight branch creates the flight child 0x8004B82C here, after
+# 0x8004B584 has slept 2 ticks past the projectile's creation.
+CHILD_SITE = {0x8004B0D8: 0x3C048005, 0x8004B0DC: 0x2484B82C}  # a0 = 0x8004B82C
+CHILD_START_TICKS = 2  # host ticks from creation to the child's first flight tick
+STOCK_WORDS.update(CHILD_SITE)
+FLIGHT_TAIL = 0x8004B9C4  # stock child tail: 0x8004CC50(actor, selector) and cleanup
+FLIGHT_STRIKE_SELECTOR = 0x13  # stock straight-Ice selector (strike step pending)
+F_PROJECTILE_SETUP = 0x8004CC14  # (actor, magnitude, rate): facing-signed +0x14, anim rate
+FILE87_BASE_PTR = 0x80291C10  # resident fighter file 0x87 base
+
+
+def child_patches(child_va: int) -> dict[int, int]:
+    return {
+        0x8004B0D8: (0x0F << 26) | (REG["a0"] << 16) | hi(child_va),
+        0x8004B0DC: (0x09 << 26) | (REG["a0"] << 21) | (REG["a0"] << 16) | (lo(child_va) & 0xFFFF),
+    }
+
+
+def _emit_next_speed(a: Assembler, table: str, label: str = "zap_next") -> None:
+    """Leaf subroutine: ``t2`` = successor of ``t2`` in the speed table (unchanged if
+    none or zero). Uses t3-t5."""
+
+    a.label(label)
+    a.beqz("t2", label + "_done")  # never match a separator
+    a.la("t3", table)
+    a.label(label + "_scan")
+    a.lw("t4", 0, "t3")
+    a.bne("t4", "t2", label + "_next")
+    a.lw("t4", 4, "t3")
+    a.beqz("t4", label + "_done")
+    a.move("t2", "t4")
+    a.beq("zero", "zero", label + "_done")
+    a.label(label + "_next")
+    a.li("t5", -1)  # end marker
+    a.beq("t4", "t5", label + "_done")
+    a.addiu("t3", "t3", 4)
+    a.beq("zero", "zero", label + "_scan")
+    a.label(label + "_done")
+    a.jr_ra()
+    a.nop()
+
+
+def emit_speed_table(a: Assembler, label: str) -> None:
+    a.label(label)
+    for word in speed_table():
+        a.raw(word)
+    a.raw(0xFFFFFFFF)
+
+
+def emit_initial_speed(a: Assembler, actor: str = "s0") -> None:
+    """At creation (parent context): actor +0x14 = facing-signed donor start speed."""
+
+    a.lui("t7", hi(host.CURRENT_CTRL))
+    a.lw("t7", lo(host.CURRENT_CTRL), "t7")
+    host.opponent_reacting(a, "t7", "t8", "zap_v0_react")
+    a.li("t0", host_speeds(SPEED_NORMAL)[0])
+    a.beqz("t8", "zap_v0_sel")
+    a.li("t0", host_speeds(SPEED_REACTING)[0])
+    a.label("zap_v0_sel")
+    a.lhu("t1", 0x8C, actor)
+    a.andi("t1", "t1", 0x10)  # facing flag, as 0x8004CC14
+    a.beqz("t1", "zap_v0_set")
+    a.subu("t0", "zero", "t0")
+    a.label("zap_v0_set")
+    a.sw("t0", host.ACTOR_XVEL, actor)
+
+
+def emit_flight(a: Assembler, loop_offset: int, table: str = "zap_speeds") -> None:
+    """Flight child (process entry, replaces 0x8004B82C) and its per-tick callback.
+
+    The child points the animation at the resampled ROCKETD1/ROCKETD2 loop (phase
+    CHILD_START_TICKS), advances the speed CHILD_START_TICKS steps past the creation
+    speed, installs the callback and enters the stock flight loop (cached, via jr).
+    The callback advances the speed one host tick (two donor ticks) per iteration.
+    """
+
+    a.label("zap_child")
+    a.addiu("sp", "sp", -0x18)
+    a.sw("ra", 0x10, "sp")
+    a.lui("t0", hi(host.CURRENT_CTRL))
+    a.lw("t0", lo(host.CURRENT_CTRL), "t0")
+    a.li("t1", 0x100)
+    a.sw("t1", 0x69C, "t0")  # as the stock child
+    a.lui("t1", hi(FILE87_BASE_PTR))
+    a.lw("t1", lo(FILE87_BASE_PTR), "t1")
+    a.li("t2", loop_offset)
+    a.addu("t1", "t1", "t2")
+    a.sw("t1", host.CTRL_SCRIPT_CURSOR, "t0")
+    a.lw("t1", host.CTRL_ACTOR, "t0")
+    a.lw("t2", host.ACTOR_XVEL, "t1")
+    a.sra("t6", "t2", 31)
+    a.xor("t2", "t2", "t6")
+    a.subu("t2", "t2", "t6")
+    for _ in range(CHILD_START_TICKS):
+        a.jal_label("zap_next")
+    a.move("a0", "t1")
+    a.move("a1", "t2")
+    a.li("a2", 1)  # one frame per host tick: the loop is pre-resampled
+    a.jal(F_PROJECTILE_SETUP)
+    a.lui("t0", hi(host.CURRENT_CTRL))
+    a.lw("t0", lo(host.CURRENT_CTRL), "t0")
+    a.la("t1", "zap_callback")
+    a.sw("t1", 0x70C, "t0")
+    a.lw("a0", host.CTRL_ACTOR, "t0")
+    a.li("a1", FLIGHT_STRIKE_SELECTOR)
+    a.lui("t9", hi(FLIGHT_TAIL))
+    a.addiu("t9", "t9", lo(FLIGHT_TAIL))
+    a.jr("t9")
+    a.nop()
+
+    a.label("zap_callback")
+    a.lui("t0", hi(host.CURRENT_CTRL))
+    a.lw("t0", lo(host.CURRENT_CTRL), "t0")
+    a.lw("t1", host.CTRL_ACTOR, "t0")
+    a.lw("t2", host.ACTOR_XVEL, "t1")
+    a.sra("t6", "t2", 31)
+    a.xor("t2", "t2", "t6")
+    a.subu("t2", "t2", "t6")
+    a.move("t7", "ra")
+    a.jal_label("zap_next")
+    a.xor("t2", "t2", "t6")
+    a.subu("t2", "t2", "t6")
+    a.sw("t2", host.ACTOR_XVEL, "t1")
+    a.jr("t7")
+    a.nop()
+
+    _emit_next_speed(a, table)

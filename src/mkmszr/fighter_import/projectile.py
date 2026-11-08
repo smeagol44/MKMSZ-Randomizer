@@ -30,6 +30,7 @@ parent actor; ``+0x6E4`` already points past the token at the palette call.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from .mips import Assembler
@@ -138,7 +139,12 @@ def emit_palette_hook(a: Assembler, label: str, cursor_offset: int, palette_offs
 
 
 def emit_preupload_hook(
-    a: Assembler, label: str, shape_offset: int, art: ProjectileArt, behind_owner: bool = False
+    a: Assembler,
+    label: str,
+    shape_offset: int,
+    art: ProjectileArt,
+    behind_owner: bool = False,
+    on_create: Callable[[Assembler], None] | None = None,
 ) -> None:
     """Token insert call: for the imported projectile only, fill its texture slot first.
 
@@ -149,6 +155,9 @@ def emit_preupload_hook(
     0). The sprite layer is ``+0x5C * 32 + +0xEC`` and higher layers draw first
     (0x80018AF0, ordering table 0x802D0E40 drawn 0x3FF..0); the stock idiom for an
     attached object behind its owner is ``+0xEC = owner +0xEC + 1`` (0x80030D18).
+
+    ``on_create`` emits recipe code for the imported projectile only (``s0`` = new
+    actor, ``s2`` = parent actor; may use t0-t9), e.g. its creation speed.
     """
 
     a.label(label)
@@ -161,6 +170,8 @@ def emit_preupload_hook(
         a.lhu("t0", ACTOR_SUBLAYER, "s2")  # parent actor
         a.addiu("t0", "t0", 1)
         a.sh("t0", ACTOR_SUBLAYER, "s0")
+    if on_create is not None:
+        on_create(a)
     a.move("a0", "s0")
     a.lw("a1", 0x74, "s0")
     a.jal(F_FRAME_SETUP)  # render record, slot dimensions, deferred-upload flag

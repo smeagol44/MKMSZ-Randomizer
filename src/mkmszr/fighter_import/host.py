@@ -52,6 +52,8 @@ TRANSFER_LIMIT_ROM = 0x4B654  # 'sltiu v0, a2, 3' bound check inside F_TRANSFER
 UNITS_PER_TEXEL = 2
 
 # Controller (process) fields
+CTRL_OPPONENT = 0x640  # opponent controller (copied to projectile children by 0x8004CBC4)
+CTRL_STATE_FLAGS = 0x6BE  # bit 0x04: in a hit reaction (set by 0x80032CD4, cleared by 0x80032E80)
 CTRL_ACTOR = 0x6E0
 CTRL_SCRIPT_CURSOR = 0x6E4
 CTRL_ACTION_ID = 0x6AA
@@ -294,3 +296,17 @@ def emit_transfer_thunk(a: Assembler, label: str, selector: int) -> None:
     a.addiu("t9", "t9", lo(F_TRANSFER))
     a.jr("t9")
     a.addiu("a0", "zero", selector)
+
+
+def opponent_reacting(a: Assembler, ctrl: str, out: str, label: str) -> None:
+    """``out`` = 1 if ``ctrl``'s opponent is in a hit reaction, else 0 (MKT
+    ``q_his_react_flag_set``; stock equivalent 0x8004D18C, which has no null check)."""
+
+    a.li(out, 0)
+    a.lw("t9", CTRL_OPPONENT, ctrl)
+    a.beqz("t9", label)
+    a.lhu("t9", CTRL_STATE_FLAGS, "t9")
+    a.andi("t9", "t9", 0x04)
+    a.beqz("t9", label)
+    a.li(out, 1)
+    a.label(label)
