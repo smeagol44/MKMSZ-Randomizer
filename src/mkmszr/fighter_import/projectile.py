@@ -8,14 +8,20 @@ narrowly scoped hooks, Runtime-confirmed in Sektor missile proofs v87/v89:
 
 * palette: when the token is the imported projectile's, bind the donor palette record
   instead of the Ice palette;
-* pre-publication texture: load the projectile's raw image into its finalized texture
-  slot (``0x8001BF70``) and refresh the frame (``0x8001BDA0``) before publication, so
-  the first visible frame is not the slot's previous contents (v88 failure).
-  ``0x8001BF70`` also *allocates*: it hands the slot the texture-storage bump pointer
-  (``0x801AE478``) and advances it, never releasing. Called per shot (v21) that leaks
-  storage until other textures are overwritten (inventory glyph corruption). The hook
-  therefore points the bump pointer at a fixed, imported-fighter-owned backing buffer
-  for the call and restores it afterwards.
+* pre-publication texture: before publication, refresh the frame (``0x8001BDA0``) and
+  copy the projectile's raw pixels into its texture slot's *existing* storage
+  (``0x8001D6EC`` mode 1 + ``0x8001D7F0`` drain), so the first visible frame is not the
+  slot's previous contents (v88 failure). This is the stock deferred upload of the
+  render pass (``0x800185B8``: ``+0xFA`` -> ``0x8000322C`` -> ``0x8001D6EC``) done early;
+  the slot's storage, size and format stay the stock ones (v88 rendered the rocket
+  correctly through them after the first frame).
+
+  Do not use ``0x8001BF70`` here. It allocates: the slot gets the texture-storage bump
+  pointer (``0x801AE478``, advanced with no bounds check, reset only by stage setup
+  ``0x8001CA38``). Per shot that leaks storage (v21, inventory glyph corruption); a
+  fixed small buffer instead (v22) is overrun when another frame streams into the same
+  slot (Sub-Zero's up/down Ice still streams the 56x113 stance fallback into slot
+  ``0x24``: a ~6 KB copy into a 368-byte buffer, a hang).
 
 Both hooks fall through to the stock calls for any other token-``0x0B`` actor.
 Hook context (stock handler): ``a3`` current controller, ``s0`` new actor, ``s2``
@@ -26,16 +32,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .host import hi, lo
 from .mips import Assembler
 
 F_PALETTE_BIND = 0x8001C528
-F_TEXTURE_SLOT_LOAD = 0x8001BF70  # synchronous: installs slot metadata, queues and drains
+F_TEXTURE_SLOT_LOAD = 0x8001BF70  # allocating slot initializer: see the module notes
+F_UPLOAD_QUEUE = 0x8001D6EC  # (mode, src, slot, width, height@sp+0x10); mode 1 = copy to slot
+F_UPLOAD_DRAIN = 0x8001D7F0  # (1): run queued uploads now
 F_FRAME_SETUP = 0x8001BDA0
 F_ACTOR_INSERT = 0x80024650
-# Texture-storage bump pointer: F_TEXTURE_SLOT_LOAD hands it to the slot and advances it
-# (no bounds check, never released until the stage resets it to 0x8034B000 via 0x8001CA38).
-TEXTURE_BUMP = 0x801AE478
+TEXTURE_BUMP = 0x801AE478  # texture-storage bump pointer advanced by F_TEXTURE_SLOT_LOAD
 ACTOR_LIST_HEAD = 0x80111C98
 TOKEN_0B_RETURN = 0x80030AD0  # stock return point after the insert call
 
@@ -131,43 +136,35 @@ def emit_palette_hook(a: Assembler, label: str, cursor_offset: int, palette_offs
     a.j(F_PALETTE_BIND)
 
 
-def emit_preupload_hook(
-    a: Assembler, label: str, shape_offset: int, art: ProjectileArt, backing: int
-) -> None:
-    """Token insert call: for the imported projectile only, load its texture slot first.
+def emit_preupload_hook(a: Assembler, label: str, shape_offset: int, art: ProjectileArt) -> None:
+    """Token insert call: for the imported projectile only, fill its texture slot first.
 
-    ``backing`` is a KSEG0 buffer of at least ``stride * height`` bytes (8-aligned) owned
-    by the imported fighter; the shared texture-storage pointer is left unchanged.
+    No allocation: the pixels go into the slot's existing (stock) storage, exactly as
+    the render pass's deferred upload would one frame later.
     """
 
-    if backing & 7:
-        raise ValueError("texture backing must be 8-byte aligned")
     a.label(label)
     a.lw("t0", 0x98, "s0")
     a.li("t1", shape_offset)
     a.addu("t0", "t0", "t1")
     a.lw("t2", 0x74, "s0")
     a.bne("t0", "t2", label + "_publish")
-    a.lw("t1", 0x7C, "s0")  # render record
-    a.lw("a0", 0, "t1")  # raw/type-0 wrapper pointer
-    a.addiu("a0", "a0", 4)
-    a.li("a1", art.stride)
-    a.li("a2", art.height)
-    a.lhu("a3", 0x9C, "s0")  # finalized texture slot
-    a.addiu("sp", "sp", -0x18)
-    a.lui("t9", hi(TEXTURE_BUMP))
-    a.lw("t8", lo(TEXTURE_BUMP), "t9")
-    a.sw("t8", 0x10, "sp")  # saved shared bump pointer
-    a.li("t8", backing)
-    a.sw("t8", lo(TEXTURE_BUMP), "t9")
-    a.jal(F_TEXTURE_SLOT_LOAD)
-    a.lw("t8", 0x10, "sp")
-    a.lui("t9", hi(TEXTURE_BUMP))
-    a.sw("t8", lo(TEXTURE_BUMP), "t9")
-    a.addiu("sp", "sp", 0x18)
     a.move("a0", "s0")
     a.lw("a1", 0x74, "s0")
-    a.jal(F_FRAME_SETUP)
+    a.jal(F_FRAME_SETUP)  # render record, slot dimensions, deferred-upload flag
+    a.addiu("sp", "sp", -0x18)
+    a.lw("t1", 0x7C, "s0")  # render record
+    a.lw("a1", 0, "t1")  # raw/type-0 wrapper pointer
+    a.addiu("a1", "a1", 4)  # pixels (0x8000322C type 0)
+    a.li("a0", 1)
+    a.lh("a2", 0x9C, "s0")  # texture slot
+    a.li("a3", (art.stride + 3) & ~3)
+    a.li("t1", art.height)
+    a.sw("t1", 0x10, "sp")
+    a.jal(F_UPLOAD_QUEUE)
+    a.li("a0", 1)
+    a.jal(F_UPLOAD_DRAIN)
+    a.addiu("sp", "sp", 0x18)
     a.label(label + "_publish")
     a.move("a0", "s0")
     a.lui("a1", (ACTOR_LIST_HEAD + 0x8000) >> 16)
