@@ -445,36 +445,18 @@ DONOR_STRIKE = bytes.fromhex("0010fff10023001f3b04140200010000")
 # 0x3B (pulls the victim in), 0x1B (12x5-tick stagger with its own sound/process).
 # Block 0x05 (0x800539CC): generic block stun, as the stock Ice projectile record.
 HOST_REACTION, HOST_BLOCK = 0x24, 0x05
-# v33: MKT-strength stumble (user check in MKT: "much stronger" than reaction 0x24). The
-# rocket gets its own reaction: a lifted copy of 0x24 with MKT's push and frame timing,
-# installed at reaction index 0x23, whose stock entry 0x8004E0C0 is an endless one-tick
-# sleep (a victim given it would hang), and which no strike table uses.
-#   push:  donor away_x_vel 0x33333 px per 60 Hz tick -> 2 units/px * 2 ticks / 3 = 0x44444
-#   frames: donor anirate 4 ticks (60 Hz) -> 2 host ticks per stumble frame
+# v34: the rocket's grounded reaction is the Fire spiked-rod trap stumble (user: it matches
+# MKT's rocket; MKT N64 r_rocket 0x80057B08 -> zap_stumble 0x80057BEC is shake + strong
+# stumble back, airborne -> generic airborne hit). Stock 0x80051280, installed by the Fire
+# overlay (0x802EF2C4/0x802EF7B8 -> 0x8002E078): hit voice, reaction preamble 0x80053028
+# (airborne handler 0x800533C8), 8-tick hit pause, push +/-0x56666 backwards, stumble phase
+# (slot 0x20) at 6 ticks/frame, exit. It is reached as reaction index 0x23, whose stock
+# entry 0x8004E0C0 is an endless one-tick sleep (a victim given it would hang) and which no
+# strike table uses. (v33's lifted 0x24 copy with MKT-converted push is superseded.)
 ROCKET_REACTION = 0x23
+ROCKET_REACTION_ROUTINE = 0x80051280
 REACTION_TABLE_ROM = 0xA1D90  # 0x800A1190
 STOCK_DUMMY_REACTION = 0x8004E0C0
-STUMBLE_SRC, STUMBLE_END = 0x80058884, 0x800588F4  # reaction 0x24
-STUMBLE_SITES = {
-    0x800588C0: 0x3C060002,  # lui a2, 2       } push 0x28000 (0x80032734 arg)
-    0x800588C8: 0x34C68000,  # ori a2, a2, 0x8000
-    0x800588CC: 0x24040004,  # addiu a0, zero, 4: stumble phase at 4 ticks/frame
-}
-STOCK_WORDS.update(STUMBLE_SITES)
-DONOR_STUMBLE_PUSH = 0x33333
-DONOR_STUMBLE_FRAME_TICKS = 4
-
-
-def stumble_patches() -> dict[int, int]:
-    push = DONOR_STUMBLE_PUSH * 2 * UNITS_PER_TEXEL // physics.HOST_INTEGRATION_FACTOR
-    if push != 0x44444:
-        raise AssertionError(hex(push))
-    return {
-        0x800588C0: 0x3C060000 | (push >> 16),
-        0x800588C8: 0x34C60000 | (push & 0xFFFF),
-        0x800588CC: 0x24040000 | (DONOR_STUMBLE_FRAME_TICKS // 2),
-    }
-
 
 # Player (type 4) strike-pointer table 0x800AF484: selector 0x13 is the straight Ice
 # projectile (0x8004CE6C reads table[type][selector]); its record 0x800AF634 is also used
