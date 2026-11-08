@@ -115,6 +115,9 @@ class Machine:
             elif op in (0x04, 0x05):
                 if (r[rs] == r[rt]) == (op == 0x04):
                     jump = ("b", pc + 4 + 4 * simm)
+            elif op == 0x06:  # blez
+                if _s32(r[rs]) <= 0:
+                    jump = ("b", pc + 4 + 4 * simm)
             elif op == 0x01 and rt in (0, 1):  # bltz / bgez
                 if (_s32(r[rs]) < 0) == (rt == 0):
                     jump = ("b", pc + 4 + 4 * simm)

@@ -13,10 +13,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from .. import host, physics
+from .. import effects, host, physics
 from ..host import F_OFFSET, UNITS_PER_TEXEL, hi, lo
 from ..lifter import LiftError, LiftResult
 from ..mips import REG, Assembler
+from ..projectile import ACTOR_SUBLAYER
 
 # Stock MKMSZ Ice host (USA Rev. 0)
 ICE_CALLBACK_SRC, ICE_CALLBACK_END = 0x80049C34, 0x80049C84  # LP record action
@@ -242,14 +243,23 @@ def emit_initial_speed(a: Assembler, actor: str = "s0") -> None:
 
 
 def emit_flight(
-    a: Assembler, loop_offset: int, table: str = "zap_speeds", hit_child: int | None = None
+    a: Assembler,
+    loop_offset: int,
+    table: str = "zap_speeds",
+    hit_child: int | None = None,
+    smoke: str | None = None,
+    spawn: str = "fx_spawn",
 ) -> None:
     """Flight child (process entry, replaces 0x8004B82C) and its per-tick callback.
 
     The child points the animation at the resampled ROCKETD1/ROCKETD2 loop (phase
     CHILD_START_TICKS), advances the speed CHILD_START_TICKS steps past the creation
     speed, installs the callback and enters the stock flight loop (cached, via jr).
-    The callback advances the speed one host tick (two donor ticks) per iteration.
+    The callback advances the speed one host tick (two donor ticks) per iteration and,
+    with ``smoke`` (an :func:`..effects.emit_descriptor` label), starts one smoke puff
+    per host tick (donor: every other tick) SMOKE_OFFSET behind the rocket, one
+    sub-layer behind it. The stock loop calls it through ``jalr`` (0x8004CD14) with no
+    live temporaries.
     """
 
     a.label("zap_child")
@@ -321,6 +331,22 @@ def emit_flight(
     a.xor("t2", "t2", "t6")
     a.subu("t2", "t2", "t6")
     a.sw("t2", host.ACTOR_XVEL, "t1")
+    if smoke is not None:
+        a.addiu("sp", "sp", -0x20)
+        a.sw("t7", 0x1C, "sp")
+        a.move("a0", "t1")
+        a.la("a1", smoke)
+        a.lhu("t3", 0x8C, "t1")
+        a.andi("t3", "t3", 0x10)  # facing: the rocket flies along local -x
+        a.li("a2", SMOKE_OFFSET * UNITS_PER_TEXEL)
+        a.beqz("t3", "zap_smoke_dx")
+        a.li("a2", -SMOKE_OFFSET * UNITS_PER_TEXEL)
+        a.label("zap_smoke_dx")
+        a.lhu("a3", ACTOR_SUBLAYER, "t1")
+        a.addiu("a3", "a3", 1)
+        a.jal_label(spawn)
+        a.lw("t7", 0x1C, "sp")
+        a.addiu("sp", "sp", 0x20)
     a.jr("t7")
     a.nop()
 
@@ -364,8 +390,14 @@ STRAIGHT_SRC, STRAIGHT_END = 0x8004B584, 0x8004B71C
 HIT_CHILD_REF = {0x8004B62C: 0x3C048005, 0x8004B630: 0x2484BB64}  # a0 = 0x8004BB64
 HIT_CHILD_SRC, HIT_CHILD_END = 0x8004BB64, 0x8004BD28
 HIT_SOUND_CALL = {0x8004BB94: 0x0C019306}  # jal 0x80064C18: Ice hit sound (descriptor 1)
+# The hit child's Ice visuals: a helper pair (0x80060A3C, the blue "ghosts") and the blue
+# screen tint (0x8004AB48), each a 0x8002830C process. Their context stores stay (the
+# tint call's delay slot restores the controller's +0x6E4; without the call the
+# following +0x6F4..+0x6FC stores land in the exiting hit process).
+HIT_ICE_VISUALS = {0x8004BCB4: 0x0C00A0C3, 0x8004BCD0: 0x0C00A0C3}  # jal 0x8002830C
 STOCK_WORDS.update(HIT_CHILD_REF)
 STOCK_WORDS.update(HIT_SOUND_CALL)
+STOCK_WORDS.update(HIT_ICE_VISUALS)
 
 
 def root_sound_patches(chest_wrapper_va: int) -> dict[int, int]:
@@ -389,16 +421,30 @@ def straight_patches(hit_child_va: int) -> dict[int, int]:
     }
 
 
-def hit_child_patches(boom_va: int) -> dict[int, int]:
-    return {0x8004BB94: _jal(boom_va)}
+def hit_child_patches(boom_va: int, explosion: bool = False) -> dict[int, int]:
+    """Boom instead of the Ice hit sound; with ``explosion`` (spawned by the boom
+    wrapper) also no Ice helper/tint processes at the hit."""
+
+    patches = {0x8004BB94: _jal(boom_va)}
+    if explosion:
+        patches.update(dict.fromkeys(HIT_ICE_VISUALS, 0))
+    return patches
 
 
 def emit_sound_wrappers(
-    a: Assembler, chest_event: int, boom_event: int, player: str = "play"
+    a: Assembler,
+    chest_event: int,
+    boom_event: int,
+    player: str = "play",
+    explosion: str | None = None,
+    spawn: str = "fx_spawn",
 ) -> None:
     """``zap_chest_open``: play the chest sound, then the stock open phase
     (0x80030E98, same a0/a1, returning to the root). ``zap_boom``: replaces the hit
-    child's Ice hit sound call (its result is unused)."""
+    child's Ice hit sound call (its result is unused); with ``explosion`` (an effect
+    descriptor label) it also starts the explosion at the rocket, in front (MKT
+    rocket_explode_fx: boom + dave_explode). It runs before the hit child moves the
+    projectile (0x8004BC10), so the position is the contact position."""
 
     a.label("zap_chest_open")
     a.addiu("sp", "sp", -0x20)
@@ -419,6 +465,14 @@ def emit_sound_wrappers(
     a.addiu("sp", "sp", -0x18)
     a.sw("ra", 0x14, "sp")
     host.play_sound(a, boom_event, player)
+    if explosion is not None:
+        a.lui("t0", hi(host.CURRENT_CTRL))
+        a.lw("t0", lo(host.CURRENT_CTRL), "t0")
+        a.lw("a0", host.CTRL_ACTOR, "t0")
+        a.la("a1", explosion)
+        a.move("a2", "zero")
+        a.li("a3", effects.FRONT_SUBLAYER)
+        a.jal_label(spawn)
     a.lw("ra", 0x14, "sp")
     a.jr_ra()
     a.addiu("sp", "sp", 0x18)
@@ -458,6 +512,17 @@ ROCKET_REACTION_ROUTINE = 0x80051280
 REACTION_TABLE_ROM = 0xA1D90  # 0x800A1190
 STOCK_DUMMY_REACTION = 0x8004E0C0
 
+# v35: without the trap's 8-tick hit pause (sleep 8 at 0x80051318): MKT's rocket hit has no
+# delay (user check). A lifted copy with that one call removed is installed instead.
+TRAP_STUMBLE_SRC, TRAP_STUMBLE_END = 0x80051280, 0x800513AC
+TRAP_PAUSE_CALL = {0x80051318: 0x0C00A1E5}  # jal 0x80028794 (delay slot: a0 = 8)
+STOCK_WORDS.update(TRAP_PAUSE_CALL)
+
+
+def trap_stumble_patches() -> dict[int, int]:
+    return {0x80051318: 0}
+
+
 # Player (type 4) strike-pointer table 0x800AF484: selector 0x13 is the straight Ice
 # projectile (0x8004CE6C reads table[type][selector]); its record 0x800AF634 is also used
 # by type 2 selector 0x32, so the pointer is repointed instead of rewriting the record.
@@ -490,3 +555,41 @@ STOCK_WORDS.update(POINT_BLANK_STRIKE_LOAD)
 
 def point_blank_strike_patch() -> dict[int, int]:
     return {0x8004B5D4: 0x8C440000 | (4 * 0x13)}  # lw a0, 0x4C(v0)
+
+
+# ---- Effects (MKT N64 rocket1_flight_call -> rocket_smoke: create_fx 4 rocket_puff
+# 0x8002E448 every other tick; rocket_explode_fx: create_fx 5 dave_explode 0x8002EA38) ----
+# Puff: image descriptors 0x800CC840.. (codec 16, palette 0x800BC638), animation list
+# 0x800CC7E0 at framew 4, then deleted; stationary; behind the players (z 0); placed by
+# placement entry 3 (5, 0) then x - 0x18: 19 px behind the rocket's anchor.
+# Explosion: animation list 0x800CC7F8 (8 one-part frames, then 0) at mframew 4, then
+# deleted; palette 0x800BC6E4 (32 colours); at the rocket's position, in front (z 0x51).
+# Its codec-14/19 frames decode with Sektor's dictionary (ROM 0x906A90): static scoring
+# over all frames gives no out-of-range index with it (the global dictionary does).
+SMOKE_FRAMES = (0x800CC840, 0x800CC850, 0x800CC85C, 0x800CC868, 0x800CC874)
+SMOKE_PALETTE = 0x800BC638
+SMOKE_OFFSET = -19  # donor px along the rocket's heading
+EXPLOSION_ANIMATION, EXPLOSION_FRAME_COUNT = 0x800CC7F8, 8
+EXPLOSION_PALETTE = 0x800BC6E4
+FX_DONOR_TICKS_PER_FRAME = 4
+FX_HOST_TICKS_PER_FRAME = FX_DONOR_TICKS_PER_FRAME * physics.HOST_HZ // physics.DONOR_HZ
+# Free processes/objects an effect must leave (stock spawners never check either pool).
+SMOKE_RESERVE, EXPLOSION_RESERVE = 16, 4
+
+
+def smoke_art(mkt: bytes, dictionary: bytes) -> effects.EffectArt:
+    frames = tuple(effects.mkt_frame(mkt, d, dictionary) for d in SMOKE_FRAMES)
+    return effects.EffectArt(frames, effects.mkt_palette(mkt, SMOKE_PALETTE))
+
+
+def explosion_art(mkt: bytes, dictionary: bytes) -> effects.EffectArt:
+    frames = []
+    for i in range(EXPLOSION_FRAME_COUNT):
+        frame = effects._mkt_u32(mkt, EXPLOSION_ANIMATION + 4 * i)
+        if effects._mkt_u32(mkt, frame + 4) != 0:
+            raise ValueError("explosion frames are expected to be one-part")
+        frames.append(effects.mkt_frame(mkt, effects._mkt_u32(mkt, frame), dictionary))
+    if effects._mkt_u32(mkt, EXPLOSION_ANIMATION + 4 * EXPLOSION_FRAME_COUNT) != 0:
+        raise ValueError("explosion animation does not end after its frames")
+    palette = effects.mkt_palette(mkt, EXPLOSION_PALETTE)
+    return effects.EffectArt(tuple(frames), palette, compressed=True)

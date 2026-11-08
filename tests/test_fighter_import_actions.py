@@ -517,3 +517,67 @@ def test_robo_zap_point_blank_uses_rocket_record() -> None:
 
     assert robo_zap.point_blank_strike_patch() == {0x8004B5D4: 0x8C44004C}
     assert robo_zap.STOCK_WORDS[0x8004B5D4] == 0x8C440060
+
+
+def test_robo_zap_trap_stumble_without_pause() -> None:
+    from mkmszr.fighter_import.actions import robo_zap
+
+    assert robo_zap.trap_stumble_patches() == {0x80051318: 0}
+    assert robo_zap.STOCK_WORDS[0x80051318] == 0x0C00A1E5  # jal 0x80028794 (sleep)
+
+
+def test_robo_zap_smoke_and_explosion_spawns() -> None:
+    from mips_eval import Machine
+
+    from mkmszr.fighter_import import effects, host
+    from mkmszr.fighter_import.actions import robo_zap
+
+    base = 0xA01AF000
+    a = Assembler(base)
+    host.emit_sound_player(a)
+    robo_zap.emit_sound_wrappers(a, chest_event=173, boom_event=177, explosion="fx_expl")
+    robo_zap.emit_flight(a, 0x46000, smoke="fx_smoke")
+    robo_zap.emit_speed_table(a, "zap_speeds")
+    a.label("fx_spawn")
+    a.jr_ra()
+    a.nop()
+    a.label("fx_smoke")
+    a.label("fx_expl")
+    m = Machine(a.link(), base)
+    ctrl, actor = 0x80300000, 0x80310000
+    m.store(host.CURRENT_CTRL, ctrl)
+    m.store(ctrl + host.CTRL_ACTOR, actor)
+    m.store(actor + 0xEC, 0x00040000)  # sub-layer 4
+    speed = robo_zap.host_speeds(robo_zap.SPEED_NORMAL)[0]
+
+    def args_at_spawn(entry: str, facing: int, xvel: int) -> list[int]:
+        m.store(actor + 0x8C, facing << 16)
+        m.store(actor + host.ACTOR_XVEL, xvel & 0xFFFFFFFF)
+        m.regs[29], m.regs[31] = 0x80200000, 0x8004CD18
+        m.store(a.labels["fx_spawn"], 0x0000000D)  # 'break' stops the evaluator at the call
+        try:
+            stop = m.run(a.labels[entry])
+            while stop.kind == "call":
+                stop = m.run(stop.resume)
+        except NotImplementedError:
+            return m.regs[4:8]
+        raise AssertionError("fx_spawn not reached")
+
+    assert args_at_spawn("zap_callback", 0, speed) == [actor, a.labels["fx_smoke"], 0xFFFFFFDA, 5]
+    assert args_at_spawn("zap_callback", 0x10, -speed)[2] == 38
+    assert args_at_spawn("zap_boom", 0, 0) == [
+        actor,
+        a.labels["fx_expl"],
+        0,
+        effects.FRONT_SUBLAYER,
+    ]
+    m.store(a.labels["fx_spawn"], 0x03E00008)  # jr ra: the callback returns to the loop
+    m.store(actor + host.ACTOR_XVEL, speed)
+    m.regs[29], m.regs[31] = 0x80200000, 0x8004CD18
+    stop = m.run(a.labels["zap_callback"])
+    assert stop.target == 0x8004CD18 and m.regs[29] == 0x80200000
+
+    patches = robo_zap.hit_child_patches(0xA01AF200, explosion=True)
+    assert patches == {0x8004BB94: 0x0C06BC80, 0x8004BCB4: 0, 0x8004BCD0: 0}
+    for va in patches:
+        assert va in robo_zap.STOCK_WORDS
