@@ -343,7 +343,7 @@ class EffectArt:
 class EffectLayout:
     data: bytes  # placed at file offset ``offset``
     offset: int
-    palette: int  # file offset of the palette record
+    palette: int  # file offset of the palette colours (record + 4, past the count word)
     script: int  # file offset of the frame script (shape offsets, then 0)
 
     @property
@@ -361,12 +361,17 @@ def layout(art: EffectArt, offset: int) -> EffectLayout:
     by zero. Proof v35 put descriptors straight after type-4 images, so frames whose
     image ended in non-zero token bytes became wild slot indices (frame 8:
     ``0x86000000`` -> a store into TLB-mapped space, the post-hit hang).
+
+    The palette bind ``0x8001C528`` -> ``0x8001C6D0`` copies colours from its source
+    pointer as is, so the bind source is the record's colours (record + 4), as for the
+    rocket (``ROCKET_PAL_SRC``). Binding the record start (proofs v39-v42) read the count
+    word as colours 0-1 and shifted every effect colour by two entries.
     """
 
     if offset & 3:
         raise ValueError("effect data must start 4-aligned")
     record = art.palette_record()
-    palette = offset
+    palette = offset + 4
     shapes_at = offset + len(record) + (-len(record) & 3)
     data, shapes = layout_shapes(art.frames, shapes_at, art.compressed)
     script = shapes_at + len(data)

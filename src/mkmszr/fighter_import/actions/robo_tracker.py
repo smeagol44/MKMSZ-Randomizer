@@ -25,9 +25,18 @@ stock projectile loop ``0x8004CC50`` with a per-tick callback that runs two dono
 so the stock collision ends it on contact. A follower effect process carries the crosshair
 and removes itself when the rocket's heartbeat stops.
 
-Recorded differences from MKT: contact uses the stock per-tick collision rather than the
-6-px proximity test (so a contact during the first 24 donor ticks also hits); the stock
-loop deletes an off-screen rocket (MKT keeps it); a timeout explodes without a strike.
+Proximity (proof v43): each donor hunt step measures from the rocket's position at that
+donor tick (actor position plus the earlier steps of the host tick) and applies the donor
+6-px test. Within it, the rocket is placed on the aim point and stops, so the stock strike
+right after the callback resolves the hit there (MKT checks the strike only at the
+explosion). If that strike does not connect (e.g. an invulnerable target), the next call
+explodes the rocket without a strike and ends it through the loop's own exit
+``0x8004CDF8``. Proof v42 had no proximity test: a rocket whose box missed the target
+circled through it.
+
+Recorded differences from MKT: the stock per-tick collision still runs during the whole
+flight (so a contact during the first 24 donor ticks also hits); the stock loop deletes an
+off-screen rocket (MKT keeps it); a timeout explodes without a strike.
 """
 
 from __future__ import annotations
@@ -47,6 +56,7 @@ CLIMB = 0x8800
 AIM_Y = 0x36  # px below the opponent's reference
 STEER = 0x33333
 HUNT_SPEED = 5
+DETONATE_PX = 6  # rocket_hunt: explode when the rough distance to the aim point is below
 TIMEOUT_TICKS = 0x80  # donor ticks (= the stock loop's 0x40 host iterations)
 ROCKET_ANIMATION = 0x1300  # robot heap: eight two-frame parts, 0x14 bytes apart
 DIRECTION_PARTS = 8  # 12, 1, 2, 3, 6, 5, 4, 3 o'clock
@@ -62,9 +72,11 @@ COMMAND_WINDOW = 0x3C  # stock three-input HP window
 HP_MASK = 0x10
 LP_ICE_CONDITION = 0x8004A304  # tier >= 1 and Ice cost, as the straight rocket
 F_FLIP = 0x8003188C
+F_FLIGHT_END = 0x8004CDF8  # (actor): the stock loop's exit (unlink, process exit); no return
 # Rocket process controller fields (free during the flight: only 0x8002830C copies them).
 VX, VY, PHASE, DIR, TICKS = 0x6F4, 0x6F8, 0x6FC, 0x700, 0x704
 LOOP_CALLS = 0x41  # the stock loop calls the callback 0x41 times, then deletes the rocket
+DETONATE = 3  # PHASE high half after the proximity test fired
 
 
 def rough(x: int, y: int) -> int:
@@ -93,6 +105,12 @@ def hunt(vx: int, vy: int, dx: int, dy: int) -> tuple[int, int]:
     vx, vy = _s32(vx + ux - (vx >> 4)), _s32(vy + uy - (vy >> 4))
     n = max(rough(vx, vy) >> 16, 1)
     return _s32(_div(vx, n) * HUNT_SPEED), _s32(_div(vy, n) * HUNT_SPEED)
+
+
+def near(dx: int, dy: int) -> bool:
+    """``rocket_hunt``'s explosion test, ``(dx, dy)`` px to the aim point."""
+
+    return rough(dx, dy) < DETONATE_PX
 
 
 def direction(vx: int, vy: int) -> int:
@@ -348,9 +366,15 @@ def emit_child(a: Assembler, hit_child: int, target_desc: str, spawn: str = "trk
 
 def emit_hunt(a: Assembler) -> None:
     """``trk_hunt``: one donor hunt step on the state at ``s0`` (rocket controller),
-    rocket actor ``s1``. Leaf; uses t0-t9."""
+    rocket actor ``s1``; ``s2``/``s3`` hold this host tick's displacement sums including
+    the current step's velocity, so ``s2 - VX`` is how far the earlier steps moved.
+
+    Returns ``v0 = 1`` (``v1`` = opponent actor) when the rocket is within the donor
+    explosion distance of the aim point, without steering; otherwise ``v0 = 0``.
+    Leaf; uses t0-t9."""
 
     a.label("trk_hunt")
+    a.move("v0", "zero")
     a.lw("t0", host.CTRL_OPPONENT, "s0")
     a.beqz("t0", "trk_hunt_done")
     a.lw("t0", host.CTRL_ACTOR, "t0")
@@ -359,11 +383,26 @@ def emit_hunt(a: Assembler) -> None:
     a.lw("t2", host.ACTOR_X, "s1")
     a.subu("t1", "t1", "t2")
     a.sra("t1", "t1", 9)  # 24.8 units -> px (2 units per px)
+    a.lw("t3", VX, "s0")
+    a.subu("t3", "s2", "t3")
+    a.sra("t3", "t3", 16)  # px the earlier steps of this tick moved
+    a.subu("t1", "t1", "t3")
     a.lw("t2", host.ACTOR_Y, "t0")
     a.lw("t3", host.ACTOR_Y, "s1")
     a.subu("t2", "t2", "t3")
     a.sra("t2", "t2", 9)
+    a.lw("t3", VY, "s0")
+    a.subu("t3", "s3", "t3")
+    a.sra("t3", "t3", 16)
+    a.subu("t2", "t2", "t3")
     a.addiu("t2", "t2", AIM_Y)
+    _emit_rough(a, "t4", "t1", "t2", "t5", "t6", "trk_r0")
+    a.slti("t4", "t4", DETONATE_PX)
+    a.beqz("t4", "trk_hunt_steer")
+    a.move("v1", "t0")
+    a.jr_ra()
+    a.li("v0", 1)
+    a.label("trk_hunt_steer")
     a.li("t3", STEER)
     a.mult("t1", "t3")
     a.mflo("t1")
@@ -433,6 +472,15 @@ def emit_direction(a: Assembler) -> None:
     a.nop()
 
 
+def _emit_explode(a: Assembler, explosion: str, boom_event: int, spawn: str, player: str) -> None:
+    host.play_sound(a, boom_event, player)
+    a.move("a0", "s1")
+    a.la("a1", explosion)
+    a.move("a2", "zero")
+    a.li("a3", effects.FRONT_SUBLAYER)
+    a.jal_label(spawn)
+
+
 def emit_callback(
     a: Assembler,
     smoke: str,
@@ -458,18 +506,23 @@ def emit_callback(
     a.lw("t1", 0, "t0")
     a.addiu("t1", "t1", 1)
     a.sw("t1", 0, "t0")
+    a.lw("t1", PHASE, "s0")
+    a.srl("t1", "t1", 16)
+    a.li("t2", DETONATE)
+    a.beq("t1", "t2", "trk_detonate")
     a.lw("t1", TICKS, "s0")
     a.addiu("t1", "t1", 1)
     a.sw("t1", TICKS, "s0")
     a.li("t2", LOOP_CALLS)
     a.bne("t1", "t2", "trk_steps")
     # timeout (the loop deletes the rocket next): explode where it is
-    host.play_sound(a, boom_event, player)
+    _emit_explode(a, explosion, boom_event, spawn, player)
+    a.beq("zero", "zero", "trk_steps")
+    # the proximity strike did not connect: explode without a strike and end the rocket
+    a.label("trk_detonate")
+    _emit_explode(a, explosion, boom_event, spawn, player)
     a.move("a0", "s1")
-    a.la("a1", explosion)
-    a.move("a2", "zero")
-    a.li("a3", effects.FRONT_SUBLAYER)
-    a.jal_label(spawn)
+    a.jal(F_FLIGHT_END)  # does not return
     a.label("trk_steps")
     a.move("s2", "zero")
     a.move("s3", "zero")
@@ -484,6 +537,7 @@ def emit_callback(
     a.li("t4", 2)
     a.bne("t3", "t4", "trk_timed")
     a.jal_label("trk_hunt")
+    a.bnez("v0", "trk_near")
     a.beq("zero", "zero", "trk_next")
     a.label("trk_timed")
     a.li("t4", 1)
@@ -562,6 +616,7 @@ def emit_callback(
     a.lhu("a3", 0xEC, "s1")
     a.addiu("a3", "a3", 1)
     a.jal_label(spawn + "_xy")
+    a.label("trk_return")
     a.lw("ra", 0x2C, "sp")
     a.lw("s0", 0x28, "sp")
     a.lw("s1", 0x24, "sp")
@@ -570,3 +625,16 @@ def emit_callback(
     a.lw("s4", 0x18, "sp")
     a.jr_ra()
     a.addiu("sp", "sp", 0x30)
+    # proximity: onto the aim point and stop; the stock strike follows this call
+    a.label("trk_near")
+    a.lw("t0", host.ACTOR_X, "v1")
+    a.sw("t0", host.ACTOR_X, "s1")
+    a.lw("t0", host.ACTOR_Y, "v1")
+    a.li("t1", AIM_Y << 9)
+    a.addu("t0", "t0", "t1")
+    a.sw("t0", host.ACTOR_Y, "s1")
+    a.sw("zero", host.ACTOR_XVEL, "s1")
+    a.sw("zero", host.ACTOR_YVEL, "s1")
+    a.li("t0", DETONATE << 16)
+    a.sw("t0", PHASE, "s0")
+    a.beq("zero", "zero", "trk_return")

@@ -19,14 +19,19 @@ def _s(v: int) -> int:
     return v - (1 << 32) if v & 0x80000000 else v
 
 
-def _payload() -> Assembler:
+def _payload(spawn_returns: bool = False) -> Assembler:
     a = Assembler(BASE)
     host.emit_sound_player(a)
     trk.emit_hunt(a)
     trk.emit_direction(a)
     trk.emit_callback(a, smoke="fx_smoke", explosion="fx_expl", boom_event=177)
+    if spawn_returns:  # fx_spawn returns; v0 records that it ran
+        a.label("fx_spawn")
+        a.jr_ra()
+        a.li("v0", 0x5A)
     a.label("fx_spawn_xy")  # stand-ins: record the arguments
-    a.label("fx_spawn")
+    if not spawn_returns:
+        a.label("fx_spawn")
     a.raw(0x0000000D)  # break: stops the evaluator
     trk.emit_data(a, [0x1000 + 0x40 * i for i in range(8)])
     a.label("fx_smoke")
@@ -50,12 +55,22 @@ def test_hunt_matches_the_donor_model() -> None:
     a = _payload()
     rng = random.Random(7)
     ctrl, rocket, opp_ctrl, opp = 0x80300000, 0x80310000, 0x80320000, 0x80330000
-    for _ in range(300):
+    nears = 0
+    for k in range(400):
         m = Machine(a.link(), BASE)
         vx, vy = rng.randint(-0x50000, 0x50000), rng.randint(-0x50000, 0x50000)
-        rx, ry = rng.randint(0, 0x100000), rng.randint(0, 0x60000)
-        ox, oy = rx + rng.randint(-0x40000, 0x40000), ry + rng.randint(-0x20000, 0x20000)
+        rx, ry = rng.randint(0, 0x100000), rng.randint(0x8000, 0x60000)
+        if k % 4 == 0:  # close to the aim point (opponent + AIM_Y px below)
+            ox = rx + rng.randint(-0x1800, 0x1800)
+            oy = ry - (trk.AIM_Y << 9) + rng.randint(-0x1800, 0x1800)
+        else:
+            ox, oy = rx + rng.randint(-0x40000, 0x40000), ry + rng.randint(-0x20000, 0x20000)
+        # displacement of the earlier donor steps of this host tick (16.16 px)
+        ex, ey = (
+            (0, 0) if k % 2 else (rng.randint(-0x60000, 0x60000), rng.randint(-0x60000, 0x60000))
+        )
         m.regs[16], m.regs[17], m.regs[31] = ctrl, rocket, 0x80001000
+        m.regs[18], m.regs[19] = (ex + vx) & MASK, (ey + vy) & MASK
         m.store(ctrl + host.CTRL_OPPONENT, opp_ctrl)
         m.store(opp_ctrl + host.CTRL_ACTOR, opp)
         for actor, x, y in ((rocket, rx, ry), (opp, ox, oy)):
@@ -64,8 +79,22 @@ def test_hunt_matches_the_donor_model() -> None:
         m.store(ctrl + trk.VX, vx & MASK)
         m.store(ctrl + trk.VY, vy & MASK)
         assert m.run(a.labels["trk_hunt"]).target == 0x80001000
-        dx, dy = (ox - rx) >> 9, ((oy - ry) >> 9) + trk.AIM_Y
-        assert (_s(m.load(ctrl + trk.VX)), _s(m.load(ctrl + trk.VY))) == trk.hunt(vx, vy, dx, dy)
+        dx = ((ox - rx) >> 9) - (ex >> 16)
+        dy = ((oy - ry) >> 9) - (ey >> 16) + trk.AIM_Y
+        if trk.near(dx, dy):
+            nears += 1
+            assert m.regs[2] == 1 and m.regs[3] == opp
+            assert (_s(m.load(ctrl + trk.VX)), _s(m.load(ctrl + trk.VY))) == (vx, vy)
+        else:
+            assert m.regs[2] == 0
+            got = (_s(m.load(ctrl + trk.VX)), _s(m.load(ctrl + trk.VY)))
+            assert got == trk.hunt(vx, vy, dx, dy)
+    assert 10 < nears < 100
+
+
+def test_near_matches_rocket_hunt() -> None:
+    assert trk.near(0, 0) and trk.near(5, 0) and trk.near(-4, 3) and trk.near(0, -5)
+    assert not trk.near(6, 0) and not trk.near(4, 4) and not trk.near(-3, -5)
 
 
 def _run_callback(m: Machine, a: Assembler) -> tuple[list[tuple[int, ...]], bool]:
@@ -255,3 +284,55 @@ def test_spawn_xy_and_follower() -> None:
         effects.F_SLOT_RELEASE,
         effects.F_PROCESS_EXIT,
     ]
+
+
+def _near_setup(m: Machine) -> tuple[int, int, int]:
+    ctrl, rocket, opp_ctrl, opp = 0x80300000, 0x80310000, 0x80320000, 0x80330000
+    m.store(host.CURRENT_CTRL, ctrl)
+    m.store(ctrl + host.CTRL_ACTOR, rocket)
+    m.store(ctrl + host.CTRL_OPPONENT, opp_ctrl)
+    m.store(opp_ctrl + host.CTRL_ACTOR, opp)
+    m.store(ctrl + trk.PHASE, 2 << 16)  # hunting
+    m.store(ctrl + trk.DIR, 3)
+    m.store(ctrl + trk.VX, 5 << 16)
+    m.store(opp + host.ACTOR_X, 0x200000)
+    m.store(opp + host.ACTOR_Y, 0x40000)
+    return ctrl, rocket, opp
+
+
+def test_callback_places_the_rocket_on_the_aim_point_when_near() -> None:
+    a = _payload()
+    m = Machine(a.link(), BASE)
+    ctrl, rocket, _ = _near_setup(m)
+    # 8 px short of the aim point: the first step is not near, the second (5 px on) is
+    m.store(rocket + host.ACTOR_X, 0x200000 - (8 << 9))
+    m.store(rocket + host.ACTOR_Y, 0x40000 + (trk.AIM_Y << 9))
+    m.store(rocket + host.ACTOR_XVEL, 0x1234)
+    m.store(rocket + host.ACTOR_YVEL, 0x5678)
+    calls, broke = _run_callback(m, a)
+    assert not broke and calls == []  # no smoke, no sound
+    assert m.load(rocket + host.ACTOR_X) == 0x200000
+    assert m.load(rocket + host.ACTOR_Y) == 0x40000 + (trk.AIM_Y << 9)
+    assert m.load(rocket + host.ACTOR_XVEL) == 0 and m.load(rocket + host.ACTOR_YVEL) == 0
+    assert m.load(ctrl + trk.PHASE) == trk.DETONATE << 16
+    assert m.load(ctrl + trk.TICKS) == 1
+
+
+def test_callback_detonates_after_a_proximity_miss() -> None:
+    a = _payload(spawn_returns=True)
+    m = Machine(a.link(), BASE)
+    ctrl, rocket, _ = _near_setup(m)
+    m.store(ctrl + trk.PHASE, trk.DETONATE << 16)
+    m.regs[29], m.regs[31] = 0x80200000, 0x8004CD18
+    calls = []
+    stop = m.run(a.labels["trk_callback"])
+    while stop.kind == "call":
+        target = stop.target & 0x1FFFFFFF
+        calls.append((target, *m.regs[4:8]))
+        if target == trk.F_FLIGHT_END & 0x1FFFFFFF:
+            break
+        stop = m.run(stop.resume)
+    sounds = [c for c in calls if c[0] == host.F_RAW_SOUND & 0x1FFFFFFF]
+    assert sounds and sounds[0][1] == 177
+    assert calls[-1] == (trk.F_FLIGHT_END & 0x1FFFFFFF, rocket, *calls[-1][2:])
+    assert m.regs[2] == 0x5A  # the explosion spawn ran first
