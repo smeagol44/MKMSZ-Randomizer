@@ -193,7 +193,7 @@ These are proof/research goals, not current 1.0 product blockers.
 | **C. Inside the file-`0x87` slack** (`0xD1EC − 0x6960 = 0x688C` left) | Heap-neutral, but the file sits at a heap address: the code needs load-time relocation or position independence, plus small fixed trampolines (in the `0x33A` pool tail) for every stock entry | Most implementation work; same runtime gate |
 | D. Expansion Pak RAM (`0x80400000+`) | Requires 8 MiB: a product requirement change | Not proposed |
 
-**Recommendation:** A, gated by a production-composition measurement proof; C if the heap proves too tight. The code would be one more raw file loaded at stage init by production's bootstrap, keeping the raw-loaded-code cache contract (KSEG1 execution; cached `jal` entries only for code-only, byte-identical payloads).
+**Decision (2026-11-09): C.** The enemy planner's Water profiles leave only `0x1770` bytes of their measured budget (`0x34520`), so A would exclude two runtime-confirmed profiles and cut every stage's headroom. C is **Runtime-confirmed bounded** in Sektor proofs v47 (file `0x87` at its stock size) and v48 (payload as a relocatable blob in the file, `0x268`-byte fixed loader on the 15 file-`0x87` load sites); see [proof history](Sektor-Takeover-Proof-History#option-c-heap-neutral-file-and-relocatable-payload-v47v48). Earlier recommendation, superseded: A, gated by a production-composition measurement proof; C if the heap proves too tight. The code would be one more raw file loaded at stage init by production's bootstrap, keeping the raw-loaded-code cache contract (KSEG1 execution; cached `jal` entries only for code-only, byte-identical payloads).
 
 ### 2. Rainbow outfit (user decision 2026-11-09: remove from production for now)
 

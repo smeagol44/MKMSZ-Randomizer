@@ -14,6 +14,7 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 ## Recent updates
 
+- 2026-11-09 Sektor integration step 1: option C (code and data inside his stock-size fighter file, relocated on load) Runtime-confirmed bounded in proofs v47/v48; next, rainbow removal from production (user decision). ([PS-24](Status-Update-Log#ps-24-2026-11-09))
 - 2026-11-09 Sektor complete as a proof: heat-seeking rocket and Double Missile (proofs v42–v46) Runtime-confirmed bounded; all four MKT Sektor specials run on the Sektor body. Proof-only; production integration is the remaining work. ([PS-23](Status-Update-Log#ps-23-2026-11-09))
 - 2026-11-09 Sektor straight rocket (proofs v20–v41) Runtime-confirmed bounded and marked done with details pending; teleport own-floor fallback; MKT throw sounds; descriptor preceding-word rule found. Proof-only. ([PS-22](Status-Update-Log#ps-22-2026-11-09))
 - 2026-11-07 first imported MKT special: Sektor teleport uppercut proof v08 Runtime-confirmed bounded; Sektor's MKT teleport sound Runtime-confirmed in v09; shadow Pending. Proof-only. ([PS-21](Status-Update-Log#ps-21-2026-11-07))
