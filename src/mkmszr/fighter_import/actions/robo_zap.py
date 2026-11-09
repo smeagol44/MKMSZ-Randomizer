@@ -249,6 +249,7 @@ def emit_flight(
     hit_child: int | None = None,
     smoke: str | None = None,
     spawn: str = "fx_spawn",
+    homing_child: str | None = None,
 ) -> None:
     """Flight child (process entry, replaces 0x8004B82C) and its per-tick callback.
 
@@ -259,10 +260,15 @@ def emit_flight(
     with ``smoke`` (an :func:`..effects.emit_descriptor` label), starts one smoke puff
     per host tick (donor: every other tick) SMOKE_OFFSET behind the rocket, one
     sub-layer behind it. The stock loop calls it through ``jalr`` (0x8004CD14) with no
-    live temporaries.
+    live temporaries. With ``homing_child`` the child first branches there when the R3
+    flag word ``trk_flag`` is set (:mod:`.robo_tracker`).
     """
 
     a.label("zap_child")
+    if homing_child is not None:  # R3: the HP command's flag selects the homing flight
+        a.la("t0", "trk_flag")
+        a.lw("t0", 0, "t0")
+        a.bnez("t0", homing_child)
     a.addiu("sp", "sp", -0x18)
     a.sw("ra", 0x10, "sp")
     a.lui("t0", hi(host.CURRENT_CTRL))
