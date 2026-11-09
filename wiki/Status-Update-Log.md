@@ -4,6 +4,15 @@
 
 ## From Project status
 
+### PS-24 (2026-11-09)
+
+**2026-11-09 Sektor integration step 1 (code location): option C, proofs v47–v48 Runtime-confirmed bounded.**
+
+- **Decision.** Option A (a larger reservation) would have cut into the enemy planner's measured Water budget (`0x1770` bytes left of `0x34520`); the user chose C.
+- **Result.** v47 keeps Sektor's file `0x87` at the stock size `0x459E0` by placing every addition inside the repacked body region's unused tail. v48 moves the payload code into that tail as a relocatable blob, relocated after every file-`0x87` load by a `0x268`-byte fixed loader (`fighter_import.relocate`), which also rewrites the 11 stock pointers into it and serves the three throw `jal` sites through trampolines.
+- **Next (plan order).** Remove the rainbow outfit from production (user decision), then sound/ROM placement, R4 and the product option ([plan](MKT-to-MKMSZ-Compatibility-Layer#sektor-production-integration-plan-2026-11-09)).
+- **Identity.** v48 SHA-256 `cbf4b5b585ab603bb28e22dfd80cdbd31b415394514a8ef813e7e8e2ab1b62f4`; builders at `04f55e6` ([proof history](Sektor-Takeover-Proof-History#option-c-heap-neutral-file-and-relocatable-payload-v47v48)).
+
 ### PS-23 (2026-11-09)
 
 **2026-11-09 Sektor's heat-seeking rocket (R3) and Double Missile, proofs v42–v46: Runtime-confirmed bounded; Sektor complete as a proof.**
@@ -119,6 +128,10 @@
 **Focused lifecycle update (2026-10-01): lifecycle v06 is Runtime-confirmed and promoted to the shared production pipeline.** The exact accepted reference is Very Hard / 9 total lives / 5 continues / persistent HP ON. The shared core now parameterizes that same lifecycle control flow for build-time difficulty, starting lives (1..10), starting continues (0..5), and persistent HP ON/OFF; browser defaults are Very Hard / 5 / 3 / HP ON. Non-reference combinations are Implementation/CI-confirmed pending representative runtime coverage. v04 remains **Rejected / unsafe composition**. See [Lifecycle static closure](Lifecycle-Static-Closure-v05), [Persistence/inventory/lifecycle](Persistence-Inventory-and-Lifecycle), and [Web patcher/product behavior](Web-Patcher-and-Product).
 
 ## From Runtime validation status
+
+### RV-20 (2026-11-09)
+
+**2026-11-09 Sektor option C, proofs v47–v48 — Runtime-confirmed bounded.** User report: "Both are working as expected, no issues found whatsoever." v47: file `0x87` at stock size; v48: relocatable payload blob with the fixed loader on the 15 file-`0x87` load sites.
 
 ### RV-19 (2026-11-09)
 

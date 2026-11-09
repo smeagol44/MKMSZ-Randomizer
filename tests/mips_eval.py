@@ -67,6 +67,8 @@ class Machine:
                     r[rd] = (r[rs] - r[rt]) & MASK
                 elif fn == 0x24:
                     r[rd] = r[rs] & r[rt]
+                elif fn == 0x25:
+                    r[rd] = r[rs] | r[rt]
                 elif fn == 0x26:
                     r[rd] = r[rs] ^ r[rt]
                 elif fn == 0x2A:

@@ -2311,8 +2311,10 @@ User decisions that define the target behaviour:
 | v44 | `0ea931bb9f39f708f51be7c4de802547f55e6e18c37899269fefa466ba50c189` | `68512E76 / AB0F8B94` | Straight rocket on MKT's `F,F + LP`. After a kill, the homing rocket and crosshair chased the dead enemy (user video, Wind) |
 | v45 | `4f5d3257f12adf99cb8fca0b0e1600d9807f3b3dee0de063da1b4248993198aa` | `6854727E / 956FB0C4` | **Runtime-confirmed ("all working wonderfully"):** homing target = nearest living enemy in the teleport's range; v43's colours, proximity and v44's command included |
 | v46 | `12f13ce451d672e2686a10e45a12264a80751f670096c9fe77ce9e1d2bd62db5` | `A8261389 / B7CE9896` | **Runtime-confirmed ("really good"):** Double Missile on `B,B,F + LP` in place of Ice Clone. The user marked Sektor complete |
+| v47 | `72d3b532da38d71bf5e3eaffa2036db4eb74bab62c49809b0361d3b52b3d3163` | `A8261389 / 51952F30` | **Runtime-confirmed ("working as expected"):** v46 with file `0x87` at its stock size (option C step 1) |
+| v48 | `cbf4b5b585ab603bb28e22dfd80cdbd31b415394514a8ef813e7e8e2ab1b62f4` | `A8D4A07B / 247BCD27` | **Runtime-confirmed ("no issues found whatsoever"):** the payload code as a relocatable blob inside file `0x87` (option C step 2) |
 
-Builders import the importer library (`src/mkmszr/fighter_import`). Each builder reproduces its ROM byte-for-byte at the commit that added it: v30 `eb6022a`, v31 `7205271`, v32 `56e42f3`, v33 `c528392`, v34 `e955be3`, v35 `13f3859`, v36 `c06daa8`, v37 `6a940a0`, v38 `b01f9e6`, v39 `6488cca`, v40 `73a77d3`, v41 `d49a089` (checked for v31, v33, v35 and v36a), v42 `80e7c33`, v43 `aa2218f`, v44 `e9f9cad`, v45 `959c155`, v46 `df52ccf` (all five checked). At `d49a089`, v30, v34 and v39–v41 still reproduce; the others build differently because later library fixes change their output (for example v35's builder now produces v39). At `df52ccf` only v46 reproduces: v42–v44 no longer link and v45 differs, because the R3 library gained the target picker and the double-launch state.
+Builders import the importer library (`src/mkmszr/fighter_import`). Each builder reproduces its ROM byte-for-byte at the commit that added it: v30 `eb6022a`, v31 `7205271`, v32 `56e42f3`, v33 `c528392`, v34 `e955be3`, v35 `13f3859`, v36 `c06daa8`, v37 `6a940a0`, v38 `b01f9e6`, v39 `6488cca`, v40 `73a77d3`, v41 `d49a089` (checked for v31, v33, v35 and v36a), v42 `80e7c33`, v43 `aa2218f`, v44 `e9f9cad`, v45 `959c155`, v46 `df52ccf` (all five checked), v47 and v48 `04f55e6` (both checked). At `d49a089`, v30, v34 and v39–v41 still reproduce; the others build differently because later library fixes change their output (for example v35's builder now produces v39). At `df52ccf` only v46 reproduces: v42–v44 no longer link and v45 differs, because the R3 library gained the target picker and the double-launch state.
 
 ### Version changes
 
@@ -2414,7 +2416,15 @@ Host facts used: the stock Ice root refuses to start while a class-`0x700` proce
 
 Open details, all deferred by the user: smoke timing and the tick ratio (and the rocket speed re-check), explosion alpha after the v43 colour fix, MKT's faster chest open against a reacting opponent, and the unexplained teleport fall. Tier gating, the remaining Sub-Zero specials and MODERN controls belong to R4.
 
-### Proof-only footprint (v08)
+### Option C: heap-neutral file and relocatable payload (v47–v48)
+
+Step 1 of the [production integration plan](MKT-to-MKMSZ-Compatibility-Layer#sektor-production-integration-plan-2026-11-09), user choice C: Sektor's code and data live inside his own fighter file at its stock size, so he adds nothing to the arena that the enemy planner budgets.
+
+- **v47:** the v08–v46 additions to file `0x87` (teleport scripts, chest, rocket, effects, homing art; `0x6960` bytes) are placed in the unused tail of the repacked body region, `[+0x34498,+0x3ADF8)` (body slack ends at `+0x41684`), instead of after the file end. The file stays `0x459E0`. Static equivalence with v46: every moved word is identical or shifted by exactly the move distance (`0x11548`); outside the file and payload only the file-end pointer changed.
+- **v48:** the whole payload (`0x287C` bytes, byte-identical to v47's) becomes a blob at file `+0x3AE00`, followed by its relocation table (`+0x3D67C`, 92 entries: 53 `j`/`jal` targets, 35 `lui`/`ori` and 4 `lui` + signed-low pairs; slack left `0x3E94`). `fighter_import.relocate` finds the relocations by diffing three links of the same build (bases `+0`, `+0x12340`, `+0x2468C`) and requires the model to reproduce the other two exactly. A `0x268`-byte fixed part (file `0x1B` in the proof) is entered from the 15 stock file-`0x87` load sites (rainbow's `LOAD_JAL_SITES`): it loads the file, relocates the blob through KSEG1, then rewrites the 11 stock pointers into it (transfer-table entries 3/4, the knee-combo root, reaction `0x23`, the strike pointer as a KSEG0 alias, and the four special records' actions/conditions). The three throw `jal` sites go to fixed trampolines that jump through slots written by the same pass. The blob is relocated from the freshly loaded image on every load.
+
+Runtime: the user reports both "working as expected, no issues found whatsoever" (bounded manual test of all moves).
+
 
 All of these are the Reverse Elbow v6 proof infrastructure plus the takeover storage, guarded against clean bytes. **None is a production allocation.**
 
