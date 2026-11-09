@@ -173,6 +173,52 @@ Useful next adapter research, after current project priorities permit it, is:
 
 These are proof/research goals, not current 1.0 product blockers.
 
+## Sektor production integration plan (2026-11-09)
+
+**Static audit only (no code changed, no runtime claims).** Sektor is complete as a clean-ROM proof (v46, [proof history](Sektor-Takeover-Proof-History#heat-seeking-rocket-r3-command-fixes-and-the-double-missile-v42v46)). This section records what putting him into the randomizer needs, in the order agreed with the user: (1) where his code lives, (2) the rainbow outfit, (3) sound and ROM space, (4) R4 power mapping, (5) the product option.
+
+**What the proof adds** (v46): payload code `0x287C` bytes; fighter file `0x87` grown from `0x459E0` to `0x4C340` (+`0x6960`); donor samples `0x84BC` bytes; 16 isolated sound-host chains; four special records, the strike pointer, reaction entry `0x23`, three throw `jal` sites, the voice table, combo records, the knee root, the Run rate and the transfer table/bound.
+
+### 1. Code location
+
+- **The proof cannot be composed with production as built.** It loads its code through the same file `0x1B`, bootstrap stub `0x9AD84` and RDRAM `[0x801AF420,…)` that production's Runtime V2 and file `0x1A` own ([Memory map](Memory-and-Allocation-Map)).
+- **The 16 KiB pool is full.** The last production slice (Inventory legend) ends at `0x801B30E6`; `0x33A` bytes remain before the floor `0x801B3420`.
+- **Data can be heap-neutral.** The repacked Sektor body leaves one contiguous `0xD1EC`-byte block unused inside file `0x87` (builder `SLACK`). Everything the proof appends after the stock end (`0x6960` bytes: teleport scripts, chest, rocket, effects, homing art) fits there, so the Sektor file can keep the stock size `0x459E0`. Static; Pending a build.
+- **Code needs fixed addresses** (stock `jal` sites, record actions/conditions, reaction and transfer table entries). Candidates:
+
+| Option | Cost / risk | Evidence needed |
+|---|---|---|
+| **A. Grow the reserved prefix** (production `ARENA_START_PATCHES`, only with Sektor on) by about `0x2C00` | Heap shrinks by that much in every stage. With a heap-neutral file `0x87` this stays within the margin of the Fortress-working v49 footprint (+`0x8B64` over stock), but production's generated stage resources (PR #137) also use heap | One bounded production-composition proof over every stage, Fortress and Prison included |
+| **B. Top of dynamic texture storage**: lower both `0x80400000` constants (stage reset `0x8001CA38`, release `0x8001C424`) by 16 KiB | Texture headroom. One production measurement gave a bump-to-top-down gap of `0x24D88`; no worst case. The bump side `0x8001BF70` has no bound check | Worst-case texture measurement across stages |
+| **C. Inside the file-`0x87` slack** (`0xD1EC − 0x6960 = 0x688C` left) | Heap-neutral, but the file sits at a heap address: the code needs load-time relocation or position independence, plus small fixed trampolines (in the `0x33A` pool tail) for every stock entry | Most implementation work; same runtime gate |
+| D. Expansion Pak RAM (`0x80400000+`) | Requires 8 MiB: a product requirement change | Not proposed |
+
+**Recommendation:** A, gated by a production-composition measurement proof; C if the heap proves too tight. The code would be one more raw file loaded at stage init by production's bootstrap, keeping the raw-loaded-code cache contract (KSEG1 execution; cached `jal` entries only for code-only, byte-identical payloads).
+
+### 2. Rainbow outfit (user decision 2026-11-09: remove from production for now)
+
+Rainbow wraps every file-`0x87` load to append its bank, which conflicts with a replaced file `0x87`. Removing it frees the `0x58`-byte loader wrapper (`[0x801B0880,0x801B08D8)`), its `0xD0` helper in the Runtime V2 code tail, the phase word `0x801AF818`, file `0x92` and ROM `[0xF20000,0xF22000)`. The Temple scripted check and the global materializer are composed after the wrapper, so the removal is its own guarded change with tests (CLI/web outfit choice, pipeline order, Wiki rows). It may be re-added later.
+
+The other outfit modes (`SubZeroPalettePatch`, hue/RGB presets, also used by the title branding) recolour entries `0x21..0x3F` of Sub-Zero's 64-colour palette inside file `0x87`. Sektor's body uses its own 16-colour palette, so with Sektor on they must be disabled or mapped (decision, step 4).
+
+### 3. Sound and ROM space
+
+- **ROM:** the generated-output tail `[0x01819C00,0x02000000)` is unassigned (several MiB). Sektor's file `0x87` (repointed through its file-table entry, ROM `0xA5664`/`0xA5668`; stock `[0x748920,0x78E300)`), the samples and the code file go there as new owned rows; nothing goes in clean-input space.
+- **Sound hosts:** the 16 chains (`fighter_import.sound.ISOLATED_CHAINS`) share no event, patch, subpatch or waveform with production's Toasty (`52 → 68 → 608 → 533`) or Temple intro (`486 → 329 → 319`) chains. The samples move off `0xF20000` (which overlapped the rainbow bank); the bank-record rewrites stay guarded against clean bytes.
+- **Donor input:** production already takes an optional validated MKT Rev. 2 ROM (CLI `--mkt-rom`, web optional donor) for Toasty and the Temple intro; the Sektor option would require it and extract its assets the same way.
+
+### 4. R4 power mapping (needs user decisions)
+
+- **Power order:** `power_order.py` moves each power's tier gate inside that power's own stock condition (e.g. Ice Clone at ROM `0x4AEA8`). The proofs give the Double Missile and the homing rocket Ice Blast's condition, so they would unlock with Ice Blast. Using the replaced power's condition (Ice Clone `0x8004A22C`, Freeze on Contact `0x8005A9AC`; the teleport already uses the down-Ice LK condition) lets the shuffle apply unchanged. Costs differ per condition.
+- **Unmapped Sub-Zero powers:** Slide, Super Slide, Directional Ice (up), Air Ice Blast, Ice Shatter, Polar Blast and Spine Rip stay Sub-Zero's unless replaced or removed. MKT Sektor has nothing for them.
+- **MODERN SPECIALS** calls the stock Ice conditions/callbacks directly and references the LP records, so it needs Sektor targets.
+- **Presentation:** the Power Ups icon/help tables (ROM `0xA6BB0` / `0xA78A0`) and the HUD show Sub-Zero names.
+- No solver dependency on a specific power was found: required powers are an XP count (Fortress gate) and credentials.
+
+### 5. Product option and gates
+
+A "Fighter: Sub-Zero / Sektor" build option (off by default, requires the donor ROM), implemented as a guarded `src/mkmszr/patches` module built from the `fighter_import` library rather than a proof builder; CI guards for every site and allocation; then the usual gates: a disposable production-composition proof, bounded manual tests, and a full-seed run with Sektor on.
+
 ## Related pages
 
 - [MKT adapter primitives](MKT-Adapter-Primitives)
