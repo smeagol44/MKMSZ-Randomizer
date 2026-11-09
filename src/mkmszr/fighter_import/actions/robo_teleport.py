@@ -91,6 +91,11 @@ class TeleportParams:
     # by then) if it is below the target, before falling back to the target's height.
     # False reproduces v25-v39 (an airborne target made Sektor reappear in mid-air).
     own_floor_fallback: bool = False
+    # Production composition v03: before reappearing, check with a read-only probe of the
+    # stage's floor regions that the far-side spot has floor at Sektor's placement height;
+    # else try the near side (mirrored around the target), else the target's own x. False
+    # reproduces v40-v51 (a target at a drop-off could put Sektor over the gap).
+    floor_probe: bool = False
 
 
 FRAME = host.Frame()
@@ -267,6 +272,19 @@ def _emit_reposition(a: Assembler, p: TeleportParams) -> None:
     a.move("a2", "zero")
     a.jal(host.F_OFFSET)
     a.label("placed")
+    if p.floor_probe:
+        _emit_spot_probe(a)
+        a.bnez("v0", "spot_ok")
+        a.lw("t0", host.ACTOR_X, "s4")  # near side: mirror around the target
+        a.sll("t0", "t0", 1)
+        a.lw("t1", host.ACTOR_X, "s1")
+        a.subu("t0", "t0", "t1")
+        a.sw("t0", host.ACTOR_X, "s1")
+        _emit_spot_probe(a)
+        a.bnez("v0", "spot_ok")
+        a.lw("t0", host.ACTOR_X, "s4")  # the target's own x: its floor came from there
+        a.sw("t0", host.ACTOR_X, "s1")
+        a.label("spot_ok")
     host.face_opponent(a)  # turn around to face the target
 
 
@@ -323,6 +341,122 @@ def _emit_air_arc(a: Assembler, p: TeleportParams, m: Motion) -> None:
     a.sw("zero", host.ACTOR_NO_GROUND_STICK, "s1")
 
 
+# ---- read-only floor probe (production composition v03) ----------------------------------
+# Stock floor regions, as 0x80024BA8 scans them with 0x80025ED4: count 0x80290998, records at
+# *0x800C2568 (stride 0xB8), enable bytes 0x801AE580[i]. A record is a polyline: base x/y/z
+# words at +0/+4/+8, point count at +0xC, points (dx, dy halfwords, stride 8) from +0x10,
+# flags at +0x94. It applies when |z - base z| <= 0x80 and x lies between the first and the
+# last point; the floor there is base y + dy of the first point whose x exceeds the actor's
+# (the stock writes that height << 8 to the actor y and controller +0x6B4). Regions with
+# shaping modes (flags & 0x300) and moving platforms are not probed: a spot on them simply
+# reads as "no floor" and the teleport falls back to the next spot.
+REGION_COUNT, REGION_TABLE_PTR, REGION_ENABLED = 0x80290998, 0x800C2568, 0x801AE580
+REGION_STRIDE, REGION_MODE_MASK, REGION_Z_REACH = 0xB8, 0x300, 0x80
+PROBE_TOLERANCE = 0x20  # world units between the region floor and the placement height
+
+
+def probe_model(regions: list[tuple[int, int, int, int, list[tuple[int, int]]]],
+                x: int, z: int, y_place: int) -> bool:  # fmt: skip
+    """Python model: ``regions`` = (enabled, flags, base (x, y, z), points); units as stock
+    (x, z, region heights in world units; ``y_place`` in 24.8 like actor +0x30)."""
+
+    for enabled, flags, (bx, by, bz), points in regions:
+        if not enabled or flags & REGION_MODE_MASK or not points:
+            continue
+        if abs(z - bz) > REGION_Z_REACH:
+            continue
+        if not bx + points[0][0] <= x <= bx + points[-1][0]:
+            continue
+        k = next((i for i, (dx, _) in enumerate(points) if x < bx + dx), len(points) - 1)
+        if abs(((by + points[k][1]) << 8) - y_place) <= PROBE_TOLERANCE << 8:
+            return True
+    return False
+
+
+def emit_floor_probe(a: Assembler, label: str = "floor_probe") -> None:
+    """``floor_probe(a0 = x, a1 = z (world units), a2 = y (24.8)) -> v0``: 1 when an enabled
+    plain floor region has floor within PROBE_TOLERANCE of ``a2`` at (x, z). Leaf, t0-t9."""
+
+    a.label(label)
+    a.move("v0", "zero")
+    a.lui("t0", host.hi(REGION_COUNT))
+    a.lw("t0", host.lo(REGION_COUNT), "t0")  # count
+    a.lui("t1", host.hi(REGION_TABLE_PTR))
+    a.lw("t1", host.lo(REGION_TABLE_PTR), "t1")  # record
+    a.li("t2", REGION_ENABLED)  # enable byte
+    a.label(label + "_next")
+    a.blez("t0", label + "_done")
+    a.lb("t3", 0, "t2")
+    a.beqz("t3", label + "_skip")
+    a.lw("t3", 0x94, "t1")
+    a.andi("t3", "t3", REGION_MODE_MASK)
+    a.bnez("t3", label + "_skip")
+    a.lw("t4", 0x0C, "t1")  # point count
+    a.blez("t4", label + "_skip")
+    a.lw("t3", 8, "t1")
+    a.subu("t3", "a1", "t3")
+    a.sra("t5", "t3", 31)
+    a.xor("t3", "t3", "t5")
+    a.subu("t3", "t3", "t5")
+    a.slti("t3", "t3", REGION_Z_REACH + 1)
+    a.beqz("t3", label + "_skip")
+    a.lw("t5", 0, "t1")  # base x
+    a.lh("t3", 0x10, "t1")
+    a.addu("t3", "t5", "t3")
+    a.slt("t3", "a0", "t3")
+    a.bnez("t3", label + "_skip")  # left of the first point
+    a.addiu("t6", "t4", -1)
+    a.sll("t6", "t6", 3)
+    a.addu("t6", "t1", "t6")
+    a.lh("t3", 0x10, "t6")
+    a.addu("t3", "t5", "t3")
+    a.slt("t3", "t3", "a0")
+    a.bnez("t3", label + "_skip")  # right of the last point
+    a.addiu("t7", "t1", 0x10)  # first point whose x exceeds a0 (else the last)
+    a.label(label + "_point")
+    a.lh("t3", 0, "t7")
+    a.addu("t3", "t5", "t3")
+    a.slt("t3", "a0", "t3")
+    a.bnez("t3", label + "_floor")
+    a.addiu("t4", "t4", -1)
+    a.blez("t4", label + "_floor")
+    a.addiu("t7", "t7", 8)
+    a.beq("zero", "zero", label + "_point")
+    a.label(label + "_floor")
+    a.lh("t3", 2, "t7")
+    a.lw("t5", 4, "t1")
+    a.addu("t3", "t5", "t3")
+    a.sll("t3", "t3", 8)
+    a.subu("t3", "t3", "a2")
+    a.sra("t5", "t3", 31)
+    a.xor("t3", "t3", "t5")
+    a.subu("t3", "t3", "t5")
+    a.li("t5", (PROBE_TOLERANCE << 8) + 1)
+    a.slt("t3", "t3", "t5")
+    a.bnez("t3", label + "_hit")
+    a.label(label + "_skip")
+    a.addiu("t0", "t0", -1)
+    a.addiu("t1", "t1", REGION_STRIDE)
+    a.addiu("t2", "t2", 1)
+    a.beq("zero", "zero", label + "_next")
+    a.label(label + "_hit")
+    a.li("v0", 1)
+    a.label(label + "_done")
+    a.jr_ra()
+    a.nop()
+
+
+def _emit_spot_probe(a: Assembler) -> None:
+    """v0 = floor_probe(Sektor's x, z, y)."""
+
+    a.lw("a0", host.ACTOR_X, "s1")
+    a.sra("a0", "a0", 8)
+    a.lw("a1", host.ACTOR_Z, "s1")
+    a.sra("a1", "a1", 8)
+    a.lw("a2", host.ACTOR_Y, "s1")
+    a.jal_label("floor_probe")
+
+
 def emit_condition(a: Assembler, p: TeleportParams, label: str = "cond") -> None:
     """Descriptor condition: stock LK condition, no special in progress, a target in range.
 
@@ -365,4 +499,6 @@ def assemble(base: int, p: TeleportParams) -> Assembler:
     emit_action(a, p)
     host.emit_sound_player(a)
     emit_condition(a, p)
+    if p.floor_probe:
+        emit_floor_probe(a)
     return a
