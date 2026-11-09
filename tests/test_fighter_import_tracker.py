@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 
-from mips_eval import Machine
+from mips_eval import Machine, Stop
 
 from mkmszr.fighter_import import effects, host
 from mkmszr.fighter_import.actions import robo_tracker as trk
@@ -24,6 +24,7 @@ def _payload(spawn_returns: bool = False) -> Assembler:
     host.emit_sound_player(a)
     trk.emit_hunt(a)
     trk.emit_direction(a)
+    trk.emit_targeting(a)
     trk.emit_callback(a, smoke="fx_smoke", explosion="fx_expl", boom_event=177)
     if spawn_returns:  # fx_spawn returns; v0 records that it ran
         a.label("fx_spawn")
@@ -71,7 +72,7 @@ def test_hunt_matches_the_donor_model() -> None:
         )
         m.regs[16], m.regs[17], m.regs[31] = ctrl, rocket, 0x80001000
         m.regs[18], m.regs[19] = (ex + vx) & MASK, (ey + vy) & MASK
-        m.store(ctrl + host.CTRL_OPPONENT, opp_ctrl)
+        m.store(a.labels["trk_aim"], opp_ctrl)
         m.store(opp_ctrl + host.CTRL_ACTOR, opp)
         for actor, x, y in ((rocket, rx, ry), (opp, ox, oy)):
             m.store(actor + host.ACTOR_X, x)
@@ -97,16 +98,30 @@ def test_near_matches_rocket_hunt() -> None:
     assert not trk.near(6, 0) and not trk.near(4, 4) and not trk.near(-3, -5)
 
 
-def _run_callback(m: Machine, a: Assembler) -> tuple[list[tuple[int, ...]], bool]:
-    """One callback call: (calls made, broke at fx_spawn)."""
+FIND = trk.F_FIND_CLASS & 0x1FFFFFFF
+
+
+def _call(m: Machine, stop: Stop, enemies: dict[int, int]) -> Stop:
+    """Resume past an outside call; ``0x80028510(class)`` answers from ``enemies``."""
+
+    if stop.target & 0x1FFFFFFF == FIND:
+        m.regs[2] = enemies.get(m.regs[4], 0)
+    return m.run(stop.resume)
+
+
+def _run_callback(
+    m: Machine, a: Assembler, enemies: dict[int, int] | None = None
+) -> tuple[list[tuple[int, ...]], bool]:
+    """One callback call: (calls made other than the class scan, broke at fx_spawn)."""
 
     calls = []
     m.regs[29], m.regs[31] = 0x80200000, 0x8004CD18
     try:
         stop = m.run(a.labels["trk_callback"])
         while stop.kind == "call":
-            calls.append((stop.target & 0x1FFFFFFF, *m.regs[4:8]))
-            stop = m.run(stop.resume)
+            if stop.target & 0x1FFFFFFF != FIND:
+                calls.append((stop.target & 0x1FFFFFFF, *m.regs[4:8]))
+            stop = _call(m, stop, enemies or {})
     except NotImplementedError:  # the break at fx_spawn
         return calls + [("spawn", *m.regs[4:8])], True
     assert stop.target == 0x8004CD18 and m.regs[29] == 0x80200000
@@ -133,7 +148,7 @@ def test_callback_runs_the_phases_and_drives_the_rocket() -> None:
         try:
             stop = m.run(a.labels["trk_callback"])
             while stop.kind == "call":
-                stop = m.run(stop.resume)
+                stop = _call(m, stop, {})
         except NotImplementedError:
             spawns_xy.append(tuple(m.regs[4:8]))
         sx = sy = 0
@@ -170,6 +185,8 @@ def test_callback_flips_and_mirrors_smoke_for_negative_x() -> None:
     m.store(ctrl + trk.DIR, 3)
     m.regs[29], m.regs[31] = 0x80200000, 0x8004CD18
     stop = m.run(a.labels["trk_callback"])
+    while stop.kind == "call" and stop.target & 0x1FFFFFFF == FIND:
+        stop = _call(m, stop, {})
     assert stop.kind == "call" and stop.target & 0x1FFFFFFF == trk.F_FLIP & 0x1FFFFFFF
     assert m.regs[4] == rocket
     m.store(rocket + 0x8C, 0x10 << 16)  # what the flip did
@@ -299,8 +316,8 @@ def _near_setup(m: Machine) -> tuple[int, int, int]:
     ctrl, rocket, opp_ctrl, opp = 0x80300000, 0x80310000, 0x80320000, 0x80330000
     m.store(host.CURRENT_CTRL, ctrl)
     m.store(ctrl + host.CTRL_ACTOR, rocket)
-    m.store(ctrl + host.CTRL_OPPONENT, opp_ctrl)
     m.store(opp_ctrl + host.CTRL_ACTOR, opp)
+    m.store(opp_ctrl + trk.CTRL_HEALTH, 50 << 16)
     m.store(ctrl + trk.PHASE, 2 << 16)  # hunting
     m.store(ctrl + trk.DIR, 3)
     m.store(ctrl + trk.VX, 5 << 16)
@@ -318,7 +335,8 @@ def test_callback_places_the_rocket_on_the_aim_point_when_near() -> None:
     m.store(rocket + host.ACTOR_Y, 0x40000 + (trk.AIM_Y << 9))
     m.store(rocket + host.ACTOR_XVEL, 0x1234)
     m.store(rocket + host.ACTOR_YVEL, 0x5678)
-    calls, broke = _run_callback(m, a)
+    m.store(a.labels["trk_aim"], 0x80320000)
+    calls, broke = _run_callback(m, a, {2: 0x80320000})
     assert not broke and calls == []  # no smoke, no sound
     assert m.load(rocket + host.ACTOR_X) == 0x200000
     assert m.load(rocket + host.ACTOR_Y) == 0x40000 + (trk.AIM_Y << 9)
@@ -345,3 +363,123 @@ def test_callback_detonates_after_a_proximity_miss() -> None:
     assert sounds and sounds[0][1] == 177
     assert calls[-1] == (trk.F_FLIGHT_END & 0x1FFFFFFF, rocket, *calls[-1][2:])
     assert m.regs[2] == 0x5A  # the explosion spawn ran first
+
+
+PLAYER, PLAYER_ACTOR = 0x80340000, 0x80350000
+
+
+def _world(m: Machine, enemies: dict[int, tuple[int, int, int, int, int]]) -> dict[int, int]:
+    """Player at (0x100000, 0x40000) on path 1; ``enemies[class] = (ctrl, x, y, path,
+    health)``. Returns the class -> controller answers of the scan."""
+
+    m.store(host.PLAYER_CTRL, PLAYER)
+    m.store(PLAYER + host.CTRL_ACTOR, PLAYER_ACTOR)
+    m.store(PLAYER_ACTOR + host.ACTOR_X, 0x100000)
+    m.store(PLAYER_ACTOR + host.ACTOR_Y, 0x40000)
+    m.store(PLAYER_ACTOR + host.ACTOR_PATH, 1)
+    for ctrl, x, y, path, health in enemies.values():
+        actor = ctrl + 0x10000
+        m.store(ctrl + host.CTRL_ACTOR, actor)
+        m.store(ctrl + trk.CTRL_HEALTH, health << 16)  # halfword at +0x654
+        m.store(actor + host.ACTOR_X, x)
+        m.store(actor + host.ACTOR_Y, y)
+        m.store(actor + host.ACTOR_PATH, path)
+    return {cls: e[0] for cls, e in enemies.items()}
+
+
+def _call_label(m: Machine, a: Assembler, label: str, answers: dict[int, int]) -> list[int]:
+    m.regs[29], m.regs[31] = 0x80200000, 0x80001000
+    seen = []
+    stop = m.run(a.labels[label])
+    while stop.kind == "call":
+        seen.append(stop.target & 0x1FFFFFFF)
+        stop = _call(m, stop, answers)
+    assert stop.target == 0x80001000 and m.regs[29] == 0x80200000
+    return seen
+
+
+def test_pick_takes_the_nearest_living_enemy_in_range_on_the_path() -> None:
+    a = _payload()
+    reach = trk.TARGET_RANGE << 8
+    cases = [
+        ({}, 0),
+        ({2: (0x80400000, 0x100000 + reach, 0x40000, 1, 9)}, 0x80400000),  # range edge
+        ({2: (0x80400000, 0x100000 + reach + 1, 0x40000, 1, 9)}, 0),  # out of range
+        ({2: (0x80400000, 0x100000, 0x40000 - reach - 1, 1, 9)}, 0),  # out of range (y)
+        ({2: (0x80400000, 0x110000, 0x40000, 2, 9)}, 0),  # other path
+        ({2: (0x80400000, 0x110000, 0x40000, 1, 0)}, 0),  # dead
+        (
+            {
+                2: (0x80400000, 0x100000 + 0x30000, 0x40000, 1, 9),
+                3: (0x80420000, 0x100000 - 0x20000, 0x40000, 1, 9),
+                4: (0x80440000, 0x100000 + 0x10000, 0x40000, 1, 0),  # nearest, but dead
+            },
+            0x80420000,
+        ),
+        (
+            {
+                2: (0x80400000, 0x100000 + 0x30000, 0x40000, 1, 9),
+                4: (0x80440000, 0x100000 + 0x10000, 0x40000, 1, 9),
+            },
+            0x80440000,
+        ),
+    ]
+    for enemies, want in cases:
+        m = Machine(a.link(), BASE)
+        answers = _world(m, enemies)
+        regs = [0x1111 * (k + 1) for k in range(8)]
+        m.regs[16:24] = regs
+        seen = _call_label(m, a, "trk_pick", answers)
+        assert m.regs[2] == want, enemies
+        assert seen == [FIND] * 3 and m.regs[16:24] == regs
+
+
+def test_check_keeps_a_living_target_and_otherwise_retargets() -> None:
+    a = _payload()
+    near, far = (0x80400000, 0x110000, 0x40000, 1, 9), (0x80420000, 0x130000, 0x40000, 1, 9)
+    # current target alive and present: kept, although another enemy is nearer
+    m = Machine(a.link(), BASE)
+    answers = _world(m, {2: near, 3: far})
+    m.store(a.labels["trk_aim"], far[0])
+    _call_label(m, a, "trk_check", answers)
+    assert m.regs[2] == far[0] and m.load(a.labels["trk_follow"]) == far[0]
+    # current target dead: the nearest living one
+    m = Machine(a.link(), BASE)
+    answers = _world(m, {2: near, 3: far[:4] + (0,)})
+    m.store(a.labels["trk_aim"], far[0])
+    _call_label(m, a, "trk_check", answers)
+    assert m.regs[2] == near[0] and m.load(a.labels["trk_aim"]) == near[0]
+    # current target gone (the v44 case: a stale controller), nobody else: unguided
+    m = Machine(a.link(), BASE)
+    answers = _world(m, {})
+    m.store(a.labels["trk_aim"], far[0])
+    m.store(a.labels["trk_follow"], far[0])
+    _call_label(m, a, "trk_check", answers)
+    assert m.regs[2] == 0 and m.load(a.labels["trk_aim"]) == 0
+    assert m.load(a.labels["trk_follow"]) == 0  # the crosshair removes itself
+
+
+def test_condition_refuses_without_a_target() -> None:
+    a = _payload()
+    trk.emit_condition(a)
+    stock = trk.LP_ICE_CONDITION & 0x1FFFFFFF
+    near = (0x80400000, 0x110000, 0x40000, 1, 9)
+    for stock_answer, enemies, want, target in (
+        (0x4000, {2: near}, 0x4000, 0x77),  # stock refusal: no scan, target untouched
+        (0x8000, {}, 0x4000, 0),
+        (0x8000, {2: near}, 0x8000, near[0]),
+    ):
+        m = Machine(a.link(), BASE)
+        answers = _world(m, enemies)
+        m.store(a.labels["trk_aim"], 0x77)
+        m.regs[4:8] = [0xA0, 0xA1, 0xA2, 0xA3]
+        m.regs[29], m.regs[31] = 0x80200000, 0x80001000
+        stop = m.run(a.labels["trk_cond"])
+        assert stop.kind == "call" and stop.target & 0x1FFFFFFF == stock
+        assert m.regs[4:8] == [0xA0, 0xA1, 0xA2, 0xA3]
+        m.regs[2] = stock_answer
+        stop = m.run(stop.resume)
+        while stop.kind == "call":
+            stop = _call(m, stop, answers)
+        assert stop.target == 0x80001000 and m.regs[2] == want
+        assert m.load(a.labels["trk_aim"]) == target

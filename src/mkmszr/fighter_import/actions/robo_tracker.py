@@ -25,6 +25,14 @@ stock projectile loop ``0x8004CC50`` with a per-tick callback that runs two dono
 so the stock collision ends it on contact. A follower effect process carries the crosshair
 and removes itself when the rocket's heartbeat stops.
 
+Target (proof v45): not the controller's last-opponent link ``+0x640`` (after a kill it
+still names the dead enemy, which the v44 rocket and crosshair chased into a pit) but the
+nearest living enemy as for the teleport: classes 2-4, health ``+0x654`` non-zero, on the
+player's path and within the teleport's square range of the player. The HP condition
+refuses the move when there is none. The flight keeps that target while it lives and is
+present, otherwise takes the next one the same way, or flies on unguided without a
+crosshair.
+
 Proximity (proof v43): each donor hunt step measures from the rocket's position at that
 donor tick (actor position plus the earlier steps of the host tick) and applies the donor
 6-px test. Within it, the rocket is placed on the aim point and stops, so the stock strike
@@ -77,6 +85,10 @@ LP_MASK = 0x80
 STRAIGHT_RIGHT, STRAIGHT_LEFT = (9, 9), (8, 8)  # F,F (9/8 = forward facing right/left)
 STRAIGHT_WINDOW = 0x18  # as the F,F + LK teleport record
 F_FLIP = 0x8003188C
+F_FIND_CLASS = 0x80028510  # (class, mask) -> first other process with +0x6D8 & mask == class
+ENEMY_CLASSES = (2, 3, 4)  # ordinary enemy spawn slots 0x71..0x73 (the strike's victim scan)
+CTRL_HEALTH = 0x654  # zero once dead (the strike's victim scan skips it)
+TARGET_RANGE = 592  # world units, square, as the F,F + LK teleport (robo_teleport)
 F_FLIGHT_END = 0x8004CDF8  # (actor): the stock loop's exit (unlink, process exit); no return
 # Rocket process controller fields (free during the flight: only 0x8002830C copies them).
 VX, VY, PHASE, DIR, TICKS = 0x6F4, 0x6F8, 0x6FC, 0x700, 0x704
@@ -151,7 +163,7 @@ def smoke_offsets() -> list[int]:
 
 def _record(
     mask: int, selector: int, action: int, window: int, right: tuple[int, ...],
-    left: tuple[int, ...],
+    left: tuple[int, ...], condition: int = LP_ICE_CONDITION,
 ) -> bytes:  # fmt: skip
     """A special-move record (``0x2C`` bytes): masks, selector, condition, action,
     window, then up to six command tokens per facing, newest first."""
@@ -160,7 +172,7 @@ def _record(
     rec[0:2] = mask.to_bytes(2, "big")
     rec[2:4] = mask.to_bytes(2, "big")
     rec[4:8] = selector.to_bytes(4, "big")
-    rec[8:12] = LP_ICE_CONDITION.to_bytes(4, "big")
+    rec[8:12] = condition.to_bytes(4, "big")
     rec[12:16] = action.to_bytes(4, "big")
     rec[16:18] = window.to_bytes(2, "big")
     for i, tok in enumerate(right):
@@ -170,11 +182,11 @@ def _record(
     return bytes(rec)
 
 
-def descriptor_record(action: int) -> bytes:
+def descriptor_record(action: int, condition: int = LP_ICE_CONDITION) -> bytes:
     """The HP special-move record for ``F,D,B + HP`` (selector 0 refuses an airborne
-    start)."""
+    start); ``condition`` is ``trk_cond`` in the proofs (v45)."""
 
-    return _record(HP_MASK, 0, action, COMMAND_WINDOW, COMMAND_RIGHT, COMMAND_LEFT)
+    return _record(HP_MASK, 0, action, COMMAND_WINDOW, COMMAND_RIGHT, COMMAND_LEFT, condition)
 
 
 def straight_record(action: int) -> bytes:
@@ -238,7 +250,7 @@ def _emit_at_least_one(a: Assembler, reg: str, tag: str) -> None:
 
 
 def emit_data(a: Assembler, loops: list[int], prefix: str = "trk") -> None:
-    """Flag, heartbeat, followed controller, direction loops, smoke offsets."""
+    """Flag, heartbeat, followed controller, target, direction loops, smoke offsets."""
 
     if len(loops) != DIRECTION_PARTS:
         raise ValueError("one loop per direction")
@@ -247,6 +259,8 @@ def emit_data(a: Assembler, loops: list[int], prefix: str = "trk") -> None:
     a.label(prefix + "_heartbeat")
     a.raw(0)
     a.label(prefix + "_follow")
+    a.raw(0)
+    a.label(prefix + "_aim")
     a.raw(0)
     a.label(prefix + "_loops")
     for off in loops:
@@ -347,11 +361,9 @@ def emit_child(a: Assembler, hit_child: int, target_desc: str, spawn: str = "trk
     a.lw("t1", 0, "t0")
     a.addiu("t1", "t1", 1)
     a.sw("t1", 0, "t0")
-    a.lw("t2", host.CTRL_OPPONENT, "s0")  # opponent controller
-    a.la("t0", "trk_follow")
-    a.sw("t2", 0, "t0")
-    a.beqz("t2", "trk_child_fly")
-    a.lw("a0", host.CTRL_ACTOR, "t2")
+    a.jal_label("trk_check")  # target controller (also trk_follow) or 0
+    a.beqz("v0", "trk_child_fly")
+    a.lw("a0", host.CTRL_ACTOR, "v0")
     a.beqz("a0", "trk_child_fly")
     a.la("a1", target_desc)
     a.move("a2", "zero")
@@ -387,6 +399,137 @@ def emit_child(a: Assembler, hit_child: int, target_desc: str, spawn: str = "trk
     a.addiu("sp", "sp", 0x20)
 
 
+def _abs_over(a: Assembler, field: int, ref: str, cand: str, limit: int, fail: str) -> None:
+    """``t0 = |cand.field - ref.field|``; branch to ``fail`` when above ``limit`` units."""
+
+    a.lw("t0", field, cand)
+    a.lw("t1", field, ref)
+    a.subu("t0", "t0", "t1")
+    _emit_abs(a, "t0", "t0", "t9")
+    a.li("t1", limit << 8)
+    a.slt("t2", "t1", "t0")
+    a.bnez("t2", fail)
+
+
+def emit_targeting(a: Assembler, range_units: int = TARGET_RANGE) -> None:
+    """``trk_pick() -> v0``: the nearest (x) living enemy controller on the player's path
+    within ``range_units`` (square) of the player, or 0. ``trk_check() -> v0``: keep
+    ``trk_aim`` while it is a present, living enemy, else ``trk_pick``; stores the
+    result in ``trk_aim`` and ``trk_follow``. Both preserve s0-s7."""
+
+    a.label("trk_pick")
+    a.addiu("sp", "sp", -0x28)
+    a.sw("ra", 0x24, "sp")
+    a.sw("s0", 0x20, "sp")
+    a.sw("s1", 0x1C, "sp")
+    a.sw("s2", 0x18, "sp")
+    a.sw("s3", 0x14, "sp")
+    a.lui("s3", hi(host.PLAYER_CTRL))
+    a.lw("s3", lo(host.PLAYER_CTRL), "s3")
+    a.move("s1", "zero")
+    a.beqz("s3", "trk_pick_done")
+    a.lw("s3", host.CTRL_ACTOR, "s3")
+    a.beqz("s3", "trk_pick_done")
+    a.lui("s2", 0x7FFF)
+    a.li("s0", ENEMY_CLASSES[0])
+    a.label("trk_pick_loop")
+    a.move("a0", "s0")
+    a.li("a1", 0xFFFF)
+    a.jal(F_FIND_CLASS)
+    a.beqz("v0", "trk_pick_next")
+    a.lhu("t0", CTRL_HEALTH, "v0")
+    a.beqz("t0", "trk_pick_next")
+    a.lw("t3", host.CTRL_ACTOR, "v0")
+    a.beqz("t3", "trk_pick_next")
+    a.lw("t0", host.ACTOR_PATH, "t3")
+    a.lw("t1", host.ACTOR_PATH, "s3")
+    a.bne("t0", "t1", "trk_pick_next")
+    _abs_over(a, host.ACTOR_Y, "s3", "t3", range_units, "trk_pick_next")
+    _abs_over(a, host.ACTOR_X, "s3", "t3", range_units, "trk_pick_next")
+    a.slt("t2", "t0", "s2")
+    a.beqz("t2", "trk_pick_next")
+    a.move("s2", "t0")
+    a.move("s1", "v0")
+    a.label("trk_pick_next")
+    a.addiu("s0", "s0", 1)
+    a.slti("t0", "s0", ENEMY_CLASSES[-1] + 1)
+    a.bnez("t0", "trk_pick_loop")
+    a.label("trk_pick_done")
+    a.move("v0", "s1")
+    a.lw("ra", 0x24, "sp")
+    a.lw("s0", 0x20, "sp")
+    a.lw("s1", 0x1C, "sp")
+    a.lw("s2", 0x18, "sp")
+    a.lw("s3", 0x14, "sp")
+    a.jr_ra()
+    a.addiu("sp", "sp", 0x28)
+
+    a.label("trk_check")
+    a.addiu("sp", "sp", -0x20)
+    a.sw("ra", 0x1C, "sp")
+    a.sw("s0", 0x18, "sp")
+    a.sw("s1", 0x14, "sp")
+    a.la("t0", "trk_aim")
+    a.lw("s0", 0, "t0")
+    a.beqz("s0", "trk_check_pick")
+    a.li("s1", ENEMY_CLASSES[0])
+    a.label("trk_check_loop")  # still a present enemy process?
+    a.move("a0", "s1")
+    a.li("a1", 0xFFFF)
+    a.jal(F_FIND_CLASS)
+    a.beq("v0", "s0", "trk_check_alive")
+    a.addiu("s1", "s1", 1)
+    a.slti("t0", "s1", ENEMY_CLASSES[-1] + 1)
+    a.bnez("t0", "trk_check_loop")
+    a.beq("zero", "zero", "trk_check_pick")
+    a.label("trk_check_alive")
+    a.lhu("t0", CTRL_HEALTH, "s0")
+    a.beqz("t0", "trk_check_pick")
+    a.lw("t0", host.CTRL_ACTOR, "s0")
+    a.bnez("t0", "trk_check_store")
+    a.label("trk_check_pick")
+    a.jal_label("trk_pick")
+    a.move("s0", "v0")
+    a.label("trk_check_store")
+    a.la("t0", "trk_aim")
+    a.sw("s0", 0, "t0")
+    a.la("t0", "trk_follow")
+    a.sw("s0", 0, "t0")
+    a.move("v0", "s0")
+    a.lw("ra", 0x1C, "sp")
+    a.lw("s0", 0x18, "sp")
+    a.lw("s1", 0x14, "sp")
+    a.jr_ra()
+    a.addiu("sp", "sp", 0x20)
+
+
+def emit_condition(a: Assembler, label: str = "trk_cond") -> None:
+    """HP record condition: the stock LP Ice condition, then a target (``trk_pick``,
+    stored in ``trk_aim``); 0x8000 accept, 0x4000 refuse (no target: no move)."""
+
+    a.label(label)
+    a.addiu("sp", "sp", -0x20)
+    a.sw("ra", 0x1C, "sp")
+    a.lui("t9", hi(LP_ICE_CONDITION))
+    a.addiu("t9", "t9", lo(LP_ICE_CONDITION))
+    a.jalr("t9")
+    a.andi("v0", "v0", 0xFFFF)
+    a.li("t0", 0x4000)
+    a.beq("v0", "t0", label + "_ret")
+    a.jal_label("trk_pick")
+    a.la("t0", "trk_aim")
+    a.sw("v0", 0, "t0")
+    a.beqz("v0", label + "_refuse")
+    a.li("v0", 0x8000)
+    a.beq("zero", "zero", label + "_ret")
+    a.label(label + "_refuse")
+    a.li("v0", 0x4000)
+    a.label(label + "_ret")
+    a.lw("ra", 0x1C, "sp")
+    a.jr_ra()
+    a.addiu("sp", "sp", 0x20)
+
+
 def emit_hunt(a: Assembler) -> None:
     """``trk_hunt``: one donor hunt step on the state at ``s0`` (rocket controller),
     rocket actor ``s1``; ``s2``/``s3`` hold this host tick's displacement sums including
@@ -398,7 +541,8 @@ def emit_hunt(a: Assembler) -> None:
 
     a.label("trk_hunt")
     a.move("v0", "zero")
-    a.lw("t0", host.CTRL_OPPONENT, "s0")
+    a.la("t0", "trk_aim")
+    a.lw("t0", 0, "t0")
     a.beqz("t0", "trk_hunt_done")
     a.lw("t0", host.CTRL_ACTOR, "t0")
     a.beqz("t0", "trk_hunt_done")
@@ -547,6 +691,7 @@ def emit_callback(
     a.move("a0", "s1")
     a.jal(F_FLIGHT_END)  # does not return
     a.label("trk_steps")
+    a.jal_label("trk_check")
     a.move("s2", "zero")
     a.move("s3", "zero")
     a.li("s4", 2)
