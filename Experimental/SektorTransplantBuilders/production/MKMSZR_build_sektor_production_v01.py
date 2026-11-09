@@ -30,8 +30,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
-from mkmszr.checksum import calculate_crc_6102  # noqa: E402
-from mkmszr.patches.rainbow_palette import LOAD_JAL_SITES  # noqa: E402
+from mkmszr.checksum import calculate_crc_6102
+from mkmszr.patches.rainbow_palette import LOAD_JAL_SITES
 
 SEKTOR_BUILDER = ROOT / "Experimental/SektorTransplantBuilders/teleport/MKMSZR_build_sektor_teleport_v50.py"
 FIXED_VA = 0xA01B30F0  # production pool tail after the Inventory legend (ends 0x801B30E6)
@@ -71,11 +71,11 @@ DROP_RANGES = (
 )
 
 
-def _in(off: int, ranges) -> bool:  # noqa: ANN001
+def _in(off: int, ranges) -> bool:
     return any(a <= off < b for a, b in ranges)
 
 
-def be32(data, off: int) -> int:  # noqa: ANN001
+def be32(data, off: int) -> int:
     return int.from_bytes(data[off : off + 4], "big")
 
 
