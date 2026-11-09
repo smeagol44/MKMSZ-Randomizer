@@ -14,6 +14,7 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 ## Recent updates
 
+- 2026-11-09 Sektor integration step 3: fighter file and donor samples Runtime-confirmed from above 16 MiB in a 32 MiB image (proof v49); next, R4 power mapping (user decisions). ([PS-26](Status-Update-Log#ps-26-2026-11-09))
 - 2026-11-09 Rainbow outfit removed from production (user decision, integration plan step 2): the mode is rejected and no longer offered in the CLI or web app; other builds are byte-identical. ([PS-25](Status-Update-Log#ps-25-2026-11-09))
 - 2026-11-09 Sektor integration step 1: option C (code and data inside his stock-size fighter file, relocated on load) Runtime-confirmed bounded in proofs v47/v48; next, rainbow removal from production (user decision). ([PS-24](Status-Update-Log#ps-24-2026-11-09))
 - 2026-11-09 Sektor complete as a proof: heat-seeking rocket and Double Missile (proofs v42–v46) Runtime-confirmed bounded; all four MKT Sektor specials run on the Sektor body. Proof-only; production integration is the remaining work. ([PS-23](Status-Update-Log#ps-23-2026-11-09))

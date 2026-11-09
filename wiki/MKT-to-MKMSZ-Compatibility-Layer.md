@@ -205,6 +205,8 @@ The other outfit modes (`SubZeroPalettePatch`, hue/RGB presets, also used by the
 
 ### 3. Sound and ROM space
 
+**Done (2026-11-09):** proof v49 Runtime-confirms the placement: file `0x87` and every donor sample load and play from the generated-output tail above 16 MiB (candidate region `[0x01820000,0x0186E4C0)`); see the [proof history](Sektor-Takeover-Proof-History#option-c-heap-neutral-file-and-relocatable-payload-v47v48).
+
 - **ROM:** the generated-output tail `[0x01819C00,0x02000000)` is unassigned (several MiB). Sektor's file `0x87` (repointed through its file-table entry, ROM `0xA5664`/`0xA5668`; stock `[0x748920,0x78E300)`), the samples and the code file go there as new owned rows; nothing goes in clean-input space.
 - **Sound hosts:** the 16 chains (`fighter_import.sound.ISOLATED_CHAINS`) share no event, patch, subpatch or waveform with production's Toasty (`52 → 68 → 608 → 533`) or Temple intro (`486 → 329 → 319`) chains. The samples move off `0xF20000` (which overlapped the rainbow bank); the bank-record rewrites stay guarded against clean bytes.
 - **Donor input:** production already takes an optional validated MKT Rev. 2 ROM (CLI `--mkt-rom`, web optional donor) for Toasty and the Temple intro; the Sektor option would require it and extract its assets the same way.

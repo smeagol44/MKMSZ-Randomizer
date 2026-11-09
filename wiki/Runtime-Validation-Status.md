@@ -8,6 +8,7 @@ Current project maturity and priorities are owned by [Project status](Project-St
 
 | Proof | Status | Evidence |
 |---|---|---|
+| Sektor assets above 16 MiB v49 (2026-11-09) | **Runtime-confirmed bounded** | 32 MiB image; fighter file `0x87` at `0x01820000` and all donor sound samples at `0x01866000` (wave records repointed). Graphics and every Sektor sound work ("all sounds and graphics work fine"). First evidence that the audio path streams samples from above 16 MiB. |
 | Sektor option C v47/v48 (2026-11-09) | **Runtime-confirmed bounded** | v47: file `0x87` at its stock size with every Sektor addition inside it; v48: the payload code as a relocatable blob in that file, relocated after every load by a `0x268`-byte fixed loader on the 15 load sites. All moves as in v46 ("no issues found whatsoever"). See [proof history](Sektor-Takeover-Proof-History#option-c-heap-neutral-file-and-relocatable-payload-v47v48). |
 | Sektor heat-seeking rocket + Double Missile v46 (2026-11-09) | **Runtime-confirmed bounded** | All four MKT Sektor specials on the Sektor body: `F,D,B + HP` homing rocket (climb and hunt, direction frames, crosshair, target and cruise sounds, proximity explosion, nearest living enemy in range, refused without one) and `B,B,F + LP` Double Missile; straight rocket on `F,F + LP`; effect colours corrected. User reports v45 "all working wonderfully", v46 "really good". See [Sektor takeover proof history](Sektor-Takeover-Proof-History#heat-seeking-rocket-r3-command-fixes-and-the-double-missile-v42v46). |
 | Sektor straight rocket + throw sounds v41 (2026-11-09) | **Runtime-confirmed bounded** | MKT rocket on lifted Ice Blast: chest, art, placement, flight, sounds, strike, Fire-trap stumble without the hit pause, smoke and explosion, no Ice ghosts or tint; teleport own-floor fallback; MKT throw sounds. Pending: smoke timing, explosion alpha, the tick-ratio measurement. See [Sektor takeover proof history](Sektor-Takeover-Proof-History#straight-rocket-r2-v30v41-and-the-throw-sounds). |
@@ -34,6 +35,7 @@ Current project maturity and priorities are owned by [Project status](Project-St
 
 Dated update notes are kept verbatim in the [Status update log](Status-Update-Log); newest first.
 
+- 2026-11-09 Sektor assets above 16 MiB, proof v49 — Runtime-confirmed bounded. ([RV-21](Status-Update-Log#rv-21-2026-11-09))
 - 2026-11-09 Sektor option C (heap-neutral file, relocatable payload), proofs v47–v48 — Runtime-confirmed bounded. ([RV-20](Status-Update-Log#rv-20-2026-11-09))
 - 2026-11-09 Sektor heat-seeking rocket and Double Missile, proofs v42–v46 — Runtime-confirmed bounded. ([RV-19](Status-Update-Log#rv-19-2026-11-09))
 - 2026-11-09 Sektor straight rocket and throw sounds, proofs v30–v41 — Runtime-confirmed bounded. ([RV-18](Status-Update-Log#rv-18-2026-11-09))
