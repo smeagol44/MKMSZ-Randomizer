@@ -636,3 +636,45 @@ def test_robo_zap_launch_ghosts_removed_through_stub() -> None:
     patches = robo_zap.launch_visual_patches(a.labels["zap_no_tint"])
     assert patches == {0x8004AE68: 0, 0x8004AE84: 0x0C06BC00}
     assert all(va in robo_zap.STOCK_WORDS for va in patches)
+
+
+def test_robo_throw_wrappers_play_for_the_player_only() -> None:
+    from mips_eval import Machine
+
+    from mkmszr.fighter_import import host
+    from mkmszr.fighter_import.actions import robo_throw
+
+    base = 0xA01AF000
+    a = Assembler(base)
+    host.emit_sound_player(a)
+    robo_throw.emit_wrappers(a, (332, 336), 437, 453)
+    player, other = 0x80300000, 0x80340000
+    cases = (
+        ("throw_grab", "current", (332, 336), robo_throw.F_VOICE),
+        ("throw_throw", "s0", (437,), robo_throw.F_PHASE),
+        ("throw_release", "current", (453,), robo_throw.F_THROW_END),
+    )
+    for label, who, expected, stock in cases:
+        for thrower, plays in ((player, True), (other, False)):
+            m = Machine(a.link(), base)
+            m.store(host.PLAYER_CTRL, player)
+            m.store(host.CURRENT_CTRL, thrower if who == "current" else other)
+            if who == "s0":
+                m.regs[16] = thrower
+            m.regs[4:8] = [0x0B, 0, 0x7F, 4]
+            m.regs[29], m.regs[31] = 0x80200000, 0x8005BCDC
+            events = []
+            stop = m.run(a.labels[label])
+            while stop.kind == "call":
+                if stop.target & 0x1FFFFFFF == host.F_RAW_SOUND & 0x1FFFFFFF:
+                    events.append(m.regs[4])
+                stop = m.run(stop.resume)
+            assert stop.kind == "return" and stop.target == stock  # tail-jump, cached
+            assert m.regs[4:8] == [0x0B, 0, 0x7F, 4] and m.regs[31] == 0x8005BCDC
+            assert m.regs[29] == 0x80200000
+            assert events == (list(expected) if plays else [])
+    assert robo_throw.patches(0xA01AF100, 0xA01AF200, 0xA01AF300) == {
+        0x8005BCD4: 0x0C06BC40,
+        0x8005BDC8: 0x0C06BC80,
+        0x8005BDF8: 0x0C06BCC0,
+    }
