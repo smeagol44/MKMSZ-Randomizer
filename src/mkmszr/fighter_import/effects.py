@@ -130,13 +130,6 @@ class EffectFrame:
         return (self.width + 3) & ~3
 
 
-def pad_to_stride(frame: EffectFrame) -> EffectFrame:
-    """Widen a frame to its 4-aligned row stride (transparent columns on the right,
-    same anchor). The pixels already carry the stride, so only the width changes."""
-
-    return EffectFrame(frame.stride, frame.height, frame.anchor_x, frame.anchor_y, frame.indices)
-
-
 def _mkt_u32(mkt: bytes, va: int) -> int:
     return int.from_bytes(mkt[va - 0x80000000 : va - 0x80000000 + 4], "big")
 
@@ -276,8 +269,16 @@ class EffectLayout:
 
 
 def layout(art: EffectArt, offset: int) -> EffectLayout:
-    """Palette record, then per frame an image, a descriptor and a one-part shape, then
-    the script; every record 4-aligned (fighter-file shapes must be)."""
+    """Palette record, then per frame an image, a zero word, a descriptor and a one-part
+    shape, then the script; every record 4-aligned (fighter-file shapes must be).
+
+    The frame bind ``0x8001BDA0`` reads the word just before a descriptor as a texture
+    slot override: non-zero means "draw from that slot" (no decode request) and the
+    slot table ``0x802E83F0`` is written at that index. Stock descriptors are preceded
+    by zero. Proof v35 put descriptors straight after type-4 images, so frames whose
+    image ended in non-zero token bytes became wild slot indices (frame 8:
+    ``0x86000000`` -> a store into TLB-mapped space, the post-hit hang).
+    """
 
     if offset & 3:
         raise ValueError("effect data must start 4-aligned")
@@ -293,6 +294,7 @@ def layout(art: EffectArt, offset: int) -> EffectLayout:
     shapes = []
     for frame in art.frames:
         image = put(art.image(frame))
+        put(bytes(4))  # no slot override (see above)
         desc = put(
             image.to_bytes(4, "big")
             + ((frame.width << 16) | frame.height).to_bytes(4, "big")

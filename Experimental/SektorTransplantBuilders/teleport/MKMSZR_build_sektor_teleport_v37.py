@@ -888,8 +888,12 @@ put32(rom, 0xA5668, RR + _new_end2)
 from mkmszr.fighter_import import effects as _fx
 _fx_dict = mkt[slice(*_donor.dictionary(7))]
 assert _fx_dict == ROBO_DICT
-SMOKE = _zapf.smoke_art(mkt, _fx_dict, pad=VARIANT == 'a')
-EXPLOSION = _zapf.explosion_art(mkt, _fx_dict, pad=VARIANT == 'a')
+SMOKE = _zapf.smoke_art(mkt, _fx_dict)
+EXPLOSION = _zapf.explosion_art(mkt, _fx_dict)
+if VARIANT == 'a':   # (padding was dropped from the library in v39: the hang was the descriptor's preceding word)
+    from dataclasses import replace as _rp
+    SMOKE = _rp(SMOKE, frames=tuple(_rp(f, width=f.stride) for f in SMOKE.frames))
+    EXPLOSION = _rp(EXPLOSION, frames=tuple(_rp(f, width=f.stride) for f in EXPLOSION.frames))
 if VARIANT == 'b':
     from dataclasses import replace as _r
     EXPLOSION = _r(EXPLOSION, frames=EXPLOSION.frames[:6] + EXPLOSION.frames[7:])

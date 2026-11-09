@@ -577,16 +577,12 @@ FX_HOST_TICKS_PER_FRAME = FX_DONOR_TICKS_PER_FRAME * physics.HOST_HZ // physics.
 SMOKE_RESERVE, EXPLOSION_RESERVE = 16, 4
 
 
-def smoke_art(mkt: bytes, dictionary: bytes, pad: bool = False) -> effects.EffectArt:
+def smoke_art(mkt: bytes, dictionary: bytes) -> effects.EffectArt:
     frames = tuple(effects.mkt_frame(mkt, d, dictionary) for d in SMOKE_FRAMES)
-    if pad:
-        frames = tuple(effects.pad_to_stride(f) for f in frames)
     return effects.EffectArt(frames, effects.mkt_palette(mkt, SMOKE_PALETTE))
 
 
-def explosion_art(mkt: bytes, dictionary: bytes, pad: bool = False) -> effects.EffectArt:
-    """``pad``: frame widths padded to their 4-aligned stride. v35 hung when the
-    explosion switched to frame 7, its only odd-width frame (69 px; proof v37)."""
+def explosion_art(mkt: bytes, dictionary: bytes) -> effects.EffectArt:
 
     frames = []
     for i in range(EXPLOSION_FRAME_COUNT):
@@ -596,7 +592,5 @@ def explosion_art(mkt: bytes, dictionary: bytes, pad: bool = False) -> effects.E
         frames.append(effects.mkt_frame(mkt, effects._mkt_u32(mkt, frame), dictionary))
     if effects._mkt_u32(mkt, EXPLOSION_ANIMATION + 4 * EXPLOSION_FRAME_COUNT) != 0:
         raise ValueError("explosion animation does not end after its frames")
-    if pad:
-        frames = [effects.pad_to_stride(f) for f in frames]
     palette = effects.mkt_palette(mkt, EXPLOSION_PALETTE)
     return effects.EffectArt(tuple(frames), palette, compressed=True)

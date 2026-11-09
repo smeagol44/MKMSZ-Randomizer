@@ -85,6 +85,7 @@ def test_layout_records() -> None:
             assert u32(data, desc + 4) == (frame.width << 16) | frame.height
             assert u32(data, desc + 8) == (frame.anchor_x << 16) | frame.anchor_y
             assert data[image - 0x46000 + 3] == (4 if compressed else 0)
+            assert u32(data, desc - 4) == 0  # 0x8001BDA0: non-zero = slot override
 
 
 def _effect_payload() -> tuple[Assembler, effects.EffectLayout]:
@@ -223,10 +224,3 @@ def test_process_without_texture_slot_exits() -> None:
     m.regs[2] = 0xFFFFFFFF
     stop = m.run(stop.resume)
     assert stop.target & 0x1FFFFFFF == effects.F_PROCESS_EXIT & 0x1FFFFFFF
-
-
-def test_pad_to_stride_keeps_pixels_and_anchor() -> None:
-    frame = effects.EffectFrame(69, 2, 42, 1, bytes(range(144)))
-    padded = effects.pad_to_stride(frame)
-    assert (padded.width, padded.height, padded.anchor_x, padded.anchor_y) == (72, 2, 42, 1)
-    assert padded.indices == frame.indices and padded.stride == 72
