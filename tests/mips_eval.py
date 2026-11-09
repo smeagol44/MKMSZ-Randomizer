@@ -61,8 +61,18 @@ class Machine:
             jump = None
             if op == 0:
                 fn, sh = w & 63, (w >> 6) & 31
-                if fn == 0x21:
+                if fn in (0x20, 0x21):  # add / addu (no overflow trap modelled)
                     r[rd] = (r[rs] + r[rt]) & MASK
+                elif fn == 0x22:
+                    r[rd] = (r[rs] - r[rt]) & MASK
+                elif fn == 0x27:
+                    r[rd] = ~(r[rs] | r[rt]) & MASK
+                elif fn == 0x04:
+                    r[rd] = (r[rt] << (r[rs] & 31)) & MASK
+                elif fn == 0x06:
+                    r[rd] = r[rt] >> (r[rs] & 31)
+                elif fn == 0x07:
+                    r[rd] = (_s32(r[rt]) >> (r[rs] & 31)) & MASK
                 elif fn == 0x23:
                     r[rd] = (r[rs] - r[rt]) & MASK
                 elif fn == 0x24:
@@ -107,6 +117,12 @@ class Machine:
                 r[rt] = r[rs] | imm
             elif op == 0x0C:
                 r[rt] = r[rs] & imm
+            elif op == 0x0E:
+                r[rt] = r[rs] ^ imm
+            elif op == 0x2F:  # cache: no architectural effect in this model
+                pass
+            elif op == 0x0B:  # sltiu (sign-extended immediate, unsigned compare)
+                r[rt] = int(r[rs] < (simm & MASK))
             elif op == 0x09:
                 r[rt] = (r[rs] + simm) & MASK
             elif op == 0x23:
@@ -143,6 +159,23 @@ class Machine:
             elif op == 0x01 and rt in (0, 1):  # bltz / bgez
                 if (_s32(r[rs]) < 0) == (rt == 0):
                     jump = ("b", pc + 4 + 4 * simm)
+            elif op in (0x14, 0x15, 0x16, 0x17) or (op == 0x01 and rt in (2, 3)):
+                # branch likely: the delay slot runs only when the branch is taken
+                if op == 0x14:
+                    taken = r[rs] == r[rt]
+                elif op == 0x15:
+                    taken = r[rs] != r[rt]
+                elif op == 0x16:
+                    taken = _s32(r[rs]) <= 0
+                elif op == 0x17:
+                    taken = _s32(r[rs]) > 0
+                else:
+                    taken = (_s32(r[rs]) < 0) == (rt == 2)
+                if taken:
+                    jump = ("b", pc + 4 + 4 * simm)
+                else:
+                    pc += 8
+                    continue
             elif op == 0x03:
                 jump = ("jal", (pc & 0xF0000000) | ((w & 0x03FFFFFF) << 2))
             elif op == 0x02:
