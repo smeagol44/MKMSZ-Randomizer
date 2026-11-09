@@ -202,6 +202,15 @@ def test_hp_record_and_command_stubs() -> None:
     assert rec[0x10:0x12] == bytes.fromhex("003C")
     assert rec[0x12:0x1A] == bytes.fromhex("0008000700090000")
     assert rec[0x1E:0x26] == bytes.fromhex("0009000700080000")
+    # the stock LP Ice Blast record with F,F in place of D,F (and the teleport's window)
+    stock_lp = bytes.fromhex(
+        "00800080000000018004a30480049c340014000900070000000000000000000800070000000000000000"
+    )
+    lp = trk.straight_record(0xA01B1234)
+    assert len(lp) == 0x2C and lp[:0x0C] == stock_lp[:0x0C]
+    assert lp[0x0C:0x12] == bytes.fromhex("A01B12340018")
+    assert lp[0x12:0x1E] == bytes.fromhex("000900090000000000000000")
+    assert lp[0x1E:0x2C] == bytes.fromhex("0008000800000000000000000000")
     a = Assembler(BASE)
     host.emit_sound_player(a)
     trk.emit_command_stubs(a, ice_callback=0xA01B0000, target_event=459)

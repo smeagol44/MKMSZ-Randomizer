@@ -71,6 +71,11 @@ COMMAND_RIGHT, COMMAND_LEFT = (8, 7, 9), (9, 7, 8)  # F,D,B newest first (7 Down
 COMMAND_WINDOW = 0x3C  # stock three-input HP window
 HP_MASK = 0x10
 LP_ICE_CONDITION = 0x8004A304  # tier >= 1 and Ice cost, as the straight rocket
+# Straight rocket: the stock LP Ice Blast record (0x800B0F38, D,F + LP) -> MKT's F,F + LP.
+LP_RECORD_ROM = 0xB1B38
+LP_MASK = 0x80
+STRAIGHT_RIGHT, STRAIGHT_LEFT = (9, 9), (8, 8)  # F,F (9/8 = forward facing right/left)
+STRAIGHT_WINDOW = 0x18  # as the F,F + LK teleport record
 F_FLIP = 0x8003188C
 F_FLIGHT_END = 0x8004CDF8  # (actor): the stock loop's exit (unlink, process exit); no return
 # Rocket process controller fields (free during the flight: only 0x8002830C copies them).
@@ -144,21 +149,39 @@ def smoke_offsets() -> list[int]:
     return out
 
 
-def descriptor_record(action: int) -> bytes:
-    """The HP special-move record (``0x2C`` bytes) for ``F,D,B + HP``."""
+def _record(
+    mask: int, selector: int, action: int, window: int, right: tuple[int, ...],
+    left: tuple[int, ...],
+) -> bytes:  # fmt: skip
+    """A special-move record (``0x2C`` bytes): masks, selector, condition, action,
+    window, then up to six command tokens per facing, newest first."""
 
     rec = bytearray(0x2C)
-    rec[0:2] = HP_MASK.to_bytes(2, "big")
-    rec[2:4] = HP_MASK.to_bytes(2, "big")
-    rec[4:8] = (0).to_bytes(4, "big")  # selector 0: refuses an airborne start
+    rec[0:2] = mask.to_bytes(2, "big")
+    rec[2:4] = mask.to_bytes(2, "big")
+    rec[4:8] = selector.to_bytes(4, "big")
     rec[8:12] = LP_ICE_CONDITION.to_bytes(4, "big")
     rec[12:16] = action.to_bytes(4, "big")
-    rec[16:18] = COMMAND_WINDOW.to_bytes(2, "big")
-    for i, tok in enumerate(COMMAND_RIGHT):
+    rec[16:18] = window.to_bytes(2, "big")
+    for i, tok in enumerate(right):
         rec[0x12 + 2 * i : 0x14 + 2 * i] = tok.to_bytes(2, "big")
-    for i, tok in enumerate(COMMAND_LEFT):
+    for i, tok in enumerate(left):
         rec[0x1E + 2 * i : 0x20 + 2 * i] = tok.to_bytes(2, "big")
     return bytes(rec)
+
+
+def descriptor_record(action: int) -> bytes:
+    """The HP special-move record for ``F,D,B + HP`` (selector 0 refuses an airborne
+    start)."""
+
+    return _record(HP_MASK, 0, action, COMMAND_WINDOW, COMMAND_RIGHT, COMMAND_LEFT)
+
+
+def straight_record(action: int) -> bytes:
+    """The LP record for the straight rocket on ``F,F + LP`` (the stock record's mask,
+    selector 1 and condition)."""
+
+    return _record(LP_MASK, 1, action, STRAIGHT_WINDOW, STRAIGHT_RIGHT, STRAIGHT_LEFT)
 
 
 # ---- donor art --------------------------------------------------------------------------
