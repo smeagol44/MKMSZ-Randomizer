@@ -164,6 +164,10 @@ class Assembler:
         self.raw((3 << 26) | ((address >> 2) & 0x03FFFFFF))
         self.nop()
 
+    def j(self, address: int) -> None:
+        self.raw((2 << 26) | ((address >> 2) & 0x03FFFFFF))
+        self.nop()
+
     def jal_label(self, name: str) -> None:
         self.fixups.append((len(self.code), "jal", name))
         self.raw(3 << 26)
@@ -172,6 +176,17 @@ class Assembler:
     def j_label(self, name: str) -> None:
         self.fixups.append((len(self.code), "j", name))
         self.raw(2 << 26)
+        self.nop()
+
+    def jr(self, rs: str) -> None:
+        """``jr rs`` without a delay slot: the caller emits the delay-slot instruction."""
+
+        self.raw((REG[rs] << 21) | 0x08)
+
+    def jalr(self, rs: str) -> None:
+        """``jalr ra, rs`` with a ``nop`` delay slot."""
+
+        self.raw((REG[rs] << 21) | (31 << 11) | 0x09)
         self.nop()
 
     def jr_ra(self) -> None:

@@ -2284,6 +2284,30 @@ User decisions that define the target behaviour:
 | v17 | `104e13ff9d92592b803d926b96470b66e7be6fd200781c1cbe4106a0421f4574` | `EF26B815 / 7A9A1448` | v16 with the volume change reverted. Combos work, but the kick endings lack their animation |
 | v18 | `4335e1ad03c7c6a06a761cd34e7c92a071064a12a533d184b8ab5bedd875ea02` | `EF26B815 / 7A9A1448` | Adds v59's late-Knee frames (`KNEE_LATE_MAP`); runtime check pending |
 | v19 | `4335e1ad03c7c6a06a761cd34e7c92a071064a12a533d184b8ab5bedd875ea02` | `EF26B815 / 7A9A1448` | Importer refactor (R1): the action comes from the `fighter_import` primitive library. The ROM is byte-identical to v18, so no runtime test is needed |
+| v20 | `669424a1e5aa5f5ee7666405f01a4fc89458ad09dbeea4377eca3c4e0c179f9e` | `2FF93E88 / C088FDC8` | **Runtime-confirmed:** stock Ice Blast re-hosted as a lifted copy (selector 4) behaves exactly as before |
+| v21 | `3b7695ddce69526acb69f963d90a4aa3a1b4d3655ece583515011150cbafecb7` | `3F8F746B / F4E1AD85` | Rocket art and palette correct from the first frame. One unreproduced inventory glyph corruption (per-shot texture-storage growth) |
+| v22 | `3771cc920ed0768d9c12152fe6966f8a04efcdc14dc28db5930b9ebca50c0ca6` | `03B8BECA / 16310335` | **Rejected / failed:** hangs on D,F+LP then D,F+HK (the up-shot's 56×113 stance frame overran the fixed 368-byte slot buffer) |
+| v23 | `06e46044da64fa5aa3b2822a436ee4916d4a5844c22f3251ba83848eba3b8b89` | `C8DC78F2 / 288B36F3` | **Runtime-confirmed:** no hang, no allocation; first frame still correct |
+| v24 | `3bae3da809045d7327a6995364bfaa616c8f9d4d4ffc8ca3199089a52eecde24` | `C8DC78F2 / 288B36F3` | MKT placement passed unscaled: rocket too high, slightly inward, drawn over Sektor |
+| v25 | `8f419a02ea315355763cb2e957ac416120257dc6329a57d159e5c8dc5f8b3b05` | `3E3C6526 / AF74FA90` | Height and draw order accepted; teleport reappears on the target's floor |
+| v26 | `bf195177e8388119b3e87b1d9189dad96c6349c52ef5bfcf6a6bc1fbe8ddfd13` | `3E3C6526 / AF74FA90` | **Runtime-confirmed:** MKT chest open/hold/close animation |
+| v27 | `0a0f44b7f09e4b24c9ae9915aa4547e41ededf79903bf32b7ff051ee17151905` | `D9436343 / AF11EC0E` | **Runtime-confirmed:** MKT flight (two frames, speeds, reacting start, acceleration, cap). Flame still visible behind Sektor at launch; ending lag reported short |
+| v28 | `383aca9481a757bbae217883c612fa2f0f716aa3587b53ca33d97e914b49ae74` | `D9436343 / AF11EC0E` | Spawn +4 px outward (runtime-observed correction); confirmed through v29 |
+| v29 | `a158c19faf62b84ddf68e3d7736cec3c88f848959b78b1c1000746c67ddf5e98` | `2FFA6768 / DC6270B5` | **Runtime-confirmed:** same behaviour as v28 ("works as before"); code moved out of the graphics-microcode area, 16 KiB arena |
+| v30 | `e9e19fab8d5897526ad8cd27a9be06cbd7071896991e0a67742ff8eca16baf6a` | `2FFB9768 / 7FF1DA86` | **Runtime-confirmed:** MKT rocket sounds (chest open, launch, boom) |
+| v31 | `2be04433df354e83684579603a2c761937664fdedf860fe6886e314f17151e1a` | `2F9A7F88 / B63590D5` | MKT rocket strike. Airborne reaction accepted; grounded stumble (stock reaction `0x24`) far too weak; a point-blank shot still froze the target |
+| v32 | `d7922053eeea6e48261bbd97975458483055338e0252c61116f8dbe2c8d24d59` | `2F9A7F88 / B63590D5` | Point-blank hit through the rocket record; teleport damage back to MKT `0x10/2`. Superseded by v34 without a separate report |
+| v33 | `6d729a55de78f1c0a4806b4dc408fb479cfda87cbdab470bab1fcbcd94000ad4` | `2F9FB368 / 429E7533` | Lifted reaction `0x24` with MKT-converted push. **Superseded** by the user's direction to use the Fire spiked-rod trap reaction |
+| v34 | `e125a89be93d05dfc5e586c0f6810e8f63912a981f45ea8865efb6508329f1da` | `2F9A5388 / BD26076F` | Fire trap stumble works, but the hit felt delayed (the trap's own 8-tick hit pause; MKT has none) |
+| v35 | `35120e43b73c5dc9f699c8b9fec137bf531920d30b46ff57539eec0c0230f4d0` | `2F9F4F70 / 4EB3F719` | Smoke trail and explosion render. **Hangs** near the end of the explosion; smoke disappears too quickly |
+| v36a / v36b | `1e5e9c494ca44f5941dbaaa4b4c30160defe3360e52cc060d79cba7344ac4384` / `f1cdea66b17c9602834930c81848d3b0c559f3ace5a370b8955bf19e572d9195` | `2F9AD7B0 / 2587C05C` / `2F9F4F80 / AE6BB45D` | Diagnostics: a (trap pause restored) hangs, b (no explosion) does not |
+| v37a / v37b | `0f62222d8b829e646589283793614b09b0749eead01301bd8d7c0051581ce728` / `0a41e52a3ae3f14381063fb5d7273464794ae19080aa7eac875d78de981a25d3` | `2F9F4F70 / 4EB3F719` / `2F9F46F8 / 4779E0F1` | Diagnostics: both hang (a: widths padded, stops on frame 7; b: frame 7 dropped, stops one frame earlier). Odd frame width **Rejected** as the cause |
+| v38c / v38d / v38e | `1d25696713f5f3fd1bc5abca3837cb94d15eaba986a6f66b7cf2cd41c4648ffe` / `157b6fed45da1c2d31396ebe77208f213004ff366003dad87aa16955f31ef58b` / `51b21c9bb8fd0bef7eeeab12c9f1a8f3b874d3c5b38536bfbf074f183e271a83` | `2F9F4AF0 / D4E2186F` / `2F9F49F8 / 575D86D9` / `2F9F4F70 / 4EB3F719` | Diagnostics: c (raw six-frame explosion, no smoke) does not hang; d (no smoke) and e (Ice hit visuals kept) hang |
+| v39 | `ccc0eb8d4a52eba7287f20c144627a4326c090c2547b84321e553466dcd63417` | `2F9F4EF8 / 37E07300` | **Runtime-confirmed ("it works fantastic"):** hang fixed (zero word before each effect descriptor). The launch-time Ice clones are still there |
+| v40 | `670fe45a3e4b9bc3f9238051413b6acf5f16aaf2ad5b13289891a2f7ef63a5c1` | `2F9F48C8 / AD5C2BFB` | **Runtime-confirmed:** no Ice clones or tint at launch; teleport rises from the floor against an airborne target. The user marked the rocket done |
+| v41 | `55a29201f738b8fadd7d83914f694adb46ae33e530cab66197708e29ac71f3a1` | `2FA8B4DC / E17A95A1` | **Runtime-confirmed ("working as expected"):** Sektor's MKT throw sounds |
+
+Builders import the importer library (`src/mkmszr/fighter_import`). Each builder reproduces its ROM byte-for-byte at the commit that added it: v30 `eb6022a`, v31 `7205271`, v32 `56e42f3`, v33 `c528392`, v34 `e955be3`, v35 `13f3859`, v36 `c06daa8`, v37 `6a940a0`, v38 `b01f9e6`, v39 `6488cca`, v40 `73a77d3`, v41 `d49a089` (checked for v31, v33, v35 and v36a). At `d49a089`, v30, v34 and v39–v41 still reproduce; the others build differently because later library fixes change their output (for example v35's builder now produces v39).
 
 ### Version changes
 
@@ -2338,6 +2362,37 @@ User decisions that define the target behaviour:
 - **v12–v15 (voice):** Sub-Zero's player-only voice events are re-pointed at isolated host chains carrying Sektor's MKT sounds. The final v15 rule is in [Audio system](Sounds-and-Music#imported-fighter-voice-rule-2026-11-07).
 - **v16–v18 (combos):** v62's six Sektor combo records at `0xB1CB0` (byte-identical to v62). The standalone `HK,HK` record moves from `0x9AD90`, which is now this line's loader stub, into the payload arena (KSEG1 `0xA01AFB38`), with knee root `0xA1CE8` pointing at it. The combo walker `0x8004D4C0` follows any negative `+0x0C` pointer and fetches strike records from its own table `0x800B0D48`, so KSEG1 is accepted. v18 adds v59's late-Knee shape ownership, which this lineage had never received, so the knee's parts 3–5 show Sektor frames instead of the stance fallback.
 
+### Straight rocket (R2) v20–v29
+
+Sektor's MKT straight rocket is built by re-hosting stock Ice Blast and swapping donor behaviour in one piece per proof. The recipe is `fighter_import.actions.robo_zap`; every edit to the lifted Ice root is a declared word patch checked against the stock word it replaces.
+
+- **v20:** the LP Ice Blast callback and root (`0x80049C34`, `0x8004AB84..0x8004B1D0`) are lifted into the payload; the callback transfers to selector 4 (the lifted root). Runtime-identical to stock.
+- **v21:** ROCKETD1 (robot `+0x2668`, 39×9, anchor (26,3)) and ROCKET_P appended to file `0x87`; token-`0x0B` palette and pre-upload hooks (v87/v89 design). The pre-upload's `0x8001BF70` allocates from the texture bump pointer `0x801AE478` on every shot (no bounds check, reset only at stage setup), which can grow into the top-down dynamic textures (`0x8001C2B4`).
+- **v22:** fixed 368-byte slot buffer. **Rejected:** the render pass's deferred upload (`0x800185B8`) copies each new frame into the slot's current storage with that frame's size; the still-stock up-shot script builds its projectile on the 56×113 stance frame and overran the buffer (hang).
+- **v23:** no allocation: frame refresh (`0x8001BDA0`) plus the stock deferred copy done early (`0x8001D6EC` mode 1, `0x8001D7F0`) into slot `0x24`'s stock storage.
+- **v24–v25:** sprite pixels are 2 world units (renderer `sll 1` at `0x800188F8`/`0x8001890C`), so MKT (+5,+38) px = (+10,+76). Draw order: sprite layer = `+0x5C×32 + +0xEC`, ordering table drawn from high to low; behind-owner idiom `+0xEC = owner + 1` (`0x80030D18`). Teleport: reappear at the target controller's floor `+0x6B4`.
+- **v26:** chest open/hold/close (MKZAP.ASM `robo_open_chest_fast`, `sleep 0x20`, `robo_close_chest`): RBCHEST1/RBCHEST2 in the Zap script phases, closing frame 2 ticks.
+- **v27:** flight: ROCKETD1/ROCKETD2 resampled to one frame per host tick (D1 D1 D2 D1 D2 D2); host speed per tick = 2 × (two donor speeds) / 3 from MKT's integer recurrence (start `0x46666`, reacting `0x7B332`, cap `0xEEEEE`; v75's accepted values, now derived); reacting = opponent `+0x6BE` bit `0x04`; flight child replaces `0x8004B82C`.
+- **v28:** +4 px outward from the user's frame-by-frame MKT captures (not explained by anchor arithmetic).
+- **v29:** see [RSP microcode text](Memory-and-Allocation-Map#rsp-microcode-text-inside-the-main-segment-2026-11-08). The token hooks are removed and the rocket setup runs from the lifted root after its token advance (`0x8004AEE4`); arena 16 KiB.
+
+### Straight rocket (R2) v30–v41 and the throw sounds
+
+- **v30 (sounds):** Sektor's MKT ochar sounds through isolated host chains (`fighter_import.sound`): chest open `0x0B` → MKT event `0x108` → host 173, launch `3` → `0x100` → host 175, boom `0x0A` → `0x107` → host 177. The chest sound wraps the root's open-phase call `0x8004AD38`; the Ice launch-sound block `0x8004AD58..0x8004AD98` is skipped and the launch sound plays at creation; the boom replaces the Ice hit sound (`0x8004BB94`) in a lifted copy of the hit child `0x8004BB64`.
+- **v31–v32 (strike):** the rocket's own strike record (MKT `stk_ro_zap`: box `(16,−15,35,31)`, damage `0x14`, chip 2; host reaction and block selectors) in the payload; player type-4 strike-pointer entry `0x13` (ROM `0xB00D0`) points at it, because its stock record `0x800AF634` is shared with type 2. v32: the lifted straight helper's point-blank test (`0x8004B5D4`) reads entry `0x13` instead of the Ice freeze record `0x18`; teleport damage back to MKT `0x10/2`.
+- **v33–v35 (reaction):** MKT `r_rocket` is a strong stumble back (airborne: knocked down). v33's lifted `0x24` with a converted push is superseded. v34 reaches the Fire spiked-rod trap stumble `0x80051280` through reaction index `0x23`, whose stock entry `0x8004E0C0` is an endless sleep that no strike table uses (reaction table `0x800A1190`, ROM `0xA1D90`). v35 points `0x23` at a lifted copy without the trap's 8-tick hit pause (`jal 0x80028794` at `0x80051318`).
+- **v35 (effects):** MKT smoke puffs and explosion as native effect processes (`fighter_import.effects`, modelled on the stock Ice helper; see [Player actions](Player-Actions-and-Special-Moves#effect-actors-2026-11-09)). One puff per flight tick, 19 px behind the rocket along its heading, one sub-layer behind it. The explosion starts from the boom wrapper at the contact position, in front. The hit child no longer starts the Ice helper/tint processes (`0x8004BCB4`, `0x8004BCD0`). Art in file `0x87`: puffs raw (`0x110C` bytes), explosion type 4 (`0x2C24` bytes).
+- **v36–v38 (hang bisection):** the hang always came 10–14 ticks after the explosion started, on varying frames; only builds with type-4 explosion frames 8 (or 7 in v37b) hung. See v39.
+- **v39 (fix):** `0x8001BDA0` reads the word before a frame descriptor as a texture-slot override ([Data structures](Data-Structures-and-Encodings#frame-descriptor-and-the-preceding-word)). v35 put each descriptor straight after its type-4 image; frames 2 and 8 were preceded by token bytes (`0xA3000000`, `0x86000000`). Frame 8's value became a store at slot-table index `0x86000000`, i.e. into TLB-mapped space. Raw images end in transparent zeros, which is why the smoke and v38c never hung. The layout now writes a zero word before every descriptor.
+- **v40:** the lifted root no longer starts the launch-time Ice helper pair (`0x8004AE68`) or blue tint (`0x8004AE84`). The tint call goes to a payload stub returning `scratch − 0x6F4`, because the three stores after it (`0x8004AEBC..C4`) would otherwise land in the player's own controller. Teleport: if the target's floor `+0x6B4` is unusable (`0x7FBC00` "no floor below", set while it flies high, or more than 512 units below it), Sektor reappears on his own floor before falling back to the target's height (v25–v39 reappeared in mid-air beside an airborne target).
+- **v41 (throw sounds):** MKT `robo1_slam` sounds on the player throw `0x8005BC8C`: grab voice (voice group 3, event `0x67`) plus arm OUT (robot ochar 0, `0xFD`) at the grab, arm THROW (ochar 1, `0xFE`) before the throw phase, arm IN (ochar 2, `0xFF`) at the finish, through isolated hosts 332, 336, 437 and 453. Three stock call sites (`0x8005BCD4`, `0x8005BDC8`, `0x8005BDF8`) go to payload wrappers that play the sounds only when the thrower is the player, then continue to the stock call. Player voice category 11 (silent since v12) is the grab slot: its only callers are grab/throw paths ([Audio](Sounds-and-Music#imported-fighter-voice-rule-2026-11-07)).
+
+Open details (the user marked the rocket done with these pending):
+- smoke timing: MKT puffs grow about twice as slowly as v35–v41's (user observation, same spacing); the MKT/MKMSZ process-tick ratio needs a frame-count measurement and also governs the chest timing and the rocket speed check;
+- explosion alpha: effect slots get the per-frame default render mode (alpha `0x80`); the stock Ice helper selects mode 1 (`0xC0`) through `0x8009A5F0` before taking its slot;
+- smoke uses one process per puff and refuses to spawn while fewer than 16 processes/objects are free, which caps the trail on busy screens;
+- MKT's faster chest open when the opponent is reacting; one rocket at a time.
+
 ### Proof-only footprint (v08)
 
 All of these are the Reverse Elbow v6 proof infrastructure plus the takeover storage, guarded against clean bytes. **None is a production allocation.**
@@ -2356,7 +2411,7 @@ All of these are the Reverse Elbow v6 proof infrastructure plus the takeover sto
 - The drop shadow stays visible during sink and emerge: the shadow renderer is not yet located.
 - MKT's 16-tick velocity lead on placement is omitted.
 - Facing uses the stock nearest-opponent helper, so with two close enemies Sektor could face the nearer one.
-- A target standing at a drop-off edge could place Sektor over the drop. This is untested.
+- A target standing at a drop-off edge could place Sektor over the drop. A single unreproduced report after v40 matches this (Sektor appeared at floor level and fell to the floor below); cause unconfirmed. A fix would probe for a floor at the placement before committing to it.
 - Only bounded manual routes were tested; this is not exhaustive coverage.
 
 ## Canonical ownership and remaining limits

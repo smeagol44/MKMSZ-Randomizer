@@ -82,6 +82,15 @@ class TeleportParams:
     air_cap: int = 60
     fall_cap: int = 45
     landing_ticks: tuple[int, int] = (2, 1)  # donor 0x80076E48 holds 2 x 3 ticks at 60 Hz
+    # v25: reappear on the target's floor (its controller +0x6B4), not at its current
+    # height; MKT always rises from the floor. False reproduces v08-v24.
+    emerge_on_floor: bool = False
+    floor_bound: int = 0x20000  # accept the floor only within 512 units below the target
+    # v40: when the target's floor is not usable (e.g. 0x7FBC00, "no floor below", set by
+    # 0x80024BA8 while it is knocked/flying high), use Sektor's own floor (he is grounded
+    # by then) if it is below the target, before falling back to the target's height.
+    # False reproduces v25-v39 (an airborne target made Sektor reappear in mid-air).
+    own_floor_fallback: bool = False
 
 
 FRAME = host.Frame()
@@ -187,13 +196,43 @@ def _emit_reposition(a: Assembler, p: TeleportParams) -> None:
     """
 
     host.find_target(a, "emerge", p.range_units)
+    if p.emerge_on_floor:
+        a.lw("t0", host.CTRL_GROUND, "v0")  # v0 = target controller, before any call
+        a.sw("t0", 0x1C, "sp")
     host.face_opponent(a)  # forward = toward the target
     a.lw("t0", host.ACTOR_X, "s4")
     a.lw("t1", host.ACTOR_X, "s1")
     a.slt("s6", "t0", "t1")  # s6 = 1: target is on Sektor's -x side
-    for field in (host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Y, host.ACTOR_Z):
+    if p.emerge_on_floor:
+        # Target floor saved at 0x1C. y grows downward; airborne y < floor.
+        a.lw("t0", 0x1C, "sp")
+        a.lw("t1", host.ACTOR_Y, "s4")
+        a.sw("t1", 0x18, "sp")  # fallback: the target's own height (v08-v24)
+        a.subu("t2", "t0", "t1")
+        a.bltz("t2", "floor_own" if p.own_floor_fallback else "floor_set")
+        a.li("t3", p.floor_bound)
+        a.slt("t3", "t3", "t2")
+        a.bnez("t3", "floor_own" if p.own_floor_fallback else "floor_set")
+        a.sw("t0", 0x18, "sp")
+        if p.own_floor_fallback:
+            a.beq("zero", "zero", "floor_set")
+            a.label("floor_own")
+            a.lw("t0", host.CTRL_GROUND, "s0")
+            a.subu("t2", "t0", "t1")
+            a.bltz("t2", "floor_set")  # own floor above the target: keep its height
+            a.li("t3", 0x7FBC00)
+            a.beq("t0", "t3", "floor_set")  # no floor
+            a.sw("t0", 0x18, "sp")
+        a.label("floor_set")
+        fields: tuple[int, ...] = (host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Z)
+    else:
+        fields = (host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Y, host.ACTOR_Z)
+    for field in fields:
         a.lw("t0", field, "s4")
         a.sw("t0", field, "s1")
+    if p.emerge_on_floor:
+        a.lw("t0", 0x18, "sp")
+        a.sw("t0", host.ACTOR_Y, "s1")
     a.move("a0", "s4")
     a.addiu("a1", "sp", 0x10)
     a.addiu("a2", "sp", 0x14)

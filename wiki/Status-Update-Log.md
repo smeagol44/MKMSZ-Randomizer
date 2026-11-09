@@ -4,6 +4,16 @@
 
 ## From Project status
 
+### PS-22 (2026-11-09)
+
+**2026-11-09 Sektor's straight rocket (MKT `do_robo_zap`), proofs v20–v41: Runtime-confirmed bounded, marked done by the user with details pending; teleport and throw additions.**
+
+- **Move.** Stock Ice Blast re-hosted by lifting (`fighter_import.lifter`). It carries MKT chest open/hold/close, rocket art and palette, placement, flight (two-frame loop, donor speeds, acceleration and cap), sounds, strike record, a stumble reaction (the Fire spiked-rod trap stumble, without its hit pause, as reaction `0x23`), the smoke trail and explosion as native effect processes, and no Ice ghosts or tint at launch or contact.
+- **Key finding.** `0x8001BDA0` reads the word before a frame descriptor as a texture-slot override. Generated data must keep it zero (the v35 post-hit hang, bisected through v36–v38 and fixed in v39) ([Data structures](Data-Structures-and-Encodings#frame-descriptor-and-the-preceding-word)).
+- **Also.** The teleport rises from Sektor's own floor when the target's floor is unusable (v40). Sektor's MKT throw sounds (grab voice, arm OUT/THROW/IN) are on the player throw (v41); player voice category 11 is the grab slot.
+- **Pending details.** Smoke timing and the MKT/MKMSZ tick ratio (also chest timing and the rocket speed check), explosion alpha, the per-puff process cost, MKT's faster chest open against a reacting opponent, and one unreproduced teleport fall at a drop-off.
+- **Identity.** v41 `MKMSZR_sektor-teleport_common-proof_v41.z64`, SHA-256 `55a29201f738b8fadd7d83914f694adb46ae33e530cab66197708e29ac71f3a1`; each builder reproduces at the commit that added it ([proof history](Sektor-Takeover-Proof-History#straight-rocket-r2-v30v41-and-the-throw-sounds)). Proof-only allocations; the sound samples overlap the production rainbow bank ([Memory map](Memory-and-Allocation-Map)).
+
 ### PS-21 (2026-11-07)
 
 **2026-11-07 first imported MKT special — Sektor teleport uppercut proof v08: Runtime-confirmed bounded; teleport sound added in v09 (Runtime-confirmed); shadow Pending.**
@@ -100,6 +110,10 @@
 **Focused lifecycle update (2026-10-01): lifecycle v06 is Runtime-confirmed and promoted to the shared production pipeline.** The exact accepted reference is Very Hard / 9 total lives / 5 continues / persistent HP ON. The shared core now parameterizes that same lifecycle control flow for build-time difficulty, starting lives (1..10), starting continues (0..5), and persistent HP ON/OFF; browser defaults are Very Hard / 5 / 3 / HP ON. Non-reference combinations are Implementation/CI-confirmed pending representative runtime coverage. v04 remains **Rejected / unsafe composition**. See [Lifecycle static closure](Lifecycle-Static-Closure-v05), [Persistence/inventory/lifecycle](Persistence-Inventory-and-Lifecycle), and [Web patcher/product behavior](Web-Patcher-and-Product).
 
 ## From Runtime validation status
+
+### RV-18 (2026-11-09)
+
+**2026-11-09 Sektor straight rocket and throw sounds, proofs v30–v41 — Runtime-confirmed bounded.** User reports: v30 rocket sounds working; v31 air reaction fine, grounded too weak (v34 Fire trap stumble accepted, its hit pause removed in v35); v39 "it works fantastic" (smoke and explosion, no hang); v40 launch-time Ice clones gone, teleport rises from the floor against an airborne target, rocket marked done; v41 throw sounds "working as expected". Diagnostics: v36a hangs and v36b does not; v37a/b both hang; v38c does not hang, v38d/e do. One unreproduced teleport fall through a floor after v40. No exhaustive stage, enemy or state coverage is claimed.
 
 ### RV-17 (2026-11-07)
 

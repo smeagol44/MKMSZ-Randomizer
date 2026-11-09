@@ -499,6 +499,40 @@ These host facts came out of the Sektor teleport proof line, v01–v08 ([proof h
 | **Visibility.** Hiding through actor `+0x64` bit `0x20` left Sektor invisible in Wind (v01). Sink/emerge instead use descriptor-only aliases plus a transparent frame. Actors flagged `+0x8C & 0x2000` copy the player every frame but are **not** the drop shadow; hiding them had no visible effect. The drop-shadow renderer is still unlocated. | Runtime-observed v01/v05; shadow: Pending. |
 | **Camera width.** On ordinary stages the camera depth (`0x802C1BB4`) is `0x200` and F (`0x8009A8E8`) is `0x100`, so the visible ground width is 640 world units. The off-screen test is `0x80035260`, with projection `0x80024754`. | Static-confirmed. |
 
+## Straight rocket host findings (2026-11-09)
+
+These come from the Sektor rocket proofs v20–v41 ([proof history](Sektor-Takeover-Proof-History#straight-rocket-r2-v30v41-and-the-throw-sounds)). "Runtime-confirmed" means user-observed on bounded routes with the named proof.
+
+| Finding | Evidence |
+|---|---|
+| **Re-hosting by lifting.** A stock routine copied into the payload with its internal `j`/`jal` retargeted (`fighter_import.lifter`), each behaviour change a declared word patch checked against the stock word, leaves the stock routine untouched for every other user. The rocket is the lifted Ice callback `0x80049C34`, root `0x8004AB84..0x8004B1D0` (transfer selector 4), straight helper `0x8004B584..0x8004B71C` and hit child `0x8004BB64..0x8004BD28`. | Runtime-confirmed v20–v41. |
+| **Process creation.** `0x8002830C(id, entry)` takes a controller from the free list `0x80111DC8` (64 controllers of `0x720` bytes; returns 0 when none is left; stock callers do not check), links it **after the current process** (so it runs later in the same scheduler pass), and copies the parent's `+0x6E0`, `+0x6E4` and `+0x6F4..+0x718`. It returns the new controller, so the caller can overwrite those fields before the child first runs. The entry starts with `sp = controller + 0x628`; the context switch `0x8007CAF8` saves `ra`, `sp`, `fp`, `gp` and `s0..s7`. | Static-confirmed; Runtime-confirmed v35–v41 (effect processes). |
+| **Objects.** `0x800245A4` takes an object from the free list `0x802D0E34` (79 objects of `0x118` bytes) and zeroes it. | Static-confirmed. |
+| **Reaction table entry `0x23`.** In the reaction table `0x800A1190`, entry `0x23` is stock `0x8004E0C0`, an endless one-tick sleep that no strike table uses, so it can carry an imported reaction. The Fire spiked-rod trap stumble `0x80051280` (hit voice, preamble `0x80053028` with airborne handler `0x800533C8`, an 8-tick hit pause at `0x80051318`, push `±0x56666`, stumble phase slot `0x20` at 6 ticks/frame, exit) matches MKT's rocket stumble; a lifted copy without the pause runs fine from KSEG1. | Static-confirmed; Runtime-confirmed v34 (with pause) and v35–v41 (without). |
+| **Strike pointer per selector.** Player (type 4) projectile records come from `0x800AF484[selector]` through `0x8004CE6C`. Repointing selector `0x13` to a payload record (through its KSEG0 alias) changes only the straight projectile; its stock record `0x800AF634` is shared with type 2. | Runtime-confirmed v31. |
+| **Ice visuals are separate processes.** The root at launch and the hit child at contact each start a helper pair (`0x80060A3C`: a resource actor plus its mirror, the blue "ghosts") and a blue tint (`0x8004AB0C` / `0x8004AB48`) through `0x8002830C`. Each start may be removed; the root's tint start must be replaced rather than skipped, because three stores through its result (`0x8004AEBC..C4`) would otherwise land in the player's controller. | Runtime-confirmed v35 (hit) and v40 (launch). |
+
+## Effect actors (2026-11-09)
+
+**Static-confirmed model; Runtime-confirmed in Sektor rocket proofs v39–v41 (smoke puffs and explosion).** A stationary animated effect is its own class-`0x100` process, modelled on the stock Ice helper `0x80060A3C` without its mirror actor (`fighter_import.effects`):
+
+1. take a texture slot `0x8001C2B4(w, h)` sized for the largest frame (`-1`: exit; see [texture-slot record](Data-Structures-and-Encodings#dynamic-gameplay-texture-slot-record));
+2. bind the palette record `0x8001C528(file base + record, 0x100, 0)`, cached by address and reference-counted, never released (as the stock helper);
+3. construct the actor `0x800281A0(script pointer, 0, file base, 1)`. Set `+0x9C` slot, `+0x9E` palette − `0x80`, position `+0x2C/+0x30/+0x34` and rotation `+0xAC/+0xAE/+0xB0`; set priority `+0x5C` and sub-layer `+0xEC` (`0xFFFF` = in front, as the stock helper; source `+0xEC + 1` = behind). Also `+0x64 = 0x2002`, `+0xD8 = 0x6C`, controller `+0x6B4 = 0xE000`, all as the stock helper. An optional local offset goes through `0x80031208` on the new actor (its rotation is the source's). Set `+0x8C = 0x40` last, so each bind requests a decode;
+4. insert it in `0x80111C98` (`0x80024650`), then each frame `0x800304C0` and sleep N until the script word is `0`;
+5. remove it (`0x80024B00`), sleep 2, release the slot (`0x8001C424`), exit (`0x80028564`).
+
+The spawner (`effects.emit_spawn`) writes position, rotation, layer and the descriptor into the new controller (`+0x6F4..+0x70C`) right after `0x8002830C` returns, so nothing is read from the source later, and refuses while either free list holds fewer than the effect's reserve. The frame data must follow the [preceding-word rule](Data-Structures-and-Encodings#frame-descriptor-and-the-preceding-word).
+
+Open: a fresh slot's render mode comes from `0x8009A5F0` at allocation time (reset to 0 every frame; the stock helper sets 1 first), so effects currently draw with alpha `0x80`. One process per puff is costly against the 64-controller pool.
+
+## Throw and teleport additions (2026-11-09)
+
+| Finding | Evidence |
+|---|---|
+| **Player throw `0x8005BC8C`.** At the grab it plays player voice category 11 (`0x80064B00(0x0B, ...)` at `0x8005BCD4`; category 11's other callers `0x8003D048` and `0x80040654` are grab paths too). It then runs the grab phase (`0x80034578` at `0x8005BD58`), makes the victim current and runs the throw phase (`0x80034578` at `0x8005BDC8`, attacker controller in `s0`), restores the attacker and finishes through `0x8005BB84` (`0x8005BDF8`). Wrapping these three calls adds donor throw sounds for the player only. | Static-confirmed; Runtime-confirmed v41. |
+| **Target floor can be unusable.** The floor check `0x80024BA8` stores `+0x6B4 = 0x7FBC00` ("no floor below") when it finds no floor region, e.g. while a fighter flies high. Placement code that reads another fighter's `+0x6B4` must reject that value. The teleport falls back to Sektor's own floor, then to the target's height. | Static-confirmed; Runtime-confirmed v40. |
+
 ## Current host-side boundaries
 
 Established:
@@ -514,6 +548,7 @@ Established:
 - callback self-reentry hazard and bounded cleanup requirement.
 
 - one complete imported special (Sektor teleport uppercut, proof v08): uncancellable begin, airborne-start descriptor, custom air arc with the airborne counter, stock uppercut strike, wall-aware placement ([findings](#teleport-uppercut-host-findings-2026-11-07)).
+- a re-hosted projectile special (Sektor straight rocket, proofs v20–v41): lifted Ice routines, donor art/flight/sounds/strike, an imported reaction, native effect processes ([rocket](#straight-rocket-host-findings-2026-11-09), [effects](#effect-actors-2026-11-09)).
 
 Not established here:
 

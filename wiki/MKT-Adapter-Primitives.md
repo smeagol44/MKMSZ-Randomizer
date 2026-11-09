@@ -777,7 +777,7 @@ rocket_explode_fx:   ochar_sound 0x0A (metal ball BOOM) -> create_fx 5 (shared e
    - donor `ochar_sound(n)` → per-fighter sound host.
 5. **Command lowering and tiers.** Lower donor command handlers to MKMSZ descriptors. Sektor's specials fill power tiers 1–4 (user decision, 2026-11-07); with Shuffle Power Progression enabled, they follow the shuffled order.
 
-**Effects.** `create_fx(4)` (smoke puff) and `create_fx(5)` (explosion) are shared MK effects, not robot art. For `fx 5` the user suggests the PRIS GRUNT3 (`0x16`) launcher explosion. That art is already MKMSZ 4-bpp Type-5 with an exact 16-colour palette (file `0x90` secondary model, palette `+0x1C49C`), so it needs no format conversion. But file `0x90` is a Prison-paged resource, so using it everywhere means carrying its frames in the imported fighter's resources, as the rocket is carried. Still to trace (Pending): which `0x90` frames are the impact explosion rather than the projectile in flight, and how the stock grunt spawns it.
+**Effects (superseded 2026-11-08: the user decided to port MKT's own explosion, not substitute one; see "R2 done" below).** `create_fx(4)` (smoke puff) and `create_fx(5)` (explosion) are shared MK effects, not robot art. For `fx 5` the user suggested the PRIS GRUNT3 (`0x16`) launcher explosion. That art is already MKMSZ 4-bpp Type-5 with an exact 16-colour palette (file `0x90` secondary model, palette `+0x1C49C`), so it needs no format conversion. But file `0x90` is a Prison-paged resource, so using it everywhere means carrying its frames in the imported fighter's resources, as the rocket is carried. Still to trace (Pending): which `0x90` frames are the impact explosion rather than the projectile in flight, and how the stock grunt spawns it.
 
 **R1 done (2026-11-07, Implementation/CI-confirmed).** The primitive library exists in `src/mkmszr/fighter_import/`:
 - `mips.py`: assembler;
@@ -791,15 +791,29 @@ Builder v19 calls the package. Its payload and its whole ROM are **byte-identica
 - **Strike.** The rocket's strike `0x12` reaches `proj_strike_check` → `strike_check_a0` as offset `0x12` into the **attacker's own strike table**, so its reaction meaning has to be read from the robot strike table (Pending). The combo `stk_*` codes (`MKCOMBO.ASM`: `stk_0` hit in face, `stk_1` stumble, `stk_2` knocked on back, `stk_4` nailed, `stk_5` uppercutted, …) are a separate namespace.
 - **Sounds.** Launch `ochar_sound 3` ("robo fast rocket"), chest `0x0B`, boom `0x0A`. All three are entries in Sektor's MKT fighter table at the same indices, as was verified for the teleport.
 - **Effects.** `rocket_smoke` is `create_fx(4)` every other tick; the explosion is `create_fx(5)` at the rocket's x/y.
-- **Still open.** The Prison GRUNT3 explosion frames and their spawn path, and which v63–v89 seams to reuse.
+- **Still open (at the time).** The Prison GRUNT3 explosion frames and their spawn path, and which v63–v89 seams to reuse. Both were overtaken by R2 (below).
 
 **Increments (each is a bounded proof).**
 - **R1.** Refactor the teleport adapter onto the primitive library with no behaviour change.
 - **R2.** The straight rocket as the first recipe: chest open/close, projectile with `ROCKET_P`, donor acceleration and cap at the v75 calibration, translated strike, launch/chest/boom sounds, and the `fx 5` explosion. Smoke comes later. It replaces the tier-1 Ice Blast LP record (`F,F + LP`, one live rocket at a time, as the donor's predicate does).
-- **R3.** Smoke and the heat-seeking rocket (`rocket2_proc`, `F,D,B + HP`), reusing the same library.
+- **R3.** The heat-seeking rocket (`rocket2_proc`, `F,D,B + HP`), reusing the same library (the smoke moved into R2).
 - **R4.** Tier gating and the full command-table swap.
 
 The v63–v89 line remains the evidence base for the projectile seams (texture-slot preupload, palette source, placement and velocity calibration). It hooked the stock Ice action; the importer instead owns its action, as the teleport does.
+
+**R2 done (2026-11-09; Runtime-confirmed bounded in Sektor proofs v30–v41, marked done by the user with details pending).** The straight rocket is a recipe on the library: `actions/robo_zap.py`, plus `lifter.py`, `projectile.py`, `sound.py` and `effects.py` ([proof history](Sektor-Takeover-Proof-History#straight-rocket-r2-v30v41-and-the-throw-sounds), [host findings](Player-Actions-and-Special-Moves#straight-rocket-host-findings-2026-11-09)). It re-hosts stock Ice Blast by lifting rather than owning a new action; each behaviour change is a declared, stock-checked word patch. Donor facts it rests on (MKT USA Rev. 2 N64 unless noted):
+
+| Fact | Value |
+|---|---|
+| Effect dispatcher | `create_fx` `0x8002A820`, table `0x800A5590`: 4 = `rocket_puff` `0x8002E448`, 5 = `dave_explode` `0x8002EA38`. `rocket_smoke` `0x8007C7C8` toggles process `+0x3D4` and calls `create_fx(4)` on every other flight iteration |
+| Puff | Image descriptors `0x800CC840, 0x850, 0x85C, 0x868, 0x874` (`{image, h<<16\|w, anchor x, anchor y}`, palette `0x800BC638` with 16 colours, given in the first only), codec 16; sizes 16×18 … 34×40. Animation list `0x800CC7E0` via `framew 4` (`0x8000E59C`: one frame per call, sleep 4 between, one final sleep 4), then deleted. Placement entry 3 of `0x800A5BB8` = (5, 0), then x − `0x18`: 19 px behind the rocket's anchor; z 0; stationary |
+| Explosion | Animation list `0x800CC7F8`: eight one-part frames, then 0 (a reverse run follows the 0 and is not played); `mframew 4`, then deleted. Created from `0x800CCA88` at the rocket's position (process `+0x440/+0x444`), z `0x51`; palette `0x800BC6E4` with 32 colours. Frames 1–2 codec 15 (60×51, 74×66), 3–6 codec 14, 7–8 codec 19 |
+| Codecs | Header `>> 24 & 0x3F`, table `0x800F96C8`. Codec 15: 3-bit RLE. Codecs 14/19: `0x80082594`; codec 19 has a fill index at `+4` (codec 14: fill 0). A byte with bit 7 set is dictionary pair `(c & 0x7F) * 2`; otherwise `k = c >> 5`: 0 one pixel `v`, 1 two pixels, 2 `v + 3` fills, 3 `v` repeated by the next byte. Decoded with Sektor's dictionary (ROM `0x906A90`, `DICT_TABLE`), all frames give in-range indices; the global dictionary does not (static scoring) |
+| Reaction | Reaction table `0x800A8AE0`: `r_rocket` `0x80057B08` → `zap_stumble` `0x80057BEC` (push `0x33333`, animation `0x20`) → `0x80057F94`. A strong stumble back; airborne victims are knocked down (user check in MKT) |
+| Throw (`robo1_slam`, Sektor = fighter 7) | `body_slam_init` → grab voice (voice group 3; Sektor's voice group 5 → event `0x67`) and `ochar_sound 0` (arm OUT), grab animation, `ochar_sound 1` (arm THROW), throw, transfer to the thrown reaction, `ochar_sound 2` (arm IN) while the arm retracts (arcade `MKSLAM.ASM`) |
+| Robot ochar sounds | `0x800A1ED4[7]`: 0 `0xFD` arm OUT, 1 `0xFE` arm THROW, 2 `0xFF` arm IN, 3 `0x100` fast rocket, `0x0A` `0x107` boom, `0x0B` `0x108` chest open (arcade `st_robo1` order) |
+
+Open donor question: **process tick rate.** MKT's scheduler `0x8005A758` runs once per main-loop pass (`0x8001401C`), and its sleeps `0x8005A88C` count passes; this page has treated a pass as a 60 Hz tick. With that mapping the puffs should match MKT, but the user observed MKT's puffs growing about twice as slowly at the same spacing (proof v35–v41). The pass rate needs a frame-count measurement (Pending). It also governs the chest timing (closing reported early in v27) and the rocket speed check.
 
 ## Known missing generic adapter functions
 
@@ -807,7 +821,7 @@ The v63–v89 line remains the evidence base for the projectile seams (texture-s
 2. **Projectile actor/process wrapper** — expose the now-identified target actor creation, relative placement, child-process binding, owner/opponent context, and cleanup as a reusable adapter API instead of replaying Ice choreography.
 3. **Projectile callback/state ABI** — callback dispatch itself is now identified: `0x8004CC50` latches child `+0x70C -> +0x680` at entry and calls `+0x680` once per flight iteration after sleep/animation/offscreen checks and before strike resolution. Generic adapter-owned scratch/state beyond that dispatch contract remains Pending.
 4. **Velocity/facing conversion policy** — target integrator semantics and 60 Hz -> 30 Hz temporal resampling are established; v74 comparative runtime evidence showed a separate donor-local -> target-world spatial scale was required. v75 Runtime-confirms a bounded 2x host-magnitude calibration on its tested route; universality is Pending.
-5. **Projectile effect/palette translation** — bind projectile-local palette semantics and map donor smoke/explosion/SFX effects without inheriting Ice presentation.
+5. **Projectile effect/palette translation** — bind projectile-local palette semantics and map donor smoke/explosion/SFX effects without inheriting Ice presentation. *Partly covered (2026-11-09):* `fighter_import.effects` turns donor effect animations into native effect processes, and `projectile.py` binds donor palettes (Runtime-confirmed for Sektor's rocket); a donor `create_fx` index → effect map is still per recipe.
 6. **No-repel gate** — implement the donor three-tick countdown at a narrow MKMSZ separation hook, without forced crossover or teleport behavior.
 7. **Strike/reaction translator** — map donor geometry/damage/flags/reaction meaning to MKMSZ-native strike and victim-reaction primitives.
 8. **Animation-control-token translator** — map donor animation callbacks/control tokens; visual-frame import alone is insufficient for scripts containing engine callbacks. The rules are now Static-confirmed ([Animation script grammar translation](#animation-script-grammar-translation)); a label-relocating assembler that preserves host phase layout remains to be built.
