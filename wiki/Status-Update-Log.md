@@ -4,6 +4,10 @@
 
 ## From Project status
 
+### PS-25 (2026-11-09)
+
+**2026-11-09 Rainbow outfit removed from production (user decision; Sektor integration plan step 2).** Its compact-tail design wraps all 15 file-`0x87` load calls and appends a palette bank to the stock Sub-Zero file, which conflicts with an imported fighter file. `build_pipeline` now rejects the `rainbow` mode, the CLI and web app no longer offer it, and `patches/rainbow_palette.py` stays (unwired, with its unit tests) for a later re-add. Builds without rainbow are byte-identical to the previous `main` (checked for default, seeded + enemies + power shuffle, and RGB + powers-as-pickups OFF). Its allocations (loader wrapper, Runtime V2 tail helper, phase word, file `0x92` bank at ROM `0xF20000`) are marked retired in the [Memory map](Memory-and-Allocation-Map).
+
 ### PS-24 (2026-11-09)
 
 **2026-11-09 Sektor integration step 1 (code location): option C, proofs v47–v48 Runtime-confirmed bounded.**

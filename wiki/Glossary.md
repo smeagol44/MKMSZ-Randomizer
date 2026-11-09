@@ -362,7 +362,7 @@ See [MKT compatibility overview](MKT-to-MKMSZ-Compatibility-Layer), [MKT adapter
 - **Boot branding** — legal/boot presentation modified by MKMSZR.
 - **Seeded phrase** — deterministic boot phrase generated from its own RNG namespace.
 - **Title branding / edition text** — rebranded title screen and configurable `<NAME> EDITION` text.
-- **Rainbow** — runtime outfit mode that cycles 64 generated palettes while preserving the native palette allocator/release path.
+- **Rainbow** — runtime outfit mode that cycles 64 generated palettes while preserving the native palette allocator/release path. Removed from production on 2026-11-09 (may return later).
 - **Compact-tail Rainbow** — production optimization that leaves stock Sub-Zero file `0x87` in place and loads only the extra 8 KiB rainbow palette bank into an appended runtime tail.
 - **Toasty** — MK-style visual/audio easter egg imported from MKT and integrated as an optional MKMSZR feature.
 - **CI4 Toasty** — compact production Toasty visual representation using 4-bit indexed slices plus a 16-entry palette.

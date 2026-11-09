@@ -1,4 +1,7 @@
+import pytest
+
 from mkmszr.config import OutfitConfig, RandomizerConfig
+from mkmszr.errors import PatchError
 from mkmszr.patcher import (
     _build_production_global_plan,
     _pickup_mode_required_count,
@@ -53,13 +56,11 @@ def test_turn_settings_run_after_progression_in_shared_pipeline() -> None:
     assert types.index(XPProgressionPatch) < types.index(GameSettingsTurnPatch)
 
 
-def test_rainbow_outfit_uses_runtime_palette_patch() -> None:
-    pipeline = build_pipeline(
-        RandomizerConfig(seed="RAINBOW64", outfit=OutfitConfig(mode="rainbow"))
-    )
-    types = [type(patch) for patch in pipeline.patches]
-    assert RainbowPalettePatch in types
-    assert types.index(ControlsProductionPatch) < types.index(RainbowPalettePatch)
+def test_rainbow_outfit_is_not_available() -> None:
+    with pytest.raises(PatchError, match="rainbow"):
+        build_pipeline(RandomizerConfig(seed="RAINBOW64", outfit=OutfitConfig(mode="rainbow")))
+    types = [type(p) for p in build_pipeline(RandomizerConfig(seed="RAINBOW64")).patches]
+    assert RainbowPalettePatch not in types
 
 
 def test_power_order_shuffle_is_optional_and_runs_after_controls() -> None:
@@ -149,19 +150,11 @@ def test_lifecycle_v06_runs_after_temple_and_before_optional_power_order() -> No
     assert types.index(EarnedXPPersistencePatch) < types.index(PowerOrderPatch)
 
 
-def test_temple_special_check_runs_after_controls_and_optional_rainbow() -> None:
+def test_temple_special_check_runs_after_controls() -> None:
     normal = build_pipeline(RandomizerConfig(seed="TEMPLE-SPECIAL"))
     types = [type(patch) for patch in normal.patches]
     assert TempleSpecialCheckPatch in types
     assert types.index(ControlsProductionPatch) < types.index(TempleSpecialCheckPatch)
-
-    rainbow = build_pipeline(
-        RandomizerConfig(seed="TEMPLE-SPECIAL", outfit=OutfitConfig(mode="rainbow"))
-    )
-    types = [type(patch) for patch in rainbow.patches]
-    assert types.index(ControlsProductionPatch) < types.index(RainbowPalettePatch)
-    assert types.index(RainbowPalettePatch) < types.index(TempleSpecialCheckPatch)
-
 
 
 def test_vanilla_fortress_gate_requires_eight_pickup_tiers() -> None:

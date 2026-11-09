@@ -28,7 +28,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x0000E028` | — | Stage selector | JAL `0x8002830C` | JAL debug menu `0x8000D0B8` |
 | `0x00015CD0` | — | Stage selector | load from `0x800C11E0` | JAL compact-index mapper |
 | `0x0001674C` | — | Four-box input | `3C03802F 9463CE18` | Call switching action routine, then resume `0x80015B54` |
-| `0x0001C9A0..0x0001C9AF` | `0x8001BDA0` | Rainbow outfit | guarded first four frame-setup instructions | `rainbow` mode only: tail-jump through uncached helper `0xA01AF700`, which replays displaced instructions and resumes `0x8001BDB0` |
+| `0x0001C9A0..0x0001C9AF` | `0x8001BDA0` | Rainbow outfit | guarded first four frame-setup instructions | `rainbow` mode only: tail-jump through uncached helper `0xA01AF700`, which replays displaced instructions and resumes `0x8001BDB0` **Retired 2026-11-09:** rainbow is no longer composed in production (`build_pipeline` rejects the mode). |
 | `0x0002EB28` | `0x8002DF28` | Toasty production trigger | `0C00B81E 03C02821` | JAL shared Toasty dispatcher; only qualifying successful/unblocked reactions arm the comment countdown |
 | `0x0005CCE0` | `0x8005C0E0` | Toasty stage init | `3C048029 8C841C10` | Jump through production-owned selector padding to load file `0x1A` and initialize Toasty |
 | `0x0005D2E0` | `0x8005C6E0` | Toasty HUD compositor | `0C007AB9 A0C20046` | JAL shared Toasty dispatcher while preserving the stock HUD submission path |
@@ -95,7 +95,7 @@ All ROM offsets are for the clean USA Rev. 0 `.z64` image. “Production” mean
 | `0x00063724` | combo XP UI | XP progression UI | JAL native text renderer | Suppress combo EXPERIENCE value |
 | `0x000A6FFC..` | `0x800A63FC` | XP progression | guarded signed stage-cap halfwords | Main-stage caps become `20000` |
 | `0x000A5478` | file entry `0x5E` | Title branding | guarded stock file-table entry | Repoint title package to generated high-ROM copy |
-| `0x000A5664` | file entry `0x87` | Rainbow outfit | stock `0x00748920..0x0078E300`, raw flag `0` | Compact rainbow deliberately leaves this entry unchanged; guards verify retail ownership |
+| `0x000A5664` | file entry `0x87` | Rainbow outfit | stock `0x00748920..0x0078E300`, raw flag `0` | Compact rainbow deliberately leaves this entry unchanged; guards verify retail ownership **Retired 2026-11-09:** rainbow is no longer composed in production (`build_pipeline` rejects the mode). |
 | `0x000B3364` palette base | `0x800B2764` | Title branding | selected guarded Candidate-B-unused CI8 entries | Replace 15 entries with the shared dark-to-light icy-blue art/edition ramp; index `0xFF` stays the stock background |
 
 | ROM `0x00074E68`, `0x00073C98`, `0x000759E0`, `0x00075B88`; retired span `0x00074EB8..0x00074FA7` | Native Inventory presentation | Randomizer HUD labels/portraits/paper/status | guarded stock text/preview/description paths | Shared row/preview/HUD dispatch plus paper trampoline and exact first-load `0x1200` data allocator. v20 closes first-load size bug; v21 closes ordinary-row fifth-argument forwarding and final status presentation. |
@@ -115,7 +115,7 @@ The following production writers target continuous owned regions. Their **exact 
 | `rom.production.key_stage_table` | `inventory_boxes.py` `KeyStageTablePatch`; file `0x1A` must cover the slice and the slice must be untouched | Write the 22-byte key-to-stage table (`0x20`-byte slice at ROM `0x00F69150`); the obsolete stock template `0x000A6BE4..0x000A6C0B` is left stock |
 | `rom.production.bootstrap_composite` | native payload/persistence/flow writers; guarded pre-production bytes and capacity checks | Emit bootstrap, persistence helpers/tables, relocated selector mapper, and selector-only save-bypass write |
 | `rom.production.payload_source` | output-expansion guard plus exact Runtime V2 size checks | Emit the reloadable `0x3B0`-byte Runtime V2 code payload |
-| `rom.production.rainbow_bank` | `rainbow_palette.py`; guarded stock file entry, all 15 allocation/load sites, file-`0x92` entry, controls→Toasty gap, and exact bank size | `rainbow` mode only: keep stock file `0x87` in place, allocate `+0x2000`, and append the dedicated 64-palette bank at runtime |
+| `rom.production.rainbow_bank` | `rainbow_palette.py`; guarded stock file entry, all 15 allocation/load sites, file-`0x92` entry, controls→Toasty gap, and exact bank size | `rainbow` mode only: keep stock file `0x87` in place, allocate `+0x2000`, and append the dedicated 64-palette bank at runtime **Retired 2026-11-09:** rainbow is no longer composed in production (`build_pipeline` rejects the mode). |
 | `rom.production.title_high` | title builder capacity/clean-output guard | Emit the recompressed generated file `0x5E` package |
 
 Runtime-only slices such as the Runtime V2 inventory/XP payload subranges and persistent state are **not ROM patch sites**. Their canonical bounds and ownership remain only in the Memory Map; Core Runtime owns how those slices compose.
@@ -241,6 +241,8 @@ It reads the compact index, adds 2 for indices `6` and `7`, and writes nonzero b
 
 
 ### Compact rainbow loader sites
+
+**Retired from production 2026-11-09** (user decision). The sites below are no longer patched by production; the same 15 load calls are the hook sites of the Sektor fixed loader in proof v48.
 
 The Runtime-confirmed compact-tail v01 architecture edits all 15 stock Sub-Zero file-`0x87` allocation/load pairs. Each allocation delay changes from `addu a0,v0,zero` to `addiu a0,v0,0x2000`; each raw-loader JAL is redirected to the production rainbow wrapper. The paired allocation ROM sites are `0xDF40, 0xE384, 0xEF00, 0xF628, 0xFEB0, 0x105B0, 0x106B0, 0x10DBC, 0x116DC, 0x117DC, 0x11EA4, 0x125B4, 0x12F70, 0x13068, 0x24768`; paired loader JAL sites are `0xDF50, 0xE394, 0xEF10, 0xF638, 0xFEC0, 0x105C0, 0x106C0, 0x10DCC, 0x116EC, 0x117EC, 0x11EB4, 0x125C4, 0x12F80, 0x13078, 0x24778`. File-table entry `0x92` at ROM `0xA56E8` becomes the optional raw rainbow-bank transport; ROM `0xF20000..0xF21FFF` stores only the 8 KiB bank. The wrapper starts at runtime `0x801B0880` / ROM `0xF69060`, inside the guarded controls→Toasty gap.
 

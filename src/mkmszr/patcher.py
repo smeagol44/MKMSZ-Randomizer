@@ -33,7 +33,6 @@ from .patches import (
     PickupRandomizationPatch,
     PowerOrderPatch,
     ProgressionPickupPresentationPatch,
-    RainbowPalettePatch,
     RunLifecyclePatch,
     SafeStageSelectorPatch,
     SafeStageSelectSkipAutoSavePatch,
@@ -192,7 +191,12 @@ def build_pipeline(
         # of every other owner. Disable only for debugging/comparison.
         patches.append(AudioFifoReservePatch())
     outfit_mode = config.outfit.mode.lower()
-    if outfit_mode != "rainbow" and outfit_mode != "vanilla":
+    if outfit_mode == "rainbow":
+        # Removed from production on 2026-11-09 (user decision): its file-0x87 load
+        # wrapper conflicts with an imported fighter file. The module stays in
+        # patches/rainbow_palette.py for a later re-add; it is no longer composed.
+        raise PatchError("the rainbow outfit is not available in this build")
+    if outfit_mode != "vanilla":
         patches.append(
             SubZeroPalettePatch(
                 outfit_mode,
@@ -217,12 +221,8 @@ def build_pipeline(
             ),
         )
     )
-    # Compact rainbow owns an optional wrapper in the guarded controls->Toasty
-    # expansion gap, so it must compose after ControlsProductionPatch.
-    if outfit_mode == "rainbow":
-        patches.append(RainbowPalettePatch())
     # The scripted Temple check uses the production file-0x1A expansion
-    # transport and composes after the optional rainbow wrapper. Its validated
+    # transport and composes after ControlsProductionPatch. Its validated
     # location/progression/persistence behavior remains separate from the 84
     # ordinary pickup records.
     patches.append(TempleSpecialCheckPatch())
