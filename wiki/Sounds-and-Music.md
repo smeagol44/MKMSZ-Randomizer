@@ -198,8 +198,9 @@ Use by the Sektor proof line through v41 (all Runtime-confirmed as hosts; `fight
 | 335 | teleport `0x104` | v09 |
 | 173 / 175 / 177 | rocket chest open `0x108` / launch `0x100` / boom `0x107` (robot ochar `0x0B` / `3` / `0x0A`) | v30 |
 | 332 / 336 / 437 / 453 | throw: grab voice `0x67` (voice group 3) / arm OUT `0xFD` / arm THROW `0xFE` / arm IN `0xFF` (robot ochar 0 / 1 / 2) | v41 |
+| 459 / 478 | heat-seeking rocket: target `0x109` (robot ochar `0x0C`, at the command) / cruise `0x101` (ochar 4, at creation) | v42 |
 
-Free: 459, 478. MKT's per-fighter ochar sounds resolve through `0x800A1ED4[fighter]` (a table of `u16` events); the robot table follows the arcade MK3 `st_robo1` order (`MKSOUND.ASM`).
+The hosts that were free after v41 (459, 478) are now used. MKT's per-fighter ochar sounds resolve through `0x800A1ED4[fighter]` (a table of `u16` events); the robot table follows the arcade MK3 `st_robo1` order (`MKSOUND.ASM`).
 
 To host a donor sound:
 - the donor track replaces the host track, with its patch field set to the host patch;

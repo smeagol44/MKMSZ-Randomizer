@@ -56,6 +56,8 @@ FX_DESCRIPTOR = 0x700
 FX_ROT_AC_AE = 0x704  # rotation +0xAC (high) / +0xAE (low)
 FX_ROT_B0_LAYER = 0x708  # rotation +0xB0 (high) / priority +0x5C (low)
 FX_SUBLAYER_DX = 0x70C  # sub-layer +0xEC (high) / local x offset, whole units (low, signed)
+FX_DY = 0x710  # local y offset, whole units (signed word)
+FX_FOLLOW_MISS = 0x714  # follower processes: last heartbeat (high) / misses (low)
 
 
 # ---- donor (MKT USA Rev. 2) images ------------------------------------------------------
@@ -117,6 +119,84 @@ def decode_mkt_codec14_19(stream: bytes, dictionary: bytes) -> bytes:
     return bytes(out[:size])
 
 
+def decode_mkt_codec22_24(stream: bytes, dictionary: bytes) -> bytes:
+    """MKT codecs 22/23/24: dictionary pairs with a per-pair flip bit stream, plus runs.
+
+    Codec 24 carries four fill indices at ``+4``; codec 23 one at ``+4`` (codec 22: 0).
+    A byte with bit 7 set is dictionary pair ``(c & 0x7F) * 2``, reversed when the next
+    flip bit is set; otherwise ``k = c >> 5``: 0 one pixel, 1 two pixels, 2 a run of
+    fills (codec 24: ``(c & 7) + 3`` of fill ``(c >> 3) & 3``; else ``c + 3``), 3 ``c``
+    repeated by the next byte. (Ported from the Sektor takeover builders.)
+    """
+
+    codec = stream[0]
+    size = int.from_bytes(stream[:4], "big") & 0xFFFFFF
+    if codec == 24:
+        fills, fp, single = stream[4:8], 8, 0
+    elif codec == 23:
+        fills, fp, single = None, 5, stream[4]
+    elif codec == 22:
+        fills, fp, single = None, 4, 0
+    else:
+        raise ValueError(f"not a codec-22/23/24 image ({codec})")
+    flip_len = stream[fp]
+    fp += 1
+    if flip_len & 0x80:
+        flip_len = ((flip_len & 0x7F) << 8) | stream[fp]
+        fp += 1
+    flips = stream[fp : fp + flip_len]
+    pos = fp + flip_len
+    bits, fi = 8, 0
+    flip = flips[0] if flips else 0
+    fi = 1 if flips else 0
+    out = bytearray()
+    while len(out) < size:
+        c = stream[pos]
+        pos += 1
+        if c & 0x80:
+            i = (c & 0x7F) << 1
+            pair = dictionary[i : i + 2]
+            out += pair[::-1] if flip & 0x80 else pair
+            bits -= 1
+            if bits == 0:
+                flip, bits = (flips[fi] if fi < len(flips) else 0), 8
+                fi += 1
+            else:
+                flip = (flip << 1) & 0xFF
+            continue
+        k, v = c >> 5, c & 0x1F
+        if k == 3:
+            out += bytes((v,)) * stream[pos]
+            pos += 1
+        elif k == 2:
+            if fills is None:
+                out += bytes((single,)) * (v + 3)
+            else:
+                out += bytes((fills[(v >> 3) & 3],)) * ((v & 7) + 3)
+        elif k == 1:
+            out += bytes((v, v))
+        else:
+            out.append(v)
+    if len(out) != size:
+        raise ValueError("codec-22/24 size mismatch")
+    return bytes(out)
+
+
+def decode_mkt_image(stream: bytes, dictionary: bytes) -> bytes:
+    from .projectile import decode_mkt_codec16
+
+    codec = stream[0] & 0x3F
+    if codec == 16:
+        return decode_mkt_codec16(stream)[0]
+    if codec == 15:
+        return decode_mkt_codec15(stream)
+    if codec in (14, 19):
+        return decode_mkt_codec14_19(stream, dictionary)
+    if codec in (22, 23, 24):
+        return decode_mkt_codec22_24(stream, dictionary)
+    raise ValueError(f"unsupported MKT codec {codec}")
+
+
 @dataclass(frozen=True)
 class EffectFrame:
     width: int
@@ -141,26 +221,29 @@ def _mkt_s16(mkt: bytes, va: int) -> int:
 def mkt_frame(mkt: bytes, descriptor: int, dictionary: bytes) -> EffectFrame:
     """MKT image descriptor ``{image, h << 16 | w, anchor x, anchor y}`` -> host indices."""
 
-    from .projectile import decode_mkt_codec16
-
     image = _mkt_u32(mkt, descriptor)
     dims = _mkt_u32(mkt, descriptor + 4)
     width, height = dims & 0xFFFF, dims >> 16
-    stream = mkt[image - 0x80000000 :]
-    codec = stream[0] & 0x3F
-    if codec == 16:
-        indices = decode_mkt_codec16(stream)[0]
-    elif codec == 15:
-        indices = decode_mkt_codec15(stream)
-    elif codec in (14, 19):
-        indices = decode_mkt_codec14_19(stream, dictionary)
-    else:
-        raise ValueError(f"unsupported MKT effect codec {codec}")
+    indices = decode_mkt_image(mkt[image - 0x80000000 :], dictionary)
     frame = EffectFrame(
         width, height, _mkt_s16(mkt, descriptor + 8), _mkt_s16(mkt, descriptor + 10), indices
     )
     if len(indices) != height * frame.stride:
         raise ValueError(f"MKT image {image:#x}: {len(indices)} indices for {width}x{height}")
+    return frame
+
+
+def heap_descriptor_frame(heap: bytes, descriptor: int, dictionary: bytes) -> EffectFrame:
+    """A fighter-heap descriptor (heap-relative image offset) -> host indices."""
+
+    word = lambda o: int.from_bytes(heap[o : o + 4], "big")
+    half = lambda o: int.from_bytes(heap[o : o + 2], "big", signed=True)
+    image, dims = word(descriptor), word(descriptor + 4)
+    width, height = dims & 0xFFFF, dims >> 16
+    indices = decode_mkt_image(heap[image:], dictionary)
+    frame = EffectFrame(width, height, half(descriptor + 8), half(descriptor + 10), indices)
+    if len(indices) != height * frame.stride:
+        raise ValueError(f"heap image {image:#x}: {len(indices)} indices for {width}x{height}")
     return frame
 
 
@@ -260,7 +343,7 @@ class EffectArt:
 class EffectLayout:
     data: bytes  # placed at file offset ``offset``
     offset: int
-    palette: int  # file offset of the palette record
+    palette: int  # file offset of the palette colours (record + 4, past the count word)
     script: int  # file offset of the frame script (shape offsets, then 0)
 
     @property
@@ -278,10 +361,34 @@ def layout(art: EffectArt, offset: int) -> EffectLayout:
     by zero. Proof v35 put descriptors straight after type-4 images, so frames whose
     image ended in non-zero token bytes became wild slot indices (frame 8:
     ``0x86000000`` -> a store into TLB-mapped space, the post-hit hang).
+
+    The palette bind ``0x8001C528`` -> ``0x8001C6D0`` copies colours from its source
+    pointer as is, so the bind source is the record's colours (record + 4), as for the
+    rocket (``ROCKET_PAL_SRC``). Binding the record start (proofs v39-v42) read the count
+    word as colours 0-1 and shifted every effect colour by two entries.
     """
 
     if offset & 3:
         raise ValueError("effect data must start 4-aligned")
+    record = art.palette_record()
+    palette = offset + 4
+    shapes_at = offset + len(record) + (-len(record) & 3)
+    data, shapes = layout_shapes(art.frames, shapes_at, art.compressed)
+    script = shapes_at + len(data)
+    blob = record + bytes(-len(record) & 3) + data + b"".join(x.to_bytes(4, "big") for x in shapes)
+    return EffectLayout(blob + bytes(4), offset, palette, script)
+
+
+def layout_shapes(
+    frames: tuple[EffectFrame, ...] | list[EffectFrame], offset: int, compressed: bool = False
+) -> tuple[bytes, list[int]]:
+    """Per frame an image, a zero word, a descriptor and a one-part shape (4-aligned).
+
+    Returns the data placed at ``offset`` and the shapes' file offsets (script words).
+    """
+
+    if offset & 3:
+        raise ValueError("frame data must start 4-aligned")
     out = bytearray()
 
     def put(blob: bytes) -> int:
@@ -290,19 +397,18 @@ def layout(art: EffectArt, offset: int) -> EffectLayout:
         out.extend(bytes(-len(out) & 3))
         return at
 
-    palette = put(art.palette_record())
     shapes = []
-    for frame in art.frames:
-        image = put(art.image(frame))
-        put(bytes(4))  # no slot override (see above)
+    for frame in frames:
+        pixels = encode_type4(frame.indices) if compressed else b"\0\0\0\0" + frame.indices
+        image = put(pixels)
+        put(bytes(4))  # no slot override (see layout)
         desc = put(
             image.to_bytes(4, "big")
             + ((frame.width << 16) | frame.height).to_bytes(4, "big")
             + (((frame.anchor_x & 0xFFFF) << 16) | (frame.anchor_y & 0xFFFF)).to_bytes(4, "big")
         )
         shapes.append(put(desc.to_bytes(4, "big") + bytes(4)))
-    script = put(b"".join(s.to_bytes(4, "big") for s in shapes) + bytes(4))
-    return EffectLayout(bytes(out), offset, palette, script)
+    return bytes(out), shapes
 
 
 # ---- payload code -----------------------------------------------------------------------
@@ -344,11 +450,20 @@ def emit_spawn(a: Assembler, label: str = "fx_spawn", process: str = "fx_process
 
     Starts an effect process at the source actor's position (offset by ``a2`` whole
     units along the source's local x), rotation and priority, drawn at sub-layer ``a3``.
+    ``<label>_xy`` takes ``a2 = dy << 16 | (dx & 0xFFFF)`` (both signed) instead.
     Does nothing when a pool is short or no process is available.
     """
 
+    a.label(label + "_xy")
+    a.sra("t9", "a2", 16)
+    a.sll("a2", "a2", 16)
+    a.sra("a2", "a2", 16)
+    a.beq("zero", "zero", label + "_common")
     a.label(label)
+    a.move("t9", "zero")
+    a.label(label + "_common")
     a.addiu("sp", "sp", -0x28)
+    a.sw("t9", 0x10, "sp")
     a.sw("ra", 0x24, "sp")
     a.sw("s0", 0x20, "sp")
     a.sw("s1", 0x1C, "sp")
@@ -379,6 +494,8 @@ def emit_spawn(a: Assembler, label: str = "fx_spawn", process: str = "fx_process
     a.andi("t1", "s2", 0xFFFF)
     a.addu("t0", "t0", "t1")
     a.sw("t0", FX_SUBLAYER_DX, "v0")
+    a.lw("t0", 0x10, "sp")
+    a.sw("t0", FX_DY, "v0")
     a.label(label + "_done")
     a.lw("ra", 0x24, "sp")
     a.lw("s0", 0x20, "sp")
@@ -389,9 +506,20 @@ def emit_spawn(a: Assembler, label: str = "fx_spawn", process: str = "fx_process
     a.addiu("sp", "sp", 0x28)
 
 
-def emit_process(a: Assembler, label: str = "fx_process") -> None:
+def emit_process(
+    a: Assembler,
+    label: str = "fx_process",
+    follow: tuple[str, str, int, int] | None = None,
+) -> None:
     """The effect process entry (never returns). ``s0`` slot, ``s1`` controller,
-    ``s2`` actor, ``s3`` file base, ``s4`` descriptor."""
+    ``s2`` actor, ``s3`` file base, ``s4`` descriptor.
+
+    ``follow = (controller word, heartbeat word, dx, dy)``: instead of playing the
+    script to its end, bind its first frame and keep the actor at the followed
+    controller's actor position + ``(dx, dy)`` whole units every tick, until the
+    heartbeat word (written by the owner each tick) is unchanged for 2 ticks or the
+    controller word is 0. The owner can end any way it likes; the follower cleans up.
+    """
 
     a.label(label)
     a.addiu("sp", "sp", -0x20)
@@ -440,9 +568,11 @@ def emit_process(a: Assembler, label: str = "fx_process") -> None:
     a.li("t0", 0xE000)
     a.sw("t0", 0x6B4, "s1")
     a.lh("a1", FX_SUBLAYER_DX + 2, "s1")
-    a.beqz("a1", label + "_placed")
+    a.lw("a2", FX_DY, "s1")
+    a.bnez("a1", label + "_offset")
+    a.beqz("a2", label + "_placed")
+    a.label(label + "_offset")
     a.move("a0", "s2")
-    a.move("a2", "zero")
     a.jal(F_OFFSET)  # facing bit clear here: a1 is along the copied rotation's +x
     a.label(label + "_placed")
     a.li("t0", 0x40)  # bind requests a texture decode (+0xFA)
@@ -454,6 +584,8 @@ def emit_process(a: Assembler, label: str = "fx_process") -> None:
     a.lui("a1", hi(ACTOR_LIST))
     a.addiu("a1", "a1", lo(ACTOR_LIST))
     a.jal(F_ACTOR_INSERT)
+    if follow is not None:
+        _emit_follow(a, label, *follow)
     a.label(label + "_frame")
     a.move("a0", "s2")
     a.jal(F_ANIM_ADVANCE)
@@ -464,6 +596,7 @@ def emit_process(a: Assembler, label: str = "fx_process") -> None:
     a.lw("t0", 0x6E4, "t0")
     a.lw("t0", 0, "t0")
     a.bnez("t0", label + "_frame")
+    a.label(label + "_remove")
     a.move("a0", "s2")
     a.lui("a1", hi(ACTOR_LIST))
     a.addiu("a1", "a1", lo(ACTOR_LIST))
@@ -476,3 +609,42 @@ def emit_process(a: Assembler, label: str = "fx_process") -> None:
     a.label(label + "_exit")
     a.jal(F_PROCESS_EXIT)
     a.beq("zero", "zero", label + "_exit")
+
+
+def _emit_follow(a: Assembler, label: str, follow: str, heartbeat: str, dx: int, dy: int) -> None:
+    """Follow loop of :func:`emit_process` (``s6`` last heartbeat, ``s7`` misses)."""
+
+    a.move("a0", "s2")
+    a.jal(F_ANIM_ADVANCE)  # first frame, with its decode request
+    a.la("t0", heartbeat)
+    a.lw("s6", 0, "t0")
+    a.move("s7", "zero")
+    a.label(label + "_track")
+    a.la("t0", follow)
+    a.lw("t0", 0, "t0")
+    a.beqz("t0", label + "_remove")
+    a.lw("t0", 0x6E0, "t0")
+    a.beqz("t0", label + "_remove")
+    a.lw("t1", 0x2C, "t0")
+    a.li("t2", dx << 8)
+    a.addu("t1", "t1", "t2")
+    a.sw("t1", 0x2C, "s2")
+    a.lw("t1", 0x30, "t0")
+    a.li("t2", dy << 8)
+    a.addu("t1", "t1", "t2")
+    a.sw("t1", 0x30, "s2")
+    a.lw("t1", 0x34, "t0")
+    a.sw("t1", 0x34, "s2")
+    a.li("a0", 1)
+    a.jal(F_SLEEP)
+    a.la("t0", heartbeat)
+    a.lw("t1", 0, "t0")
+    a.beq("t1", "s6", label + "_miss")
+    a.move("s6", "t1")
+    a.move("s7", "zero")
+    a.beq("zero", "zero", label + "_track")
+    a.label(label + "_miss")
+    a.addiu("s7", "s7", 1)
+    a.slti("t2", "s7", 2)
+    a.bnez("t2", label + "_track")
+    a.beq("zero", "zero", label + "_remove")

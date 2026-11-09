@@ -796,7 +796,7 @@ Builder v19 calls the package. Its payload and its whole ROM are **byte-identica
 **Increments (each is a bounded proof).**
 - **R1.** Refactor the teleport adapter onto the primitive library with no behaviour change.
 - **R2.** The straight rocket as the first recipe: chest open/close, projectile with `ROCKET_P`, donor acceleration and cap at the v75 calibration, translated strike, launch/chest/boom sounds, and the `fx 5` explosion. Smoke comes later. It replaces the tier-1 Ice Blast LP record (`F,F + LP`, one live rocket at a time, as the donor's predicate does).
-- **R3.** The heat-seeking rocket (`rocket2_proc`, `F,D,B + HP`), reusing the same library (the smoke moved into R2).
+- **R3.** The heat-seeking rocket (`rocket2_proc`, `F,D,B + HP`), reusing the same library (the smoke moved into R2). **Done** (v42–v46, with the Double Missile).
 - **R4.** Tier gating and the full command-table swap.
 
 The v63–v89 line remains the evidence base for the projectile seams (texture-slot preupload, palette source, placement and velocity calibration). It hooked the stock Ice action; the importer instead owns its action, as the teleport does.
@@ -814,6 +814,21 @@ The v63–v89 line remains the evidence base for the projectile seams (texture-s
 | Robot ochar sounds | `0x800A1ED4[7]`: 0 `0xFD` arm OUT, 1 `0xFE` arm THROW, 2 `0xFF` arm IN, 3 `0x100` fast rocket, `0x0A` `0x107` boom, `0x0B` `0x108` chest open (arcade `st_robo1` order) |
 
 Open donor question: **process tick rate.** MKT's scheduler `0x8005A758` runs once per main-loop pass (`0x8001401C`), and its sleeps `0x8005A88C` count passes; this page has treated a pass as a 60 Hz tick. With that mapping the puffs should match MKT, but the user observed MKT's puffs growing about twice as slowly at the same spacing (proof v35–v41). The pass rate needs a frame-count measurement (Pending). It also governs the chest timing (closing reported early in v27) and the rocket speed check.
+
+**R3 done (2026-11-09; Runtime-confirmed bounded in Sektor proofs v42–v46, Sektor marked complete by the user).** The heat-seeking rocket and the Double Missile are recipes on the same library (`actions/robo_tracker.py`; the double launch in `actions/robo_zap.py`; [proof history](Sektor-Takeover-Proof-History#heat-seeking-rocket-r3-command-fixes-and-the-double-missile-v42v46)). Donor facts (MKT USA Rev. 2 N64):
+
+| Fact | Value |
+|---|---|
+| `do_robo_zap2` | `0x8007BF38`: special init, `ochar_sound 0x0C` (target sound), then `rzap3 0x8007C068(rocket2_proc 0x8007C25C, 0)` |
+| `rocket2_proc` | `ochar_sound 4` (cruise), timeout `0x80` ticks, speed `0x4CCCC` at anirate 3, strike `0x12`, crosshair object (robot secondary animation 5, heap descriptor `0x2C64`, codec 15, palette `0x800BC3D0`) at the opponent + (−12, +27) px, in front |
+| Phase table `0x800AB220` | 8 ticks straight, 16 ticks climbing (`vy −= 0x8800`), then `rocket_hunt` `0x8007C4AC` |
+| `rocket_hunt` | Aim at the opponent + `0x36` px down; explode within 6 px (rough distance `0x8006C9C0`, `max + min/2`); unit vector × `0x33333`; `v = v + u − v/16`; renormalise to 5 px/tick. The strike is checked only at the explosion |
+| `point_rocket` `0x8007CA34` | Eight direction animations (robot heap `0x1300`, two-frame parts `0x14` apart): 3.5 ratios, +4 when moving down, flipped by the x sign |
+| Smoke placement | Per direction (0,20), (−6,13), (−12,6), (5,0), (0,−20), (−6,−13), (−12,−6), (5,0) px, then x − `0x18` |
+| `rzap3` mode 1 (special 51, `B,B,F`) | Create a rocket, sleep `0x0A`, create a second, recovery `0x8007F860`, sleep `0x30` (mode 0: `0x20`), close the chest |
+| Predicates | Straight (both commands): no live process `0x705`; homing: fewer than three live `0x704` processes |
+
+Host translation choices (user-approved): `F,D,B + HP` replaces Freeze on Contact, `B,B,F + LP` replaces Ice Clone, `F,F + LP` replaces the stock `D,F + LP`; the homing target is the nearest living enemy in the teleport's range (MKMSZ has several opponents, MKT one), and the move is refused without one. Tier gating and the rest of the command table remain R4.
 
 ## Known missing generic adapter functions
 

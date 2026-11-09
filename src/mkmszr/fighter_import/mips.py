@@ -94,6 +94,18 @@ class Assembler:
     def slt(self, rd: str, rs: str, rt: str) -> None:
         self._r(rs, rt, rd, 0, 0x2A)
 
+    def sltu(self, rd: str, rs: str, rt: str) -> None:
+        self._r(rs, rt, rd, 0, 0x2B)
+
+    def slti(self, rt: str, rs: str, imm: int) -> None:
+        self._i(0x0A, rs, rt, imm)
+
+    def srl(self, rd: str, rt: str, shift: int) -> None:
+        self._r("zero", rt, rd, shift, 0x02)
+
+    def mfhi(self, rd: str) -> None:
+        self._r("zero", "zero", rd, 0, 0x10)
+
     def sll(self, rd: str, rt: str, shift: int) -> None:
         self._r("zero", rt, rd, shift, 0x00)
 

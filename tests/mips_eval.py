@@ -23,7 +23,7 @@ def _phys(address: int) -> int:
 
 @dataclass
 class Stop:
-    kind: str  # "return" (jr out of the block) or "call" (jal out of the block)
+    kind: str  # "return" (jr out of the block), "call" (jal out) or "jump" (j out)
     target: int
     resume: int = 0  # for "call": address after the delay slot
 
@@ -34,6 +34,8 @@ class Machine:
     base: int
     mem: dict[int, int] = field(default_factory=dict)
     regs: list[int] = field(default_factory=lambda: [0] * 32)
+    lo: int = 0
+    hi: int = 0
 
     def __post_init__(self) -> None:
         for i in range(0, len(self.code), 4):
@@ -69,6 +71,22 @@ class Machine:
                     r[rd] = r[rs] ^ r[rt]
                 elif fn == 0x2A:
                     r[rd] = int(_s32(r[rs]) < _s32(r[rt]))
+                elif fn == 0x2B:
+                    r[rd] = int(r[rs] < r[rt])
+                elif fn == 0x02:
+                    r[rd] = r[rt] >> sh
+                elif fn == 0x18:  # mult
+                    p = _s32(r[rs]) * _s32(r[rt])
+                    self.lo, self.hi = p & MASK, (p >> 32) & MASK
+                elif fn == 0x1A:  # div (truncating, as the CPU)
+                    n, d = _s32(r[rs]), _s32(r[rt])
+                    if d:
+                        q = abs(n) // abs(d) * (1 if (n < 0) == (d < 0) else -1)
+                        self.lo, self.hi = q & MASK, (n - q * d) & MASK
+                elif fn == 0x12:
+                    r[rd] = self.lo
+                elif fn == 0x10:
+                    r[rd] = self.hi
                 elif fn == 0x00:
                     r[rd] = (r[rt] << sh) & MASK
                 elif fn == 0x03:
@@ -79,6 +97,8 @@ class Machine:
                     jump = ("jal", r[rs])
                 else:
                     raise NotImplementedError(f"{w:#010x} at {pc:#x}")
+            elif op == 0x0A:
+                r[rt] = int(_s32(r[rs]) < simm)
             elif op == 0x0F:
                 r[rt] = imm << 16
             elif op == 0x0D:
@@ -123,6 +143,8 @@ class Machine:
                     jump = ("b", pc + 4 + 4 * simm)
             elif op == 0x03:
                 jump = ("jal", (pc & 0xF0000000) | ((w & 0x03FFFFFF) << 2))
+            elif op == 0x02:
+                jump = ("j", (pc & 0xF0000000) | ((w & 0x03FFFFFF) << 2))
             else:
                 raise NotImplementedError(f"{w:#010x} at {pc:#x}")
             r[0] = 0
@@ -135,6 +157,8 @@ class Machine:
                     return Stop("call", target, at + 8)
                 if kind == "jr" and not self.inside(target):
                     return Stop("return", target)
+                if kind == "j" and not self.inside(target):
+                    return Stop("jump", target)
                 pc = target
                 continue
             if jump is not None:

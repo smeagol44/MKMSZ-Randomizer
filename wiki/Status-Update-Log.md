@@ -4,6 +4,15 @@
 
 ## From Project status
 
+### PS-23 (2026-11-09)
+
+**2026-11-09 Sektor's heat-seeking rocket (R3) and Double Missile, proofs v42–v46: Runtime-confirmed bounded; Sektor complete as a proof.**
+
+- **Moves.** `F,D,B + HP` heat-seeking rocket (MKT `rocket2_proc`: phases, hunt, eight direction frames, crosshair follower, target and cruise sounds, donor 6-px proximity explosion) in place of Freeze on Contact; `B,B,F + LP` Double Missile (MKT special 51: the launcher replays its creation path for a second rocket 10 donor ticks later, chest held `0x30`) in place of Ice Clone; the straight rocket moved to MKT's `F,F + LP`. All user choices.
+- **Key findings.** The effect palette bind copies colours from its pointer, so it must point past the record's count word (v35–v42 colours were two entries off; fixed in v43). The controller's last-opponent link `+0x640` goes stale after a kill; the homing rocket picks the nearest living enemy (classes 2–4, health `+0x654`) in the teleport's range and is refused without one (v45). The stock Ice root already allows one live projectile at a time.
+- **Remaining.** Production integration into the randomizer (the user's stated concern), R4 tier gating and the remaining Sub-Zero specials, MODERN inputs; deferred details: smoke timing and tick ratio, explosion alpha, faster chest against a reacting opponent, one unexplained teleport fall, the texture-storage budget of two smoke trails.
+- **Identity.** v46 `MKMSZR_sektor-teleport_common-proof_v46.z64`, SHA-256 `12f13ce451d672e2686a10e45a12264a80751f670096c9fe77ce9e1d2bd62db5`; each builder reproduces at the commit that added it ([proof history](Sektor-Takeover-Proof-History#heat-seeking-rocket-r3-command-fixes-and-the-double-missile-v42v46)). Proof-only allocations; the sound samples still overlap the production rainbow bank ([Memory map](Memory-and-Allocation-Map)).
+
 ### PS-22 (2026-11-09)
 
 **2026-11-09 Sektor's straight rocket (MKT `do_robo_zap`), proofs v20–v41: Runtime-confirmed bounded, marked done by the user with details pending; teleport and throw additions.**
@@ -110,6 +119,10 @@
 **Focused lifecycle update (2026-10-01): lifecycle v06 is Runtime-confirmed and promoted to the shared production pipeline.** The exact accepted reference is Very Hard / 9 total lives / 5 continues / persistent HP ON. The shared core now parameterizes that same lifecycle control flow for build-time difficulty, starting lives (1..10), starting continues (0..5), and persistent HP ON/OFF; browser defaults are Very Hard / 5 / 3 / HP ON. Non-reference combinations are Implementation/CI-confirmed pending representative runtime coverage. v04 remains **Rejected / unsafe composition**. See [Lifecycle static closure](Lifecycle-Static-Closure-v05), [Persistence/inventory/lifecycle](Persistence-Inventory-and-Lifecycle), and [Web patcher/product behavior](Web-Patcher-and-Product).
 
 ## From Runtime validation status
+
+### RV-19 (2026-11-09)
+
+**2026-11-09 Sektor heat-seeking rocket and Double Missile, proofs v42–v46 — Runtime-confirmed bounded.** User reports: v42 "it works! Perfectly!" with two defects (occasional pass-through, crosshair colours); v44 video (Wind): after a kill the rocket and crosshair followed the dead enemy into a pit; v45 "as far as I could tell, this is all working wonderfully"; v46 Double Missile "really good" (two smoke trails noted; no cap by user choice). v43 was superseded by v44 before its own test; its fixes were confirmed through v45.
 
 ### RV-18 (2026-11-09)
 

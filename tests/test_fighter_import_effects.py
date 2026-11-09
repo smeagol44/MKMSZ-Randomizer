@@ -75,7 +75,7 @@ def test_layout_records() -> None:
         placed = effects.layout(art, 0x46000)
         data = placed.data
         assert art.slot_size == (9, 4) and len(data) % 4 == 0
-        assert u32(data, placed.palette) == 64
+        assert placed.palette == 0x46004 and u32(data, placed.palette - 4) == 64
         shapes = [u32(data, placed.script + 4 * i) for i in range(3)]
         assert shapes[2] == 0
         for shape, frame in zip(shapes, art.frames, strict=False):

@@ -517,7 +517,7 @@ These come from the Sektor rocket proofs v20–v41 ([proof history](Sektor-Takeo
 **Static-confirmed model; Runtime-confirmed in Sektor rocket proofs v39–v41 (smoke puffs and explosion).** A stationary animated effect is its own class-`0x100` process, modelled on the stock Ice helper `0x80060A3C` without its mirror actor (`fighter_import.effects`):
 
 1. take a texture slot `0x8001C2B4(w, h)` sized for the largest frame (`-1`: exit; see [texture-slot record](Data-Structures-and-Encodings#dynamic-gameplay-texture-slot-record));
-2. bind the palette record `0x8001C528(file base + record, 0x100, 0)`, cached by address and reference-counted, never released (as the stock helper);
+2. bind the palette `0x8001C528(file base + record + 4, 0x100, 0)`, cached by address and reference-counted, never released (as the stock helper). The bind copies colours from the pointer it is given (`0x8001C6D0`), so it must point **past** the record's count word, as the pickup manager's `+0x28 + 4` and the rocket's palette do. v35–v42 passed the record start, which shifted every effect colour by two entries (corrected in v43);
 3. construct the actor `0x800281A0(script pointer, 0, file base, 1)`. Set `+0x9C` slot, `+0x9E` palette − `0x80`, position `+0x2C/+0x30/+0x34` and rotation `+0xAC/+0xAE/+0xB0`; set priority `+0x5C` and sub-layer `+0xEC` (`0xFFFF` = in front, as the stock helper; source `+0xEC + 1` = behind). Also `+0x64 = 0x2002`, `+0xD8 = 0x6C`, controller `+0x6B4 = 0xE000`, all as the stock helper. An optional local offset goes through `0x80031208` on the new actor (its rotation is the source's). Set `+0x8C = 0x40` last, so each bind requests a decode;
 4. insert it in `0x80111C98` (`0x80024650`), then each frame `0x800304C0` and sleep N until the script word is `0`;
 5. remove it (`0x80024B00`), sleep 2, release the slot (`0x8001C424`), exit (`0x80028564`).
@@ -525,6 +525,21 @@ These come from the Sektor rocket proofs v20–v41 ([proof history](Sektor-Takeo
 The spawner (`effects.emit_spawn`) writes position, rotation, layer and the descriptor into the new controller (`+0x6F4..+0x70C`) right after `0x8002830C` returns, so nothing is read from the source later, and refuses while either free list holds fewer than the effect's reserve. The frame data must follow the [preceding-word rule](Data-Structures-and-Encodings#frame-descriptor-and-the-preceding-word).
 
 Open: a fresh slot's render mode comes from `0x8009A5F0` at allocation time (reset to 0 every frame; the stock helper sets 1 first), so effects currently draw with alpha `0x80`. One process per puff is costly against the 64-controller pool.
+
+## Heat-seeking rocket and Double Missile host findings (2026-11-09)
+
+From Sektor proofs v42–v46 ([proof history](Sektor-Takeover-Proof-History#heat-seeking-rocket-r3-command-fixes-and-the-double-missile-v42v46)).
+
+| Finding | Evidence |
+|---|---|
+| **One projectile at a time is stock.** The Ice root `0x8004AB84` starts with `0x80028510(0x700, 0xFFFF)` and exits through `0x800328FC` while a class-`0x700` process (a live projectile child) exists. Every command routed through the lifted root inherits it. | Static-confirmed; consistent with v46 runtime use. |
+| **Enemy scan.** `0x80028510(class, mask)` returns the first process other than the current one with `+0x6D8 & mask == class`. Ordinary enemies are classes 2–4 (spawn slots `0x71..0x73`); health is `+0x654` (zero once dead, as the strike's victim scan checks). `0x80031D00` (nearest opponent) only scans classes 2 and 3 and does not check health. | Static-confirmed; Runtime-confirmed as the homing target picker (v45). |
+| **Last-opponent link goes stale.** Controller `+0x640` (copied to projectile children by `0x8004CBC4`) still names an enemy after it dies, while its body falls. Do not use it to choose a live target. | Runtime-observed (v44 video). |
+| **Special-record conditions can be wrapped.** A record's condition (`+0x08`) may be a payload routine that calls the stock condition with the arguments unchanged, then adds a check and returns `0x8000` / `0x4000`; a refusal lets the button do its normal attack. | Runtime-confirmed (teleport v08, homing rocket v45). |
+| **Second projectile from one launch.** Jumping back into the lifted Ice root at its mode-0 offset setup (`0x8004AD40`) after the flight child is created (`0x8004B0E8`), with the parent's script cursor rewound to the creation token, creates a second, independent projectile through the whole stock creation path. The offset globals `0x80111DB8`/`0x802E7E08` must be re-initialised (the staging overwrites them), which `0x8004AD40` does. | Runtime-confirmed (v46). |
+| **Projectile exit from a callback.** `0x8004CDF8(actor)` (the flight loop's own exit) may be called from the loop's per-tick callback to end the projectile; it does not return. | Implementation/CI-confirmed (v43–v46); its runtime path is the rare proximity miss. |
+
+Sektor proof special table (proof-only): LP `0xB1B0C` `B,B,F + LP` Double Missile (was Ice Clone), LP `0xB1B38` `F,F + LP` straight rocket (was `D,F + LP` Ice Blast), LK `0xB1B68` `F,F + LK` teleport (was down Ice), HP `0xB1C80` `F,D,B + HP` heat-seeking rocket (was Freeze on Contact).
 
 ## Throw and teleport additions (2026-11-09)
 

@@ -249,6 +249,7 @@ def emit_flight(
     hit_child: int | None = None,
     smoke: str | None = None,
     spawn: str = "fx_spawn",
+    homing_child: str | None = None,
 ) -> None:
     """Flight child (process entry, replaces 0x8004B82C) and its per-tick callback.
 
@@ -259,10 +260,15 @@ def emit_flight(
     with ``smoke`` (an :func:`..effects.emit_descriptor` label), starts one smoke puff
     per host tick (donor: every other tick) SMOKE_OFFSET behind the rocket, one
     sub-layer behind it. The stock loop calls it through ``jalr`` (0x8004CD14) with no
-    live temporaries.
+    live temporaries. With ``homing_child`` the child first branches there when the R3
+    flag word ``trk_flag`` is set (:mod:`.robo_tracker`).
     """
 
     a.label("zap_child")
+    if homing_child is not None:  # R3: the HP command's flag selects the homing flight
+        a.la("t0", "trk_flag")
+        a.lw("t0", 0, "t0")
+        a.bnez("t0", homing_child)
     a.addiu("sp", "sp", -0x18)
     a.sw("ra", 0x10, "sp")
     a.lui("t0", hi(host.CURRENT_CTRL))
@@ -431,6 +437,63 @@ def root_sound_patches(chest_wrapper_va: int) -> dict[int, int]:
 
     skip = (ICE_LAUNCH_SOUND_END - (0x8004AD58 + 4)) // 4
     return {0x8004AD38: _jal(chest_wrapper_va), 0x8004AD58: (0x04 << 26) | (skip & 0xFFFF)}
+
+
+# ---- Double Missile (MKT special 51 0x8007BFC8: rzap3 0x8007C068 in mode 1) ------------
+# Donor: create a rocket, sleep 0x0A, create a second rocket, recovery, sleep 0x30 (mode 0:
+# 0x20), close the chest. Host: right after the first rocket's flight child is created
+# (0x8004B0E8, two host ticks after its creation), the lifted root jumps to zap_again. For a
+# double it waits DOUBLE_GAP_SLEEP, rewinds the parent's script to the creation token and
+# replays the root's own mode-0 creation path from 0x8004AD40 (offset globals, staging, sleep
+# 2, token, placement, straight helper, flight child): the second rocket comes 2 + 1 + 2 = 5
+# host ticks (10 donor) after the first. Back at the site it holds the chest
+# DOUBLE_EXTRA_HOLD more ticks (0x30 - 0x20 donor) and continues the stock recovery.
+DOUBLE_SITE = {0x8004B0E8: 0x3C02802F, 0x8004B0EC: 0x8C42CE20}  # lui/lw v0 = current ctrl
+STOCK_WORDS.update(DOUBLE_SITE)
+DOUBLE_REPLAY_SRC = 0x8004AD40  # mode 0: offset globals 0x80111DB8 / 0x802E7E08, then staging
+DOUBLE_CONTINUE_SRC = 0x8004B0F0  # after the two replaced words
+DOUBLE_GAP_SLEEP = 1
+DOUBLE_EXTRA_HOLD = (0x30 - 0x20) // 2
+DOUBLE_REQUESTED, DOUBLE_SECOND = 1, 2
+
+
+def double_patches(again_va: int) -> dict[int, int]:
+    return {0x8004B0E8: (2 << 26) | ((again_va >> 2) & 0x03FFFFFF), 0x8004B0EC: 0}
+
+
+def emit_double_launch(a: Assembler, root_va: int, flag: str = "trk_double") -> None:
+    """``zap_again``: the jump target of :func:`double_patches` in the lifted root at
+    ``root_va``. ``flag``: 0 single rocket, DOUBLE_REQUESTED (set by the command stub)
+    before the first rocket, DOUBLE_SECOND before the second."""
+
+    def root(src: int) -> int:
+        return root_va + (src - ICE_ROOT_SRC)
+
+    a.label("zap_again")
+    a.la("t0", flag)
+    a.lw("t1", 0, "t0")
+    a.beqz("t1", "zap_again_go")
+    a.li("t2", DOUBLE_REQUESTED)
+    a.bne("t1", "t2", "zap_again_second")
+    a.li("t2", DOUBLE_SECOND)
+    a.sw("t2", 0, "t0")
+    a.li("a0", DOUBLE_GAP_SLEEP)
+    a.jal(host.F_SLEEP)
+    a.lui("t0", hi(host.CURRENT_CTRL))
+    a.lw("t0", lo(host.CURRENT_CTRL), "t0")
+    a.lui("t1", hi(FILE87_BASE_PTR))
+    a.lw("t1", lo(FILE87_BASE_PTR), "t1")
+    a.addiu("t1", "t1", ZAP_TOKEN)
+    a.sw("t1", host.CTRL_SCRIPT_CURSOR, "t0")  # staging saves and restores it
+    a.j(root(DOUBLE_REPLAY_SRC))
+    a.label("zap_again_second")
+    a.sw("zero", 0, "t0")
+    a.li("a0", DOUBLE_EXTRA_HOLD)
+    a.jal(host.F_SLEEP)
+    a.label("zap_again_go")
+    a.lui("v0", 0x802F)  # the replaced words
+    a.lw("v0", -0x31E0, "v0")
+    a.j(root(DOUBLE_CONTINUE_SRC))
 
 
 def root_straight_patch(straight_va: int) -> dict[int, int]:
