@@ -227,9 +227,10 @@ The other outfit modes (`SubZeroPalettePatch`, hue/RGB presets, also used by the
 | 8 | Freeze on Contact | Super Slide (kept) |
 | 9 | Polar Blast | Polar Blast (kept) |
 
-- **Removed for Sektor:** Directional Ice (up), Air Ice Blast (including the airborne `F,F + LP` path), Ice Shatter, Ice Clone and Freeze on Contact; Spine Rip unchanged. An empty slot keeps its power-up (it still counts toward the tier and the Fortress XP requirement) but unlocks no move; the presentation shows a neutral label (proposed "—").
+- **Removed for Sektor:** Directional Ice (up), Air Ice Blast (including the airborne `F,F + LP` path), Ice Shatter, Ice Clone and Freeze on Contact; Spine Rip unchanged. An empty slot keeps its power-up (it still counts toward the tier and the Fortress XP requirement) but unlocks no move; the presentation shows the label "—".
 - **Shuffle:** the power-order shuffler is not changed. Each Sektor move checks the tier of its slot by reading that slot's stock gate (the instruction the shuffler writes), so a shuffled run moves Sektor's mapping exactly as Sub-Zero's. Ice Shatter's "after a freezing power" constraint stays in the shuffler although Sektor has no Shatter.
-- **Costs:** as in the proofs: the three missiles cost `0x20` Ice (the Ice Blast condition), the teleport `0x60` (the down-Ice LK condition).
+- **Costs (Ice resource, user decision):** Straight Missile as Ice Blast (`0x20`); Teleport Uppercut as Slide (stock Slide has no Ice cost observed in its traced root, so the teleport becomes free; the proofs charged the down-Ice `0x60`); Double Missile 1.5× Ice Blast (`0x30`); Homing Missile as Directional Ice down (`0x60`). The proofs charged `0x20` for all three missiles.
+- **Empty slots:** labelled "—" on the power-up screen and HUD.
 - **MODERN:** choosing Sektor forces SPECIALS: CLASSIC (MODERN for Sektor may come later).
 - **Presentation:** Sektor's move names on the power-up screen and HUD; the outfit colour option recolours Sektor's palette (needs a Sektor-specific mapping).
 
