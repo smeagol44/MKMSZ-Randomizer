@@ -23,7 +23,7 @@ def _phys(address: int) -> int:
 
 @dataclass
 class Stop:
-    kind: str  # "return" (jr out of the block) or "call" (jal out of the block)
+    kind: str  # "return" (jr out of the block), "call" (jal out) or "jump" (j out)
     target: int
     resume: int = 0  # for "call": address after the delay slot
 
@@ -143,6 +143,8 @@ class Machine:
                     jump = ("b", pc + 4 + 4 * simm)
             elif op == 0x03:
                 jump = ("jal", (pc & 0xF0000000) | ((w & 0x03FFFFFF) << 2))
+            elif op == 0x02:
+                jump = ("j", (pc & 0xF0000000) | ((w & 0x03FFFFFF) << 2))
             else:
                 raise NotImplementedError(f"{w:#010x} at {pc:#x}")
             r[0] = 0
@@ -155,6 +157,8 @@ class Machine:
                     return Stop("call", target, at + 8)
                 if kind == "jr" and not self.inside(target):
                     return Stop("return", target)
+                if kind == "j" and not self.inside(target):
+                    return Stop("jump", target)
                 pc = target
                 continue
             if jump is not None:

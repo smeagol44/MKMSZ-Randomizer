@@ -84,6 +84,10 @@ LP_RECORD_ROM = 0xB1B38
 LP_MASK = 0x80
 STRAIGHT_RIGHT, STRAIGHT_LEFT = (9, 9), (8, 8)  # F,F (9/8 = forward facing right/left)
 STRAIGHT_WINDOW = 0x18  # as the F,F + LK teleport record
+# Double Missile (MKT special 51, B,B,F + LP): replaces the stock Ice Clone record
+# (0x800B0F0C, D,B + LP; user choice, proof v46); straight rocket condition.
+DOUBLE_RECORD_ROM = 0xB1B0C
+DOUBLE_RIGHT, DOUBLE_LEFT = (9, 8, 8), (8, 9, 9)  # B,B,F newest first
 F_FLIP = 0x8003188C
 F_FIND_CLASS = 0x80028510  # (class, mask) -> first other process with +0x6D8 & mask == class
 ENEMY_CLASSES = (2, 3, 4)  # ordinary enemy spawn slots 0x71..0x73 (the strike's victim scan)
@@ -182,6 +186,13 @@ def _record(
     return bytes(rec)
 
 
+def double_record(action: int) -> bytes:
+    """The LP record for the Double Missile on ``B,B,F + LP`` (three inputs: the stock
+    three-input window)."""
+
+    return _record(LP_MASK, 1, action, COMMAND_WINDOW, DOUBLE_RIGHT, DOUBLE_LEFT)
+
+
 def descriptor_record(action: int, condition: int = LP_ICE_CONDITION) -> bytes:
     """The HP special-move record for ``F,D,B + HP`` (selector 0 refuses an airborne
     start); ``condition`` is ``trk_cond`` in the proofs (v45)."""
@@ -262,6 +273,8 @@ def emit_data(a: Assembler, loops: list[int], prefix: str = "trk") -> None:
     a.raw(0)
     a.label(prefix + "_aim")
     a.raw(0)
+    a.label(prefix + "_double")  # robo_zap.emit_double_launch state
+    a.raw(0)
     a.label(prefix + "_loops")
     for off in loops:
         a.raw(off)
@@ -273,10 +286,19 @@ def emit_data(a: Assembler, loops: list[int], prefix: str = "trk") -> None:
 def emit_command_stubs(
     a: Assembler, ice_callback: int, target_event: int, player: str = "play"
 ) -> None:
-    """``trk_cb_straight`` (LP record action) and ``trk_cb_homing`` (HP record action):
-    set the flag, then continue in the lifted Ice callback with ``ra`` unchanged."""
+    """``trk_cb_straight`` (F,F + LP), ``trk_cb_double`` (B,B,F + LP) and
+    ``trk_cb_homing`` (F,D,B + HP) record actions: set the homing flag and the double
+    state, then continue in the lifted Ice callback with ``ra`` unchanged."""
 
+    a.label("trk_cb_double")
+    a.la("t0", "trk_double")
+    a.li("t1", robo_zap.DOUBLE_REQUESTED)
+    a.beq("zero", "zero", "trk_cb_flat")
     a.label("trk_cb_straight")
+    a.la("t0", "trk_double")
+    a.move("t1", "zero")
+    a.label("trk_cb_flat")
+    a.sw("t1", 0, "t0")
     a.la("t0", "trk_flag")
     a.sw("zero", 0, "t0")
     a.lui("t9", hi(ice_callback))
@@ -285,6 +307,8 @@ def emit_command_stubs(
     a.nop()
 
     a.label("trk_cb_homing")
+    a.la("t0", "trk_double")
+    a.sw("zero", 0, "t0")
     a.la("t0", "trk_flag")
     a.li("t1", 1)
     a.sw("t1", 0, "t0")

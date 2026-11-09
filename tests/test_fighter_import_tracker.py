@@ -232,9 +232,15 @@ def test_hp_record_and_command_stubs() -> None:
     host.emit_sound_player(a)
     trk.emit_command_stubs(a, ice_callback=0xA01B0000, target_event=459)
     trk.emit_data(a, [0] * 8)
-    for label, flag, events in (("trk_cb_straight", 0, []), ("trk_cb_homing", 1, [459])):
+    stubs = (
+        ("trk_cb_straight", 0, 0, []),
+        ("trk_cb_double", 0, robo_zap.DOUBLE_REQUESTED, []),
+        ("trk_cb_homing", 1, 0, [459]),
+    )
+    for label, flag, double, events in stubs:
         m = Machine(a.link(), BASE)
         m.store(a.labels["trk_flag"], 7)
+        m.store(a.labels["trk_double"], 7)
         m.regs[29], m.regs[31] = 0x80200000, 0x80049D50
         seen = []
         stop = m.run(a.labels[label])
@@ -244,6 +250,7 @@ def test_hp_record_and_command_stubs() -> None:
             stop = m.run(stop.resume)
         assert stop.target == 0xA01B0000 and m.regs[31] == 0x80049D50 and m.regs[29] == 0x80200000
         assert m.load(a.labels["trk_flag"]) == flag and seen == events
+        assert m.load(a.labels["trk_double"]) == double
 
 
 def test_spawn_xy_and_follower() -> None:
@@ -483,3 +490,55 @@ def test_condition_refuses_without_a_target() -> None:
             stop = _call(m, stop, answers)
         assert stop.target == 0x80001000 and m.regs[2] == want
         assert m.load(a.labels["trk_aim"]) == target
+
+
+def test_double_record_replaces_ice_clone() -> None:
+    stock_clone = bytes.fromhex(
+        "00800080000000018004a22c8003cf8c001400080007000000000000000000090007000000000000000000"
+    )
+    rec = trk.double_record(0xA01B1234)
+    assert len(rec) == 0x2C and rec[:0x08] == stock_clone[:0x08]
+    assert rec[0x08:0x12] == bytes.fromhex("8004A304A01B1234003C")  # straight rocket condition
+    assert rec[0x12:0x1E] == bytes.fromhex("000900080008000000000000")  # F,B,B newest first
+    assert rec[0x1E:0x2C] == bytes.fromhex("0008000900090000000000000000")
+
+
+def test_double_launch_replays_the_creation_once_then_holds() -> None:
+    root = 0xA01B1000
+    a = Assembler(BASE)
+    robo_zap.emit_double_launch(a, root)
+    trk.emit_data(a, [0] * 8)
+    sleep = host.F_SLEEP & 0x1FFFFFFF
+    ctrl, file_base = 0x80300000, 0x80400000
+
+    def run(state: int) -> tuple[list[int], int, int]:
+        m = Machine(a.link(), BASE)
+        m.store(host.CURRENT_CTRL, ctrl)
+        m.store(robo_zap.FILE87_BASE_PTR, file_base)
+        m.store(ctrl + host.CTRL_SCRIPT_CURSOR, 0x1234)
+        m.store(a.labels["trk_double"], state)
+        sleeps = []
+        stop = m.run(a.labels["zap_again"])
+        while stop.kind == "call":
+            assert stop.target & 0x1FFFFFFF == sleep
+            sleeps.append(m.regs[4])
+            stop = m.run(stop.resume)
+        assert stop.kind == "jump"
+        if stop.target == root + (robo_zap.DOUBLE_CONTINUE_SRC - robo_zap.ICE_ROOT_SRC):
+            assert m.regs[2] == ctrl  # the replaced lui/lw
+        return sleeps, stop.target, m.load(a.labels["trk_double"])
+
+    cont = root + (robo_zap.DOUBLE_CONTINUE_SRC - robo_zap.ICE_ROOT_SRC)
+    replay = root + (robo_zap.DOUBLE_REPLAY_SRC - robo_zap.ICE_ROOT_SRC)
+    assert run(0) == ([], cont, 0)  # single rocket: straight on
+    sleeps, target, state = run(robo_zap.DOUBLE_REQUESTED)
+    assert (sleeps, target, state) == ([robo_zap.DOUBLE_GAP_SLEEP], replay, robo_zap.DOUBLE_SECOND)
+    assert run(robo_zap.DOUBLE_SECOND) == ([robo_zap.DOUBLE_EXTRA_HOLD], cont, 0)
+    # the replay rewinds the parent's script to the creation token
+    m = Machine(a.link(), BASE)
+    m.store(host.CURRENT_CTRL, ctrl)
+    m.store(robo_zap.FILE87_BASE_PTR, file_base)
+    m.store(a.labels["trk_double"], robo_zap.DOUBLE_REQUESTED)
+    stop = m.run(a.labels["zap_again"])
+    stop = m.run(stop.resume)
+    assert m.load(ctrl + host.CTRL_SCRIPT_CURSOR) == file_base + robo_zap.ZAP_TOKEN
