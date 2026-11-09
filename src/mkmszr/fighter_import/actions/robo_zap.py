@@ -399,6 +399,32 @@ STOCK_WORDS.update(HIT_CHILD_REF)
 STOCK_WORDS.update(HIT_SOUND_CALL)
 STOCK_WORDS.update(HIT_ICE_VISUALS)
 
+# The root's launch-time Ice visuals (step 5): the same helper pair (blue Sub-Zero
+# "ghosts", 0x80060A3C) and blue tint (0x8004AB0C), started at 0x8004AE68/84 after the
+# parent staged +0x6E4/+0x714/+0x718 and the coordinate globals (all kept). The tint
+# call's delay slot restores the parent's +0x6E4; its result v0 then receives three
+# stores (+0x6F4/+0x6F8/+0x6FC at 0x8004AEBC..C4). Without the call v0 would be the
+# player's own controller, so the call goes to a stub returning a payload scratch
+# block instead. MKT do_robo_zap has neither.
+LAUNCH_ICE_VISUALS = {0x8004AE68: 0x0C00A0C3, 0x8004AE84: 0x0C00A0C3}  # jal 0x8002830C
+STOCK_WORDS.update(LAUNCH_ICE_VISUALS)
+
+
+def launch_visual_patches(stub_va: int) -> dict[int, int]:
+    return {0x8004AE68: 0, 0x8004AE84: _jal(stub_va)}
+
+
+def emit_launch_stub(a: Assembler, label: str = "zap_no_tint") -> None:
+    """Returns v0 such that v0 + 0x6F4..0x6FC is a payload scratch block."""
+
+    a.label(label)
+    a.la("v0", label + "_scratch")
+    a.jr_ra()
+    a.addiu("v0", "v0", -0x6F4)
+    a.label(label + "_scratch")
+    for _ in range(3):
+        a.raw(0)
+
 
 def root_sound_patches(chest_wrapper_va: int) -> dict[int, int]:
     """Root: open phase through the chest-sound wrapper; skip the Ice launch sound."""

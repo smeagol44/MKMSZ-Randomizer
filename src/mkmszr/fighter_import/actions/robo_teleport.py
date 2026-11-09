@@ -86,6 +86,11 @@ class TeleportParams:
     # height; MKT always rises from the floor. False reproduces v08-v24.
     emerge_on_floor: bool = False
     floor_bound: int = 0x20000  # accept the floor only within 512 units below the target
+    # v40: when the target's floor is not usable (e.g. 0x7FBC00, "no floor below", set by
+    # 0x80024BA8 while it is knocked/flying high), use Sektor's own floor (he is grounded
+    # by then) if it is below the target, before falling back to the target's height.
+    # False reproduces v25-v39 (an airborne target made Sektor reappear in mid-air).
+    own_floor_fallback: bool = False
 
 
 FRAME = host.Frame()
@@ -204,11 +209,20 @@ def _emit_reposition(a: Assembler, p: TeleportParams) -> None:
         a.lw("t1", host.ACTOR_Y, "s4")
         a.sw("t1", 0x18, "sp")  # fallback: the target's own height (v08-v24)
         a.subu("t2", "t0", "t1")
-        a.bltz("t2", "floor_set")
+        a.bltz("t2", "floor_own" if p.own_floor_fallback else "floor_set")
         a.li("t3", p.floor_bound)
         a.slt("t3", "t3", "t2")
-        a.bnez("t3", "floor_set")
+        a.bnez("t3", "floor_own" if p.own_floor_fallback else "floor_set")
         a.sw("t0", 0x18, "sp")
+        if p.own_floor_fallback:
+            a.beq("zero", "zero", "floor_set")
+            a.label("floor_own")
+            a.lw("t0", host.CTRL_GROUND, "s0")
+            a.subu("t2", "t0", "t1")
+            a.bltz("t2", "floor_set")  # own floor above the target: keep its height
+            a.li("t3", 0x7FBC00)
+            a.beq("t0", "t3", "floor_set")  # no floor
+            a.sw("t0", 0x18, "sp")
         a.label("floor_set")
         fields: tuple[int, ...] = (host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Z)
     else:

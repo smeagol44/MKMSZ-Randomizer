@@ -242,6 +242,44 @@ def test_teleport_emerge_on_floor_is_opt_in() -> None:
     assert new[j + 1] == 0x8E890030  # lw t1, 0x30(s4): target y (fallback)
 
 
+def test_teleport_floor_choice_with_own_floor_fallback() -> None:
+    from dataclasses import replace
+
+    from mips_eval import Machine
+
+    from mkmszr.fighter_import.actions import robo_teleport as rt
+
+    scripts = rt.TeleportScripts(0x100, 0x200, 0x300, 0x310, 4, 6)
+    params = replace(
+        rt.TeleportParams(scripts, (1, 2, 3, 4), 400),
+        emerge_on_floor=True,
+        own_floor_fallback=True,
+    )
+    base = 0xA01AF420
+    blob = rt.assemble(base, params).link()
+    w = [int.from_bytes(blob[i : i + 4], "big") for i in range(0, len(blob), 4)]
+    start = base + 4 * w.index(0x8C4806B4)  # lw t0, 0x6B4(v0): target floor
+    tctrl, tactor, sctrl, sactor = 0x80300000, 0x80310000, 0x80320000, 0x80330000
+
+    def emerge_y(target_floor: int, target_y: int, own_floor: int) -> int:
+        m = Machine(blob, base)
+        m.regs[2], m.regs[16], m.regs[17], m.regs[20] = tctrl, sctrl, sactor, tactor
+        m.regs[29] = 0x80200000
+        m.store(tctrl + 0x6B4, target_floor)
+        m.store(tactor + 0x30, target_y)
+        m.store(sctrl + 0x6B4, own_floor)
+        stop = m.run(start)
+        while stop.kind == "call" and stop.target & 0x1FFFFFFF != 0x00034C8C:  # wall distance
+            stop = m.run(stop.resume)
+        return m.load(sactor + 0x30)
+
+    floor, own = 0x40000, 0x40800
+    assert emerge_y(floor, floor - 0x5000, own) == floor  # target floor usable
+    assert emerge_y(0x7FBC00, floor - 0x5000, own) == own  # no target floor: Sektor's
+    assert emerge_y(0x7FBC00, floor - 0x5000, 0x7FBC00) == floor - 0x5000  # neither
+    assert emerge_y(0x7FBC00, own + 0x100, own) == own + 0x100  # own floor above target
+
+
 def test_robo_zap_chest_choreography() -> None:
     from mkmszr.fighter_import.actions import robo_zap
 
@@ -581,3 +619,20 @@ def test_robo_zap_smoke_and_explosion_spawns() -> None:
     assert patches == {0x8004BB94: 0x0C06BC80, 0x8004BCB4: 0, 0x8004BCD0: 0}
     for va in patches:
         assert va in robo_zap.STOCK_WORDS
+
+
+def test_robo_zap_launch_ghosts_removed_through_stub() -> None:
+    from mips_eval import Machine
+
+    from mkmszr.fighter_import.actions import robo_zap
+
+    base = 0xA01AF000
+    a = Assembler(base)
+    robo_zap.emit_launch_stub(a)
+    m = Machine(a.link(), base)
+    m.regs[31] = 0x8004AE8C
+    assert m.run(a.labels["zap_no_tint"]).target == 0x8004AE8C
+    assert m.regs[2] + 0x6F4 == a.labels["zap_no_tint_scratch"]  # three stores land here
+    patches = robo_zap.launch_visual_patches(a.labels["zap_no_tint"])
+    assert patches == {0x8004AE68: 0, 0x8004AE84: 0x0C06BC00}
+    assert all(va in robo_zap.STOCK_WORDS for va in patches)
