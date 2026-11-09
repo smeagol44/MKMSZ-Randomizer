@@ -1,4 +1,4 @@
-from mkmszr.config import OutfitConfig, RandomizerConfig
+from mkmszr.config import RandomizerConfig
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches.controls_production import ControlsProductionPatch
 from mkmszr.patches.game_settings_turn import GameSettingsTurnPatch
@@ -6,7 +6,6 @@ from mkmszr.patches.progression_presentation import (
     FLASH_MODULE_END_ROM,
     FLASH_MODULE_ROM,
 )
-from mkmszr.patches.rainbow_palette import RainbowPalettePatch
 from mkmszr.patches.toasty import ToastyProductionCompositionPatch
 from mkmszr.patches.toasty_codegen import (
     _build_call_trampoline,
@@ -46,26 +45,25 @@ def test_toasty_module_fits_reserved_pool_at_aligned_base() -> None:
     assert MODULE_K0 + len(packed.data) == 0x801B19B6
 
 
-def test_toasty_is_optional_and_runs_after_rainbow() -> None:
+def test_toasty_is_optional_and_runs_before_controls() -> None:
     assets = fake_assets()
     base = build_pipeline(RandomizerConfig())
     assert not any(isinstance(p, ToastyProductionCompositionPatch) for p in base.patches)
 
     composed = build_pipeline(
-        RandomizerConfig(outfit=OutfitConfig(mode="rainbow")),
+        RandomizerConfig(),
         toasty_assets=assets,
         toasty_probability_per_thousand=DEFAULT_PROBABILITY_PER_THOUSAND,
     )
     types = [type(patch) for patch in composed.patches]
     toasty_index = types.index(ToastyProductionCompositionPatch)
     controls_index = types.index(ControlsProductionPatch)
-    rainbow_index = types.index(RainbowPalettePatch)
 
     assert composed.patches[toasty_index].probability_per_thousand == (
         DEFAULT_PROBABILITY_PER_THOUSAND
     )
     assert types.index(GameSettingsTurnPatch) < toasty_index
-    assert toasty_index < controls_index < rainbow_index
+    assert toasty_index < controls_index
 
 
 def test_product_default_probability_is_eight_percent() -> None:

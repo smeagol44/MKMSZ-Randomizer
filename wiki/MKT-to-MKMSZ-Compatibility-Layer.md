@@ -197,6 +197,8 @@ These are proof/research goals, not current 1.0 product blockers.
 
 ### 2. Rainbow outfit (user decision 2026-11-09: remove from production for now)
 
+**Done (2026-11-09):** removed from production; see the [status log](Status-Update-Log#ps-25-2026-11-09).
+
 Rainbow wraps every file-`0x87` load to append its bank, which conflicts with a replaced file `0x87`. Removing it frees the `0x58`-byte loader wrapper (`[0x801B0880,0x801B08D8)`), its `0xD0` helper in the Runtime V2 code tail, the phase word `0x801AF818`, file `0x92` and ROM `[0xF20000,0xF22000)`. The Temple scripted check and the global materializer are composed after the wrapper, so the removal is its own guarded change with tests (CLI/web outfit choice, pipeline order, Wiki rows). It may be re-added later.
 
 The other outfit modes (`SubZeroPalettePatch`, hue/RGB presets, also used by the title branding) recolour entries `0x21..0x3F` of Sub-Zero's 64-colour palette inside file `0x87`. Sektor's body uses its own 16-colour palette, so with Sektor on they must be disabled or mapped (decision, step 4).
