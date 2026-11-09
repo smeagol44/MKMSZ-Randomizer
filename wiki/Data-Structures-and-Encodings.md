@@ -141,6 +141,13 @@ N64 source colors are 16-bit BGR555 values with a preserved high control/alpha b
 - Fighter type `5` uses exact header `0x05000000` and dispatches through `0x80003314 -> 0x80065E00`.
 - Type `5` is distinct from ordinary embedded-image type `4`.
 
+**Static-confirmed (2026-11-09).** The jump table at `0x800A9FB8` gives the other types:
+- type `2` (`0x8000339C`): run-length coding. The 24-bit little-endian size in header bytes `0..2` includes the header. A control byte `n >= 0` copies `n + 1` literal bytes; `n < 0` repeats the next byte `1 − n` times.
+- type `4` (`0x80003428`): the 1024-byte ring at `0x802E7E20` is **not** cleared between images, and output byte `k` lands at ring index `(1 + k) & 0x3FF`. A self-contained encoding therefore only references bytes of the same image (distance at most 1024) and never uses ring index 0, which is the end token. `fighter_import.effects.encode_type4` follows this rule, and its output decodes identically from any stale ring (Implementation/CI-confirmed; Runtime-confirmed in Sektor rocket proofs v39–v41).
+- types `1` and `3` return the output buffer without decoding.
+
+Decoded output goes to a per-frame scratch cursor `0x800EEB8C`, which is reset each frame from `*0x80112014` (`0x802C1C00` in the gameplay setters, a buffer up to `0x802D0E34`) and advanced 4-aligned after each decode. Raw type 0 needs no scratch. The render pass `0x800185B8` writes the decoded pointer back into the actor's own frame record (`+0x7C`), not into the resource.
+
 Donor-specific source codecs and conversion pipelines are documented in [MKT fighter asset translation](MKT-Fighter-Asset-Translation).
 
 ## Native fighter image type 5
@@ -224,18 +231,36 @@ The callback table at `0x8009F95C`:
 
 Stock Sub-Zero file `0x87` uses only tokens `1, 2, 3, 5, 6, 10, 11, 16` and callback `1` in its script region `+0x1B0..+0xFF8`. The region decodes linearly with no undecodable words, and re-encoding it reproduces the file byte for byte (`src/mkmszr/fighter_import`). The region ends with code-referenced pointer words at `+0xFC4..+0xFD8` rather than scripts; for example, `+0xFD0` holds `+0xD90`, the rocket/Ice loop loaded by the projectile child. The MKT donor comparison of this grammar is owned by [MKT adapter primitives](MKT-Adapter-Primitives#animation-script-grammar-translation).
 
+## Frame descriptor and the preceding word
+
+**Static-confirmed (2026-11-09); the hazard is Runtime-confirmed (Sektor rocket proofs v35–v39).** A frame word in a script (any value above 16) is the offset of a **shape**: a zero-terminated list of descriptor offsets (one-part shapes are `{descriptor, 0}`). `0x8001BDA0(actor, shape pointer)` binds the first descriptor. A descriptor is three words relative to actor `+0x98`:
+
+| Offset | Meaning |
+|---:|---|
+| `+0x0` | image offset (a typed image, see [Native image dispatch](#native-image-dispatch)) |
+| `+0x4` | width (high halfword), height (low halfword) |
+| `+0x8` | anchor x (high halfword), anchor y (low halfword) |
+
+`0x8001BDA0` copies the image pointer and dimensions into the actor's frame record `+0x7C` and computes the anchors from the facing bits `+0x8C & 0x30`. With actor `+0x8C bit 0x40` set, it then reads **the word just before the descriptor**:
+- **zero:** the frame uses the actor's texture slot `+0x9C`, and `+0xFA` is incremented, which requests a decode and upload by the render pass;
+- **non-zero:** that word is used as the texture slot instead, with no decode request, and the slot record at `0x802E83F0 + word * 0x10` gets `+0x08 = align4(width)` and `+0x0A = height`.
+
+Every stock descriptor checked is preceded by zero (the Ice and rocket entries, `+0x34A58` / `+0x4E6E4`). Generated data must keep that zero word: placing a descriptor straight after other data turns that data into a slot index. Sektor proof v35 put descriptors straight after type-4 images, and an image ending in token bytes `0x86000000` made the bind store into TLB-mapped space, a delayed hang.
+
 ## Dynamic gameplay texture-slot record
 
 **Static-confirmed for the fields below.** Dynamic texture IDs `0x200..0x2FF` index 16-byte records at `0x802E83F0 + id*0x10`; backing pointers are stored separately at `0x800ED940[id]`.
 
 | Offset | Meaning | Evidence |
 |---:|---|---|
-| `+0x00` | format/flags word used by `0x8001F7A8` to choose texture-load path | Static-confirmed |
+| `+0x00` | format/flags word used by `0x8001F7A8` to choose texture-load path. A fresh allocation writes `(*0x8009A5F0 << 5) | 0x80`. Bits `0x60` select the render mode: `0x8009F6F4[i]` (`0x404240` for all four) and alpha `0x8009F704[i]` = `0x80, 0xC0, 0x40, 0x20`. Bits `0x180 == 0x80` select the byte-copy upload (`0x800202CC`); any other value selects a nibble-swapping copy of `width/2` bytes per row | Static-confirmed |
 | `+0x04` | backing-capacity width used by `0x8001C2B4` reuse-fit checks | Static-confirmed |
 | `+0x06` | backing-capacity height used by reuse-fit checks | Static-confirmed |
 | `+0x08` | current DRAM source-image width; consumed by `0x8001F7A8` when emitting RDP `SetTextureImage` | Static-confirmed |
 | `+0x0A` | image/allocation height field; exact downstream ownership beyond allocator bookkeeping is not yet fully cataloged | Static-confirmed field write; semantics bounded |
-| `+0x0C` | reuse/lifecycle field; exact semantic name Pending | Static-confirmed as part of allocator reuse eligibility |
+| `+0x0C` | storage kind. A positive value marks reusable storage: the reuse path returns an inactive record only if `+0x0C > 0` and it fits. Zero marks stack storage: fresh allocation takes an inactive record with `+0x0C == 0` and does not set it | Static-confirmed (allocator and release paths) |
 | `+0x0E` | active flag; `1` means active | Static-confirmed |
 
 For a new dynamic allocation, `0x8001C2B4` rounds requested width up to 32 before allocating backing storage and initially writes that aligned width to both `+0x04` and `+0x08`. Its reuse path can return an inactive record whose `+0x04/+0x06` capacity is sufficient **without updating `+0x08`**. Stock image-building callers therefore rewrite `record+0x08` after allocation with the source image's actual DRAM row width. Toasty v23-v37 omitted that caller-owned initialization; see [Toasty visual research](Toasty-Visual-Research).
+
+Fresh storage is taken top-down: `0x800BF2FC` holds the lowest live storage address (reset to `0x80400000` by stage setup `0x8001CA38`). A fresh allocation fails with `-1` if it would go below the texture bump pointer `0x801AE478`, but the bump side `0x8001BF70` has no bounds check against it. Release `0x8001C424` clears `+0x0E`. For stack storage (`+0x0C == 0`) that is the current lowest, it raises `0x800BF2FC` to the lowest remaining active stack storage above it, or to `0x80400000`. Freed storage elsewhere is reclaimed only when everything below it is released. The render pass `0x800185B8` sets `+0x08 = align4(width)` and `+0x0A = height` for each uploaded frame, so a slot must be sized for its largest frame.

@@ -190,6 +190,17 @@ Some raw calls take the event from stage resources (`lw a0,(s4)` with `a1 = 1`).
 
 Isolated chains found (event / patch / subpatch / waveform): `159/316/159/149`, `164/321/164/154`, `168/325/168/158`, `170/327/170/160`, `171/328/171/161`, `172/329/172/162`, `173/330/173/163`, `175/332/175/165`, `177/334/177/167`, `332/489/332/322`, **`335/492/335/325`** (Sektor teleport sound, proof v09/v10), `336/493/336/326`, **`437/594/437/427`** (v09 landing thud only; left stock in v10), `453/610/453/443`, `459/616/459/449`, `478/635/478/468`.
 
+Use by the Sektor proof line through v41 (all Runtime-confirmed as hosts; `fighter_import.sound` installs a chain from the MKT bank and checks every rewritten record against the clean ROM):
+
+| Host event | Donor (MKT USA Rev. 2 event) | Since |
+|---|---|---|
+| 159, 164, 168, 170, 171, 172 | voice set (v15 rule below) | v12 |
+| 335 | teleport `0x104` | v09 |
+| 173 / 175 / 177 | rocket chest open `0x108` / launch `0x100` / boom `0x107` (robot ochar `0x0B` / `3` / `0x0A`) | v30 |
+| 332 / 336 / 437 / 453 | throw: grab voice `0x67` (voice group 3) / arm OUT `0xFD` / arm THROW `0xFE` / arm IN `0xFF` (robot ochar 0 / 1 / 2) | v41 |
+
+Free: 459, 478. MKT's per-fighter ochar sounds resolve through `0x800A1ED4[fighter]` (a table of `u16` events); the robot table follows the arcade MK3 `st_robo1` order (`MKSOUND.ASM`).
+
 To host a donor sound:
 - the donor track replaces the host track, with its patch field set to the host patch;
 - the donor subpatch replaces the host subpatch, with its waveform field set to the host waveform;
@@ -220,7 +231,7 @@ The donor's `−2253`-cent waveform correction is kept as is; MKMSZ honours it, 
 | 8 | jump `0x80031FB4` | group 1 |
 | 9 | sweep-family reactions | group 5 tripped |
 | 10 | knockdown landing `0x800546E8` (after its own thud, descriptor `0x10`) and zero-HP death | none (MK3 lands with no voice; a KO has no extra voice) |
-| 11 | slide/special yell | none for robots |
+| 11 | the grab: the player throw `0x8005BC8C` (`0x8005BCD4`) and the grab paths `0x8003D048` and `0x80040654` are its only callers (earlier labelled "slide/special yell") | group 3 grab. For Sektor, proof v41 plays the grab voice and the arm-OUT sound from a throw wrapper while the table entry stays 0 |
 
 How it is implemented:
 - **Empty groups:** a donor group with no sound sets that category's table entry to 0, which `0x80064B00` skips.
