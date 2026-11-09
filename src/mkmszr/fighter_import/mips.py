@@ -85,6 +85,9 @@ class Assembler:
     def subu(self, rd: str, rs: str, rt: str) -> None:
         self._r(rs, rt, rd, 0, 0x23)
 
+    def or_(self, rd: str, rs: str, rt: str) -> None:
+        self._r(rs, rt, rd, 0, 0x25)
+
     def and_(self, rd: str, rs: str, rt: str) -> None:
         self._r(rs, rt, rd, 0, 0x24)
 
@@ -236,6 +239,12 @@ class Assembler:
         self.raw((1 << 26) | (REG[rs] << 21) | (1 << 16))
         self.nop()
 
+    def word_label(self, name: str) -> None:
+        """A data word holding the address of ``name``."""
+
+        self.fixups.append((len(self.code), "word", name))
+        self.raw(0)
+
     def la(self, rt: str, name: str) -> None:
         self.fixups.append((len(self.code), "la", name))
         self.lui(rt, 0)
@@ -249,6 +258,8 @@ class Assembler:
             if kind == "la":
                 self.code[index] = (self.code[index] & 0xFFFF0000) | (target >> 16)
                 self.code[index + 1] = (self.code[index + 1] & 0xFFFF0000) | (target & 0xFFFF)
+            elif kind == "word":
+                self.code[index] = target & 0xFFFFFFFF
             elif kind == "b":
                 delta = (target - (pc + 4)) // 4
                 if not -0x8000 <= delta < 0x8000:
