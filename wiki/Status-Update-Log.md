@@ -4,6 +4,10 @@
 
 ## From Project status
 
+### PS-26 (2026-11-09)
+
+**2026-11-09 Sektor integration step 3 (sound and ROM space): proof v49 Runtime-confirmed bounded.** In a 32 MiB image, Sektor's fighter file `0x87` (`0x01820000`) and all donor sound samples (`0x01866000`, 16 wave records repointed) load and play from the generated-output tail. Candidate production region `[0x01820000,0x0186E4C0)` ([Memory map](Memory-and-Allocation-Map)). Next: step 4, R4 power mapping, which needs user decisions. v49 SHA-256 `c43825618b89917bb7176b2ab8cf4be7722048ab9b7b47d8e9a3a54372161c4f` (builder `5f8e4fc`).
+
 ### PS-25 (2026-11-09)
 
 **2026-11-09 Rainbow outfit removed from production (user decision; Sektor integration plan step 2).** Its compact-tail design wraps all 15 file-`0x87` load calls and appends a palette bank to the stock Sub-Zero file, which conflicts with an imported fighter file. `build_pipeline` now rejects the `rainbow` mode, the CLI and web app no longer offer it, and `patches/rainbow_palette.py` stays (unwired, with its unit tests) for a later re-add. Builds without rainbow are byte-identical to the previous `main` (checked for default, seeded + enemies + power shuffle, and RGB + powers-as-pickups OFF). Its allocations (loader wrapper, Runtime V2 tail helper, phase word, file `0x92` bank at ROM `0xF20000`) are marked retired in the [Memory map](Memory-and-Allocation-Map).
@@ -132,6 +136,10 @@
 **Focused lifecycle update (2026-10-01): lifecycle v06 is Runtime-confirmed and promoted to the shared production pipeline.** The exact accepted reference is Very Hard / 9 total lives / 5 continues / persistent HP ON. The shared core now parameterizes that same lifecycle control flow for build-time difficulty, starting lives (1..10), starting continues (0..5), and persistent HP ON/OFF; browser defaults are Very Hard / 5 / 3 / HP ON. Non-reference combinations are Implementation/CI-confirmed pending representative runtime coverage. v04 remains **Rejected / unsafe composition**. See [Lifecycle static closure](Lifecycle-Static-Closure-v05), [Persistence/inventory/lifecycle](Persistence-Inventory-and-Lifecycle), and [Web patcher/product behavior](Web-Patcher-and-Product).
 
 ## From Runtime validation status
+
+### RV-21 (2026-11-09)
+
+**2026-11-09 Sektor assets above 16 MiB, proof v49 — Runtime-confirmed bounded.** User report: "All sounds and graphics work fine." Covers every Sektor donor sound (teleport, voice, rocket, homing, throw) and the fighter graphics loaded from the 32 MiB generated-output tail.
 
 ### RV-20 (2026-11-09)
 

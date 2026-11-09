@@ -205,11 +205,36 @@ The other outfit modes (`SubZeroPalettePatch`, hue/RGB presets, also used by the
 
 ### 3. Sound and ROM space
 
+**Done (2026-11-09):** proof v49 Runtime-confirms the placement: file `0x87` and every donor sample load and play from the generated-output tail above 16 MiB (candidate region `[0x01820000,0x0186E4C0)`); see the [proof history](Sektor-Takeover-Proof-History#option-c-heap-neutral-file-and-relocatable-payload-v47v48).
+
 - **ROM:** the generated-output tail `[0x01819C00,0x02000000)` is unassigned (several MiB). Sektor's file `0x87` (repointed through its file-table entry, ROM `0xA5664`/`0xA5668`; stock `[0x748920,0x78E300)`), the samples and the code file go there as new owned rows; nothing goes in clean-input space.
 - **Sound hosts:** the 16 chains (`fighter_import.sound.ISOLATED_CHAINS`) share no event, patch, subpatch or waveform with production's Toasty (`52 → 68 → 608 → 533`) or Temple intro (`486 → 329 → 319`) chains. The samples move off `0xF20000` (which overlapped the rainbow bank); the bank-record rewrites stay guarded against clean bytes.
 - **Donor input:** production already takes an optional validated MKT Rev. 2 ROM (CLI `--mkt-rom`, web optional donor) for Toasty and the Temple intro; the Sektor option would require it and extract its assets the same way.
 
 ### 4. R4 power mapping (needs user decisions)
+
+**User decisions (2026-11-09).** Not implemented yet; they apply when the Sektor option is on.
+
+| Tier slot | Sub-Zero power | Sektor |
+|---:|---|---|
+| 1 | Ice Blast | Straight Missile (`F,F + LP`) |
+| 2 | Slide | Slide (kept) |
+| 3 | Directional Ice | Teleport Uppercut (`F,F + LK`) |
+| 4 | Air Ice Blast | Homing Missile (`F,D,B + HP`) |
+| 5 | Ice Clone | empty |
+| 6 | Ice Shatter | Double Missile (`B,B,F + LP`) |
+| 7 | Super Slide | empty |
+| 8 | Freeze on Contact | Super Slide (kept) |
+| 9 | Polar Blast | Polar Blast (kept) |
+
+- **Removed for Sektor:** Directional Ice (up), Air Ice Blast (including the airborne `F,F + LP` path), Ice Shatter, Ice Clone and Freeze on Contact; Spine Rip unchanged. An empty slot keeps its power-up (it still counts toward the tier and the Fortress XP requirement) but unlocks no move; the presentation shows the label "—".
+- **Shuffle:** the power-order shuffler is not changed. Each Sektor move checks the tier of its slot by reading that slot's stock gate (the instruction the shuffler writes), so a shuffled run moves Sektor's mapping exactly as Sub-Zero's. Ice Shatter's "after a freezing power" constraint stays in the shuffler although Sektor has no Shatter.
+- **Costs (Ice resource, user decision):** Straight Missile as Ice Blast (`0x20`); Teleport Uppercut as Slide (stock Slide has no Ice cost observed in its traced root, so the teleport becomes free; the proofs charged the down-Ice `0x60`); Double Missile 1.5× Ice Blast (`0x30`); Homing Missile as Directional Ice down (`0x60`). The proofs charged `0x20` for all three missiles.
+- **Empty slots:** labelled "—" on the power-up screen and HUD.
+- **MODERN:** choosing Sektor forces SPECIALS: CLASSIC (MODERN for Sektor may come later).
+- **Presentation:** Sektor's move names on the power-up screen and HUD; the outfit colour option recolours Sektor's palette (needs a Sektor-specific mapping).
+
+Analysis that led to these choices:
 
 - **Power order:** `power_order.py` moves each power's tier gate inside that power's own stock condition (e.g. Ice Clone at ROM `0x4AEA8`). The proofs give the Double Missile and the homing rocket Ice Blast's condition, so they would unlock with Ice Blast. Using the replaced power's condition (Ice Clone `0x8004A22C`, Freeze on Contact `0x8005A9AC`; the teleport already uses the down-Ice LK condition) lets the shuffle apply unchanged. Costs differ per condition.
 - **Unmapped Sub-Zero powers:** Slide, Super Slide, Directional Ice (up), Air Ice Blast, Ice Shatter, Polar Blast and Spine Rip stay Sub-Zero's unless replaced or removed. MKT Sektor has nothing for them.
