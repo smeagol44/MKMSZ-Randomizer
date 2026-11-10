@@ -18,11 +18,19 @@ Body fields:
   32-entry palette (BGR555 words, hex); ``auto`` derives them from the donor palette (the
   reduction is milestone 1 work).
 * ``body.common_animations``: the generic recipes in ``common_moves`` to apply.
+* ``body.layout`` (optional): explicit layout choices that replace the computed layout,
+  used to keep an accepted fighter byte-identical (Sektor). ``slots`` gives, per body slot,
+  ``mode`` (``inplace``: the host script's place, ``capacity`` words; ``relocated``: at
+  ``place`` inside a ``dead_regions`` span; ``packed``: placed by the frame packer), the
+  donor word count ``n`` or explicit ``words``, and ``hybrid`` (non-frame words stay stock).
+  ``inherited_groups``/``run_groups`` split the body and Run frames into entropy groups;
+  ``frame_edits`` sets host script words (file offset) to donor frames.
 * ``legacy``: frozen Sektor-era modules this fighter still uses (plan rule 4).
 """
 
 from __future__ import annotations
 
+import itertools
 import json
 from dataclasses import dataclass
 from importlib import resources
@@ -56,12 +64,33 @@ class Colour:
 
 
 @dataclass(frozen=True)
+class SlotLayout:
+    mode: str
+    n: int | None
+    words: tuple[int, ...] | None
+    place: int | None
+    capacity: int | None
+    hybrid: bool
+
+
+@dataclass(frozen=True)
+class Layout:
+    slots: dict[int, SlotLayout]
+    dead_regions: tuple[tuple[int, int], ...]
+    inherited_groups: int
+    run_groups: int
+    run_frames: tuple[int, ...] | None
+    frame_edits: dict[int, int]
+
+
+@dataclass(frozen=True)
 class Body:
     slots: tuple[int, ...]
     run_slot: int
     run_rate: int
     colour: Colour
     common_animations: tuple[str, ...]
+    layout: Layout | None = None
 
 
 @dataclass(frozen=True)
@@ -168,6 +197,7 @@ def validate(data: Any) -> FighterDescription:
             errors.append("body.colour.palette_bgr555: 32 BGR555 words as 128 hex digits")
             palette = None
 
+    layout = _layout(body_d.get("layout"), slots, errors) if "layout" in body_d else None
     anims = _get(body_d, "common_animations", list, "body", errors) or []
     for a in anims:
         if a not in COMMON_ANIMATIONS:
@@ -183,9 +213,75 @@ def validate(data: Any) -> FighterDescription:
         raise DescriptionError("; ".join(errors))
     return FighterDescription(
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
-        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims)),
+        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout),
         legacy=tuple(legacy),
     )  # fmt: skip
+
+
+def _layout(raw: Any, slots: list[int], errors: list[str]) -> Layout | None:
+    if not isinstance(raw, dict):
+        errors.append("body.layout: expected an object")
+        return None
+    where = "body.layout"
+    regions = []
+    for k, pair in enumerate(raw.get("dead_regions", [])):
+        lo = _int(pair[0] if isinstance(pair, list) and len(pair) == 2 else None, f"{where}.dead_regions[{k}]", errors)
+        hi = _int(pair[1] if isinstance(pair, list) and len(pair) == 2 else None, f"{where}.dead_regions[{k}]", errors)
+        if lo is not None and hi is not None:
+            if not lo < hi:
+                errors.append(f"{where}.dead_regions[{k}]: start must be below end")
+            regions.append((lo, hi))
+    slot_layouts: dict[int, SlotLayout] = {}
+    raw_slots = raw.get("slots", {})
+    if not isinstance(raw_slots, dict):
+        errors.append(f"{where}.slots: expected an object")
+        raw_slots = {}
+    for key, entry in raw_slots.items():
+        slot = _int(key, f"{where}.slots key {key!r}", errors)
+        w = f"{where}.slots[{key}]"
+        if slot is None or not isinstance(entry, dict):
+            errors.append(f"{w}: expected an object keyed by a body slot")
+            continue
+        if slot not in slots:
+            errors.append(f"{w}: not in body.slots")
+        mode = entry.get("mode")
+        if mode not in ("inplace", "relocated", "packed"):
+            errors.append(f"{w}.mode: inplace, relocated or packed")
+        words = entry.get("words")
+        if words is not None:
+            words = tuple(v for v in (_int(x, f"{w}.words", errors) for x in words) if v is not None)
+        n = _int(entry["n"], f"{w}.n", errors) if "n" in entry else None
+        if (n is None) == (words is None):
+            errors.append(f"{w}: exactly one of n or words")
+        place = _int(entry["place"], f"{w}.place", errors) if "place" in entry else None
+        capacity = _int(entry["capacity"], f"{w}.capacity", errors) if "capacity" in entry else None
+        length = len(words) if words is not None else (n or 0)
+        if mode == "inplace" and (capacity is None or capacity < length):
+            errors.append(f"{w}.capacity: required for inplace and at least the script length")
+        if mode == "relocated":
+            if place is None:
+                errors.append(f"{w}.place: required for relocated")
+            elif not any(lo <= place and place + 4 * length <= hi for lo, hi in regions):
+                errors.append(f"{w}.place: the script must lie inside one dead region")
+        slot_layouts[slot] = SlotLayout(mode, n, words, place, capacity, bool(entry.get("hybrid", False)))
+    missing = [s for s in slots if s not in slot_layouts]
+    if missing:
+        errors.append(f"{where}.slots: missing {', '.join(f'0x{s:02X}' for s in missing)}")
+    placed = sorted((sl.place, sl.place + 4 * (len(sl.words) if sl.words else sl.n or 0))
+                    for sl in slot_layouts.values() if sl.mode == "relocated" and sl.place is not None)  # fmt: skip
+    if any(a[1] > b[0] for a, b in itertools.pairwise(placed)):
+        errors.append(f"{where}.slots: relocated scripts overlap")
+    groups = {k: _int(raw.get(k), f"{where}.{k}", errors) for k in ("inherited_groups", "run_groups")}
+    run_frames = raw.get("run_frames")
+    if run_frames is not None:
+        run_frames = tuple(v for v in (_int(x, f"{where}.run_frames", errors) for x in run_frames) if v is not None)
+    edits = {}
+    for pos, rel in (raw.get("frame_edits") or {}).items():
+        a, b = _int(pos, f"{where}.frame_edits", errors), _int(rel, f"{where}.frame_edits", errors)
+        if a is not None and b is not None:
+            edits[a] = b
+    return Layout(slot_layouts, tuple(regions), groups["inherited_groups"] or 0, groups["run_groups"] or 0,
+                  run_frames, edits)  # fmt: skip
 
 
 def load(fighter_id: str) -> FighterDescription:

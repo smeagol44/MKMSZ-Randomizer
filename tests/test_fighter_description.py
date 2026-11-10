@@ -8,14 +8,11 @@ from __future__ import annotations
 import copy
 import json
 import os
-import re
 from pathlib import Path
 
 import pytest
 
 from mkmszr.fighter_import import description as fd
-
-BUILD = Path("src/mkmszr/fighter_import/sektor_build.py").read_text(encoding="utf-8")
 
 
 def _raw(fighter: str) -> dict:
@@ -30,18 +27,29 @@ def test_packaged_descriptions_load() -> None:
     assert sektor.body.run_slot == reptile.body.run_slot == 0x4A
 
 
-def test_sektor_description_matches_the_build_constants() -> None:
-    """Until milestone 1 moves them, the description must equal sektor_build.py's literals."""
-
+def test_sektor_layout_covers_every_body_slot() -> None:
     body = fd.load("sektor").body
-    block = BUILD[BUILD.index("slot_cfg = {") : BUILD.index("    for cfg in slot_cfg.values()")]
-    assert list(body.slots) == [int(x, 16) for x in re.findall(r"^\s+(0x[0-9A-F]+): dict", block, re.MULTILINE)]
-    index_map = re.search(r"MAP32TO16=\[([0-9,]+)\]", BUILD).group(1)
-    assert list(body.colour.index_map) == [int(x) for x in index_map.split(",")]
-    p16 = re.search(r"SEKTOR_PALETTE16=bytes\.fromhex\('([0-9a-f]+)'\)", BUILD).group(1)
-    p32 = "".join(re.findall(r"'([0-9a-f]{64})'", BUILD[BUILD.index("SEKTOR_PALETTE32") :])[:2])
-    assert body.colour.palette == bytes.fromhex(p16) + bytes.fromhex(p32)[32:]
-    assert re.search(r"RUN_RATE_ROM\+4\] = bytes\.fromhex\('24040003'\)", BUILD)  # host Run rate 3
+    assert body.layout is not None and set(body.layout.slots) == set(body.slots)
+    modes = {s: sl.mode for s, sl in body.layout.slots.items()}
+    assert {s for s, m in modes.items() if m == "relocated"} == {0x09, 0x12, 0x1A, 0x1B, 0x20}
+    assert [s for s, m in modes.items() if m == "packed"] == [0x11]
+    assert {s for s, sl in body.layout.slots.items() if sl.hybrid} == {0x0E, 0x0F, 0x14}
+    assert fd.load("reptile").body.layout is None  # computed layout (milestone 1, PR 3)
+
+
+def test_layout_rejects_bad_places_and_overlaps() -> None:
+    data = copy.deepcopy(_raw("sektor"))
+    data["body"]["layout"]["slots"]["0x09"]["place"] = "0x100"
+    with pytest.raises(fd.DescriptionError, match="dead region"):
+        fd.validate(data)
+    data = copy.deepcopy(_raw("sektor"))
+    data["body"]["layout"]["slots"]["0x1B"]["place"] = data["body"]["layout"]["slots"]["0x09"]["place"]
+    with pytest.raises(fd.DescriptionError, match="overlap"):
+        fd.validate(data)
+    data = copy.deepcopy(_raw("sektor"))
+    del data["body"]["layout"]["slots"]["0x00"]
+    with pytest.raises(fd.DescriptionError, match="missing 0x00"):
+        fd.validate(data)
 
 
 @pytest.mark.parametrize(

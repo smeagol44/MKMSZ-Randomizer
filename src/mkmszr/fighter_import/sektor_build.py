@@ -83,146 +83,6 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
         return isinstance(rel, int) and rel > 0 and MB + rel + 8 <= len(mkt) and m32(rel) == rel + 8 and m32(rel + 4) == 0
 
 
-    class BitReader:
-        def __init__(self, data): self.data = data; self.bit = 0
-        def read(self, n):
-            v = 0
-            for _ in range(n):
-                byte = self.data[self.bit >> 3]
-                sh = 7 - (self.bit & 7)
-                self.bit += 1
-                v = (v << 1) | ((byte >> sh) & 1)
-            return v
-
-
-    class BitWriter:
-        def __init__(self): self.out = bytearray(); self.cur = 0; self.n = 0; self.bits = 0
-        def write(self, v, n):
-            assert n >= 0 and (n == 0 or 0 <= v < (1 << n))
-            self.bits += n
-            for sh in range(n-1, -1, -1):
-                self.cur = (self.cur << 1) | ((v >> sh) & 1)
-                self.n += 1
-                if self.n == 8:
-                    self.out.append(self.cur); self.cur = 0; self.n = 0
-        def finish(self):
-            if self.n:
-                self.out.append(self.cur << (8-self.n)); self.cur = 0; self.n = 0
-            return bytes(self.out)
-
-
-    def dec_15(src):
-        n = int.from_bytes(src[:4], 'big') & 0xffffff
-        p = 4; out = bytearray()
-        while len(out) < n:
-            ch = src[p]; p += 1
-            if ch & 0x80:
-                out += bytes((0,)) * ((ch & 0x7f) + 1)
-            elif ch & 0x40:
-                out.append((ch >> 3) & 7)
-                if len(out) < n: out.append(ch & 7)
-            else:
-                pix = ch & 7
-                if pix == 0:
-                    pix = (ch >> 3) & 7
-                    cnt = src[p]; p += 1
-                    out += bytes((pix,)) * cnt
-                else:
-                    cnt = ((ch >> 3) & 7) + 3
-                    out += bytes((pix,)) * cnt
-        assert len(out) == n
-        return bytes(out)
-
-
-    def dec_22_24(src, dictb=ROBO_DICT):
-        typ = src[0]
-        n = int.from_bytes(src[:4], 'big') & 0xffffff
-        if typ == 24:
-            top = src[4:8]; fp = 8; mini = None
-        elif typ == 23:
-            top = None; mini = src[4]; fp = 5
-        elif typ == 22:
-            top = None; mini = 0; fp = 4
-        else:
-            raise ValueError(typ)
-        flip_len = src[fp]; fp += 1
-        if flip_len & 0x80:
-            flip_len = ((flip_len & 0x7f) << 8) | src[fp]; fp += 1
-        flip_data = src[fp:]
-        sp = fp + flip_len
-        bit_count = 8
-        fi = 0
-        flip = flip_data[fi] if flip_data else 0
-        fi += 1 if flip_data else 0
-        out = bytearray()
-        while len(out) < n:
-            ch = src[sp]; sp += 1
-            if ch & 0x80:
-                idx = (ch & 0x7f) << 1
-                if flip & 0x80: out.extend((dictb[idx+1], dictb[idx]))
-                else: out.extend((dictb[idx], dictb[idx+1]))
-                bit_count -= 1
-                if bit_count == 0:
-                    flip = flip_data[fi]; fi += 1; bit_count = 8
-                else:
-                    flip = (flip << 1) & 0xff
-            else:
-                sw = ch >> 5; ch &= 0x1f
-                if sw == 3:
-                    cnt = src[sp]; sp += 1; out += bytes((ch,)) * cnt
-                elif sw == 2:
-                    if top is None:
-                        cnt = ch + 3; pix = mini
-                    else:
-                        cnt = (ch & 7) + 3; pix = top[(ch >> 3) & 3]
-                    out += bytes((pix,)) * cnt
-                elif sw == 1:
-                    out.append(ch); out.append(ch)
-                else:
-                    out.append(ch)
-        assert len(out) == n
-        return bytes(out)
-
-
-    def make_blocks(padded, stride, eh):
-        assert stride % 4 == 0 and eh % 2 == 0
-        out = []
-        for by in range(0, eh, 2):
-            for bx in range(0, stride, 4):
-                out.append(
-                    padded[by*stride+bx:by*stride+bx+4] +
-                    padded[(by+1)*stride+bx:(by+1)*stride+bx+4]
-                )
-        return out
-
-
-    def donor_frame(rel):
-        o = MB + rel
-        assert be32(mkt, o) == rel + 8 and be32(mkt, o+4) == 0, hex(rel)
-        sub = o + 8
-        image_rel = be32(mkt, sub)
-        packed = be32(mkt, sub+4)
-        anchor = be32(mkt, sub+8)
-        h = (packed >> 16) & 0xffff
-        w = packed & 0xffff
-        x = s16((anchor >> 16) & 0xffff)
-        y = s16(anchor & 0xffff)
-        src = mkt[MB + image_rel:]
-        typ = src[0]
-        if typ == 15: raw = dec_15(src)
-        elif typ in (22, 23, 24): raw = dec_22_24(src)
-        else: raise ValueError((hex(rel), typ, hex(image_rel)))
-        stride = align4(w)
-        assert len(raw) == h * stride, (hex(rel), typ, w, h, len(raw))
-        eh = align2(h)
-        if eh > h: raw += bytes(stride * (eh-h))
-        return dict(w=w,h=h,x=x,y=y,stride=stride,eh=eh,padded=raw,blocks=make_blocks(raw,stride,eh),codec=typ,donor=rel)
-
-
-    def visible_rows(fr):
-        return [fr['padded'][y*fr['stride']:y*fr['stride']+fr['w']] for y in range(fr['h'])]
-
-
     # MKT mechanical arm has its own 8-color MECARM_P palette. Convert the donor
     # RGBA5551 colors into MKMSZ's A1BGR555 color space, then bind them to the closest
     # entries already present in the runtime-confirmed native Sektor TLUT.
@@ -238,82 +98,21 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
         ARM_TO_SEKTOR[i]=min(range(1,32),key=lambda j:sum((a-b)**2 for a,b in zip(c,target_rgb(TARGET_TLUT[j]))))
     assert ARM_TO_SEKTOR=={0:0,1:17,2:19,3:20,4:22,5:24,6:25,7:26}
 
-    def composite(body, arm):
-        # MKT anchors are actor-relative; nonzero arm pixels overlay the full body.
-        bx0, by0 = -body['x'], -body['y']
-        ax0, ay0 = -arm['x'], -arm['y']
-        minx = min(bx0, ax0); miny = min(by0, ay0)
-        maxx = max(bx0+body['w'], ax0+arm['w'])
-        maxy = max(by0+body['h'], ay0+arm['h'])
-        w = maxx-minx; h = maxy-miny
-        stride = align4(w); eh = align2(h)
-        out = bytearray(stride*eh)
-        def blit(fr, x0, y0, remap=None):
-            ox=x0-minx; oy=y0-miny
-            for yy,row in enumerate(visible_rows(fr)):
-                dst=(oy+yy)*stride+ox
-                for xx,p in enumerate(row):
-                    if p:
-                        out[dst+xx] = remap[p] if remap is not None else p
-        blit(body,bx0,by0); blit(arm,ax0,ay0,ARM_TO_SEKTOR)
-        raw=bytes(out)
-        return dict(w=w,h=h,x=-minx,y=-miny,stride=stride,eh=eh,padded=raw,blocks=make_blocks(raw,stride,eh),codec='flattened-22+15')
 
-
-
-    # v53 common takeover mapping.
-    slot_cfg = {
-        0x00: dict(name='idle', donor=0x1D4, target=0x2EC, words=[0x1768,0x1780,0x1794,0x17A8,0x17BC,1,0x1D4], mode='inplace'),
-        0x01: dict(name='walk-f', donor=0x230, target=0x3C0, n=9, mode='inplace'),
-        0x02: dict(name='walk-b', donor=0x254, target=0x3EC, n=9, mode='inplace'),
-        0x03: dict(name='turn', donor=0x21C, target=0x418, n=5, mode='inplace'),
-        0x04: dict(name='crouch', donor=0x278, target=0x42C, n=4, mode='inplace'),
-        0x05: dict(name='crouch-turn', donor=0x2FC, target=0x43C, n=6, mode='inplace'),
-        0x06: dict(name='crouch-block', donor=0x288, target=0x458, n=4, mode='inplace'),
-        0x07: dict(name='crouch-hit', donor=0x298, target=0x468, n=4, mode='inplace'),
-        0x08: dict(name='crouch-punch', donor=0x314, target=0x47C, n=8, mode='inplace'),
-        0x09: dict(name='crouch-high-kick', donor=0x354, n=10, mode='relocated'),
-        0x0A: dict(name='crouch-low-kick', donor=0x334, target=0x4C0, n=8, mode='inplace'),
-        0x0B: dict(name='uppercut', donor=0x37C, target=0x49C, n=9, mode='inplace'),
-        0x0C: dict(name='standing-block', donor=0x50C, target=0x624, n=4, mode='inplace'),
-        0x0E: dict(name='high-punch', donor=0x3A0, target=0x504, n=28, mode='inplace'),
-        0x0F: dict(name='low-punch', donor=0x410, target=0x574, n=27, mode='inplace'),
-        0x11: dict(name='standing-high-kick', donor=0x5EC, n=13, mode='packed'),
-        0x12: dict(name='standing-low-kick', donor=0x51C, n=13, mode='relocated'),
-        0x13: dict(name='knee', donor=0x550, target=0x684, n=7, mode='inplace'),
-        0x14: dict(name='sweep', donor=0x594, target=0x704, n=12, mode='inplace'),
-        0x15: dict(name='roundhouse', donor=0x5C4, target=0x6DC, n=10, mode='inplace'),
-        0x16: dict(name='jump', donor=0x620, target=0x734, n=4, mode='inplace'),
-        0x17: dict(name='jump-kick', donor=0x630, target=0x744, n=7, mode='inplace'),
-        0x18: dict(name='flip-punch', donor=0x668, target=0x77C, n=7, mode='inplace'),
-        0x19: dict(name='flip-kick', donor=0x64C, target=0x760, n=7, mode='inplace'),
-        0x1A: dict(name='forward-flip', donor=0x684, n=8, mode='relocated'),
-        0x1B: dict(name='back-flip', donor=0x6A4, n=8, mode='relocated'),
-        0x1C: dict(name='hit-high', donor=0x70C, target=0x7E8, n=5, mode='inplace'),
-        0x1D: dict(name='hit-low', donor=0x720, target=0x7FC, n=5, mode='inplace'),
-        0x1E: dict(name='knockdown', donor=0x808, target=0x874, n=9, mode='inplace'),
-        0x1F: dict(name='sweep-fall', donor=0x1100, target=0x8B4, n=9, mode='inplace'),
-        0x20: dict(name='stumble', donor=0x734, n=17, mode='relocated'),
-        0x21: dict(name='getup', donor=0x82C, target=0x898, n=7, mode='inplace'),
-        0x22: dict(name='sweep-getup', donor=0x1124, target=0x8D8, n=6, mode='inplace'),
-    }
-    for cfg in slot_cfg.values():
-        if 'words' not in cfg: cfg['words'] = [m32(cfg['donor'] + 4*i) for i in range(cfg['n'])]
-        else: cfg['n'] = len(cfg['words'])
-        cfg['shapes'] = [v for v in cfg['words'] if is_donor_shape(v)]
-    assert slot_cfg[0x0B]['words'] == [0x1A54,0x1A68,0x1A7C,0x1A90,5,0x1AA4,0,0x1A90,0]
-    assert slot_cfg[0x14]['words'] == [0x1E28,0x1E3C,0x1E50,6,1,0x1E64,0x1E78,0,0x1E8C,0x1EA0,0x1EB4,0]
-    assert slot_cfg[0x20]['words'] == [0x21AC,0x21C0,0x21D4,0x21E8,0x21AC,0x21FC,0x2210,0,0x21AC,0x21C0,0x21D4,0x21E8,0x21AC,0x21FC,0x2210,1,0x754]
-
-    old_shapes=[]
-    for slot in sorted(slot_cfg):
-        for rel in slot_cfg[slot]['shapes']:
-            if rel not in old_shapes: old_shapes.append(rel)
-    assert len(old_shapes)==129
-    old_frames={rel:donor_frame(rel) for rel in old_shapes}
+    # ---- Body (milestone 1): the generic builder from Sektor's description ----------------------
+    # Sektor's frozen legacy adds its move frames (combo, throw arm composites, teleport, chest)
+    # and its combo and throw script edits (fighter_import.body_build.Extras).
+    from mkmszr.fighter_import import body_build as _bb, description as _desc
+    SEKTOR = _desc.load('sektor')
+    _donorb = _bb.Donor(mkt, SEKTOR.donor_fighter_id)
+    assert _donorb.base == MB and _donorb.dictionary == ROBO_DICT
+    def donor_frame(rel): return _donorb.frame(rel)
+    def visible_rows(fr): return _bb.visible_rows(fr)
+    def composite(body, arm): return _bb.composite(body, arm, ARM_TO_SEKTOR, codec='flattened-22+15')
 
     # New v54 visuals.
     RUN_RELS=[0x2708,0x271C,0x2730,0x2744,0x2758,0x276C]  # RBRUN1,3,5,7,9,11
+    assert RUN_RELS == _donorb.frames(SEKTOR.body.run_slot)
     COMBO_RELS=[0x1C0C+i*0x14 for i in range(10)]            # RBELBOCOMBO1..10
     BODY_REL=0x22EC                                           # RBSHOLDER4
     ARM_RELS=[0x2318,0x2340,0x237C,0x2390,0x23B8,0x23CC,0x2408]  # seven sampled poses across Sektor's mechanical-arm arc
@@ -321,150 +120,21 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
     # v26: chest open frames (robot secondary slot 0: RBCHEST1, RBCHEST2) for the rocket.
     from mkmszr.fighter_import.actions import robo_zap as _zap0
     CHEST_RELS=list(_zap0.CHEST_FRAMES)
-    TELE_RELS=TELE_RELS+CHEST_RELS     # same entropy group and lossless pipeline as the teleport frames
-    # v61: the donor's flip poses (MKT table 0 slot 0x47, phase 1; every MKT "flipped by" victim
-    # animation uses them) for the generic grabbed-by-an-enemy recipe (fighter_import.common_moves).
-    _flip_root = m32(4 * 0x47)
-    FLIP_RELS = []
-    while m32(_flip_root + 4 * len(FLIP_RELS)): FLIP_RELS.append(m32(_flip_root + 4 * len(FLIP_RELS)))
+    # v61: the donor's flip poses (MKT table 0 slot 0x47, phase 1) for the generic grabbed recipe.
+    FLIP_RELS = _donorb.phase(0x47)
     assert FLIP_RELS == [0x2588, 0x259C, 0x25B0, 0x25C4, 0x25D8], [hex(x) for x in FLIP_RELS]
-    TELE_RELS=TELE_RELS+FLIP_RELS      # v61: same group and pipeline
-    new_frames={r:donor_frame(r) for r in RUN_RELS+COMBO_RELS+[BODY_REL]+ARM_RELS+TELE_RELS}
+    new_frames={r:donor_frame(r) for r in COMBO_RELS+[BODY_REL]+ARM_RELS+TELE_RELS+CHEST_RELS}
     assert [(new_frames[r]['w'],new_frames[r]['h'],new_frames[r]['x'],new_frames[r]['y']) for r in CHEST_RELS]==[(46,115,19,-5),(47,113,20,-7)]
     THROW_KEYS=[('throw-composite',r) for r in ARM_RELS]
     throw_frames={k:composite(new_frames[BODY_REL],new_frames[k[1]]) for k in THROW_KEYS}
     assert (throw_frames[('throw-composite',0x23B8)]['w'],throw_frames[('throw-composite',0x23B8)]['h'],throw_frames[('throw-composite',0x23B8)]['x'],throw_frames[('throw-composite',0x23B8)]['y'])==(114,115,88,-5)
-
-    # Compact v05 corpus: retail N64 MKT is the sole Run-pose authority.
-    # Keep only RBRUN1,3,5,7,9,11. The six WIMP-derived even poses and the
-    # rejected PS1 Run path are intentionally absent from both data and build inputs.
-    base_frame_cache={**old_frames}
-    for r in RUN_RELS+COMBO_RELS+TELE_RELS: base_frame_cache[r]=new_frames[r]
-    base_frame_cache.update(throw_frames)
-    base_keys=old_shapes+RUN_RELS+COMBO_RELS+THROW_KEYS+TELE_RELS
-    base_patterns=set()
-    for k in base_keys: base_patterns.update(p for p in base_frame_cache[k]['blocks'] if p!=ZERO_BLOCK)
-    frame_cache=dict(base_frame_cache)
-    # 16-colour normalization: exact 32->16 index map recovered from the visually accepted
-    # MKMSZR_sektor-16color_common-proof_v01 (every source index maps to exactly one target).
-    MAP32TO16=[0,12,11,3,3,14,9,13,5,5,7,7,7,7,1,1,2,2,12,6,6,10,10,4,4,15,8,8,1,1,1,1]
-    for k in list(frame_cache):
-        fr=dict(frame_cache[k]); fr['padded']=bytes(MAP32TO16[p] for p in fr['padded'])
-        fr['blocks']=make_blocks(fr['padded'],fr['stride'],fr['eh']); frame_cache[k]=fr
-        assert max(fr['padded'])<16
     # v04: the only generated asset is a transparent frame; sink/emerge use descriptor-only aliases
     # of resident frames (anchor shifted, image shared), emitted in the teleport section.
     EMPTY_KEY=('empty',0)
-    frame_cache[EMPTY_KEY]=dict(w=4,h=2,x=0,y=0,stride=4,eh=2,padded=bytes(8),blocks=make_blocks(bytes(8),4,2),codec='derived')
     DERIVED_KEYS=[EMPTY_KEY]
-
-    def split_even(seq,n):
-        L=len(seq); return [seq[(i*L)//n:((i+1)*L)//n] for i in range(n) if (i*L)//n<((i+1)*L)//n]
-    # 58 inherited entropy groups + 4 Run groups + Throw + Combo = 64 model records.
-    # Frame count falls from 158 to 152 solely by deleting the six non-retail Run poses.
-    old_groups=split_even(old_shapes,58); run_groups=split_even(RUN_RELS,4)
-    groups=old_groups+run_groups+[THROW_KEYS,COMBO_RELS+TELE_RELS+DERIVED_KEYS]
-    all_keys=old_shapes+RUN_RELS+COMBO_RELS+THROW_KEYS+TELE_RELS+DERIVED_KEYS
-    assert len(groups)==64 and len(all_keys)==165  # v61: + 5 flip poses
-
-    freqs=[]
-    for g in groups:
-        c=Counter()
-        for k in g:c.update(p for p in frame_cache[k]['blocks'] if p!=ZERO_BLOCK)
-        freqs.append(c)
-    all_patterns=set().union(*(set(c) for c in freqs))
-    # Ordering priority found statically best for this exact shared dictionary: new Combo,
-    # Throw, restored Run, then inherited corpus. It changes compression only, never pixels.
-    order=[len(groups)-1,len(groups)-2]+list(range(58,62))+list(range(58))
-    patterns=sorted(all_patterns,key=lambda p:tuple(-freqs[i].get(p,0) for i in order)+(p,))
-    pidx={p:i for i,p in enumerate(patterns)}
-
-
-
-    def best_partition(mf,K=13):
-        used=sorted((pidx[p],w,p) for p,w in mf.items())
-        idx=[x[0] for x in used]; wt=[x[1] for x in used]; pref=[0]
-        for w in wt: pref.append(pref[-1]+w)
-        n=len(used)
-        @lru_cache(None)
-        def dp(pos,k):
-            if pos>=n:return (0,())
-            if k==0:return (10**30,None)
-            base=idx[pos];best=(10**30,None)
-            for bits in range(1,17):  # native decoder safety: never emit a 0-bit normal class
-                q=bisect.bisect_left(idx,base+(1<<bits),pos,n)
-                if q==pos:continue
-                rc,rp=dp(q,k-1);cost=bits*(pref[q]-pref[pos])+rc
-                if rp is not None and cost<best[0]:best=(cost,((base,bits,pos,q),)+rp)
-            return best
-        _cost,plan=dp(0,K); assert plan is not None
-        if len(plan)<K:
-            base=plan[-1][0] if plan else 0
-            plan=plan+tuple((base,1,n,n) for _ in range(K-len(plan)))
-        cmap={}
-        for ci,(base,bits,a,q) in enumerate(plan):
-            for j in range(a,q):ix,w,p=used[j];cmap[p]=(ci,ix-base,bits)
-        assert len(cmap)==len(mf) and len(plan)==13 and all(x[1]>=1 for x in plan)
-        return plan,cmap
-
-    model_plans=[];model_maps=[]
-    for mf in freqs:
-        pl,cm=best_partition(mf);model_plans.append(pl);model_maps.append(cm)
-    assert all(bits>=1 for pl in model_plans for _base,bits,_a,_q in pl)
-    ZERO_BITS=[2,2,3];ZERO_BASES=[0,4,8]
-    @lru_cache(None)
-    def zero_plan(n):
-        if n==0:return (0,())
-        best=(10**9,None)
-        for zi,(bits,base) in enumerate(zip(ZERO_BITS,ZERO_BASES)):
-            for extra in range(1<<bits):
-                cnt=base+extra+1
-                if cnt<=n:
-                    pc,pp=zero_plan(n-cnt);cost=pc+4+bits
-                    if cost<best[0]:best=(cost,pp+((13+zi,extra,bits,cnt),))
-        return best
-
-    streams={};frame_model={}
-    for mid,g in enumerate(groups):
-        cm=model_maps[mid]
-        for k in g:
-            fr=frame_cache[k];bw=BitWriter();bw.write(mid,6);bl=fr['blocks'];i=0
-            while i<len(bl):
-                if bl[i]==ZERO_BLOCK:
-                    j=i+1
-                    while j<len(bl) and bl[j]==ZERO_BLOCK:j+=1
-                    _,zp=zero_plan(j-i)
-                    for sym,extra,bits,_ in zp:bw.write(sym,4);bw.write(extra,bits)
-                    i=j
-                else:
-                    ci,extra,bits=cm[bl[i]];bw.write(ci,4);bw.write(extra,bits);i+=1
-            stream=bw.finish()
-            while len(stream)&3:stream+=b'\0'
-            streams[k]=stream;frame_model[k]=mid
-    STREAM_BYTES=sum(map(len,streams.values()))
-
-
-    # Shared table: every model record points to the same physical pattern array.
-
-    def pack_pattern(block):
-        bw=BitWriter()
-        for px in block:
-            assert 0<=px<16; bw.write(px,4)
-        out=bw.finish(); assert len(out)==4; return out
-
-    table=bytearray((2).to_bytes(2,'big')+len(groups).to_bytes(2,'big'))
-    for pl in model_plans:
-        rec=bytearray(104)
-        rec[0:4]=(0).to_bytes(4,'big')
-        rec[4:6]=(4).to_bytes(2,'big')
-        for i,(_base,bits,_a,_q) in enumerate(pl): rec[6+i*2:8+i*2]=bits.to_bytes(2,'big')
-        for i,bits in enumerate(ZERO_BITS): rec[32+i*2:34+i*2]=bits.to_bytes(2,'big')
-        for i,(base,_bits,_a,_q) in enumerate(pl): rec[40+i*4:44+i*4]=base.to_bytes(4,'big')
-        for i,base in enumerate(ZERO_BASES): rec[92+i*4:96+i*4]=base.to_bytes(4,'big')
-        table+=rec
-    for p in patterns: table+=pack_pattern(p)
-    TABLE_BYTES=len(table)
-
+    _extra_frames={r:new_frames[r] for r in COMBO_RELS+TELE_RELS+CHEST_RELS}
+    _extra_frames.update(throw_frames)
+    _extra_frames[EMPTY_KEY]=dict(w=4,h=2,x=0,y=0,stride=4,eh=2,padded=bytes(8),blocks=_bb.make_blocks(bytes(8),4,2),codec='derived')
 
     # Clean-derived ROM + v53 selector/logo convenience, no helper and stock arena.
     rom=bytearray(clean)
@@ -488,127 +158,64 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
     assert bytes(rom[0xA5154:0xA5160])==bytes(12) and bytes(rom[0x9AD84:0x9ADD4])==bytes(0x50)
     assert set(rom[0xF10000:0xF10400])=={0xFF}
 
-    clean_f87=bytes(clean[ORIG_FILE87_ROM:ORIG_FILE87_ROM+CLEAN_SIZE])
+    # Elbow/full combo (Sektor's combo presentation): all four MKMSZ native segments (3/2/3/5 visuals) and zeros.
+    COMBO_TARGET=0x5E0
+    combo_visual_pos=[0,1,2,4,5,7,8,9,11,12,13,14,15]
+    combo_seq=[0,1,2,1,0,3,4,5,6,7,8,9,8]  # 1,2,3 / 2,1 / 4,5,6 / 7,8,9,10,9
+    def _combo_hook(b):
+        words=[b.f32(COMBO_TARGET+4*i) for i in range(17)]
+        assert [i for i,v in enumerate(words) if v==0]==[3,6,10,16]
+        for pos,ix in zip(combo_visual_pos,combo_seq): words[pos]=b.shape_map[COMBO_RELS[ix]]
+        assert be32(b.file,0x10*4)==COMBO_TARGET
+        return {COMBO_TARGET+4*i: v for i, v in enumerate(words)}
+    # Throw: the actual MKMSZ a_throw body is exactly 12 words / 9 visual shapes in three zero-terminated parts.
+    # The command-heavy words beginning at +0x928 are a separate adjacent reaction/flip animation block and must not be rewritten as Throw.
+    THROW_TARGET=0x8F8
+    throw_visual_pos=[0,1,3,4,5,6,7,9,10]
+    _throw_state={}
+    def _throw_hook(b):
+        throw_stance=b.shape_map[0x17A8]  # RBSTANCE7; retail Sektor throw itself enters from this already-resident pose.
+        throw_shapes={r:b.shape_map[('throw-composite',r)] for r in ARM_RELS}
+        # Seven genuine mechanical-arm phases plus the stance at entry/exit, shifted right one visual slot (v55).
+        seq={0:throw_stance,1:throw_stance,3:throw_shapes[0x2318],4:throw_shapes[0x2340],5:throw_shapes[0x237C],
+             6:throw_shapes[0x2390],7:throw_shapes[0x23B8],9:throw_shapes[0x23CC],10:throw_shapes[0x2408]}
+        _throw_state.update(stance=throw_stance, shapes=throw_shapes, sequence=seq)
+        for i in range(12):
+            if i not in throw_visual_pos: assert be32(b.file,THROW_TARGET+4*i)==b.f32(THROW_TARGET+4*i)
+        assert be32(b.file,0x23*4)==THROW_TARGET
+        out={THROW_TARGET+4*pos: seq[pos] for pos in throw_visual_pos}
+        for p in (14,17,20,23,26,29):
+            assert THROW_TARGET+4*p not in b.owned and THROW_TARGET+4*p not in out
+        return out
+    _extras=_bb.Extras(frames=_extra_frames,
+                       sets={'combo':COMBO_RELS,'throw':THROW_KEYS,'teleport':TELE_RELS,'chest':CHEST_RELS,'empty':DERIVED_KEYS},
+                       key_order=['combo','throw','teleport','chest','flipped','empty'],
+                       groups=[['throw'],['combo','teleport','chest','flipped','empty']],
+                       script_hooks=[_combo_hook,_throw_hook])
+    BODY=_bb.build_body(SEKTOR, clean, mkt, _extras, rom=rom)
+    for _line in BODY.log: _log(_line)
+    shape_map, frame_cache, frame_model, all_keys, groups = BODY.shape_map, BODY.frame_cache, BODY.frame_model, BODY.all_keys, BODY.groups
+    slot_cfg, translated, script_targets = BODY.slot_cfg, BODY.translated, BODY.script_targets
+    clean_f87, stock_shape_set = BODY.clean_file, BODY.stock_shape_set
+    def f32(off): return BODY.f32(off)
+    NEW_END, CHAIN_START = BODY.new_end, BODY.chain_start
+    run_words, push_words, fallback_positions = BODY.run_words, BODY.push_words, BODY.fallback_positions
+    throw_stance, throw_shapes, throw_sequence = _throw_state['stance'], _throw_state['shapes'], _throw_state['sequence']
+    old_shapes=BODY.inherited
+    assert len(old_shapes)==129 and len(groups)==64 and len(all_keys)==165  # v61: + 5 flip poses
+    assert slot_cfg[0x0B]['words'] == [0x1A54,0x1A68,0x1A7C,0x1A90,5,0x1AA4,0,0x1A90,0]
+    assert slot_cfg[0x14]['words'] == [0x1E28,0x1E3C,0x1E50,6,1,0x1E64,0x1E78,0,0x1E8C,0x1EA0,0x1EB4,0]
+    assert slot_cfg[0x20]['words'] == [0x21AC,0x21C0,0x21D4,0x21E8,0x21AC,0x21FC,0x2210,0,0x21AC,0x21C0,0x21D4,0x21E8,0x21AC,0x21FC,0x2210,1,0x754]
+    assert all_keys[len(old_shapes):len(old_shapes)+len(RUN_RELS)] == RUN_RELS
+    assert [k for k in all_keys if k in FLIP_RELS] == FLIP_RELS
+    patterns_count, TABLE_BYTES, STREAM_BYTES = BODY.encoded.patterns, len(BODY.encoded.table), BODY.encoded.stream_bytes
+
+    # The body file into the staging location (file table entry 0x87).
     assert set(rom[RR:RR+CLEAN_SIZE])=={0xFF}
-    rom[RR:RR+CLEAN_SIZE]=clean_f87
+    rom[RR:RR+len(BODY.file)]=BODY.file
     put32(rom,0xA5664,RR); put32(rom,0xA566C,0)
-    assert bytes(rom[RR+PALETTE_OFF:RR+PALETTE_OFF+128])==clean_f87[PALETTE_OFF:PALETTE_OFF+128]
-    # Accepted 16-colour Sektor palette (entries 0..15 of MKMSZR_sektor-16color_common-proof_v01); 16..31 unused.
-    SEKTOR_PALETTE16=bytes.fromhex('00008001f39cad79a94a8435d294842c908490b2b9cec63ce73a843a98f798c6')
-    rom[RR+PALETTE_OFF:RR+PALETTE_OFF+64]=SEKTOR_PALETTE16+SEKTOR_PALETTE32[32:]
-
-    # Stock Type-5 corpus and stock direct script references.
-    def f32(off): return int.from_bytes(clean_f87[off:off+4],'big')
-    stock_shapes=[]
-    for off in range(TYPE_START,TYPE_END,4):
-        if off+20<=CLEAN_SIZE and f32(off)==off+8 and f32(off+4)==0:
-            image=f32(off+8)
-            if 0<=image<CLEAN_SIZE and clean_f87[image:image+4]==b'\x05\0\0\0': stock_shapes.append(off)
-    assert len(stock_shapes)==341
-    stock_shape_set=set(stock_shapes)
-    stock_ref_positions=[off for off in range(0x1B0,TYPE_START,4) if f32(off) in stock_shape_set]
-    assert len(stock_ref_positions)==584
-
-    # The four original append-script areas are externally dead once their six primary roots are redirected.
-    dead_regions=[(0x4E0,0x504),(0x634,0x684),(0x798,0x7E8),(0x810,0x84C)]
-    redirect_slots={0x09,0x11,0x12,0x1A,0x1B,0x20}
-    for lo,hi in dead_regions:
-        for p in range(0,TYPE_START,4):
-            v=f32(p)
-            if lo<=v<hi and not (lo<=p<hi) and not (p<0x104 and p//4 in redirect_slots):
-                raise AssertionError(('external dead-script reference',hex(p),hex(v),hex(lo),hex(hi)))
-
-    # Reclaim stock fighter corpus and write optimized shared table.
-    rom[RR+TYPE_START:RR+TYPE_END]=b'\xFF'*(TYPE_END-TYPE_START)
-    rom[RR+TYPE_START:RR+TYPE_START+len(table)]=table
-    reclaim_cursor=align4(TYPE_START+len(table))
-
-    # Item packer: 152 frame blobs + one 52-byte exact high-kick script. Maximize reclaimed bytes.
-    item_sizes={k:32+len(streams[k]) for k in all_keys}
-    HIGH_KICK_ITEM=('script',0x11); item_sizes[HIGH_KICK_ITEM]=13*4
-    items=list(all_keys)+[HIGH_KICK_ITEM]
-    cap=TYPE_END-reclaim_cursor
-    capu=cap//4
-    reachable=[False]*(capu+1); parent=[None]*(capu+1); reachable[0]=True
-    for ii,k in enumerate(items):
-        u=item_sizes[k]//4; assert item_sizes[k]%4==0
-        for s in range(capu-u,-1,-1):
-            if reachable[s] and not reachable[s+u]:
-                reachable[s+u]=True; parent[s+u]=(s,ii)
-    best=max(i for i,v in enumerate(reachable) if v)
-    packed=set(); cur=best
-    while cur:
-        prev,ii=parent[cur]; packed.add(items[ii]); cur=prev
-    assert sum(item_sizes[k] for k in packed)==best*4
-
-    item_offsets={}; append_cursor=align4(CLEAN_SIZE)
-    for k in items:
-        if k in packed:
-            off=reclaim_cursor; reclaim_cursor+=item_sizes[k]
-        else:
-            off=append_cursor; append_cursor+=item_sizes[k]
-        item_offsets[k]=off
-    assert reclaim_cursor<=TYPE_END
-    NEW_END=append_cursor
-    # v47: everything later added to file 0x87 goes into the unused tail of the repacked body region
-    # [CHAIN_START, TYPE_END) instead of after the file end, which stays at the stock size.
-    CHAIN_START = align4(reclaim_cursor)
-    # Exact compact six-retail-pose footprint from the prior static audit.
-    assert NEW_END<SAFE_V49, (hex(NEW_END),hex(SAFE_V49))
     assert NEW_END==align4(CLEAN_SIZE) or set(clean[RR+CLEAN_SIZE:RR+NEW_END])=={0xFF}
     put32(rom,0xA5668,RR+NEW_END)
-
-    # Emit all frame blobs at their packed locations.
-    shape_map={}
-    for k in all_keys:
-        fr=frame_cache[k]; shape=item_offsets[k]; stream=streams[k]
-        sub=shape+8; image=sub+12; shape_map[k]=shape
-        put32(rom,RR+shape,sub); put32(rom,RR+shape+4,0); put32(rom,RR+sub,image)
-        rom[RR+sub+4:RR+sub+6]=fr['w'].to_bytes(2,'big'); rom[RR+sub+6:RR+sub+8]=fr['h'].to_bytes(2,'big')
-        rom[RR+sub+8:RR+sub+10]=(fr['x']&0xffff).to_bytes(2,'big'); rom[RR+sub+10:RR+sub+12]=(fr['y']&0xffff).to_bytes(2,'big')
-        rom[RR+image:RR+image+4]=b'\x05\0\0\0'; put32(rom,RR+image+4,TYPE_START-image); put32(rom,RR+image+8,(fr['eh']<<16)|fr['stride'])
-        rom[RR+image+12:RR+image+12+len(stream)]=stream
-    assert all((x&3)==0 for x in shape_map.values())
-
-    # Physical script layout: five former append scripts live in their now-dead stock regions; only High Kick is packed as an item.
-    script_targets={
-        0x09:0x798,   # Crouch High Kick in old Forward-Flip region
-        0x11:item_offsets[HIGH_KICK_ITEM],
-        0x12:0x810,   # Low Kick in old Stumble region
-        0x1A:0x4E0,   # Forward Flip in old Crouch-High-Kick region
-        0x1B:0x7C0,   # Back Flip at its original body, after relocated Crouch HK
-        0x20:0x634,   # Stumble across the two dead standing-kick bodies
-    }
-    assert script_targets[0x09]+40==0x7C0
-    assert script_targets[0x1B]+32<=0x7E8
-    assert script_targets[0x20]+68<=0x684
-    assert script_targets[0x12]+52<=0x84C
-    assert script_targets[0x1A]+32<=0x504
-
-    capacity={0x00:11,0x01:11,0x02:11,0x03:5,0x04:4,0x05:7,0x06:4,0x07:5,0x08:8,0x0A:8,0x0B:9,0x0C:4,0x0E:28,0x0F:27,0x13:7,0x14:12,0x15:10,0x16:4,0x17:7,0x18:7,0x19:7,0x1C:5,0x1D:5,0x1E:9,0x1F:9,0x21:7,0x22:8}
-    hybrid_slots={0x0E,0x0F,0x14}
-    owned_script_positions=set(); translated={}
-    for slot,cfg in slot_cfg.items():
-        target = script_targets.get(slot,cfg.get('target'))
-        donor_words=cfg['words']
-        if slot in hybrid_slots:
-            stock_words=[f32(cfg['target']+4*i) for i in range(cfg['n'])]
-            vals=[shape_map[v] if is_donor_shape(v) else stock_words[i] for i,v in enumerate(donor_words)]
-        else:
-            vals=[]
-            for value in donor_words:
-                if is_donor_shape(value): vals.append(shape_map[value])
-                elif cfg['donor']<=value<cfg['donor']+cfg['n']*4 and (value-cfg['donor'])%4==0:
-                    vals.append(target+(value-cfg['donor']))
-                else: vals.append(value)
-        if slot in script_targets:
-            put32(rom,RR+slot*4,target)
-            for i,v in enumerate(vals): put32(rom,RR+target+4*i,v); owned_script_positions.add(target+4*i)
-        else:
-            target=cfg['target']; capw=capacity[slot]; assert len(vals)<=capw
-            for i in range(capw):
-                put32(rom,RR+target+4*i,vals[i] if i<len(vals) else 0); owned_script_positions.add(target+4*i)
-        translated[slot]=vals
 
     # Existing v53 semantic guards remain true under relocation.
     assert translated[0x00]==[shape_map[x] for x in (0x1768,0x1780,0x1794,0x17A8,0x17BC)]+[1,0x2EC]
@@ -617,183 +224,20 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
     assert translated[0x1A][-2:]==[1,script_targets[0x1A]+4]
     assert translated[0x1B][-2:]==[1,script_targets[0x1B]+4]
     assert translated[0x20][-2:]==[1,script_targets[0x20]+0x20]
-
-    # Push: MKMSZ's 7-frame +0x1B0 sequence is the pushing animation. Sektor has no
-    # dedicated push set in MKT, so retain the closest semantic substitute: the six
-    # genuine Sektor Run poses across the seven native Push ticks.
-    PUSH_TARGET=0x1B0
-    clean_push=[f32(PUSH_TARGET+4*i) for i in range(9)]
-    assert clean_push[7:]==[1,0x1B4]
-    push_visual=[RUN_RELS[0],RUN_RELS[1],RUN_RELS[2],RUN_RELS[3],RUN_RELS[4],RUN_RELS[5],RUN_RELS[0]]
-    push_words=[shape_map[x] for x in push_visual]+clean_push[7:]
-    for i,v in enumerate(push_words): put32(rom,RR+PUSH_TARGET+4*i,v); owned_script_positions.add(PUSH_TARGET+4*i)
+    assert script_targets[0x09]+40==0x7C0 and script_targets[0x1B]+32<=0x7E8 and script_targets[0x20]+68<=0x684
+    assert script_targets[0x12]+52<=0x84C and script_targets[0x1A]+32<=0x504
     assert be32(rom,RR+0x104+0x27*4)==0x1B0
-
-    # Compact v05 live Run script: exactly six genuine retail N64 pose pointers,
-    # followed immediately by the native MKMSZ loop token + root. No duplicated Run
-    # pointers and no non-retail even-pose assets are generated or referenced.
-    RUN_TARGET=0xEE8
-    clean_run=[f32(RUN_TARGET+4*i) for i in range(14)]
-    assert clean_run[12:]==[1,0xEE8]
-    # v13: robot run sound once per run start (MK3 run_setup -> group_sound(7) 'voice: run'; MKT group 7 for the
-    # robot voice group = event 35). Callback 2 plays descriptor 0x22 before the loop label; the loop skips it.
-    # v15: the run sound is dropped at the user's request (characteristic, but repetitive in MKMSZ's run-heavy play).
-    run_words=[shape_map[x] for x in RUN_RELS]+[1,RUN_TARGET]
     assert len(run_words)==8 and len(set(run_words[:6]))==6
-    for i,v in enumerate(run_words):
-        put32(rom,RR+RUN_TARGET+4*i,v); owned_script_positions.add(RUN_TARGET+4*i)
-
-    # v18: v59's Runtime-confirmed late-Knee ownership (MKMSZR_build_sektor_takeover_v59_combofix.py, KNEE_LATE_MAP),
-    # missing from the Run/teleport lineage. Combo selectors 0x1303/0x1305 play Knee parts 3-5; without this they fall
-    # to the global stance fallback (v17: 'missing animation when doing the kicks'). Only direct shape words change.
-    KNEE_LATE_MAP={
-        0x6A0:0x1DD8,  # Knee part3 -> RBSPINKICK4
-        0x6A4:0x1DC4,  # Knee part3 -> RBSPINKICK5
-        0x6AC:0x1D74,  # Knee part4 -> RBKNEE3
-        0x6C4:0x17A8,  # Knee part5 -> RBKNEE1 (retail Sektor uses RBSTANCE7 here)
-        0x6D0:0x1D60,  # Knee part5 -> RBKNEE2
-        0x6D4:0x1D74,  # Knee part5 -> RBKNEE3
-    }
-    for pos,rel in KNEE_LATE_MAP.items():
-        assert f32(pos) in stock_shape_set, (hex(pos),hex(f32(pos)))
-        put32(rom,RR+pos,shape_map[rel]); owned_script_positions.add(pos)
-    for pos in (0x6A8,0x6B0,0x6B4,0x6B8,0x6BC,0x6C0,0x6C8,0x6CC,0x6D8):
-        assert be32(rom,RR+pos)==f32(pos), (hex(pos),hex(be32(rom,RR+pos)),hex(f32(pos)))
-
-    # Elbow/full combo: preserve all four MKMSZ native segments (3/2/3/5 visuals) and zeros.
-    COMBO_TARGET=0x5E0
-    combo_visual_pos=[0,1,2,4,5,7,8,9,11,12,13,14,15]
-    combo_seq=[0,1,2,1,0,3,4,5,6,7,8,9,8]  # 1,2,3 / 2,1 / 4,5,6 / 7,8,9,10,9
-    combo_words=[f32(COMBO_TARGET+4*i) for i in range(17)]
-    assert [i for i,v in enumerate(combo_words) if v==0]==[3,6,10,16]
-    for pos,ix in zip(combo_visual_pos,combo_seq): combo_words[pos]=shape_map[COMBO_RELS[ix]]
-    for i,v in enumerate(combo_words): put32(rom,RR+COMBO_TARGET+4*i,v); owned_script_positions.add(COMBO_TARGET+4*i)
-    assert be32(rom,RR+0x10*4)==COMBO_TARGET
-
-    # Throw: the actual MKMSZ a_throw body is exactly 12 words / 9 visual shapes in three zero-terminated parts.
-    # The command-heavy words beginning at +0x928 are a separate adjacent reaction/flip animation block and must not be rewritten as Throw.
-    THROW_TARGET=0x8F8
-    throw_visual_pos=[0,1,3,4,5,6,7,9,10]
-    throw_stance=shape_map[0x17A8]  # RBSTANCE7; retail Sektor throw itself enters from this already-resident pose.
-    throw_shapes={r:shape_map[('throw-composite',r)] for r in ARM_RELS}
-    # MKMSZ has nine attacker visual slots in three zero-terminated parts. Downsample Sektor's much
-    # longer throw into seven genuine mechanical-arm phases plus the genuine stance at entry/exit,
-    # preserving every target separator/control word.
-    # Runtime v54 observation: arm choreography leads the actual grab by one visual tick.
-    # Shift the seven arm phases right by one MKMSZ visual slot; gameplay/victim timing is untouched.
-    throw_sequence={
-        0:throw_stance,
-        1:throw_stance,
-        3:throw_shapes[0x2318],
-        4:throw_shapes[0x2340],
-        5:throw_shapes[0x237C],
-        6:throw_shapes[0x2390],
-        7:throw_shapes[0x23B8],
-        9:throw_shapes[0x23CC],
-        10:throw_shapes[0x2408],
-    }
-    for pos in throw_visual_pos:
-        put32(rom,RR+THROW_TARGET+4*pos,throw_sequence[pos]); owned_script_positions.add(THROW_TARGET+4*pos)
-    # Exact non-shape words in the 12-word Throw body remain stock.
-    for i in range(12):
-        if i not in throw_visual_pos: assert be32(rom,RR+THROW_TARGET+4*i)==f32(THROW_TARGET+4*i)
-    assert be32(rom,RR+0x23*4)==THROW_TARGET
-    # Adjacent +0x928 reaction/flip block is NOT part of Throw and must remain fallback-managed, never throw-owned.
-    for p in (14,17,20,23,26,29):
-        assert THROW_TARGET+4*p not in owned_script_positions
-
-    # Redirect every remaining direct stock Type-5 art reference to safe Sektor stance.
-    fallback=shape_map[0x1768]; fallback_positions=[]
-    for pos in stock_ref_positions:
-        if pos in owned_script_positions: continue
-        put32(rom,RR+pos,fallback); fallback_positions.append(pos)
-
-    # Runtime-unported primary roots remain stock except 0x10/0x23 now explicitly mapped.
     for slot in (0x0D,0x24,0x25): assert be32(rom,RR+slot*4)==f32(slot*4)
-
-    # Independent Type-5 decoder verifies all 152 emitted frames byte-for-byte against their chosen target buffers.
-    def decode_generated(shape_off):
-        assert be32(rom,RR+shape_off)==shape_off+8 and be32(rom,RR+shape_off+4)==0
-        sub=shape_off+8; image=be32(rom,RR+sub)
-        assert bytes(rom[RR+image:RR+image+4])==b'\x05\0\0\0'
-        table_off=image+s32(be32(rom,RR+image+4)); assert table_off==TYPE_START
-        dims=be32(rom,RR+image+8); height=(dims>>16)&0xffff; width=dims&0xffff
-        rows=be16(rom,RR+table_off); mc=be16(rom,RR+table_off+2); assert rows==2 and mc==len(groups)
-        pbase=table_off+4+104*mc
-        br=BitReader(bytes(rom[RR+image+12:RR+NEW_END]))
-        mid=br.read(6); assert mid<mc
-        mo=table_off+4+104*mid; prel=be32(rom,RR+mo); bpp=be16(rom,RR+mo+4); assert bpp==4 and prel==0
-        nbits=[be16(rom,RR+mo+6+i*2) for i in range(13)]
-        zbits=[be16(rom,RR+mo+32+i*2) for i in range(3)]
-        bases=[be32(rom,RR+mo+40+i*4) for i in range(13)]
-        zbases=[be32(rom,RR+mo+92+i*4) for i in range(3)]
-        out=bytearray(width*height); bw=width//4; total=bw*(height//rows); bi=0
-        while bi<total:
-            code=br.read(4)
-            if code<13:
-                pi=bases[code]+br.read(nbits[code]); po=pbase+prel+pi*4; pbr=BitReader(bytes(rom[RR+po:RR+po+4])); vals=[pbr.read(4) for _ in range(8)]
-                by,bx=divmod(bi,bw)
-                for ry in range(2):
-                    dst=(by*2+ry)*width+bx*4; out[dst:dst+4]=bytes(vals[ry*4:ry*4+4])
-                bi+=1
-            else:
-                zi=code-13; bi+=zbases[zi]+br.read(zbits[zi])+1; assert bi<=total
-        return bytes(out),mid,width,height
-
-    for k in all_keys:
-        dec,mid,w,h=decode_generated(shape_map[k]); fr=frame_cache[k]
-        assert mid==frame_model[k] and w==fr['stride'] and h==fr['eh'] and dec==fr['padded']
-
-    # Every original direct stock-shape site not explicitly rewritten by a mapped script is now the safe generated fallback.
-    generated_shapes=set(shape_map.values())
-    for pos in fallback_positions:
-        assert be32(rom,RR+pos)==fallback
-    assert all((s&3)==0 for s in generated_shapes)
-    # Every selected throw composite really contains visible mechanical-arm pixels beyond the body.
     for k in THROW_KEYS:
         assert throw_frames[k]['padded']!=new_frames[BODY_REL]['padded']
     assert ARM_RELS==[0x2318,0x2340,0x237C,0x2390,0x23B8,0x23CC,0x2408]
+    assert bytes(rom[0x2F7A0:0x2F7A4]) == bytes.fromhex('24040003')     # v03 Run cadence (rate from the description)
 
     # Helper remains absent and stock arena restored.
     assert bytes(rom[0x1C9A0:0x1C9A8])==clean[0x1C9A0:0x1C9A8] and be32(rom,0x66F64)==0x2442F420
     assert bytes(rom[0xA5154:0xA5160])==bytes(12) and bytes(rom[0x9AD84:0x9ADD4])==bytes(0x50)
     assert set(rom[0xF10000:0xF10400])=={0xFF}
-
-    # Optional cross-check: if runtime-confirmed v53 is beside the builder, verify all 129 inherited frame pixels/geometry exactly.
-    v53_path = None
-    if v53_path is not None:
-        assert v53_path.exists(), v53_path
-        v53=v53_path.read_bytes(); assert hashlib.sha256(v53).hexdigest()=='65181aa5a270ec2ba404d01d02a8054ffba923991408a87465a25515b6b99e7f'
-        VF=v53[RR:RR+0x473D8]
-        def valid_v53_shape(s):
-            return 0<=s+20<len(VF) and be32(VF,s)==s+8 and be32(VF,s+4)==0 and 0<=be32(VF,s+8)<len(VF)-12 and VF[be32(VF,s+8):be32(VF,s+8)+4]==b'\x05\0\0\0'
-        v53_shapes=sorted({be32(VF,p) for p in range(0,len(VF)-3,4) if valid_v53_shape(be32(VF,p))})
-        assert len(v53_shapes)==129
-        # Decode with the same generic routine logic against v53's two-model table.
-        def decode_v53(s):
-            sub=s+8; image=be32(VF,sub); w=be16(VF,sub+4); h=be16(VF,sub+6); x=s16(be16(VF,sub+8)); y=s16(be16(VF,sub+10)); dims=be32(VF,image+8); eh=(dims>>16)&0xffff; stride=dims&0xffff
-            table=image+s32(be32(VF,image+4)); rows=be16(VF,table); mc=be16(VF,table+2); pb=table+4+104*mc; br=BitReader(VF[image+12:]); mid=br.read(6); mo=table+4+104*mid; prel=be32(VF,mo); bpp=be16(VF,mo+4)
-            nb=[be16(VF,mo+6+i*2) for i in range(13)]; zb=[be16(VF,mo+32+i*2) for i in range(3)]; bases=[be32(VF,mo+40+i*4) for i in range(13)]; zbase=[be32(VF,mo+92+i*4) for i in range(3)]
-            out=bytearray(stride*eh); bw=stride//4; total=bw*(eh//rows); bi=0
-            while bi<total:
-                code=br.read(4)
-                if code<13:
-                    pi=bases[code]+br.read(nb[code]); po=pb+prel+pi*5; pbr=BitReader(VF[po:po+5]); vals=[pbr.read(5) for _ in range(8)]; by,bx=divmod(bi,bw)
-                    for ry in range(2): out[(by*2+ry)*stride+bx*4:(by*2+ry)*stride+bx*4+4]=bytes(vals[ry*4:ry*4+4])
-                    bi+=1
-                else:
-                    zi=code-13; bi+=zbase[zi]+br.read(zb[zi])+1
-            return dict(w=w,h=h,x=x,y=y,stride=stride,eh=eh,padded=bytes(out))
-        for rel,s in zip(old_shapes,v53_shapes):
-            a=frame_cache[rel]; b=decode_v53(s)
-            assert all(a[k]==b[k] for k in ('w','h','x','y','stride','eh','padded')), (hex(rel),hex(s))
-
-    # Preserve the v03 donor-equivalent cadence: ordinary MKMSZ Run rate 2 -> 3.
-    # v05 preserves the runtime-confirmed v04 live script and rate; only physical Run storage is compacted.
-    RUN_RATE_ROM = 0x2F7A0
-    assert bytes(rom[RUN_RATE_ROM:RUN_RATE_ROM+4]) == bytes.fromhex('24040002')
-    rom[RUN_RATE_ROM:RUN_RATE_ROM+4] = bytes.fromhex('24040003')
-
 
     # ============================================================================
     # Teleport v01 section (appended to the 16-colour/4-bpp v05-equivalent build).
@@ -1495,7 +939,7 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
     from mkmszr.fighter_import import common_moves as _common
     # v61: + pickup (first low punch 1,2,2,3,3) and the grabbed-by-an-enemy poses.
     rom[RR:RR + 0x459E0] = _common.apply(rom[RR:RR + 0x459E0], stock=clean_f87,
-                                         flipped=[shape_map[r] for r in FLIP_RELS])
+                                         flipped=BODY.flipped)
     # Blob and relocation table in file 0x87, after the v47 chain.
     _table = _rel.encode(_relocs)
     BLOB_OFF = (CHAIN_END + 0xF) & ~0xF
@@ -1589,14 +1033,12 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
     _log('FRAMES',len(all_keys),'OLD',len(old_shapes),'RUN_ASSETS',len(RUN_RELS),'RUN_VISUAL_UNIQUE',len(set(run_words[:6])),'COMBO',len(COMBO_RELS),'THROW_KEYFRAMES',len(THROW_KEYS))
     _log('THROW_ARMS',[hex(r) for r in ARM_RELS]); _log('THROW_GEOMETRY',{hex(r):(throw_frames[('throw-composite',r)]['w'],throw_frames[('throw-composite',r)]['h'],throw_frames[('throw-composite',r)]['x'],throw_frames[('throw-composite',r)]['y']) for r in ARM_RELS})
     _log('THROW_SEQUENCE',{pos:('RBSTANCE7' if shp==throw_stance else next(hex(r) for r,v in throw_shapes.items() if v==shp)) for pos,shp in throw_sequence.items()})
-    _log('MODELS',len(groups),'PATTERNS',len(patterns),'TABLE',hex(TABLE_BYTES),'STREAMS',hex(STREAM_BYTES))
-    _log('TYPE_TABLE_ALIGN_PAD',hex(align4(TYPE_START+len(table))-(TYPE_START+len(table))))
-    _log('RECLAIM_PACK_USED',hex(best*4),'RECLAIM_CAP',hex(cap),'SLACK',hex(cap-best*4))
-    _log('APPENDED_ITEMS',sum(1 for k in items if k not in packed),'APPENDED_BYTES',hex(sum(item_sizes[k] for k in items if k not in packed)))
+    _log('MODELS',len(groups),'PATTERNS',patterns_count,'TABLE',hex(TABLE_BYTES),'STREAMS',hex(STREAM_BYTES))
+    _log('TYPE_TABLE_ALIGN_PAD',hex(align4(TYPE_START+TABLE_BYTES)-(TYPE_START+TABLE_BYTES)))
     _log('SCRIPT_PACK','five former append scripts in dead pre-Type5 regions; High Kick packed item only')
     _log('PUSH_SCRIPT',[hex(x) for x in push_words]); _log('RUN_LIVE_SCRIPT',[hex(x) for x in run_words]); _log('RUN_POLICY','six genuine retail N64 poses only, immediate loop to +0xEE8, MKMSZ Run rate 3')
     _log('RUN_RATE_PATCH','ROM 0x2F7A0: 24040002 -> 24040003')
-    _log('COMPACT_REPACK',len(all_keys),'frames /',len(patterns),'patterns / 16-colour 4-bpp')
+    _log('COMPACT_REPACK',len(all_keys),'frames /',patterns_count,'patterns / 16-colour 4-bpp')
     _log('TELEPORT_SCRIPTS',{k:hex(v) for k,v in scripts.items()},'FILE87_END',hex(NEW_END_TELE),'HEADROOM_V49',hex(SAFE_V49-NEW_END_TELE))
     _log('TELEPORT_PAYLOAD',hex(len(payload)),'bytes at ROM',hex(PAYLOAD_ROM),'-> 0x801AF420; strike record on stack (KSEG0)', [hex(x) for x in _params.strike_words])
     _log('ALIASES','sink',[hex(x) for x in sink_alias][:3],'... emerge',[hex(x) for x in emerge_alias][:3],'...','depths',SINK_DEPTHS,EMERGE_DEPTHS,'range',RANGE_UNITS)
