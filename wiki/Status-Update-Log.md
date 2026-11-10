@@ -4,6 +4,15 @@
 
 ## From Project status
 
+### PS-31 (2026-11-10)
+
+**2026-11-10 Fighter option follow-ups: pickup and grabbed poses (importer), title follows the fighter, Enemy Randomization off by default. Implementation/CI-confirmed; runtime Pending.**
+
+- **Pickup:** host secondary 3 = first low punch 1, 2, 2, 3, 3 (generic).
+- **Grabbed by an enemy:** the host victim scripts keep their choreography; poses translate by role, with the donor's flip poses (MKT slot `0x47`) added to the fighter file (Sektor build v61).
+- **Web:** the Title character field follows the chosen fighter unless the user typed their own; Enemy Randomization now defaults off.
+- **Identity:** test build `MKMSZR_sektor-pickup-grabbed_full-seed_build_v02.z64` (web defaults, seed `SEKTOR-WEB-2`), SHA-256 `53363354e3ceef62a68fa00efd8a31bc4aa3a7bed70a43611a31daa1aafb789c`.
+
 ### PS-30 (2026-11-10)
 
 **2026-11-10 The "Fighter" product option: Implementation/CI-confirmed; the first full-seed Sektor build is Pending user test.**

@@ -62,7 +62,8 @@ def test_web_game_settings_toggles_are_wired_to_patch_config() -> None:
     assert "shuffle_power_progression=bool(web_shuffle_power_progression)" in worker
     assert "web_enemy_randomization" in worker
     assert "enemy_randomization=bool(web_enemy_randomization)" in worker
-    assert 'id="enemyRandomization" type="checkbox" checked' in html
+    # Enemy Randomization is off by default (user decision 2026-11-10: experimental).
+    assert 'id="enemyRandomization" type="checkbox">' in html
     assert 'id="shufflePowerProgression" type="checkbox" checked' in html
     assert 'id="powersAsPickups" type="checkbox" checked' in html
     assert '<option value="seeded" selected>Random from seed</option>' in html

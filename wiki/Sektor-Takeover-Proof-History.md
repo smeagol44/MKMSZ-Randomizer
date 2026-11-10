@@ -2580,6 +2580,14 @@ The animation recipes are **generic importer rules** (user design): they use onl
 
 From v12 the `--all-powers` option finds its two words by instruction content. The XP payload layout changed with the popup.
 
+### Pickup and grabbed poses (Sektor build v61, production, 2026-11-10)
+
+User requests after the first live-site test: a pick-up-an-item animation and a "grabbed by an enemy" animation (an enemy in Fire and several bosses grab the player). Both were the stance placeholder in Sektor's file.
+
+- **Pickup:** host secondary 3 (traced: pickup manager → dispatch `0x16` → `0x80029D5C`) gets the first low punch from stance as 1, 2, 2, 3, 3.
+- **Grabbed:** 14 host victim scripts translated pose by pose (94 frame words) with the host's grab choreography kept; the donor's five flip poses (MKT slot `0x47`) are converted into file `0x87` (165 frames; chain slack `0x1EE0` left). See the [mapping page](Sub-Zero-to-Sektor-Animation-Mapping).
+- **Identity:** Sektor build v61 SHA-256 `ad2ceb4bfe80b4316338207baf49684d54c0ee7c570534692266c9751a88ed86` (fixed loader at `0xA01B30F0`); `--fighter sektor --seed SEKTOR-PROD-1 --debug-all-keys` SHA-256 `7fe0ed360472359e28a81447d16b8c57762037e8fb877b71c57db06bd5601bda`. The production transplant is unchanged (1241 words). Implementation/CI-confirmed; runtime Pending.
+
 ### Known limits after v08
 
 - Only the teleport sound is imported; Sektor's other sounds (voice, footsteps and so on) are still Sub-Zero's.
