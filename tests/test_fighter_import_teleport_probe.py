@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import random
 
 from mips_eval import Machine
@@ -91,3 +92,57 @@ def test_probe_ignores_disabled_and_shaped_regions() -> None:
     assert not rt.probe_model([floor], 60, 0, 100 << 8)  # past the last point: the drop-off
     assert not rt.probe_model([floor], 10, 0x81, 100 << 8)  # other depth
     assert not rt.probe_model([floor], 10, 0, (100 + 0x21) << 8)  # floor too far from the placement
+
+
+def test_nearest_probe_matches_the_model() -> None:
+    a = Assembler(BASE)
+    rt.emit_floor_probe(a, nearest=0x40)
+    rng = random.Random(12)
+    hits = 0
+    for _ in range(400):
+        regions = _random_regions(rng)
+        m = Machine(a.link(), BASE)
+        _load_regions(m, regions)
+        for _ in range(8):
+            if regions and rng.random() < 0.6:
+                _, _, (bx, by, bz), pts = rng.choice(regions)
+                k = rng.randrange(len(pts))
+                x = bx + pts[k][0] - rng.randint(0, 3)
+                y = ((by + pts[k][1]) << 8) + rng.randint(-0x4400, 0x4400)
+                z = bz + rng.randint(-0x90, 0x90)
+            else:
+                x, y, z = (
+                    rng.randint(-700, 700),
+                    rng.randint(-0x50000, 0x50000),
+                    rng.randint(-400, 400),
+                )
+            m.regs[2], m.regs[3] = 0x5555, 0x7777
+            m.regs[4], m.regs[5], m.regs[6], m.regs[31] = (
+                x & 0xFFFFFFFF, z & 0xFFFFFFFF, y & 0xFFFFFFFF, 0x80001000)  # fmt: skip
+            assert m.run(a.labels["floor_probe"]).target == 0x80001000
+            want = rt.nearest_floor_model(regions, x, z, y, 0x40)
+            assert m.regs[2] == int(want is not None), (regions, x, z, y)
+            if want is not None:
+                hits += 1
+                assert m.regs[3] == want & 0xFFFFFFFF, (regions, x, z, y)
+    assert hits > 300
+
+
+def test_nearest_floor_prefers_the_closest_level() -> None:
+    low = (True, 0, (0, 200, 0), [(-50, 0), (50, 0)])
+    high = (True, 0, (0, 150, 0), [(-50, 0), (50, 0)])
+    # The v03 Prison case: a target read 22.5 px below its floor (overshooting a landing).
+    assert rt.nearest_floor_model([low], 10, 0, (200 << 8) + 0x1678, 0x40) == 200 << 8
+    assert rt.nearest_floor_model([high, low], 10, 0, (190 << 8), 0x40) == 200 << 8
+    assert rt.nearest_floor_model([high, low], 10, 0, (170 << 8), 0x40) == 150 << 8
+    assert rt.nearest_floor_model([low], 10, 0, (200 + 0x41) << 8, 0x40) is None
+
+
+def test_v52_probe_bytes_are_unchanged() -> None:
+    """Without ``nearest`` the probe is the v52/composition-v03 code, word for word."""
+
+    a = Assembler(BASE)
+    rt.emit_floor_probe(a)
+    code = a.link()
+    assert len(code) == 73 * 4
+    assert hashlib.sha256(code).hexdigest().startswith("81fc065570d26e66")

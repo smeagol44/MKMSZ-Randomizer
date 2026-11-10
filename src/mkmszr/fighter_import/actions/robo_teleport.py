@@ -96,6 +96,13 @@ class TeleportParams:
     # else try the near side (mirrored around the target), else the target's own x. False
     # reproduces v40-v51 (a target at a drop-off could put Sektor over the gap).
     floor_probe: bool = False
+    # Composition v04: the probe returns the floor nearest to the placement height (within
+    # snap_tolerance) and Sektor is placed exactly on it. The placement height can come from
+    # a falling target read in the frame it overshot the floor, before its own landing snap
+    # (v03 Prison save state: 22.5 px below the floor), and a reappear below the floor makes
+    # the stock per-tick check install the walk-off fall. False reproduces v52.
+    probe_snap: bool = False
+    snap_tolerance: int = 0x40  # world units; used with probe_snap
 
 
 FRAME = host.Frame()
@@ -284,7 +291,13 @@ def _emit_reposition(a: Assembler, p: TeleportParams) -> None:
         a.bnez("v0", "spot_ok")
         a.lw("t0", host.ACTOR_X, "s4")  # the target's own x: its floor came from there
         a.sw("t0", host.ACTOR_X, "s1")
+        if p.probe_snap:
+            _emit_spot_probe(a)  # snap there too when it has a floor
+            a.beqz("v0", "spot_kept")
         a.label("spot_ok")
+        if p.probe_snap:
+            a.sw("v1", host.ACTOR_Y, "s1")  # exactly on the probed floor
+            a.label("spot_kept")
     host.face_opponent(a)  # turn around to face the target
 
 
@@ -360,6 +373,15 @@ def probe_model(regions: list[tuple[int, int, int, int, list[tuple[int, int]]]],
     """Python model: ``regions`` = (enabled, flags, base (x, y, z), points); units as stock
     (x, z, region heights in world units; ``y_place`` in 24.8 like actor +0x30)."""
 
+    return nearest_floor_model(regions, x, z, y_place, PROBE_TOLERANCE, first=True) is not None
+
+
+def nearest_floor_model(regions, x: int, z: int, y_place: int, tolerance: int,
+                        first: bool = False) -> int | None:  # fmt: skip
+    """The floor (24.8) nearest to ``y_place`` within ``tolerance`` world units among the
+    probed regions at (x, z), the earliest region on ties; ``first``: the first one found."""
+
+    best: tuple[int, int] | None = None
     for enabled, flags, (bx, by, bz), points in regions:
         if not enabled or flags & REGION_MODE_MASK or not points:
             continue
@@ -368,17 +390,27 @@ def probe_model(regions: list[tuple[int, int, int, int, list[tuple[int, int]]]],
         if not bx + points[0][0] <= x <= bx + points[-1][0]:
             continue
         k = next((i for i, (dx, _) in enumerate(points) if x < bx + dx), len(points) - 1)
-        if abs(((by + points[k][1]) << 8) - y_place) <= PROBE_TOLERANCE << 8:
-            return True
-    return False
+        floor = ((by + points[k][1]) << 8) & 0xFFFFFFFF
+        floor = floor - (1 << 32) if floor & 0x80000000 else floor
+        diff = abs(floor - y_place)
+        if diff <= tolerance << 8 and (best is None or diff < best[0]):
+            if first:
+                return floor
+            best = (diff, floor)
+    return None if best is None else best[1]
 
 
-def emit_floor_probe(a: Assembler, label: str = "floor_probe") -> None:
+def emit_floor_probe(a: Assembler, label: str = "floor_probe", nearest: int | None = None) -> None:
     """``floor_probe(a0 = x, a1 = z (world units), a2 = y (24.8)) -> v0``: 1 when an enabled
-    plain floor region has floor within PROBE_TOLERANCE of ``a2`` at (x, z). Leaf, t0-t9."""
+    plain floor region has floor within PROBE_TOLERANCE of ``a2`` at (x, z). Leaf, t0-t9.
+
+    ``nearest`` (a tolerance in world units): scan every region and also return v1 = the
+    floor (24.8) nearest to ``a2`` (:func:`nearest_floor_model`)."""
 
     a.label(label)
     a.move("v0", "zero")
+    if nearest is not None:
+        a.li("t8", (nearest << 8) + 1)  # best |floor - a2| so far, exclusive
     a.lui("t0", host.hi(REGION_COUNT))
     a.lw("t0", host.lo(REGION_COUNT), "t0")  # count
     a.lui("t1", host.hi(REGION_TABLE_PTR))
@@ -426,14 +458,26 @@ def emit_floor_probe(a: Assembler, label: str = "floor_probe") -> None:
     a.lh("t3", 2, "t7")
     a.lw("t5", 4, "t1")
     a.addu("t3", "t5", "t3")
-    a.sll("t3", "t3", 8)
-    a.subu("t3", "t3", "a2")
-    a.sra("t5", "t3", 31)
-    a.xor("t3", "t3", "t5")
-    a.subu("t3", "t3", "t5")
-    a.li("t5", (PROBE_TOLERANCE << 8) + 1)
-    a.slt("t3", "t3", "t5")
-    a.bnez("t3", label + "_hit")
+    if nearest is None:
+        a.sll("t3", "t3", 8)
+        a.subu("t3", "t3", "a2")
+        a.sra("t5", "t3", 31)
+        a.xor("t3", "t3", "t5")
+        a.subu("t3", "t3", "t5")
+        a.li("t5", (PROBE_TOLERANCE << 8) + 1)
+        a.slt("t3", "t3", "t5")
+        a.bnez("t3", label + "_hit")
+    else:
+        a.sll("t9", "t3", 8)  # floor (24.8)
+        a.subu("t3", "t9", "a2")
+        a.sra("t5", "t3", 31)
+        a.xor("t3", "t3", "t5")
+        a.subu("t3", "t3", "t5")
+        a.slt("t5", "t3", "t8")
+        a.beqz("t5", label + "_skip")
+        a.move("t8", "t3")
+        a.move("v1", "t9")
+        a.li("v0", 1)
     a.label(label + "_skip")
     a.addiu("t0", "t0", -1)
     a.addiu("t1", "t1", REGION_STRIDE)
@@ -500,5 +544,5 @@ def assemble(base: int, p: TeleportParams) -> Assembler:
     host.emit_sound_player(a)
     emit_condition(a, p)
     if p.floor_probe:
-        emit_floor_probe(a)
+        emit_floor_probe(a, nearest=p.snap_tolerance if p.probe_snap else None)
     return a
