@@ -186,11 +186,11 @@ def _record(
     return bytes(rec)
 
 
-def double_record(action: int) -> bytes:
+def double_record(action: int, condition: int = LP_ICE_CONDITION) -> bytes:
     """The LP record for the Double Missile on ``B,B,F + LP`` (three inputs: the stock
-    three-input window)."""
+    three-input window). R4: ``condition`` = :mod:`.sektor_tiers` ``tier_double``."""
 
-    return _record(LP_MASK, 1, action, COMMAND_WINDOW, DOUBLE_RIGHT, DOUBLE_LEFT)
+    return _record(LP_MASK, 1, action, COMMAND_WINDOW, DOUBLE_RIGHT, DOUBLE_LEFT, condition)
 
 
 def descriptor_record(action: int, condition: int = LP_ICE_CONDITION) -> bytes:
@@ -200,11 +200,11 @@ def descriptor_record(action: int, condition: int = LP_ICE_CONDITION) -> bytes:
     return _record(HP_MASK, 0, action, COMMAND_WINDOW, COMMAND_RIGHT, COMMAND_LEFT, condition)
 
 
-def straight_record(action: int) -> bytes:
+def straight_record(action: int, condition: int = LP_ICE_CONDITION) -> bytes:
     """The LP record for the straight rocket on ``F,F + LP`` (the stock record's mask,
-    selector 1 and condition)."""
+    selector 1 and condition; R4: ``tier_straight``, which refuses an airborne start)."""
 
-    return _record(LP_MASK, 1, action, STRAIGHT_WINDOW, STRAIGHT_RIGHT, STRAIGHT_LEFT)
+    return _record(LP_MASK, 1, action, STRAIGHT_WINDOW, STRAIGHT_RIGHT, STRAIGHT_LEFT, condition)
 
 
 # ---- donor art --------------------------------------------------------------------------
@@ -284,13 +284,22 @@ def emit_data(a: Assembler, loops: list[int], prefix: str = "trk") -> None:
 
 
 def emit_command_stubs(
-    a: Assembler, ice_callback: int, target_event: int, player: str = "play"
-) -> None:
+    a: Assembler, ice_callback: int, target_event: int, player: str = "play",
+    extra_costs: dict[str, int] | None = None,
+) -> None:  # fmt: skip
     """``trk_cb_straight`` (F,F + LP), ``trk_cb_double`` (B,B,F + LP) and
     ``trk_cb_homing`` (F,D,B + HP) record actions: set the homing flag and the double
-    state, then continue in the lifted Ice callback with ``ra`` unchanged."""
+    state, then continue in the lifted Ice callback with ``ra`` unchanged.
 
+    ``extra_costs`` (R4, :data:`.sektor_tiers.EXTRA_COST`): Ice taken by the double and
+    homing stubs on top of the root's own ``0x20``; None reproduces v42-v53."""
+
+    from . import sektor_tiers
+
+    costs = extra_costs or {}
     a.label("trk_cb_double")
+    if costs.get("double"):
+        sektor_tiers.emit_charge(a, costs["double"])
     a.la("t0", "trk_double")
     a.li("t1", robo_zap.DOUBLE_REQUESTED)
     a.beq("zero", "zero", "trk_cb_flat")
@@ -307,6 +316,8 @@ def emit_command_stubs(
     a.nop()
 
     a.label("trk_cb_homing")
+    if costs.get("homing"):
+        sektor_tiers.emit_charge(a, costs["homing"])
     a.la("t0", "trk_double")
     a.sw("zero", 0, "t0")
     a.la("t0", "trk_flag")
@@ -527,16 +538,20 @@ def emit_targeting(a: Assembler, range_units: int = TARGET_RANGE) -> None:
     a.addiu("sp", "sp", 0x20)
 
 
-def emit_condition(a: Assembler, label: str = "trk_cond") -> None:
-    """HP record condition: the stock LP Ice condition, then a target (``trk_pick``,
-    stored in ``trk_aim``); 0x8000 accept, 0x4000 refuse (no target: no move)."""
+def emit_condition(a: Assembler, label: str = "trk_cond", base: str | None = None) -> None:
+    """HP record condition: the stock LP Ice condition (R4: the payload condition ``base``,
+    :mod:`.sektor_tiers` ``tier_homing``), then a target (``trk_pick``, stored in
+    ``trk_aim``); 0x8000 accept, 0x4000 refuse (no target: no move)."""
 
     a.label(label)
     a.addiu("sp", "sp", -0x20)
     a.sw("ra", 0x1C, "sp")
-    a.lui("t9", hi(LP_ICE_CONDITION))
-    a.addiu("t9", "t9", lo(LP_ICE_CONDITION))
-    a.jalr("t9")
+    if base is None:
+        a.lui("t9", hi(LP_ICE_CONDITION))
+        a.addiu("t9", "t9", lo(LP_ICE_CONDITION))
+        a.jalr("t9")
+    else:
+        a.jal_label(base)
     a.andi("v0", "v0", 0xFFFF)
     a.li("t0", 0x4000)
     a.beq("v0", "t0", label + "_ret")
