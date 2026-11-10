@@ -213,7 +213,7 @@ The other outfit modes (`SubZeroPalettePatch`, hue/RGB presets, also used by the
 
 ### 4. R4 power mapping (needs user decisions)
 
-**User decisions (2026-11-09).** Not implemented yet; they apply when the Sektor option is on.
+**User decisions (2026-11-09).** They apply when the Sektor option is on. **Gameplay done (2026-11-10):** tiers, removals and costs are Runtime-confirmed bounded in composition proofs v05/v08; v09 lowers the Homing Missile cost to `0x40` (user decision). Presentation is still pending. See the [proof history](Sektor-Takeover-Proof-History#r4-gameplay-and-the-rope-companion-sektor-builds-v54v58-composition-proofs-v05v09).
 
 | Tier slot | Sub-Zero power | Sektor |
 |---:|---|---|
@@ -228,8 +228,8 @@ The other outfit modes (`SubZeroPalettePatch`, hue/RGB presets, also used by the
 | 9 | Polar Blast | Polar Blast (kept) |
 
 - **Removed for Sektor:** Directional Ice (up), Air Ice Blast (including the airborne `F,F + LP` path), Ice Shatter, Ice Clone and Freeze on Contact; Spine Rip unchanged. An empty slot keeps its power-up (it still counts toward the tier and the Fortress XP requirement) but unlocks no move; the presentation shows the label "—".
-- **Shuffle:** the power-order shuffler is not changed. Each Sektor move checks the tier of its slot by reading that slot's stock gate (the instruction the shuffler writes), so a shuffled run moves Sektor's mapping exactly as Sub-Zero's. Ice Shatter's "after a freezing power" constraint stays in the shuffler although Sektor has no Shatter.
-- **Costs (Ice resource, user decision):** Straight Missile as Ice Blast (`0x20`); Teleport Uppercut as Slide (stock Slide has no Ice cost observed in its traced root, so the teleport becomes free; the proofs charged the down-Ice `0x60`); Double Missile 1.5× Ice Blast (`0x30`); Homing Missile as Directional Ice down (`0x60`). The proofs charged `0x20` for all three missiles.
+- **Shuffle:** the power-order shuffler is not changed. Each Sektor move checks the tier of its slot by reading that slot's stock gate (the instruction the shuffler writes), so a shuffled run moves Sektor's mapping exactly as Sub-Zero's. Implemented as run-time reads of the gate immediates for the Double and Homing Missiles, the stock conditions for the Straight Missile and Teleport, and a build-time copy of the Freeze on Contact threshold into Super Slide's gate. Ice Shatter's "after a freezing power" constraint stays in the shuffler although Sektor has no Shatter.
+- **Costs (Ice resource, user decision):** Straight Missile as Ice Blast (`0x20`); Teleport Uppercut as Slide (free; correction: the proofs never charged it, since its payload action does not touch the meter); Double Missile 1.5× Ice Blast (`0x30`); Homing Missile `0x40` (user decision 2026-11-10, after `0x60`, the Directional Ice down cost, was tried in v05–v08). The proofs before v54 charged `0x20` for all three missiles.
 - **Empty slots:** labelled "—" on the power-up screen and HUD.
 - **MODERN:** choosing Sektor forces SPECIALS: CLASSIC (MODERN for Sektor may come later).
 - **Presentation:** Sektor's move names on the power-up screen and HUD; the outfit colour option recolours Sektor's palette (needs a Sektor-specific mapping).

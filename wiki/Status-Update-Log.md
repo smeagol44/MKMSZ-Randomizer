@@ -4,6 +4,16 @@
 
 ## From Project status
 
+### PS-28 (2026-11-10)
+
+**2026-11-10 Sektor R4 gameplay and the rope companion, composition proofs v05–v09: Runtime-confirmed bounded (v05, v08).**
+
+- **Tiers and costs.** Sektor's moves take Sub-Zero's Power Up slots as the user decided. The Double and Homing Missiles read their slot's threshold at run time from the stock gate the power-order shuffle writes. Air Ice Blast, Directional Ice up and Ice Shatter are removed. Costs: Straight `0x20`, Double `0x30`, Homing `0x40` (lowered from `0x60` after v08, user decision), Teleport free.
+- **Toasty corruption (v05).** Traced from an RMG save state: the rope companion's small texture slot received the 55×113 fallback frame and overflowed into Toasty's texture.
+- **Rope hang (v06/v07).** Removing the companion hung on a spike-trap hit, because Earth's overlay `0x802F05F4` writes through the companion pointer unchecked; found by a multi-process replay of the save state. v08 keeps the companion with an 8×8 transparent frame.
+- **Next.** R4 presentation (Power Ups names, "—" labels, HUD, outfit recolour), then the product option.
+- **Identity.** v09 SHA-256 `dd141b887d6f1e39be8c701486897f28b14b16e07303f126d8a06eea90f1e29a`; builders at `94bd978` ([history](Sektor-Takeover-Proof-History#r4-gameplay-and-the-rope-companion-sektor-builds-v54v58-composition-proofs-v05v09)).
+
 ### PS-27 (2026-11-10)
 
 **2026-11-10 Sektor integration step 5, stage 1: production-composition proofs v01–v04, Runtime-confirmed bounded (v02, v04).**
@@ -147,6 +157,16 @@
 **Focused lifecycle update (2026-10-01): lifecycle v06 is Runtime-confirmed and promoted to the shared production pipeline.** The exact accepted reference is Very Hard / 9 total lives / 5 continues / persistent HP ON. The shared core now parameterizes that same lifecycle control flow for build-time difficulty, starting lives (1..10), starting continues (0..5), and persistent HP ON/OFF; browser defaults are Very Hard / 5 / 3 / HP ON. Non-reference combinations are Implementation/CI-confirmed pending representative runtime coverage. v04 remains **Rejected / unsafe composition**. See [Lifecycle static closure](Lifecycle-Static-Closure-v05), [Persistence/inventory/lifecycle](Persistence-Inventory-and-Lifecycle), and [Web patcher/product behavior](Web-Patcher-and-Product).
 
 ## From Runtime validation status
+
+### RV-23 (2026-11-10)
+
+**2026-11-10 Sektor composition proofs v05–v09: v05 and v08 Runtime-confirmed bounded; v06/v07 Rejected / failed.**
+- **v05:** tested; one issue reported: Toasty drawn broken after the Earth rope and door checkpoint, with a screenshot and RMG save state.
+- **v06/v07:** "hang as soon as Sektor is damaged by a spike trap while at the rope" (v07 save state).
+- **v08:** "Everything seems to be working perfectly. I didn't find any issues."
+- **v09:** cost change only; no report yet.
+
+Routes not itemised; bounded.
 
 ### RV-22 (2026-11-10)
 
