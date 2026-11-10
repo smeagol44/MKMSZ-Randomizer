@@ -14,7 +14,7 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 ## Recent updates
 
-- 2026-11-10 Sektor integration step 5, stage 1: production-composition proofs v01–v04 put Sektor in a CLI-built randomizer ROM; v02/v04 Runtime-confirmed bounded after fixing a KSEG1 return-address hang (Toasty hook) and a teleport fall-through; next, enemy randomization with Sektor, R4 gating and the product option. ([PS-27](Status-Update-Log#ps-27-2026-11-10))
+- 2026-11-10 Sektor integration step 5, stage 1: production-composition proofs v01–v04 put Sektor in a CLI-built randomizer ROM; v02/v04 Runtime-confirmed bounded after fixing a KSEG1 return-address hang (Toasty hook) and a teleport fall-through; next, R4 gating and the product option (enemy randomization deferred: experimental, treated as broken until re-implemented). ([PS-27](Status-Update-Log#ps-27-2026-11-10))
 - 2026-11-09 Sektor integration step 3: fighter file and donor samples Runtime-confirmed from above 16 MiB in a 32 MiB image (proof v49); next, R4 power mapping (user decisions). ([PS-26](Status-Update-Log#ps-26-2026-11-09))
 - 2026-11-09 Rainbow outfit removed from production (user decision, integration plan step 2): the mode is rejected and no longer offered in the CLI or web app; other builds are byte-identical. ([PS-25](Status-Update-Log#ps-25-2026-11-09))
 - 2026-11-09 Sektor integration step 1: option C (code and data inside his stock-size fighter file, relocated on load) Runtime-confirmed bounded in proofs v47/v48; next, rainbow removal from production (user decision). ([PS-24](Status-Update-Log#ps-24-2026-11-09))

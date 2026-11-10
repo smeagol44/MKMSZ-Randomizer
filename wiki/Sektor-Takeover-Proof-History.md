@@ -2467,7 +2467,7 @@ Identities (seed `SEKTOR-PROD-1`, `--debug-all-keys`; clean MKMSZ and MKT Rev. 2
 
 Each builder reproduces its ROM at the commit that added it; with `floor_probe` / `probe_snap` off the library emits the earlier bytes (v03 rebuilt byte-identically after the v04 change).
 
-Not established: exhaustive stage, enemy and route coverage; enemy randomization with Sektor; R4 tier gating, presentation and the product option (step 5, later stages).
+Not established: exhaustive stage, enemy and route coverage; enemy randomization with Sektor (deferred: the option is experimental and treated as broken until re-implemented); R4 tier gating, presentation and the product option (step 5, later stages).
 
 
 All of these are the Reverse Elbow v6 proof infrastructure plus the takeover storage, guarded against clean bytes. **None is a production allocation.**

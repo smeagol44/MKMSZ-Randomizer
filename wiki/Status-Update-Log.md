@@ -12,7 +12,7 @@
 - **Defects found and fixed.**
   - v01 hung on a teleport hit: stock code called from the KSEG1 payload returned to KSEG1 addresses, which production's Toasty hook does not recognise. Stock calls now go through KSEG0 (`cached_calls`, v51 / composition v02).
   - A rare teleport fall-through (v03, Prison) was traced from two user save states to a placement height read from a target overshooting its floor. The reappear is now snapped onto the nearest probed floor (v53 / composition v04).
-- **Next.** Enemy randomization with Sektor, R4 gating/costs/presentation, the product option, a full-seed run ([plan](MKT-to-MKMSZ-Compatibility-Layer#5-product-option-and-gates)).
+- **Next.** R4 gating/costs/presentation, the product option, a full-seed run. Enemy randomization is experimental and treated as broken until re-implemented (user decision), so it is not a Sektor gate ([plan](MKT-to-MKMSZ-Compatibility-Layer#5-product-option-and-gates)).
 - **Identity.** v04 SHA-256 `f10419fb32d142626f75bd17988cb8e960cd79fddc96039556e524f1aa1b08f9`; builders at `f188da2` / `9635f3e` ([proof history](Sektor-Takeover-Proof-History#production-composition-sektor-builds-v50v53-composition-proofs-v01v04)).
 
 ### PS-26 (2026-11-09)

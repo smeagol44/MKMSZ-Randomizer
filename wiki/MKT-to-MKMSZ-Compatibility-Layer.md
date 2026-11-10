@@ -251,10 +251,10 @@ A "Fighter: Sub-Zero / Sektor" build option (off by default, requires the donor 
 - **What changed.** Composition exposed two defects the clean-ROM proofs could not. Stock code called from the KSEG1 payload made KSEG1 return addresses that production's Toasty hook did not recognise (v01 hang; stock calls now go through KSEG0). The teleport could reappear below a floor read from a falling target (v03; now snapped onto the nearest probed floor).
 - **Details.** See the [proof history](Sektor-Takeover-Proof-History#production-composition-sektor-builds-v50v53-composition-proofs-v01v04).
 - **Remaining stages.**
-  - A build with enemy randomization on.
   - R4 gating, costs and presentation per the decisions above.
   - The product option (CLI/web) as a `patches` module with CI guards.
   - A full-seed run with Sektor on.
+- **Enemy randomization (user decision, 2026-11-10):** not a Sektor gate. The option is experimental and treated as broken with or without Sektor until it is re-implemented; a Sektor test with it on is deferred to that re-implementation.
 
 ## Related pages
 
