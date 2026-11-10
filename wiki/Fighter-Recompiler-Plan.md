@@ -157,3 +157,4 @@ The decision is recorded as an amendment page.
 Append-only. Add one line per new page related to this plan (inventory, component catalogue, amendments, …).
 
 - [Fighter recompiler status](Fighter-Recompiler-Status) — living progress page (2026-11-10).
+- [Fighter recompiler inventory](Fighter-Recompiler-Inventory) — milestone 1 inventory of Sektor-specific items (2026-11-10).
