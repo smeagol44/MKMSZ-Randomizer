@@ -11,7 +11,7 @@ Slot  Sub-Zero power       Sektor                                   Ice cost
 1     Ice Blast            Straight Missile (``F,F + LP``)          ``0x20``
 2     Slide                Slide (kept)                             stock
 3     Directional Ice      Teleport Uppercut (``F,F + LK``)         free
-4     Air Ice Blast        Homing Missile (``F,D,B + HP``)          ``0x60``
+4     Air Ice Blast        Homing Missile (``F,D,B + HP``)          ``0x40``
 5     Ice Clone            empty                                    -
 6     Ice Shatter          Double Missile (``B,B,F + LP``)          ``0x30``
 7     Super Slide          empty                                    -
@@ -52,8 +52,17 @@ ROOT_COST = 0x20  # taken by the (lifted) Ice root at launch, mode 0 (0x8004AC70
 AIR_ICE_GATE = 0x8004A3BC  # ROM 0x4AFBC, slot 4
 SHATTER_GATE = 0x800509A0  # ROM 0x515A0, slot 6 (first of its two sites)
 
-COSTS = {"straight": 0x20, "double": 0x30, "homing": 0x60}
-EXTRA_COST = {name: cost - ROOT_COST for name, cost in COSTS.items() if cost > ROOT_COST}
+COSTS = {"straight": 0x20, "double": 0x30, "homing": 0x40}  # homing lowered by the user (2026-11-10)
+COSTS_V54 = {"straight": 0x20, "double": 0x30, "homing": 0x60}  # Sektor builders v54-v57
+
+
+def extra_costs(costs: dict[str, int] = COSTS) -> dict[str, int]:
+    """Ice the double/homing stubs take on top of the root's own ``0x20``."""
+
+    return {name: cost - ROOT_COST for name, cost in costs.items() if cost > ROOT_COST}
+
+
+EXTRA_COST = extra_costs()
 
 # ---- stock edits (ROM offset -> (clean word, Sektor word)) -----------------------------
 HK_RECORD_ROM = 0xB1B98  # 0x800B0F98: the only HK record, Directional Ice up
@@ -180,10 +189,10 @@ def emit_charge(a: Assembler, amount: int) -> None:
     a.sh("t1", CTRL_ICE, "t0")
 
 
-def emit_conditions(a: Assembler) -> dict[str, str]:
+def emit_conditions(a: Assembler, costs: dict[str, int] = COSTS) -> dict[str, str]:
     """The three missile conditions; returns record name -> label."""
 
     emit_ground_condition(a, "tier_straight")
-    emit_gate_condition(a, "tier_double", SHATTER_GATE, COSTS["double"])
-    emit_gate_condition(a, "tier_homing", AIR_ICE_GATE, COSTS["homing"])
+    emit_gate_condition(a, "tier_double", SHATTER_GATE, costs["double"])
+    emit_gate_condition(a, "tier_homing", AIR_ICE_GATE, costs["homing"])
     return {"straight": "tier_straight", "double": "tier_double", "homing": "tier_homing"}

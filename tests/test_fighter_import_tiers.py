@@ -81,7 +81,7 @@ STATES = {
     "vy": (0, st.FALL_SPEED_LIMIT + 1),
     "attach": (0, 1),
     "dc": (0, 5),
-    "ice": (0x1F, 0x30, 0x5F, 0x60, 0xA6),
+    "ice": (0x1F, 0x30, 0x3F, 0x40, 0x5F, 0x60, 0xA6),
     "y": (0xC000, 0xB000),
     "action": (0, st.BUSY_ACTION),
     "projectile": (0, 0x80400000),
@@ -91,7 +91,7 @@ STATES = {
 
 
 @pytest.mark.parametrize(("label", "gate", "cost"), [
-    ("tier_double", st.SHATTER_GATE, 0x30), ("tier_homing", st.AIR_ICE_GATE, 0x60)])  # fmt: skip
+    ("tier_double", st.SHATTER_GATE, 0x30), ("tier_homing", st.AIR_ICE_GATE, 0x40)])  # fmt: skip
 def test_gate_condition_matches_the_model(label: str, gate: int, cost: int) -> None:
     a = Assembler(BASE, cached_calls=True)
     labels = st.emit_conditions(a)
@@ -111,7 +111,7 @@ def test_gate_condition_matches_the_model(label: str, gate: int, cost: int) -> N
             assert m.regs[2] == _model(s, gate, cost), s
             assert m.regs[29] == 0x80200000
             count += 1
-    assert count == 700
+    assert count == 980
 
 
 def test_ground_condition_refuses_airborne_else_tail_calls_the_stock_condition() -> None:
@@ -155,7 +155,8 @@ def test_stubs_charge_the_extra_cost_then_enter_the_ice_callback() -> None:
             assert stop.target == ice_cb and m.regs[31] == RET
             taken = (extra or {}).get(name, 0)
             assert (m.load(CTRL + st.CTRL_ICE) & 0xFFFF) == start - taken, name
-    assert st.EXTRA_COST == {"double": 0x10, "homing": 0x40}
+    assert st.EXTRA_COST == {"double": 0x10, "homing": 0x20}
+    assert st.extra_costs(st.COSTS_V54) == {"double": 0x10, "homing": 0x40}
 
 
 def _rom_with(words: dict[int, int]) -> bytes:

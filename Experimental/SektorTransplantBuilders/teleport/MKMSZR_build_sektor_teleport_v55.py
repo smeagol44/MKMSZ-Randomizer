@@ -1030,11 +1030,11 @@ _zapf.emit_launch_stub(a)   # v40: launch Ice visuals removed
 # v42 (R3): heat-seeking rocket (fighter_import.actions.robo_tracker)
 TRK_SOUND_HOSTS = {'target': 459, 'cruise': 478}
 from mkmszr.fighter_import.actions import sektor_tiers as _tiers                 # v54 (R4)
-_trk.emit_command_stubs(a, ICE_CB_VA, TRK_SOUND_HOSTS['target'], extra_costs=_tiers.EXTRA_COST)  # v54: double/homing costs
+_trk.emit_command_stubs(a, ICE_CB_VA, TRK_SOUND_HOSTS['target'], extra_costs=_tiers.extra_costs(_tiers.COSTS_V54))  # v54: double/homing costs
 _trk.emit_hunt(a)
 _trk.emit_direction(a)
 _trk.emit_targeting(a)                                                     # v45: nearest living enemy
-_tiers.emit_conditions(a)                                                  # v54: tier conditions
+_tiers.emit_conditions(a, _tiers.COSTS_V54)                                                  # v54: tier conditions
 _trk.emit_condition(a, base='tier_homing')                                 # v45: HP condition (v54: on the Air Ice Blast slot)
 _trk.emit_callback(a, smoke='fx_smoke', explosion='fx_explosion', boom_event=ROCKET_SOUND_HOSTS['boom'])
 _fx.emit_spawn(a, 'trk_spawn', process='trk_target')
