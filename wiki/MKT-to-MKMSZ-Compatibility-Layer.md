@@ -251,9 +251,16 @@ A "Fighter: Sub-Zero / Sektor" build option (off by default, requires the donor 
 - **What changed.** Composition exposed two defects the clean-ROM proofs could not. Stock code called from the KSEG1 payload made KSEG1 return addresses that production's Toasty hook did not recognise (v01 hang; stock calls now go through KSEG0). The teleport could reappear below a floor read from a falling target (v03; now snapped onto the nearest probed floor).
 - **Details.** See the [proof history](Sektor-Takeover-Proof-History#production-composition-sektor-builds-v50v53-composition-proofs-v01v04).
 - **Remaining stages.**
-  - R4 gating, costs and presentation per the decisions above.
-  - The product option (CLI/web) as a `patches` module with CI guards.
-  - A full-seed run with Sektor on.
+  - R4 gating, costs and presentation per the decisions above. **Done** (composition v05–v13, Runtime-confirmed bounded).
+  - The product option (CLI/web) as a `patches` module with CI guards. **Done** (stage 2 below).
+  - A full-seed run with Sektor on. **Pending** (user test of the first full-seed build).
+
+**Stage 2 done (2026-11-10): the product option. Implementation/CI-confirmed.**
+- **Option.** `RandomizerConfig.fighter` (`sub-zero` default, `sektor`); CLI `--fighter sektor` (requires `--mkt-rom`); web "Swap character" window ([web patcher](Web-Patcher-and-Product#fighter-swap-swap-character-window)). An imported fighter requires SPECIALS: CLASSIC at build time (the config rejects MODERN; the web app locks the toggle off).
+- **Module.** `src/mkmszr/patches/fighter_swap.py` (`FighterSwapPatch`) is the production form of the composition v13 builder. It runs last in the pipeline: it builds Sektor from the clean ROM and the donor (`fighter_import/sektor_build.py`, the v60 builder as a library function), transplants the classified words with owner-conflict guards, recomputes the R4 stock edits from the randomizer ROM, and claims the output tail and the file-`0x1A` pool tail ([memory map](Memory-and-Allocation-Map)).
+- **Evidence.** `--fighter sektor --seed SEKTOR-PROD-1 --debug-all-keys` reproduces composition v13 byte for byte (SHA-256 `e1f83b25cf0e323bce151f92f36a866fca57c25fc5bb807d86cc76f39e580248`), so v13's bounded runtime result carries to that exact build config. The browser (Pyodide) build of a web-default config matches the Python build byte for byte (seed `SEKTOR-WEB-1`, SHA-256 `14f166a079ccbd5ead5d64935ec76e6796e1d718b33561439887f6f01dea6795`, about 46 s in headless Chromium). `tests/test_fighter_swap.py` pins both when the ROMs are supplied.
+- **Fixed in the library.** The Sektor build set an importer code-generation default (`fighter_import.mips.DEFAULT_CACHED_CALLS`) and never reset it, so a second build in one process (tests, the web worker) diverged; `build` now restores it around each call.
+- **Open.** The in-game GAME SETTINGS menu can still switch SPECIALS to MODERN on a Sektor ROM; MODERN calls the stock Ice conditions/callbacks (see above). Locking that row for an imported fighter needs a native frontend change and its own proof. **Pending** (user decision).
 - **Enemy randomization (user decision, 2026-11-10):** not a Sektor gate. The option is experimental and treated as broken with or without Sektor until it is re-implemented; a Sektor test with it on is deferred to that re-implementation.
 
 ## Related pages

@@ -22,6 +22,16 @@ const VALIDATE_DONOR_PY = [
   "web_validation_result = {'sha256': MKT_N64_REV2_SHA256}"
 ].join("\n");
 
+const SELECT_SCREEN_PY = [
+  "import json",
+  "from pathlib import Path",
+  "from mkmszr.donors.mkt_select_screen import render",
+  "_css = render(_web_mkt_bytes)",
+  "Path('/tmp/select-screen.rgba').write_bytes(_css.pop('rgba'))",
+  "web_select_screen = json.dumps(_css)",
+  "del _css"
+].join("\n");
+
 const PATCH_PY = [
   "from pathlib import Path",
   "from mkmszr.config import GameSettingsConfig, OutfitConfig, RandomizerConfig",
@@ -276,6 +286,31 @@ async function patchRom(message) {
   );
 }
 
+async function renderSelectScreen(message) {
+  await ensureRuntime();
+  try {
+    if (!donorReady) {
+      throw new Error("The MKT donor is not validated.");
+    }
+    unlinkIfPresent("/tmp/select-screen.rgba");
+    await pyodide.runPythonAsync(SELECT_SCREEN_PY);
+    const meta = pyodide.globals.get("web_select_screen");
+    const rgba = pyodide.FS.readFile("/tmp/select-screen.rgba");
+    unlinkIfPresent("/tmp/select-screen.rgba");
+    postMessage(
+      { type: "select-screen", token: message.token, ok: true, meta, rgba: rgba.buffer },
+      [rgba.buffer]
+    );
+  } catch (error) {
+    postMessage({
+      type: "select-screen",
+      token: message.token,
+      ok: false,
+      error: String(error?.message ?? error).split("\n").filter(Boolean).pop()
+    });
+  }
+}
+
 async function handleMessage(message) {
   if (message.type === "init") {
     await ensureRuntime();
@@ -283,6 +318,10 @@ async function handleMessage(message) {
   }
   if (message.type === "validate-target") {
     await validateTarget(message);
+    return;
+  }
+  if (message.type === "select-screen") {
+    await renderSelectScreen(message);
     return;
   }
   if (message.type === "validate-donor") {

@@ -38,6 +38,8 @@ The test workflow uses Python 3.11 for pushes to `main`, `refactor/**`, and `fea
 | `test_seed.py` | Seed generation and domain determinism |
 | `test_runtime_v1.py` | Historical/compatibility Runtime V1 layout, reference payload, and Fire persistence pipeline contract |
 | `test_runtime_v2.py` | Current Runtime V2 0x3B0-code/0x50-state repartition and versioned state-header contract |
+| `test_fighter_swap.py` | Fighter option: config/CLI/pipeline guards, classification-table invariants. **ROM-backed**: the Sektor build hash and the CLI reproduction of composition v13 (SHA-256 `e1f83b25…`) |
+| `test_mkt_select_screen.py` / `test_web_fighter_swap.py` | Select-screen decoders (PackBits, RGBA5551) and the web wiring of the "Swap character" window. **ROM-backed** (`MKMSZR_MKT_ROM`): grid layout, only Sektor selectable and in colour, render digests |
 | `test_fighter_import.py` | Fighter-importer Step 0: script grammar decode/assemble round trip, label relocation, dialect differences, translation rules. **ROM-backed** (skipped unless `MKMSZR_CLEAN_ROM` / `MKMSZR_MKT_ROM` name the supported clean ROMs): stock file-`0x87` byte-identical re-encode, Sektor donor tables and special commands, and donor Run → the Runtime-confirmed v05 live Run script |
 | `test_fighter_import_actions.py` | Importer action library (no ROM needed): MIPS assembler encodings, branch/label and segment rules, `%hi/%lo`, jump-calibrated motion, and the teleport action assembling to the Runtime-confirmed Sektor proof v18 payload (pinned SHA-256) |
 
