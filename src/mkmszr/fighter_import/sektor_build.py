@@ -2,8 +2,9 @@
 
 Mechanically derived from the proof builder
 ``Experimental/SektorTransplantBuilders/teleport/MKMSZR_build_sektor_teleport_v60.py`` (its
-history is in that builder's description and the Wiki proof history); ``build`` returns
-byte-for-byte what that builder writes (``tests/test_fighter_swap.py`` checks
+history is in that builder's description and the Wiki proof history), then extended in place:
+v61 adds the donor's five flip poses and the generic pickup and grabbed-by-an-enemy recipes
+(``common_moves``). ``build`` is pinned by hash (``tests/test_fighter_swap.py`` checks
 it when the ROMs are available). Inputs are the clean MKMSZ USA Rev. 0 ROM and the MKT USA
 Rev. 2 N64 donor ROM; nothing from either is stored here.
 """
@@ -321,6 +322,13 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
     from mkmszr.fighter_import.actions import robo_zap as _zap0
     CHEST_RELS=list(_zap0.CHEST_FRAMES)
     TELE_RELS=TELE_RELS+CHEST_RELS     # same entropy group and lossless pipeline as the teleport frames
+    # v61: the donor's flip poses (MKT table 0 slot 0x47, phase 1; every MKT "flipped by" victim
+    # animation uses them) for the generic grabbed-by-an-enemy recipe (fighter_import.common_moves).
+    _flip_root = m32(4 * 0x47)
+    FLIP_RELS = []
+    while m32(_flip_root + 4 * len(FLIP_RELS)): FLIP_RELS.append(m32(_flip_root + 4 * len(FLIP_RELS)))
+    assert FLIP_RELS == [0x2588, 0x259C, 0x25B0, 0x25C4, 0x25D8], [hex(x) for x in FLIP_RELS]
+    TELE_RELS=TELE_RELS+FLIP_RELS      # v61: same group and pipeline
     new_frames={r:donor_frame(r) for r in RUN_RELS+COMBO_RELS+[BODY_REL]+ARM_RELS+TELE_RELS}
     assert [(new_frames[r]['w'],new_frames[r]['h'],new_frames[r]['x'],new_frames[r]['y']) for r in CHEST_RELS]==[(46,115,19,-5),(47,113,20,-7)]
     THROW_KEYS=[('throw-composite',r) for r in ARM_RELS]
@@ -357,7 +365,7 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
     old_groups=split_even(old_shapes,58); run_groups=split_even(RUN_RELS,4)
     groups=old_groups+run_groups+[THROW_KEYS,COMBO_RELS+TELE_RELS+DERIVED_KEYS]
     all_keys=old_shapes+RUN_RELS+COMBO_RELS+THROW_KEYS+TELE_RELS+DERIVED_KEYS
-    assert len(groups)==64 and len(all_keys)==160
+    assert len(groups)==64 and len(all_keys)==165  # v61: + 5 flip poses
 
     freqs=[]
     for g in groups:
@@ -1485,7 +1493,9 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
     from mkmszr.fighter_import import attachment as _att
     # v59: slide and death from the common MKT animations already mapped onto the host slots; v60: + long fall.
     from mkmszr.fighter_import import common_moves as _common
-    rom[RR:RR + 0x459E0] = _common.apply(rom[RR:RR + 0x459E0])
+    # v61: + pickup (first low punch 1,2,2,3,3) and the grabbed-by-an-enemy poses.
+    rom[RR:RR + 0x459E0] = _common.apply(rom[RR:RR + 0x459E0], stock=clean_f87,
+                                         flipped=[shape_map[r] for r in FLIP_RELS])
     # Blob and relocation table in file 0x87, after the v47 chain.
     _table = _rel.encode(_relocs)
     BLOB_OFF = (CHAIN_END + 0xF) & ~0xF

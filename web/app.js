@@ -64,6 +64,9 @@ const fighterStageStatus = document.querySelector("#fighterStageStatus");
 const fighterHover = document.querySelector("#fighterHover");
 
 const FIGHTER_LABELS = { "sub-zero": "Sub-Zero", sektor: "Sektor" };
+// Title character default per fighter; the field follows the fighter unless the user typed
+// their own name (still editable either way).
+const FIGHTER_TITLES = { "sub-zero": "SUB-ZERO", sektor: "SEKTOR" };
 const FIGHTER_HINT_DEFAULT =
   "Validate the MKT donor ROM to import a fighter from Mortal Kombat Trilogy.";
 
@@ -534,6 +537,10 @@ function handleValidationResult(message) {
 }
 
 function setFighter(fighter) {
+  const title = normalizeEditionName(editionName.value).trim();
+  if (!title || Object.values(FIGHTER_TITLES).includes(title)) {
+    editionName.value = FIGHTER_TITLES[FIGHTER_LABELS[fighter] ? fighter : "sub-zero"];
+  }
   selectedFighter = FIGHTER_LABELS[fighter] ? fighter : "sub-zero";
   const imported = selectedFighter !== "sub-zero";
   fighterName.textContent = FIGHTER_LABELS[selectedFighter] +
@@ -840,7 +847,7 @@ async function patchRom() {
   let editionValue = normalizeEditionName(editionName.value)
     .trim()
     .replace(/\s+/g, " ");
-  if (!editionValue) editionValue = "SUB-ZERO";
+  if (!editionValue) editionValue = FIGHTER_TITLES[selectedFighter];
   editionName.value = editionValue;
 
   let seedValue = seed.value.trim();

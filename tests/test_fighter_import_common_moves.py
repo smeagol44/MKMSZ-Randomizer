@@ -70,3 +70,77 @@ def test_long_fall_holds_the_last_fall_back_frame_and_keeps_its_loop() -> None:
     start, _ = cm.slot_span(out, cm.LONG_FALL)
     assert int.from_bytes(out[start + 12 : start + 16], "big") == 1
     assert int.from_bytes(out[start + 16 : start + 20], "big") == start
+
+
+def _layout(scripts: dict[tuple[int, int], list[int]]) -> bytearray:
+    """A file with ``scripts`` laid out in order, each followed by a gap and an end marker."""
+
+    data = bytearray(0x900)
+    p = 0x200
+    for (table, index), words in scripts.items():
+        slot = 4 * index if table == 0 else TABLE1_OFFSET + 4 * index
+        data[slot : slot + 4] = p.to_bytes(4, "big")
+        for w in words:
+            data[p : p + 4] = w.to_bytes(4, "big")
+            p += 4
+        p += 4
+    data[TABLE1_OFFSET + 4 * 40 : TABLE1_OFFSET + 4 * 41] = p.to_bytes(4, "big")  # end marker
+    return data
+
+
+S, I = 0x40000, 0x50000  # stock / imported frame ranges
+
+
+def _host(frames: int, imported: bool) -> bytearray:
+    f = (lambda k: I + 4 * k) if imported else (lambda k: S + 4 * k)
+    flip = [f(60 + k) for k in range(5)] if not imported else [f(0)] * 5  # imported: placeholders
+    return _layout({
+        (0, 0x0F): [f(1), f(2), f(3), 0, f(4), f(5), 0],  # low punch: first punch, second punch
+        (1, 0x03): [f(0)] * 5 + [0],  # pickup
+        # knockdown fall-back phase, zero-padded to the stock capacity as the importer does
+        (0, 0x1E): [f(10 + k) for k in range(frames)] + [0] * (7 - frames),
+        (1, 0x09): [f(20), 0],  # lying
+        (0, 0x20): [f(30), f(31), f(32), 0, f(30), f(31), f(32), 0],  # stumble
+        (0, 0x1A): [f(40), f(41), 0],  # forward flip
+        (0, 0x1B): [f(41), f(40), 0],  # back flip
+        (0, 0x2E): flip + [0],  # flipped
+        # a victim script: token 10 + operand before each pose, two phases
+        (1, 0x0E): [10, 0xFF89000F, flip[0], 10, 0x0004_0015, flip[1], 10, 7, f(15 if not imported else 0),
+                    0, 10, 0x5C, flip[4], 10, 0x10, f(20 if not imported else 0), 0],
+        (1, 0x16): [f(32), flip[0], flip[2], f(20), 0],  # flipped script without token 10
+    })  # fmt: skip
+
+
+def test_pickup_is_the_first_low_punch_1_2_2_3_3() -> None:
+    data = _host(6, imported=True)
+    cm.pickup(data)
+    assert cm.frames(data, cm.PICKUP) == [I + 4, I + 8, I + 8, I + 12, I + 12]
+
+
+def test_victim_poses_translate_by_role_and_keep_the_choreography() -> None:
+    stock, data = _host(6, imported=False), _host(5, imported=True)
+    flips = [0x70000 + 4 * k for k in range(5)]
+    before = bytes(data)
+    assert [s for s, _ in cm.victim_scripts(stock)] == [
+        cm.slot_span(stock, (0, 0x2E))[0], cm.slot_span(stock, (1, 0x0E))[0], cm.slot_span(stock, (1, 0x16))[0]
+    ]  # fmt: skip
+    assert cm.victim(data, stock, flips) == 5 + 5 + 4
+    assert cm.frames(data, (0, 0x2E)) == flips
+    start, end = cm.slot_span(data, (1, 0x0E))
+    words = [int.from_bytes(data[p : p + 4], "big") for p in range(start, end, 4)][:17]
+    # tokens and operands untouched; knockdown frame 5 of 6 (index 5) -> imported index 4 of 5
+    assert words == [10, 0xFF89000F, flips[0], 10, 0x0004_0015, flips[1], 10, 7, I + 4 * 14,
+                     0, 10, 0x5C, flips[4], 10, 0x10, I + 4 * 20, 0]  # fmt: skip
+    assert cm.frames(data, (1, 0x16)) == [I + 4 * 32, flips[0], flips[2], I + 4 * 20]
+    # outside the victim scripts nothing changes
+    for slot in ((0, 0x0F), (0, 0x1E), (0, 0x20)):
+        s0, e0 = cm.slot_span(data, slot)
+        assert data[s0:e0] == before[s0:e0]
+
+
+def test_victim_refuses_a_changed_choreography() -> None:
+    stock, data = _host(6, imported=False), _host(5, imported=True)
+    start, _ = cm.slot_span(data, (1, 0x0E))
+    data[start + 4 : start + 8] = (0x12345678).to_bytes(4, "big")
+    with pytest.raises(ValueError):
+        cm.victim(data, stock, [0x70000] * 5)

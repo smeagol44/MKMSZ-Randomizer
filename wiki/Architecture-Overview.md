@@ -56,7 +56,7 @@ The box indicator hooks an existing HUD submission, executes the displaced call,
 ## Boundaries not yet crossed
 
 - The global item pool is production beta (85 checks); representative full-seed/all-tier runtime coverage remains pending.
-- Enemy randomization is a product option (browser default ON; CLI `--enemy-randomization`) driven by the deterministic 104-record planner/materializer and fail-closed to registered profiles; see [Web patcher and product](Web-Patcher-and-Product) for its remaining gates.
+- Enemy randomization is a product option (browser default OFF since 2026-11-10; CLI `--enemy-randomization`) driven by the deterministic 104-record planner/materializer and fail-closed to registered profiles; see [Web patcher and product](Web-Patcher-and-Product) for its remaining gates.
 - XP progression is production beta: Diagnostic B is runtime-confirmed through XP 258, Temple -> Wind, and title -> Fire; a full nine-tier run remains pending.
 - No finished Reverse Elbow; v6 established a stable lifecycle, while v8 still has movement and interaction defects.
 - PS1 findings guide comparison but do not share N64 addresses or binaries.

@@ -21,5 +21,7 @@ def test_fighter_swap_is_wired() -> None:
     # The select screen is decoded from the user's donor in the worker.
     assert '"select-screen"' in app and '"select-screen"' in worker
     assert "from mkmszr.donors.mkt_select_screen import render" in worker
+    # The title character follows the fighter unless the user typed their own.
+    assert 'const FIGHTER_TITLES = { "sub-zero": "SUB-ZERO", sektor: "SEKTOR" };' in app
     # Imported fighters lock SPECIALS to CLASSIC.
     assert "specialsModern.disabled = imported" in app

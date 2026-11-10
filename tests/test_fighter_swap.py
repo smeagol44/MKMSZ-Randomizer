@@ -22,10 +22,11 @@ from mkmszr.patches import fighter_swap as fs
 from mkmszr.patches.base import PatchContext
 from mkmszr.rom import RomImage
 
-# Sektor build v60 linked for the production pool tail (fighter_import.sektor_build).
-SEKTOR_BUILD_SHA256 = "28e034afc736c90a614bffd4f4f9816a9706c763bcd8593121f054d828af6b58"
-# --fighter sektor --seed SEKTOR-PROD-1 --debug-all-keys == composition proof v13.
-COMPOSITION_V13_SHA256 = "e1f83b25cf0e323bce151f92f36a866fca57c25fc5bb807d86cc76f39e580248"
+# Sektor build v61 (v60 + pickup and grabbed poses) linked for the production pool tail
+# (fighter_import.sektor_build). v60 was 28e034af...; composition proof v13 (v60) e1f83b25...
+SEKTOR_BUILD_SHA256 = "ad2ceb4bfe80b4316338207baf49684d54c0ee7c570534692266c9751a88ed86"
+# --fighter sektor --seed SEKTOR-PROD-1 --debug-all-keys (composition v13's config).
+SEKTOR_CLI_SHA256 = "7fe0ed360472359e28a81447d16b8c57762037e8fb877b71c57db06bd5601bda"
 
 
 def test_config_accepts_the_fighters_and_requires_classic_specials() -> None:
@@ -105,8 +106,8 @@ def test_sektor_build_matches_the_proof_line() -> None:
 
 
 @needs_roms
-def test_cli_reproduces_composition_v13(tmp_path: Path) -> None:
+def test_cli_sektor_build_is_pinned(tmp_path: Path) -> None:
     out = tmp_path / "sektor.z64"
     assert main(["--mkt-rom", DONOR, "--seed", "SEKTOR-PROD-1", "--debug-all-keys",
                  "--fighter", "sektor", CLEAN, str(out)]) == 0  # fmt: skip
-    assert hashlib.sha256(out.read_bytes()).hexdigest() == COMPOSITION_V13_SHA256
+    assert hashlib.sha256(out.read_bytes()).hexdigest() == SEKTOR_CLI_SHA256
