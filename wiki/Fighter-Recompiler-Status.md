@@ -10,7 +10,7 @@
 
 1. Inventory every Sektor-specific item and classify it — **done**: [Fighter recompiler inventory](Fighter-Recompiler-Inventory).
 2. Fighter description format (body part), JSON with a validator; descriptions for Sektor and Reptile — **done** (`fighter_import/description.py`, `src/mkmszr/fighters/*.json`).
-3. Generic body builder: split `sektor_build.py` into a generic builder plus Sektor's description, leaving the frozen move code untouched; only frames used by mapped animations and declared extras are imported — pending (PR 2).
+3. Generic body builder: split `sektor_build.py` into a generic builder plus Sektor's description, leaving the frozen move code untouched; only frames used by mapped animations and declared extras are imported — **done** (`fighter_import/body_build.py`; Sektor's accepted layout is data in `sektor.json` `body.layout`).
 4. Codec 23 and a roster-wide decode test — pending (PR 3).
 5. Size report and Reptile's body built statically, with the colour method `auto` — pending (PR 3).
 
@@ -18,8 +18,8 @@
 
 - [x] The inventory classifies every item; nothing is "unknown".
 - [x] The validator accepts Sektor's and Reptile's descriptions and rejects broken ones (`tests/test_fighter_description.py`).
-- [ ] The generic builder plus Sektor's description reproduces the pinned Sektor build byte for byte (`ad2ceb4b…ed86`).
-- [ ] A test checks that no Sektor-only constant from the inventory remains in the generic builder.
+- [x] The generic builder plus Sektor's description reproduces the pinned Sektor build byte for byte (`ad2ceb4b…ed86`; `tests/test_fighter_swap.py`).
+- [x] A test checks that no Sektor-only constant from the inventory remains in the generic builder (`tests/test_fighter_body_build.py`).
 - [ ] The roster-wide decode test passes, or its documented exceptions are listed.
 - [ ] Reptile's body builds; the size report says whether he fits, and if not, by how much and what would be trimmed (owner decision).
 - [ ] Full suite passes, Sektor's pinned outputs are unchanged, and this page is updated in the same PR.
@@ -38,7 +38,7 @@ PRs: 1 inventory and description format; 2 generic builder; 3 codec 23, roster d
 
 | Milestone | Status | Agreed tasks / checklist | Evidence / PR |
 |---|---|---|---|
-| 1 Fighter description and generic body builder | In progress | See above | PR 1: inventory and description format |
+| 1 Fighter description and generic body builder | In progress | See above | PR 1 (#197): inventory and description format; PR 2: generic body builder |
 | 2 Component library and MKMSZ backend v1 | Not started | — | — |
 | 3 Reading aid for MKT moves | Not started | — | — |
 | 4 Reptile | Not started | — | — |
