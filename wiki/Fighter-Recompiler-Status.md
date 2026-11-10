@@ -4,15 +4,17 @@
 
 ## Current milestone
 
-**Milestone 1 — Fighter description and generic body builder.** In progress (started 2026-11-10).
+**Milestone 2 — Component library and MKMSZ backend v1** (with milestone 3 in parallel): next; its task list and checklist are agreed with the owner when it starts.
+
+**Milestone 1 — Fighter description and generic body builder: done (2026-11-10).**
 
 ### Milestone 1 — agreed tasks (owner, 2026-11-10)
 
 1. Inventory every Sektor-specific item and classify it — **done**: [Fighter recompiler inventory](Fighter-Recompiler-Inventory).
 2. Fighter description format (body part), JSON with a validator; descriptions for Sektor and Reptile — **done** (`fighter_import/description.py`, `src/mkmszr/fighters/*.json`).
 3. Generic body builder: split `sektor_build.py` into a generic builder plus Sektor's description, leaving the frozen move code untouched; only frames used by mapped animations and declared extras are imported — **done** (`fighter_import/body_build.py`; Sektor's accepted layout is data in `sektor.json` `body.layout`).
-4. Codec 23 and a roster-wide decode test — pending (PR 3).
-5. Size report and Reptile's body built statically, with the colour method `auto` — pending (PR 3).
+4. Codec 23 and a roster-wide decode test — **done** (also codec 16, even-height storage and multi-part records; [findings](MKT-Fighter-Asset-Translation#roster-body-frame-survey-and-palettes-2026-11-10)).
+5. Size report and Reptile's body built statically, with the colour method `auto` — **done** (computed layout; Reptile fits with `0x13E88` bytes free for moves).
 
 ### Milestone 1 — acceptance checklist
 
@@ -20,9 +22,9 @@
 - [x] The validator accepts Sektor's and Reptile's descriptions and rejects broken ones (`tests/test_fighter_description.py`).
 - [x] The generic builder plus Sektor's description reproduces the pinned Sektor build byte for byte (`ad2ceb4b…ed86`; `tests/test_fighter_swap.py`).
 - [x] A test checks that no Sektor-only constant from the inventory remains in the generic builder (`tests/test_fighter_body_build.py`).
-- [ ] The roster-wide decode test passes, or its documented exceptions are listed.
-- [ ] Reptile's body builds; the size report says whether he fits, and if not, by how much and what would be trimmed (owner decision).
-- [ ] Full suite passes, Sektor's pinned outputs are unchanged, and this page is updated in the same PR.
+- [x] The roster-wide decode test passes, or its documented exceptions are listed (Sonya slot `0x15` object descriptors; ids 26–30 are not fighters).
+- [x] Reptile's body builds; the size report says whether he fits (yes: stock-size file, `0x13E88` bytes free; no trimming needed).
+- [x] Full suite passes, Sektor's pinned outputs are unchanged, and this page is updated in the same PR.
 
 PRs: 1 inventory and description format; 2 generic builder; 3 codec 23, roster decode, Reptile body and size report.
 
@@ -38,7 +40,7 @@ PRs: 1 inventory and description format; 2 generic builder; 3 codec 23, roster d
 
 | Milestone | Status | Agreed tasks / checklist | Evidence / PR |
 |---|---|---|---|
-| 1 Fighter description and generic body builder | In progress | See above | PR 1 (#197): inventory and description format; PR 2: generic body builder |
+| 1 Fighter description and generic body builder | **Done** (2026-11-10) | See above | #197 inventory and format; #198 generic builder; PR 3 roster decode, computed layout, auto colour, Reptile body |
 | 2 Component library and MKMSZ backend v1 | Not started | — | — |
 | 3 Reading aid for MKT moves | Not started | — | — |
 | 4 Reptile | Not started | — | — |
@@ -48,6 +50,11 @@ PRs: 1 inventory and description format; 2 generic builder; 3 codec 23, roster d
 ## Debt
 
 Fighter- or move-specific code outside fighter descriptions and components (plan rule 3). At plan start: everything Sektor-specific in `fighter_import/` (including `sektor_build.py` and `actions/robo_*`, frozen legacy under rule 4) and `patches/fighter_swap.py`; milestone 1 itemises it.
+
+## Open items carried forward
+
+- Reptile's body (computed layout, auto colour) is static only; its runtime acceptance is part of milestone 4.
+- Codec-16 frames in some fighters' body slots: palette semantics Pending (not needed for Reptile).
 
 ## Owner decisions
 

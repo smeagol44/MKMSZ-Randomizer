@@ -17,6 +17,7 @@
 ## Moved so far
 
 - **Milestone 1, PR 2 (generic body builder):** items 2, 3, 5, 6, 7 (except the arm palette map), 9–11, 13, 16–18, 20–24 now live in `fighter_import/body_build.py` (generic) and `src/mkmszr/fighters/sektor.json` (data: slots, colour, and his accepted layout in `body.layout`: script lengths, places, capacities, hybrid slots, entropy groups and the late-Knee frame edits). The combo script (12) and the throw (14) are Sektor hooks (`Extras.script_hooks`) inside `sektor_build.py`; the teleport, chest and empty frames (15) are Sektor extra frame sets. Items 1, 4, 8 (arm palette), 19, 25–42 are unchanged. The generic builder plus Sektor's description reproduces the pinned Sektor build byte for byte.
+- **Milestone 1, PR 3:** the generic builder also computes the layout for fighters without one (item 21 for new fighters), reduces colours automatically (item 6 for new fighters), and decodes codec 16, even-height images and multi-part records (item 7).
 
 ## `fighter_import/sektor_build.py`
 

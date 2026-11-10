@@ -25,6 +25,7 @@ from .mkt_fighter import MktRom
 from .script import MKT
 
 MKT_FLIPPED = 0x47  # MKT table-0 slot whose first phase is the fighter's flip poses
+MKT_PALETTE_TABLE = 0x800A1738  # per-fighter primary palette record pointers (count, RGBA5551 words)
 
 # Host fighter file 0x87 (MKMSZ USA Rev. 0): Static-confirmed layout.
 FILE87_ROM = 0x748920
@@ -274,35 +275,91 @@ class Donor:
         return be32(self.mkt, self.base + rel)
 
     def is_shape(self, rel):
+        """A single-part frame record: ``[rel + 8, 0]`` then its descriptor."""
+
         return (isinstance(rel, int) and rel > 0 and self.base + rel + 8 <= len(self.mkt)
                 and self.m32(rel) == rel + 8 and self.m32(rel + 4) == 0)  # fmt: skip
 
-    def frame(self, rel):
-        o = self.base + rel
-        assert be32(self.mkt, o) == rel + 8 and be32(self.mkt, o + 4) == 0, hex(rel)
-        sub = o + 8
-        image_rel = be32(self.mkt, sub)
-        packed = be32(self.mkt, sub + 4)
-        anchor = be32(self.mkt, sub + 8)
+    def parts(self, rel):
+        """Descriptor offsets of a frame record (zero-terminated pointer list), or None."""
+
+        if not (isinstance(rel, int) and 0 < rel and self.base + rel + 8 <= len(self.mkt)):
+            return None
+        out, p = [], rel
+        while len(out) < 8:
+            d = self.m32(p)
+            if d == 0:
+                break
+            if not (0 < d < len(self.mkt) - self.base and d % 4 == 0):
+                return None
+            out.append(d)
+            p += 4
+        return out if 0 < len(out) < 8 else None
+
+    def is_frame(self, rel):
+        parts = self.parts(rel)
+        if not parts:
+            return False
+        try:
+            self.frame(rel)
+        except (ValueError, AssertionError, IndexError):
+            return False
+        return True
+
+    def descriptor_frame(self, sub, rel):
+        image_rel = be32(self.mkt, self.base + sub)
+        packed = be32(self.mkt, self.base + sub + 4)
+        anchor = be32(self.mkt, self.base + sub + 8)
         h = (packed >> 16) & 0xFFFF
         w = packed & 0xFFFF
         x = s16((anchor >> 16) & 0xFFFF)
         y = s16(anchor & 0xFFFF)
         src = self.mkt[self.base + image_rel :]
         typ = src[0]
+        stride = align4(w)
+        eh = align2(h)
         if typ == 15:
             raw = dec_15(src)
         elif typ in (22, 23, 24):
             raw = dec_22_24(src, self.dictionary)
+        elif typ == 16:
+            from .projectile import decode_mkt_codec16
+
+            raw = decode_mkt_codec16(src)[0]
         else:
             raise ValueError((hex(rel), typ, hex(image_rel)))
-        stride = align4(w)
+        # Some images store the even (padded) height: stride * align2(h) bytes.
+        if len(raw) == eh * stride and eh > h:
+            raw = raw[: h * stride]
         assert len(raw) == h * stride, (hex(rel), typ, w, h, len(raw))
-        eh = align2(h)
         if eh > h:
             raw += bytes(stride * (eh - h))
         return {"w": w, "h": h, "x": x, "y": y, "stride": stride, "eh": eh, "padded": raw,
-                    "blocks": make_blocks(raw, stride, eh), "codec": typ, "donor": rel}  # fmt: skip
+                "blocks": make_blocks(raw, stride, eh), "codec": typ, "donor": rel}  # fmt: skip
+
+    def frame(self, rel):
+        """Decode frame record ``rel``; a multi-part record is flattened onto its first part."""
+
+        if self.is_shape(rel):
+            return self.descriptor_frame(rel + 8, rel)
+        parts = self.parts(rel)
+        if not parts:
+            raise ValueError(f"0x{rel:X} is not a frame record")
+        out = self.descriptor_frame(parts[0], rel)
+        for sub in parts[1:]:
+            out = composite(out, self.descriptor_frame(sub, rel), codec="flattened")
+        out["donor"] = rel
+        return out
+
+    def palette(self):
+        """The fighter's primary MKT palette as RGBA5551 words (index 0 transparent)."""
+
+        va = be32(self.mkt, MKT_PALETTE_TABLE - 0x80000000 + 4 * self.fighter_id)
+        o = va - 0x80000000
+        n = be32(self.mkt, o)
+        if not 0 < n <= 256:
+            raise ValueError(f"bad palette record at 0x{va:08X}")
+        return [be16(self.mkt, o + 4 + 2 * i) for i in range(n)]
 
     def phase(self, slot):
         """Frames of the first phase of MKT table 0 ``slot``."""
@@ -601,21 +658,120 @@ class Body:
     push_words: list
     encoded: Encoded
     log: list
+    report: dict = field(default_factory=dict)
 
     def f32(self, off):
         return be32(self.clean_file, off)
 
 
-def _slot_cfg(description: FighterDescription, donor: Donor, clean_file: bytes) -> dict:
-    layout = description.body.layout
+# Computed layout (fighters without an explicit layout): token policy for copied MKT body scripts.
+# Tokens 1-5, 9, 12, 14 share the MKMSZ grammar; callbacks 1, 18 and 19 are the ones Sektor's
+# runtime-accepted body copies unchanged; donor sound/palette tokens are dropped (MKMSZ ignores
+# them); fighter-ID branches (8) are folded for the donor; partner/helper tokens need adapters.
+KEPT_TOKENS = {1, 2, 3, 4, 5, 9, 12, 14}
+KEPT_CALLBACKS = {1, 18, 19}
+DROPPED_TOKENS = {7, 13, 15}
+MAX_SCRIPT_WORDS = 64
+
+
+class LayoutError(ValueError):
+    pass
+
+
+def linearise(donor: Donor, slot: int, starts: set[int]) -> list:
+    """MKT table 0 ``slot``'s script as host words: ints, ``("frame", rel)`` and ``("jump", index)``."""
+
+    out: list = []
+    at: dict[int, int] = {}
+    pos = donor.table0[slot]
+    jumps = []
+    while True:
+        if len(out) > MAX_SCRIPT_WORDS:
+            raise LayoutError(f"slot 0x{slot:02X}: script longer than {MAX_SCRIPT_WORDS} words")
+        at.setdefault(pos, len(out))
+        v = donor.m32(pos)
+        if v == 0:
+            out.append(0)
+            pos += 4
+            if pos in starts:
+                break
+            continue
+        if not MKT.is_token(v):
+            if not donor.is_frame(v):
+                raise LayoutError(f"slot 0x{slot:02X}: word 0x{v:X} at 0x{pos:X} is not a frame")
+            out.append(("frame", v))
+            pos += 4
+            continue
+        ops = [donor.m32(pos + 4 + 4 * k) for k in range(len(MKT.operands[v]))]
+        if v == 1:
+            out.append(1)
+            jumps.append(len(out))
+            out.append(ops[0])
+            break
+        if v == 8:  # fighter-ID branch: taken only for the donor itself
+            pos = ops[1] if ops[0] == donor.fighter_id else pos + 12
+            continue
+        if v in DROPPED_TOKENS:
+            pos += 4 * (1 + len(ops))
+            continue
+        if v == 6 and ops[0] not in KEPT_CALLBACKS:
+            raise LayoutError(f"slot 0x{slot:02X}: callback {ops[0]} at 0x{pos:X} has no rule")
+        if v not in KEPT_TOKENS and v != 6:
+            raise LayoutError(f"slot 0x{slot:02X}: token {v} at 0x{pos:X} needs an adapter")
+        out.append(v)
+        for kind, op in zip(MKT.operands[v], ops, strict=True):
+            out.append(("frame", op) if kind == "frame" else op)
+        pos += 4 * (1 + len(ops))
+    for j in jumps:
+        target = out[j]
+        if target not in at:
+            raise LayoutError(f"slot 0x{slot:02X}: jump to 0x{target:X} outside the copied script")
+        out[j] = ("jump", at[target])
+    return out
+
+
+def _host_layout(clean_file: bytes):
+    """Logical spans of the host primary scripts and the table entries that alias into them."""
+
+    primary = sorted({be32(clean_file, 4 * i) for i in range(0x41)} - {0})
+    entries = [(4 * i, be32(clean_file, 4 * i)) for i in range(0x41)]
+    entries += [(0x104 + 4 * i, be32(clean_file, 0x104 + 4 * i)) for i in range(0x2B)]
+    return primary, [(o, v) for o, v in entries if v]
+
+
+def _computed_cfg(description, donor: Donor, clean_file: bytes) -> dict:
+    reader = MktRom(donor.mkt)
+    starts = set(donor.table0) | set(reader.table1(donor.fighter_id))
+    primary, entries = _host_layout(clean_file)
     cfg = {}
     for slot in description.body.slots:
-        entry = layout.slots.get(slot) if layout else None
+        words = linearise(donor, slot, starts)
+        root = be32(clean_file, 4 * slot)
+        end = next((r for r in primary if r > root), TYPE_START)
+        capacity = (end - root) // 4
+        aliases = []
+        for off, v in entries:
+            if off != 4 * slot and root < v < end:
+                stock_phase = sum(1 for p in range(root, v, 4) if be32(clean_file, p) == 0)
+                aliases.append((off, stock_phase))
+        mode = "inplace" if len(words) <= capacity else "packed"
+        cfg[slot] = {"donor": donor.table0[slot], "mode": mode, "computed": True, "words": words,
+                     "n": len(words), "target": root, "capacity": capacity, "aliases": aliases,
+                     "shapes": [w[1] for w in words if isinstance(w, tuple) and w[0] == "frame"]}  # fmt: skip
+    return cfg
+
+
+def _slot_cfg(description: FighterDescription, donor: Donor, clean_file: bytes) -> dict:
+    layout = description.body.layout
+    if layout is None:
+        return _computed_cfg(description, donor, clean_file)
+    cfg = {}
+    for slot in description.body.slots:
+        entry = layout.slots.get(slot)
         donor_root = donor.table0[slot]
         host_root = be32(clean_file, 4 * slot)
-        if entry is None:
-            raise NotImplementedError(f"computed layout for slot 0x{slot:02X} (milestone 1, PR 3)")
-        c = {"donor": donor_root, "mode": entry.mode}
+        c = {"donor": donor_root, "mode": entry.mode, "hybrid": entry.hybrid, "capacity": entry.capacity,
+             "place": entry.place}
         if entry.mode == "inplace":
             c["target"] = host_root
         if entry.words is not None:
@@ -629,6 +785,55 @@ def _slot_cfg(description: FighterDescription, donor: Donor, clean_file: bytes) 
     return cfg
 
 
+def reduce_palette(donor_palette: list[int], usage: Counter, colours: int = 16) -> tuple[list[int], list[int]]:
+    """Weighted median cut of the donor palette to ``colours`` entries (entry 0 transparent).
+
+    Returns (index map for every donor index, host BGR555 words for the reduced entries)."""
+
+    from .projectile import mkt_color_to_host
+
+    def rgb(w):
+        return ((w >> 11) & 31, (w >> 6) & 31, (w >> 1) & 31)
+
+    used = [i for i in range(1, len(donor_palette)) if usage.get(i)]
+    boxes = [used] if used else []
+    while len(boxes) < colours - 1:
+        best, axis, best_key = None, 0, (-1,)
+        for bi, box in enumerate(boxes):
+            if len(box) < 2:
+                continue
+            for ax in range(3):
+                vals = [rgb(donor_palette[i])[ax] for i in box]
+                key = ((max(vals) - min(vals)) * sum(usage[i] for i in box), -bi, -ax)
+                if key > best_key:
+                    best, axis, best_key = bi, ax, key
+        if best is None:
+            break
+        box = sorted(boxes[best], key=lambda i: (rgb(donor_palette[i])[axis], i))
+        total, run, cut = sum(usage[i] for i in box), 0, 1
+        for k, i in enumerate(box[:-1], 1):
+            run += usage[i]
+            cut = k
+            if 2 * run >= total:
+                break
+        boxes[best:best + 1] = [box[:cut], box[cut:]]
+    centres = []
+    for box in boxes:
+        weight = sum(usage[i] for i in box)
+        centres.append(tuple(round(sum(rgb(donor_palette[i])[a] * usage[i] for i in box) / weight) for a in range(3)))
+    index_map = [0] * len(donor_palette)
+    for k, box in enumerate(boxes, 1):
+        for i in box:
+            index_map[i] = k
+    for i in range(1, len(donor_palette)):
+        if not usage.get(i) and centres:
+            c = rgb(donor_palette[i])
+            index_map[i] = 1 + min(range(len(centres)), key=lambda k: (sum((a - b) ** 2 for a, b in zip(c, centres[k], strict=True)), k))
+    words = [0] + [mkt_color_to_host((r << 11) | (g << 6) | (b << 1) | 1) for r, g, b in centres]
+    words += [0] * (colours - len(words))
+    return index_map, words
+
+
 def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras: Extras,
                rom: bytearray | None = None) -> Body:  # fmt: skip
     """Build the fighter body. When ``rom`` is given (the clean 16 MiB image being built), the
@@ -636,8 +841,6 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
 
     body_d = description.body
     layout = body_d.layout
-    if layout is None:
-        raise NotImplementedError("computed layout (milestone 1, PR 3)")
     log: list[str] = []
     donor = Donor(mkt, description.donor_fighter_id)
     clean_file = bytes(clean[FILE87_ROM : FILE87_ROM + FILE87_SIZE])
@@ -651,7 +854,7 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         for rel in slot_cfg[slot]["shapes"]:
             if rel not in old_shapes:
                 old_shapes.append(rel)
-    run_rels = donor.frames(body_d.run_slot) if layout.run_frames is None else list(layout.run_frames)
+    run_rels = donor.frames(body_d.run_slot) if layout is None or layout.run_frames is None else list(layout.run_frames)
     frame_cache = {rel: donor.frame(rel) for rel in old_shapes}
     for r in run_rels:
         frame_cache[r] = donor.frame(r)
@@ -666,15 +869,28 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
     frame_cache.update(extras.frames)
 
     colour = body_d.colour
+    index_map, palette = colour.index_map, colour.palette
+    if colour.method == "auto":
+        usage = Counter()
+        for fr in frame_cache.values():
+            usage.update(fr["padded"])
+        donor_palette = donor.palette()
+        index_map, words16 = reduce_palette(donor_palette, usage)
+        if max(usage) >= len(index_map):
+            raise ValueError(f"frames use palette index {max(usage)} beyond the donor palette")
+        palette = b"".join(w.to_bytes(2, "big") for w in words16) + clean_file[PALETTE_OFF + 32 : PALETTE_OFF + 64]
+        log.append(f"COLOUR auto: {sum(1 for c in usage if c)} donor indices used -> 15 colours")
     for k in list(frame_cache):
         fr = dict(frame_cache[k])
-        fr["padded"] = bytes(colour.index_map[p] for p in fr["padded"])
+        fr["padded"] = bytes(index_map[p] for p in fr["padded"])
         fr["blocks"] = make_blocks(fr["padded"], fr["stride"], fr["eh"])
         frame_cache[k] = fr
         assert max(fr["padded"]) < 16
 
-    old_groups = split_even(old_shapes, layout.inherited_groups)
-    run_groups = split_even(run_rels, layout.run_groups)
+    inherited_groups = layout.inherited_groups if layout else min(56, max(1, len(old_shapes) // 3))
+    run_groups_n = layout.run_groups if layout else min(4, len(run_rels))
+    old_groups = split_even(old_shapes, inherited_groups)
+    run_groups = split_even(run_rels, run_groups_n)
     extra_groups = [[k for name in names for k in sets[name]] for names in extra_group_names]
     groups = old_groups + run_groups + extra_groups
     all_keys = old_shapes + run_rels + [k for name in key_order for k in sets[name]]
@@ -685,7 +901,7 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
     enc = encode(frame_cache, groups, order)
 
     file87 = bytearray(clean_file)
-    file87[PALETTE_OFF : PALETTE_OFF + 64] = colour.palette
+    file87[PALETTE_OFF : PALETTE_OFF + 64] = palette
 
     stock_shapes = []
     for off in range(TYPE_START, TYPE_END, 4):
@@ -699,7 +915,7 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
     # Dead stock script regions reused by relocated scripts: nothing outside a region may point
     # into it except the redirected slot roots.
     redirect_slots = {s for s, c in slot_cfg.items() if c["mode"] != "inplace"}
-    for lo, hi in layout.dead_regions:
+    for lo, hi in layout.dead_regions if layout else ():
         for p in range(0, TYPE_START, 4):
             v = f32(p)
             if lo <= v < hi and not (lo <= p < hi) and not (p < 0x104 and p // 4 in redirect_slots):
@@ -759,13 +975,16 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         file87[image + 12 : image + 12 + len(stream)] = stream
 
     # Body scripts.
-    script_targets = {s: (item_offsets[("script", s)] if c["mode"] == "packed" else layout.slots[s].place)
+    script_targets = {s: (item_offsets[("script", s)] if c["mode"] == "packed" else c["place"])
                       for s, c in slot_cfg.items() if c["mode"] != "inplace"}  # fmt: skip
     owned, translated = set(), {}
     for slot, cfg in slot_cfg.items():
         target = script_targets.get(slot, cfg.get("target"))
         donor_words = cfg["words"]
-        if layout.slots[slot].hybrid:
+        if cfg.get("computed"):
+            vals = [shape_map[w[1]] if isinstance(w, tuple) and w[0] == "frame"
+                    else target + 4 * w[1] if isinstance(w, tuple) else w for w in donor_words]  # fmt: skip
+        elif cfg["hybrid"]:
             stock_words = [f32(cfg["target"] + 4 * i) for i in range(cfg["n"])]
             vals = [shape_map[v] if donor.is_shape(v) else stock_words[i] for i, v in enumerate(donor_words)]
         else:
@@ -783,12 +1002,17 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
                 put32(file87, target + 4 * i, v)
                 owned.add(target + 4 * i)
         else:
-            capw = layout.slots[slot].capacity
+            capw = cfg["capacity"]
             assert len(vals) <= capw
             for i in range(capw):
                 put32(file87, target + 4 * i, vals[i] if i < len(vals) else 0)
                 owned.add(target + 4 * i)
         translated[slot] = vals
+        if cfg.get("computed"):
+            phase_starts = [0] + [i + 1 for i, v in enumerate(vals[:-1]) if v == 0]
+            for off, phase in cfg["aliases"]:
+                put32(file87, off, target + 4 * phase_starts[min(phase, len(phase_starts) - 1)])
+                log.append(f"ALIAS table 0x{off:X} -> slot 0x{slot:02X} phase {phase}")
 
     # Push (MKMSZ only): the Run poses over the seven native Push ticks.
     clean_push = [f32(PUSH_TARGET + 4 * i) for i in range(9)]
@@ -811,7 +1035,7 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
                 new_end, run_words, push_words, enc, log)  # fmt: skip
 
     # Description script edits (positions -> donor frames), then the moves' hooks.
-    for pos, rel in layout.frame_edits.items():
+    for pos, rel in (layout.frame_edits if layout else {}).items():
         assert f32(pos) in stock_shape_set, (hex(pos), hex(f32(pos)))
         put32(file87, pos, shape_map[rel])
         owned.add(pos)
@@ -830,6 +1054,16 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         fallback_positions.append(pos)
     body.fallback, body.fallback_positions = fallback, fallback_positions
 
+    body.report = {
+        "frames": len(all_keys), "inherited": len(old_shapes), "run": len(run_rels),
+        "table_bytes": len(enc.table), "stream_bytes": enc.stream_bytes,
+        "reclaim_capacity": cap, "reclaim_used": sum(item_sizes[k] for k in packed),
+        "appended_items": sum(1 for k in items if k not in packed),
+        "appended_bytes": sum(item_sizes[k] for k in items if k not in packed),
+        "file_end": new_end, "file_budget": SAFE_END, "chain_start": chain_start,
+        "chain_free": TYPE_END - chain_start,
+        "packed_scripts": [s for s, c in slot_cfg.items() if c["mode"] == "packed"],
+    }  # fmt: skip
     for k in all_keys:
         dec, mid, w, h = decode_type5(file87, shape_map[k], len(groups))
         fr = frame_cache[k]
@@ -845,4 +1079,9 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
 def translated_first_frame(slot_cfg: dict, donor: Donor):
     """The stance's first donor frame (the fallback for unmapped stock references)."""
 
-    return next(v for v in slot_cfg[0x00]["words"] if donor.is_shape(v))
+    for v in slot_cfg[0x00]["words"]:
+        if isinstance(v, tuple) and v[0] == "frame":
+            return v[1]
+        if isinstance(v, int) and donor.is_shape(v):
+            return v
+    raise ValueError("the stance script has no frame")

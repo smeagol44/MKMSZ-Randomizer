@@ -387,6 +387,17 @@ The secondary table is **not** a list of 43 donor poses to fill.
 
 **Audit boundary:** "no static caller found" means no direct JAL/J, literal function pointer, or traced wrapper call was found in the clean base executable for the checked path. It is not a proof that overlays or data-driven indirect dispatch can never reach the bytes. Therefore such states are excluded from the **current importer requirement**, not declared free storage.
 
+### Computed body layout (generic importer, 2026-11-10)
+
+Implementation/CI-confirmed (`fighter_import.body_build`), runtime Pending (milestone 4, Reptile). A fighter without an explicit layout gets:
+
+- **Script copy:** MKT table 0 slot *i* to host primary slot *i*.
+  - Fighter-ID branches (token 8) are folded for the donor, and tokens 7, 13 and 15 (donor sound and palette) are dropped.
+  - Callbacks 1, 18 and 19 are kept, as in Sektor's accepted body. Any other callback, and partner/helper tokens 10 and 11, stop the build for review.
+  - The copy ends at the script's loop jump, or at the next MKT script start.
+- **Placement:** in place when the copy fits the host script's logical span (up to the next primary script), else packed into the reclaimed corpus.
+- **Aliases:** table entries that point inside a mapped host script move to the start of the same phase in the new script. Example: secondary `0x09`, the knockdown's lying phase, follows a relocated knockdown.
+
 ### Immediate consequence
 
 The earlier reachability audit isolated `P28, P29, P2A, S03, S05` as its five unresolved player states. The following semantic trace resolves their **host roles** while keeping exact cross-fighter visual policy pending. Victory/Dizzy are not the next common import requirement. Stock Ice-family states stay on the separate special-extension track, and the `+0x928` victim/reaction family remains a later focused reachability trace.
