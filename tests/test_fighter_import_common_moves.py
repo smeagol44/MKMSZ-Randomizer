@@ -19,6 +19,7 @@ def _file() -> bytearray:
         (0, 0x1E): [F + 8 * 4, F + 9 * 4, 0, F + 10 * 4, F + 11 * 4, 0],  # knockdown, 2 phases
         (0, 0x2A): [F, F, 6, 1, 5, F, 6, 2, 3, F, F, 0, F],  # death: callbacks keep their words
         (1, 0x02): [F, F, F, 0],  # slide
+        (1, 0x08): [F, F, F],  # long-fall loop (a jump back is added below)
     }
     p = 0x200
     for (table, index), words in scripts.items():
@@ -27,6 +28,11 @@ def _file() -> bytearray:
         for w in words:
             data[p : p + 4] = w.to_bytes(4, "big")
             p += 4
+        if (table, index) == (1, 0x08):
+            start = int.from_bytes(data[slot : slot + 4], "big")
+            for w in (1, start):  # jump back to the loop start
+                data[p : p + 4] = w.to_bytes(4, "big")
+                p += 4
         p += 4  # a gap so every script has a following start
     # secondary 9 points into the knockdown's second phase, as in the MKMSZ host file
     knock = int.from_bytes(data[4 * 0x1E : 4 * 0x1E + 4], "big")
@@ -56,3 +62,11 @@ def test_slide_needs_three_frames() -> None:
     data[start + 8 : start + 12] = bytes(4)
     with pytest.raises(ValueError):
         cm.apply(data)
+
+
+def test_long_fall_holds_the_last_fall_back_frame_and_keeps_its_loop() -> None:
+    out = cm.apply(_file())
+    assert cm.frames(out, cm.LONG_FALL) == [F + 36] * 3
+    start, _ = cm.slot_span(out, cm.LONG_FALL)
+    assert int.from_bytes(out[start + 12 : start + 16], "big") == 1
+    assert int.from_bytes(out[start + 16 : start + 20], "big") == start

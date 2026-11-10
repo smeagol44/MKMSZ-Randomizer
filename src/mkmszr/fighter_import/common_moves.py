@@ -13,6 +13,9 @@ imported MKT fighter (user design, 2026-11-10):
   when health reaches zero, then state ``0x502``): the knockdown sequence of host primary
   ``0x1E`` (its fall-back and landing phases), in order, the last (lying) frame held for the
   remaining frame words.
+* **Falling to death** (host secondary 8, Sub-Zero's long-fall loop; a pit fall first plays the
+  knockdown, primary ``0x1E``, then selects ``0x8002FE54(1, 8)``, traced from a user save state
+  on Water): the last frame of the knockdown's fall-back phase, held (user design).
 
 Each recipe rewrites only the frame words of the target slot's script (tokens, operands,
 callback words and phase ends stay), reading the source frames from the already imported
@@ -32,6 +35,7 @@ DUCK, DUCK_TURN, DUCK_LOW_KICK, KNOCKDOWN, DEATH = (
     (0, 0x2A),
 )
 SLIDE = (1, 0x02)
+LONG_FALL = (1, 0x08)
 SLIDE_FRAMES = ((DUCK, 0), (DUCK_TURN, 0), (DUCK_LOW_KICK, 2))  # (slot, frame index)
 
 
@@ -114,8 +118,8 @@ def _write(out: bytearray, positions: list[int], values: list[int]) -> None:
         out[p : p + 4] = values[min(k, len(values) - 1)].to_bytes(4, "big")
 
 
-def apply(data: bytes | bytearray) -> bytearray:
-    """A copy of fighter file ``data`` with the slide and death recipes applied."""
+def apply(data: bytes | bytearray, long_fall: bool = True) -> bytearray:
+    """A copy of fighter file ``data`` with the slide, death and long-fall recipes applied."""
 
     out = bytearray(data)
     slide = frame_positions(out, SLIDE)
@@ -123,4 +127,6 @@ def apply(data: bytes | bytearray) -> bytearray:
         raise ValueError(f"host slide script has {len(slide)} frames, expected {len(SLIDE_FRAMES)}")
     _write(out, slide, [frames(data, slot)[k] for slot, k in SLIDE_FRAMES])
     _write(out, frame_positions(out, DEATH), phase_frames(data, KNOCKDOWN, 2))
+    if long_fall:  # False reproduces Sektor builder v59
+        _write(out, frame_positions(out, LONG_FALL), phase_frames(data, KNOCKDOWN, 1)[-1:])
     return out

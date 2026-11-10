@@ -1469,7 +1469,7 @@ for _off in range(0, len(rom), 4):
 from mkmszr.fighter_import import attachment as _att
 # v59: slide and death from the common MKT animations already mapped onto the host slots.
 from mkmszr.fighter_import import common_moves as _common
-rom[RR:RR + 0x459E0] = _common.apply(rom[RR:RR + 0x459E0])
+rom[RR:RR + 0x459E0] = _common.apply(rom[RR:RR + 0x459E0], long_fall=False)
 # Blob and relocation table in file 0x87, after the v47 chain.
 _table = _rel.encode(_relocs)
 BLOB_OFF = (CHAIN_END + 0xF) & ~0xF
