@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "id": "reptile",
+  "display_name": "Reptile",
+  "title": "REPTILE",
+  "donor": {
+    "game": "MKT-N64-USA-Rev2",
+    "fighter_id": 19,
+    "name": "REPTILE"
+  },
+  "body": {
+    "slots": [
+      "0x00",
+      "0x01",
+      "0x02",
+      "0x03",
+      "0x04",
+      "0x05",
+      "0x06",
+      "0x07",
+      "0x08",
+      "0x09",
+      "0x0A",
+      "0x0B",
+      "0x0C",
+      "0x0E",
+      "0x0F",
+      "0x11",
+      "0x12",
+      "0x13",
+      "0x14",
+      "0x15",
+      "0x16",
+      "0x17",
+      "0x18",
+      "0x19",
+      "0x1A",
+      "0x1B",
+      "0x1C",
+      "0x1D",
+      "0x1E",
+      "0x1F",
+      "0x20",
+      "0x21",
+      "0x22"
+    ],
+    "run": {
+      "mkt_slot": "0x4A",
+      "host_rate": 3
+    },
+    "colour": {
+      "depth": 16,
+      "method": "auto"
+    },
+    "common_animations": [
+      "slide",
+      "death",
+      "long_fall",
+      "pickup",
+      "grabbed"
+    ]
+  },
+  "legacy": [],
+  "notes": "Body only (milestone 1). Colour method auto is implemented in milestone 1; moves, presentation and progression come in milestones 2-5 with the owner's decisions."
+}

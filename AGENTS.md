@@ -32,6 +32,7 @@ Owners:
 - Global-Item-Materialization-and-Solvability: global pool, materialization, retries, solver, required powers, Temple Map
 - Persistence-Inventory-and-Lifecycle; XP-and-Progression; Native-HUD-and-UI; Presentation-and-Branding
 - Player-Actions-and-Special-Moves: host action/control ABI
+- Fighter-Recompiler-Plan (fixed charter; never edit, only append references) + Fighter-Recompiler-Status (progress): start here for any MKT-to-MKMSZ fighter work
 - MKT-to-MKMSZ-Compatibility-Layer, MKT-Adapter-Primitives, MKT-Fighter-Asset-Translation, Sub-Zero-to-Sektor-Animation-Mapping, Sektor-Takeover-Proof-History: donor port
 - Experiments-Failures-and-Superseded-Findings: rejected/superseded index
 - Library-Artifact-Index: archive provenance

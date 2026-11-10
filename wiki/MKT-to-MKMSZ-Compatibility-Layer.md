@@ -1,5 +1,7 @@
 # MKT compatibility overview
 
+> **Plan:** all further importer work follows the fixed [Fighter recompiler plan](Fighter-Recompiler-Plan) (progress: [status](Fighter-Recompiler-Status)).
+
 > **Scope:** This page owns the accepted **MKT -> MKMSZ porting strategy and current compatibility contract**. It is the architectural entry point, not a proof diary.
 >
 > Donor semantic translation belongs to [MKT adapter primitives](MKT-Adapter-Primitives). Fighter image/codec/palette/storage translation belongs to [MKT fighter asset translation](MKT-Fighter-Asset-Translation). The MKMSZ host action ABI belongs to [Player actions and special moves](Player-Actions-and-Special-Moves). Sektor slot mapping/current coverage belongs to [Sub-Zero to Sektor animation mapping](Sub-Zero-to-Sektor-Animation-Mapping), while the canonical vNN chronology belongs to [Sektor takeover proof history](Sektor-Takeover-Proof-History).
