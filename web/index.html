@@ -113,8 +113,17 @@
       </header>
 
       <div class="grid">
+        <div class="field fighter-field" id="fighterField">
+          <label for="swapFighterButton">Fighter</label>
+          <div class="fighter-control">
+            <output id="fighterName" class="fighter-name">Sub-Zero</output>
+            <button id="swapFighterButton" class="secondary-action compact-action" type="button" disabled>Swap character</button>
+          </div>
+          <p id="fighterHint" class="hint">Validate the MKT donor ROM to import a fighter from Mortal Kombat Trilogy.</p>
+        </div>
+
         <div class="field">
-          <label for="outfitMode">Sub-Zero outfit</label>
+          <label for="outfitMode" id="outfitLabel">Sub-Zero outfit</label>
           <select id="outfitMode">
             <option value="vanilla">Vanilla</option>
             <option value="red">Red</option>
@@ -408,6 +417,28 @@
       <span class="build-version">By Smeag · v0.DEV</span>
     </footer>
   </main>
+
+  <dialog id="fighterDialog" class="fighter-dialog" aria-labelledby="fighterDialogTitle">
+    <form method="dialog" class="fighter-dialog-body">
+      <header class="fighter-dialog-header">
+        <div>
+          <h2 id="fighterDialogTitle">Swap character</h2>
+          <p>Mortal Kombat Trilogy's select screen, read from your donor ROM. Fighters in colour can be imported.</p>
+        </div>
+        <button class="secondary-action compact-action" value="cancel" type="submit" aria-label="Close">&#x2715;</button>
+      </header>
+      <div class="fighter-stage">
+        <canvas id="fighterCanvas" width="320" height="240" tabindex="0"
+                aria-label="Fighter select grid. Use the arrow keys to move and Enter to choose."></canvas>
+        <p id="fighterStageStatus" class="fighter-stage-status">Loading the select screen…</p>
+      </div>
+      <p id="fighterHover" class="fighter-hover" aria-live="polite">&nbsp;</p>
+      <footer class="fighter-dialog-footer">
+        <button id="keepSubZeroButton" class="secondary-action" value="sub-zero" type="submit">Use Sub-Zero (default)</button>
+        <button class="secondary-action" value="cancel" type="submit">Cancel</button>
+      </footer>
+    </form>
+  </dialog>
 
   <script type="module" src="./app.js"></script>
 </body>

@@ -209,6 +209,16 @@ That is `0x11AC` larger than v59/v62 and `0x1064` above the Runtime-confirmed v4
 The compact proof therefore reduced the first runtime requirement to **one fully-open chest pose + one horizontal rocket pose** and quantized those two target buffers only against the existing 40,737-pattern dictionary with exact transparency masks. v64 reaches file `0x87 = 0x4E788`, only `0x244` above the v49 working footprint. v69/v70 then refine the code/lifecycle side while retaining the compact asset strategy. Fortress/Prison allocation boundaries were not revalidated for v64-v70, so these larger footprints remain **proof-specific**, not new safe-size ceilings.
 
 
+### MKT select screen assets
+
+**Static-confirmed** (MKT N64 USA Rev. 2; every decode matches the decoded copy in the RAM of a user save state at the select screen, byte for byte). Used by the web "Swap character" window (`src/mkmszr/donors/mkt_select_screen.py`).
+
+- **Codecs.** The image dispatcher `0x80081C4C` masks the header's top byte with `0x3F` (table `0x800F96C8`). Codec `0x14` (`0x8008209C`) is PackBits: a signed count byte `n >= 0` copies `n + 1` literal bytes, `n < 0` repeats the next byte `1 - n` times. Codec `0x12` (`0x80081D08` → `0x800885C8`) is raw DEFLATE (stored, fixed and dynamic Huffman blocks, LSB-first bit reader); Python's `zlib.decompressobj(-15)` decodes it.
+- **Grid.** Table `0x800A2940`: 12-byte entries `{u32 descriptor, u16 column, u16 row, u16 fighter id, u16 0}`, ended by a zero descriptor (read by `0x80007E48`; set up by `0x800069A4`). Descriptors `1` and `2` are the two hidden slots, drawn with descriptor `0x803E40A4`. Sektor (fighter id 6) is column 1, row 3. Names: pointer table `0x800A6004`.
+- **Portraits.** Descriptor `{u32 image, u16 height 45, u16 width 34, u32 0, u32 palette}` in the select-screen file ROM `[0x1364F4,0x145EF0)` (RAM `0x803E1534`). Images are codec `0x14`, 36x45 CI8 (row pitch 36, index 0 transparent); palettes are `u32 count` then RGBA5551 words (count `0x80`).
+- **Background.** File ROM `[0x34A540,0x3560F0)` (file table `0x800A2188`, RAM `0x803F0F30`) begins with four palette pointers (count `0x100`). The background definition `0x803F63C8` (passed to `0x800090CC` by `0x8000679C`) places modules `0x803F6308`, `0x803F6358` and `0x803F6378`. A module is `{u16 w, u16 h, u32 count, u32 placements, u32 images, u32 file}`; placements are `{u16 x, u16 y, u16 0x40, u16 flags, u16 image}` (palette `flags >> 8`, `0x10` horizontal flip); images are `{u16 w, u16 h, u32 offset}` into one blob, ROM `[0x3560F0,0x365500)`, codec `0x12`, `0x247B8` bytes, whose base the game keeps at `0x801B3D10` (object image = base + offset, `0x80009E6C`).
+- **Layout** (from the frame's display list in the save state): the background images at screen `(6|166, 46|48|130)`, the bottom plates at `(10,204)` and mirrored at `(219,205)` (their layer has its own scroll offset, so the positions are taken from the display list); portraits at `(59 + 34 * column, 14 + 45 * row)`; 1-pixel grid lines in `0x7BDB`; scissor `319x239`. MKT's selection box is a 34x45, 2-pixel frame in palette index 1 of a palette the game animates at run time (`0x07C1`, green, at capture).
+
 ### Preserved WIMP raw images
 
 Midway WIMP raw 8-bit fighter images use the header's visible `xsize`, but each stored source row advances by:

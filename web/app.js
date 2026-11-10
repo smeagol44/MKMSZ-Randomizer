@@ -54,6 +54,18 @@ const downloadButton = document.querySelector("#downloadButton");
 const copyResultSeedButton = document.querySelector("#copyResultSeedButton");
 const changeSettingsButton = document.querySelector("#changeSettingsButton");
 const log = document.querySelector("#log");
+const fighterName = document.querySelector("#fighterName");
+const fighterHint = document.querySelector("#fighterHint");
+const swapFighterButton = document.querySelector("#swapFighterButton");
+const outfitLabel = document.querySelector("#outfitLabel");
+const fighterDialog = document.querySelector("#fighterDialog");
+const fighterCanvas = document.querySelector("#fighterCanvas");
+const fighterStageStatus = document.querySelector("#fighterStageStatus");
+const fighterHover = document.querySelector("#fighterHover");
+
+const FIGHTER_LABELS = { "sub-zero": "Sub-Zero", sektor: "Sektor" };
+const FIGHTER_HINT_DEFAULT =
+  "Validate the MKT donor ROM to import a fighter from Mortal Kombat Trilogy.";
 
 const SILLY_MESSAGES = [
   "Cooling down...",
@@ -150,6 +162,9 @@ let lastSillyMessage = null;
 
 const targetValidation = { token: 0, state: "idle" };
 const donorValidation = { token: 0, state: "idle" };
+// Fighter swap: the select screen is decoded from the donor in the worker once per donor.
+let selectedFighter = "sub-zero";
+const selectScreen = { token: 0, state: "idle", data: null, image: null, hover: -1 };
 
 function setLog(message, error = false) {
   log.textContent = message;
@@ -172,6 +187,7 @@ function donorIsUsable() {
 }
 
 function updatePatchButton() {
+  updateFighterUi();
   patchButton.disabled = !runtimeReady ||
     isBuilding ||
     targetValidation.state !== "valid" ||
@@ -179,6 +195,9 @@ function updatePatchButton() {
 }
 
 function updateGameSettingsUi() {
+  const imported = selectedFighter !== "sub-zero";
+  if (imported) specialsModern.checked = false;
+  specialsModern.disabled = imported;
   const jumpAvailable = attackModern.checked && specialsModern.checked;
   if (!jumpAvailable) jumpButton.checked = false;
   jumpButton.disabled = !jumpAvailable;
@@ -253,6 +272,7 @@ function updateSummaries() {
     ? "Seed: " + seedValue
     : "Seed: random on patch";
   buildSummaryText.textContent = [
+    "Fighter: " + FIGHTER_LABELS[selectedFighter],
     "Outfit: " + formatMode(outfitMode.value),
     "Powers: " + (powersAsPickups.checked ? "pickups" : "XP") +
       (shufflePowerProgression.checked ? " + shuffled" : ""),
@@ -427,11 +447,15 @@ async function validateDonorSelection() {
     donorExtrasStatus.dataset.state = "idle";
     setFileValidation(mktValidation, "idle", "Optional donor not selected.");
     patchWorker?.postMessage({ type: "clear-donor" });
+    resetSelectScreen();
+    setFighter("sub-zero");
     updatePatchButton();
     return;
   }
 
   donorValidation.state = "validating";
+  resetSelectScreen();
+  setFighter("sub-zero");
   mktFileName.textContent = file.name;
   mktDropZone.dataset.state = "validating";
   donorExtrasStatus.textContent = "Checking donor extras…";
@@ -505,7 +529,156 @@ function handleValidationResult(message) {
       );
     }
   }
+  updateFighterUi();
   updatePatchButton();
+}
+
+function setFighter(fighter) {
+  selectedFighter = FIGHTER_LABELS[fighter] ? fighter : "sub-zero";
+  const imported = selectedFighter !== "sub-zero";
+  fighterName.textContent = FIGHTER_LABELS[selectedFighter] +
+    (imported ? " (imported from MKT)" : "");
+  outfitLabel.textContent = FIGHTER_LABELS[selectedFighter] + " outfit";
+  updateFighterUi();
+  updateGameSettingsUi();
+}
+
+function updateFighterUi() {
+  const donorValid = donorValidation.state === "valid";
+  swapFighterButton.disabled = !donorValid || !runtimeReady || isBuilding;
+  if (!donorValid) {
+    fighterHint.textContent = FIGHTER_HINT_DEFAULT;
+  } else if (selectedFighter !== "sub-zero") {
+    fighterHint.textContent =
+      FIGHTER_LABELS[selectedFighter] + " needs SPECIALS: CLASSIC; Specials Modern is locked off.";
+  } else {
+    fighterHint.textContent = "Pick a fighter from Mortal Kombat Trilogy's select screen.";
+  }
+}
+
+function resetSelectScreen() {
+  selectScreen.token += 1;
+  selectScreen.state = "idle";
+  selectScreen.data = null;
+  selectScreen.image = null;
+  selectScreen.hover = -1;
+}
+
+function selectScreenCellAt(x, y) {
+  const data = selectScreen.data;
+  if (!data) return -1;
+  const [w, h] = data.cell;
+  return data.cells.findIndex((cell) =>
+    x >= cell.x && x < cell.x + w && y >= cell.y && y < cell.y + h);
+}
+
+function describeCell(index) {
+  const cell = selectScreen.data?.cells[index];
+  if (!cell) return "\u00a0";
+  if (cell.hidden) return "? \u2014 hidden fighter";
+  if (cell.fighter) {
+    return cell.name + (cell.fighter === selectedFighter ? " \u2014 selected" : " \u2014 click to select");
+  }
+  return cell.name + " \u2014 not importable yet";
+}
+
+function drawSelectScreen() {
+  const ctx = fighterCanvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, fighterCanvas.width, fighterCanvas.height);
+  if (!selectScreen.image) return;
+  ctx.drawImage(selectScreen.image, 0, 0);
+  const cell = selectScreen.data.cells[selectScreen.hover];
+  fighterHover.textContent = describeCell(selectScreen.hover);
+  fighterCanvas.style.cursor = cell?.fighter ? "pointer" : "default";
+  if (!cell) return;
+  // MKT's selection box: a 2-pixel frame the size of a portrait cell.
+  const [w, h] = selectScreen.data.cell;
+  const t = selectScreen.data.box_thickness;
+  const [r, g, b] = selectScreen.data.box_color;
+  ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+  ctx.fillRect(cell.x, cell.y, w, t);
+  ctx.fillRect(cell.x, cell.y + h - t, w, t);
+  ctx.fillRect(cell.x, cell.y, t, h);
+  ctx.fillRect(cell.x + w - t, cell.y, t, h);
+}
+
+function handleSelectScreen(message) {
+  if (message.token !== selectScreen.token) return;
+  if (!message.ok) {
+    selectScreen.state = "error";
+    fighterStageStatus.hidden = false;
+    fighterStageStatus.textContent =
+      "Could not read the select screen: " + (message.error || "unknown error");
+    return;
+  }
+  const data = JSON.parse(message.meta);
+  const pixels = new Uint8ClampedArray(message.rgba);
+  const offscreen = document.createElement("canvas");
+  offscreen.width = data.width;
+  offscreen.height = data.height;
+  offscreen.getContext("2d").putImageData(new ImageData(pixels, data.width, data.height), 0, 0);
+  selectScreen.state = "ready";
+  selectScreen.data = data;
+  selectScreen.image = offscreen;
+  const current = data.cells.findIndex((cell) => cell.fighter === selectedFighter);
+  selectScreen.hover = current >= 0 ? current :
+    data.cells.findIndex((cell) => cell.fighter);
+  fighterStageStatus.hidden = true;
+  drawSelectScreen();
+}
+
+function openFighterDialog() {
+  if (swapFighterButton.disabled) return;
+  if (selectScreen.state === "idle" || selectScreen.state === "error") {
+    selectScreen.state = "loading";
+    fighterStageStatus.hidden = false;
+    fighterStageStatus.textContent = "Loading the select screen…";
+    patchWorker.postMessage({ type: "select-screen", token: selectScreen.token });
+  }
+  drawSelectScreen();
+  fighterDialog.showModal();
+  fighterCanvas.focus();
+}
+
+function canvasPoint(event) {
+  const rect = fighterCanvas.getBoundingClientRect();
+  return [
+    (event.clientX - rect.left) * fighterCanvas.width / rect.width,
+    (event.clientY - rect.top) * fighterCanvas.height / rect.height
+  ];
+}
+
+function chooseCell(index) {
+  const cell = selectScreen.data?.cells[index];
+  if (!cell?.fighter) return;
+  fighterDialog.close("chosen");
+  setFighter(cell.fighter);
+}
+
+function moveSelection(dx, dy) {
+  const data = selectScreen.data;
+  if (!data) return;
+  const from = data.cells[selectScreen.hover] ?? data.cells[0];
+  let best = -1;
+  let bestScore = Infinity;
+  data.cells.forEach((cell, index) => {
+    const ddx = cell.column - from.column;
+    const ddy = cell.row - from.row;
+    if ((dx && Math.sign(ddx) !== dx) || (dy && Math.sign(ddy) !== dy)) return;
+    const along = dx ? Math.abs(ddx) : Math.abs(ddy);
+    const across = dx ? Math.abs(ddy) : Math.abs(ddx);
+    const score = across * 10 + along;
+    if (score < bestScore) {
+      bestScore = score;
+      best = index;
+    }
+  });
+  if (best >= 0) {
+    selectScreen.hover = best;
+    drawSelectScreen();
+  }
 }
 
 function handleBuildComplete(message) {
@@ -565,6 +738,7 @@ function handleWorkerMessage(event) {
     runtimeReady = true;
     runtimeStatus.dataset.state = "ready";
     runtimeStatus.textContent = "Patcher ready";
+    updateFighterUi();
     updatePatchButton();
     return;
   }
@@ -589,6 +763,11 @@ function handleWorkerMessage(event) {
 
   if (message.type === "build-complete") {
     handleBuildComplete(message);
+    return;
+  }
+
+  if (message.type === "select-screen") {
+    handleSelectScreen(message);
     return;
   }
 
@@ -625,6 +804,10 @@ async function patchRom() {
   }
   if (donorFile && donorValidation.state !== "valid") {
     setLog("The selected MKT donor must validate before patching.", true);
+    return;
+  }
+  if (selectedFighter !== "sub-zero" && !donorFile) {
+    setLog("An imported fighter needs the validated MKT donor ROM.", true);
     return;
   }
 
@@ -704,7 +887,8 @@ async function patchRom() {
       continues: continuesValue,
       persistHp: persistHp.checked,
       debugAllKeys: debugAllKeys.checked,
-      disableAudioFix: disableAudioFix.checked
+      disableAudioFix: disableAudioFix.checked,
+      fighter: selectedFighter
     }
   });
 }
@@ -762,10 +946,37 @@ editionName.addEventListener("input", () => {
   if (editionName.value !== normalized) editionName.value = normalized;
 });
 patchButton.addEventListener("click", patchRom);
+swapFighterButton.addEventListener("click", openFighterDialog);
+fighterDialog.addEventListener("close", () => {
+  if (fighterDialog.returnValue === "sub-zero") setFighter("sub-zero");
+});
+fighterCanvas.addEventListener("mousemove", (event) => {
+  const [x, y] = canvasPoint(event);
+  const index = selectScreenCellAt(x, y);
+  if (index >= 0 && index !== selectScreen.hover) {
+    selectScreen.hover = index;
+    drawSelectScreen();
+  }
+});
+fighterCanvas.addEventListener("click", (event) => {
+  const [x, y] = canvasPoint(event);
+  chooseCell(selectScreenCellAt(x, y));
+});
+fighterCanvas.addEventListener("keydown", (event) => {
+  const moves = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  if (moves[event.key]) {
+    event.preventDefault();
+    moveSelection(...moves[event.key]);
+  } else if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    chooseCell(selectScreen.hover);
+  }
+});
 downloadButton.addEventListener("click", downloadOutput);
 
 setFileValidation(romValidation, "idle", "No target ROM selected.");
 setFileValidation(mktValidation, "idle", "Optional donor not selected.");
+setFighter("sub-zero");
 updateModeUi();
 updateGameSettingsUi();
 updateRequiredPowersUi();

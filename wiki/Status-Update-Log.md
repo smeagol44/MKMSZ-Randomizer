@@ -4,6 +4,17 @@
 
 ## From Project status
 
+### PS-30 (2026-11-10)
+
+**2026-11-10 The "Fighter" product option: Implementation/CI-confirmed; the first full-seed Sektor build is Pending user test.**
+
+- **Option.** `RandomizerConfig.fighter` (`sub-zero` / `sektor`), CLI `--fighter sektor` (requires `--mkt-rom`), and the web "Swap character" window. Imported fighters require SPECIALS: CLASSIC at build time.
+- **Module.** `patches/fighter_swap.py` is the production form of the composition v13 builder; it runs last and claims the output tail and the file-`0x1A` pool tail only for an imported fighter ([compatibility layer](MKT-to-MKMSZ-Compatibility-Layer#5-product-option-and-gates)).
+- **Evidence.** The CLI reproduces composition v13 byte for byte; the browser build matches the Python build byte for byte.
+- **Web window.** MKT's Character Select screen decoded from the user's donor (codecs `0x12` DEFLATE and `0x14` PackBits, Static-confirmed against a user save state), portraits in grayscale except Sektor, MKT's selection box following the mouse ([web patcher](Web-Patcher-and-Product#fighter-swap-swap-character-window)).
+- **Open.** The in-game GAME SETTINGS menu can still switch SPECIALS to MODERN on a Sektor ROM (Pending, user decision).
+- **Next.** User test of the full-seed Sektor build (web defaults, seed `SEKTOR-WEB-1`, SHA-256 `14f166a079ccbd5ead5d64935ec76e6796e1d718b33561439887f6f01dea6795`).
+
 ### PS-29 (2026-11-10)
 
 **2026-11-10 Sektor R4 presentation, the pickup new-power popup, and generic common animations (composition v10–v13): Runtime-confirmed bounded.**

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .config import RandomizerConfig
+from .donors import validate_mkt_n64_rev2
 from .errors import PatchError
 from .global_generation import (
     GlobalRunPlan,
@@ -48,6 +49,7 @@ from .patches import (
 )
 from .patches.base import PatchContext, PatchPipeline, PatchResult
 from .patches.controls_production import ControlsProductionPatch
+from .patches.fighter_swap import FighterSwapPatch
 from .patches.inventory_boxes import (
     COMBOS_ASSIST_STATE_MASK,
     JUMP_BUTTON_STATE_MASK,
@@ -144,6 +146,7 @@ def build_pipeline(
     temple_intro_audio_assets: TempleIntroAudioAssets | None = None,
     toasty_probability_per_thousand: int = 80,
     materialization_plan: GlobalMaterializationPlan | None = None,
+    fighter_donor: bytes | None = None,
 ) -> PatchPipeline:
     settings_state = 0
     if config.game_settings.turn_lock:
@@ -284,6 +287,14 @@ def build_pipeline(
         patches.append(InventoryLegendPatch())
     if config.enemy_randomization:
         patches.append(EnemyRandomizationPatch())
+    if config.fighter != "sub-zero":
+        # The imported fighter composes last: its guards require every word it
+        # transplants, its output tail and the file-0x1A pool tail to be free of
+        # all upstream owners (Runtime-confirmed composition proof v13).
+        if fighter_donor is None:
+            raise PatchError(f"fighter {config.fighter} requires the MKT donor ROM")
+        validate_mkt_n64_rev2(fighter_donor)
+        patches.append(FighterSwapPatch(config.fighter, fighter_donor, config.outfit))
     return PatchPipeline(patches)
 
 
@@ -295,6 +306,7 @@ def patch_rom(
     temple_intro_audio_assets: TempleIntroAudioAssets | None = None,
     toasty_probability_per_thousand: int = 80,
     materialization_plan: GlobalMaterializationPlan | None = None,
+    fighter_donor: bytes | None = None,
 ) -> BuildResult:
     """Patch an already-validated ROM image without re-hashing its source."""
     required_count, required_xp = resolve_required_powers(
@@ -324,6 +336,7 @@ def patch_rom(
         temple_intro_audio_assets=temple_intro_audio_assets,
         toasty_probability_per_thousand=toasty_probability_per_thousand,
         materialization_plan=effective_plan,
+        fighter_donor=fighter_donor,
     ).apply(rom, PatchContext(seed=config.seed))
     crc1, crc2 = rom.update_header_crc()
     return BuildResult(
@@ -352,6 +365,7 @@ def patch_bytes(
     temple_intro_audio_assets: TempleIntroAudioAssets | None = None,
     toasty_probability_per_thousand: int = 80,
     materialization_plan: GlobalMaterializationPlan | None = None,
+    fighter_donor: bytes | None = None,
 ) -> BuildResult:
     rom = RomImage.from_bytes(source, require_clean=True)
     return patch_rom(
@@ -361,6 +375,7 @@ def patch_bytes(
         temple_intro_audio_assets=temple_intro_audio_assets,
         toasty_probability_per_thousand=toasty_probability_per_thousand,
         materialization_plan=materialization_plan,
+        fighter_donor=fighter_donor,
     )
 
 
@@ -373,6 +388,7 @@ def patch_file(
     temple_intro_audio_assets: TempleIntroAudioAssets | None = None,
     toasty_probability_per_thousand: int = 80,
     materialization_plan: GlobalMaterializationPlan | None = None,
+    fighter_donor: bytes | None = None,
 ) -> BuildResult:
     if source.resolve() == output.resolve():
         raise ValueError("output must be a separate file; the clean ROM is never modified in place")
@@ -385,6 +401,7 @@ def patch_file(
         temple_intro_audio_assets=temple_intro_audio_assets,
         toasty_probability_per_thousand=toasty_probability_per_thousand,
         materialization_plan=materialization_plan,
+        fighter_donor=fighter_donor,
     )
     output.write_bytes(result.data)
     if output.read_bytes() != result.data:

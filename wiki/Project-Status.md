@@ -14,6 +14,7 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 ## Recent updates
 
+- 2026-11-10 The "Fighter" product option (`--fighter sektor`, web "Swap character" window with MKT's select screen decoded from the donor) is Implementation/CI-confirmed: it reproduces composition v13 byte for byte, and browser and Python builds match; next, the user's full-seed Sektor test. ([PS-30](Status-Update-Log#ps-30-2026-11-10))
 - 2026-11-10 Sektor R4 presentation (help text, outfit, donor-generated Power Ups icons), the pickup-mode new-power popup (production), and generic importer recipes for slide, death and falling to death, Runtime-confirmed bounded in composition v10–v13; next, the Fighter product option. ([PS-29](Status-Update-Log#ps-29-2026-11-10))
 - 2026-11-10 Sektor R4 gameplay (tiers on Sub-Zero's Power Up slots, removals, Ice costs) Runtime-confirmed bounded in composition v05/v08; a rope-companion texture overflow that corrupted Toasty and a rope-hit hang were traced from user save states and fixed (v08); next, R4 presentation. ([PS-28](Status-Update-Log#ps-28-2026-11-10))
 - 2026-11-10 Sektor integration step 5, stage 1: production-composition proofs v01–v04 put Sektor in a CLI-built randomizer ROM; v02/v04 Runtime-confirmed bounded after fixing a KSEG1 return-address hang (Toasty hook) and a teleport fall-through; next, R4 gating and the product option (enemy randomization deferred: experimental, treated as broken until re-implemented). ([PS-27](Status-Update-Log#ps-27-2026-11-10))

@@ -37,6 +37,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--seed",
         help="seed string; omit to generate a random 64-bit hexadecimal seed",
     )
+    parser.add_argument(
+        "--fighter",
+        choices=("sub-zero", "sektor"),
+        default="sub-zero",
+        help="player fighter; sektor is imported from the MKT donor (requires --mkt-rom)",
+    )
     parser.add_argument("--outfit", choices=modes, default="vanilla")
     parser.add_argument("--hue", type=float, help="hue in degrees for --outfit hue")
     parser.add_argument("--rgb", type=_parse_rgb, help="RRGGBB color for --outfit rgb")
@@ -130,6 +136,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--custom-required-powers requires --required-powers custom")
     if args.custom_required_powers is not None and not 0 <= args.custom_required_powers <= 9:
         parser.error("--custom-required-powers must be from 0 to 9")
+    if args.fighter != "sub-zero" and args.mkt_rom is None:
+        parser.error(f"--fighter {args.fighter} requires --mkt-rom")
     if not 1 <= args.lives <= 10:
         parser.error("--lives must be from 1 to 10")
     if not 0 <= args.continues <= 5:
@@ -152,6 +160,7 @@ def main(argv: list[str] | None = None) -> int:
         persist_hp=not args.no_persist_hp,
         debug_all_keys=args.debug_all_keys,
         audio_fifo_fix=not args.no_audio_fifo_fix,
+        fighter=args.fighter,
     )
 
     try:
@@ -168,6 +177,7 @@ def main(argv: list[str] | None = None) -> int:
             config,
             toasty_assets=toasty_assets,
             temple_intro_audio_assets=temple_intro_audio_assets,
+            fighter_donor=donor_bytes if args.fighter != "sub-zero" else None,
         )
     except (MKMSZRError, OSError, ValueError) as exc:
         parser.exit(2, f"error: {exc}\n")

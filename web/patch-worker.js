@@ -22,6 +22,16 @@ const VALIDATE_DONOR_PY = [
   "web_validation_result = {'sha256': MKT_N64_REV2_SHA256}"
 ].join("\n");
 
+const SELECT_SCREEN_PY = [
+  "import json",
+  "from pathlib import Path",
+  "from mkmszr.donors.mkt_select_screen import render",
+  "_css = render(_web_mkt_bytes)",
+  "Path('/tmp/select-screen.rgba').write_bytes(_css.pop('rgba'))",
+  "web_select_screen = json.dumps(_css)",
+  "del _css"
+].join("\n");
+
 const PATCH_PY = [
   "from pathlib import Path",
   "from mkmszr.config import GameSettingsConfig, OutfitConfig, RandomizerConfig",
@@ -49,6 +59,7 @@ const PATCH_PY = [
   "    persist_hp=bool(web_persist_hp),",
   "    debug_all_keys=bool(web_debug_all_keys),",
   "    audio_fifo_fix=not bool(web_disable_audio_fix),",
+  "    fighter=str(web_fighter),",
   "    game_settings=GameSettingsConfig(",
   "        turn_lock=bool(web_turn_lock),",
   "        attack_modern=bool(web_attack_modern),",
@@ -67,6 +78,7 @@ const PATCH_PY = [
   "    _config,",
   "    toasty_assets=_toasty_assets,",
   "    temple_intro_audio_assets=_temple_intro_audio_assets,",
+  "    fighter_donor=_mkt_bytes if _config.fighter != 'sub-zero' else None,",
   ")",
   "Path('/tmp/output.z64').write_bytes(_result.data)",
   "if Path('/tmp/output.z64').read_bytes() != _result.data:",
@@ -79,6 +91,7 @@ const PATCH_PY = [
   "    'required_powers': _result.required_powers_count,",
   "    'required_xp': _result.required_powers_xp,",
   "    'enemy_randomization': bool(web_enemy_randomization),",
+  "    'fighter': _config.fighter,",
   "}"
 ].join("\n");
 
@@ -236,6 +249,7 @@ function setPatchGlobals(config, hasDonor) {
   pyodide.globals.set("web_persist_hp", config.persistHp);
   pyodide.globals.set("web_debug_all_keys", config.debugAllKeys);
   pyodide.globals.set("web_disable_audio_fix", config.disableAudioFix);
+  pyodide.globals.set("web_fighter", config.fighter ?? "sub-zero");
 }
 
 async function patchRom(message) {
@@ -245,6 +259,9 @@ async function patchRom(message) {
   }
   if (message.hasDonor && !donorReady) {
     throw new Error("The selected MKT donor is not validated.");
+  }
+  if ((message.config.fighter ?? "sub-zero") !== "sub-zero" && !message.hasDonor) {
+    throw new Error("An imported fighter needs the validated MKT donor.");
   }
 
   unlinkIfPresent("/tmp/output.z64");
@@ -269,6 +286,31 @@ async function patchRom(message) {
   );
 }
 
+async function renderSelectScreen(message) {
+  await ensureRuntime();
+  try {
+    if (!donorReady) {
+      throw new Error("The MKT donor is not validated.");
+    }
+    unlinkIfPresent("/tmp/select-screen.rgba");
+    await pyodide.runPythonAsync(SELECT_SCREEN_PY);
+    const meta = pyodide.globals.get("web_select_screen");
+    const rgba = pyodide.FS.readFile("/tmp/select-screen.rgba");
+    unlinkIfPresent("/tmp/select-screen.rgba");
+    postMessage(
+      { type: "select-screen", token: message.token, ok: true, meta, rgba: rgba.buffer },
+      [rgba.buffer]
+    );
+  } catch (error) {
+    postMessage({
+      type: "select-screen",
+      token: message.token,
+      ok: false,
+      error: String(error?.message ?? error).split("\n").filter(Boolean).pop()
+    });
+  }
+}
+
 async function handleMessage(message) {
   if (message.type === "init") {
     await ensureRuntime();
@@ -276,6 +318,10 @@ async function handleMessage(message) {
   }
   if (message.type === "validate-target") {
     await validateTarget(message);
+    return;
+  }
+  if (message.type === "select-screen") {
+    await renderSelectScreen(message);
     return;
   }
   if (message.type === "validate-donor") {
