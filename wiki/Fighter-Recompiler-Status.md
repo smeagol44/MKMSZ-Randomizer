@@ -4,7 +4,34 @@
 
 ## Current milestone
 
-**Milestone 2 — Component library and MKMSZ backend v1** (with milestone 3 in parallel): next; its task list and checklist are agreed with the owner when it starts.
+**Milestone 3 — Reading aid for MKT moves** and **milestone 2 — Component library and MKMSZ backend v1**: in progress (started 2026-11-10, run in parallel).
+
+### Milestones 2 and 3 — agreed tasks (owner, 2026-11-10)
+
+Milestone 3:
+
+1. Reading aid: command record → MKT routine → annotated disassembly, with known engine calls named, constant arguments resolved and unknown calls flagged — **done** ([MKT move readings](Fighter-Recompiler-MKT-Moves); `fighter_import/reading.py`, `mipsdis.py`).
+2. Registry of the MKT engine routines that Sektor's and Reptile's specials use — **done** (`fighter_import/mkt_registry.py`).
+3. Annotated readings of all Reptile specials (acid spit, both forceballs, invisibility, slide, elbow dash) — **done** for the move bodies; Pending: the readers of the invisibility flag and of the slide stamp.
+
+Milestone 2:
+
+4. Component catalogue page: meaning, parameters, neutral units, ending and MKMSZ lowering.
+5. RE check of the reuse ideas, both host-side: MKMSZ Quan Chi's forceball and the Eye item's effect for invisibility. Quan Chi's forceball is a **code/gameplay reference** for projectile creation, hit triggers, the launch effect and sound; the assets still come from MKT (owner, 2026-11-10).
+6. Move-program format and validator; Reptile's and Sektor's moves written as data; gaps listed.
+7. Owner review of the catalogue.
+8. Backend v1, starting with the generic projectile (no Ice Blast patching).
+
+### Milestones 2 and 3 — acceptance checklist
+
+- [x] Every special of Sektor and Reptile is read, with unknown calls flagged and nothing guessed (`tests/test_fighter_reading.py`: no unknown calls, ROM-backed).
+- [x] The registry covers every routine those moves call.
+- [ ] Provenance convention agreed (proposal on [MKT move readings](Fighter-Recompiler-MKT-Moves#provenance-convention-proposal-owner-agreement-pending)).
+- [ ] Component catalogue reviewed by the owner.
+- [ ] Every Reptile special and every Sektor move expressible as a move program; gaps listed as new components.
+- [ ] Each implemented component has a lowering test.
+- [ ] Generic projectile built without Ice-root patches.
+- [ ] Sektor's pinned outputs unchanged; full suite passes; this page updated in the same PR.
 
 **Milestone 1 — Fighter description and generic body builder: done (2026-11-10).**
 
@@ -41,8 +68,8 @@ PRs: 1 inventory and description format; 2 generic builder; 3 codec 23, roster d
 | Milestone | Status | Agreed tasks / checklist | Evidence / PR |
 |---|---|---|---|
 | 1 Fighter description and generic body builder | **Done** (2026-11-10) | See above | #197 inventory and format; #198 generic builder; PR 3 roster decode, computed layout, auto colour, Reptile body |
-| 2 Component library and MKMSZ backend v1 | Not started | — | — |
-| 3 Reading aid for MKT moves | Not started | — | — |
+| 2 Component library and MKMSZ backend v1 | In progress | See above | — |
+| 3 Reading aid for MKT moves | In progress (tasks 1–3 done) | See above | PR: reading aid, registry, readings |
 | 4 Reptile | Not started | — | — |
 | 5 Generic product integration | Not started | — | — |
 | 6 Review and next fighters | Not started | — | — |
@@ -65,3 +92,4 @@ Fighter- or move-specific code outside fighter descriptions and components (plan
   - slide is Sub-Zero's;
   - the elbow dash is the only fully new move.
 - 2026-11-10: automatic recognition of MKT machine code is deferred to milestone 6; Sektor's move modules are frozen legacy.
+- 2026-11-10: MKMSZ Quan Chi's forceball is a code/gameplay reference (projectile creation, hit triggers, launch effect, sound) so the host side is not reinvented; Reptile's forceball art and sounds still come from MKT.

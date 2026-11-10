@@ -14,6 +14,7 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 ## Recent updates
 
+- 2026-11-10 Fighter recompiler milestone 3, tasks 1–3 (Static-confirmed readings; Implementation/CI-confirmed tool): reading aid and MKT routine registry; every Reptile and Sektor special read with no unknown calls ([MKT move readings](Fighter-Recompiler-MKT-Moves)). Next: milestone 2. ([status](Fighter-Recompiler-Status))
 - 2026-11-10 Fighter recompiler milestone 1 done (Implementation/CI-confirmed): fighter descriptions, a generic body builder that reproduces Sektor byte for byte, roster-wide body-frame decoding, computed layout and automatic colour reduction; Reptile's body builds statically and fits. Next: milestones 2–3. ([status](Fighter-Recompiler-Status))
 - 2026-11-10 MKT → MKMSZ fighter work now follows the fixed [Fighter recompiler plan](Fighter-Recompiler-Plan) (MKT reading → fighter description of engine-neutral micro-components → MKMSZ backend; Sektor as regression gate, Reptile as the next fighter); progress on [Fighter recompiler status](Fighter-Recompiler-Status). Next: milestone 1 (fighter description and generic body builder).
 - 2026-11-10 Fighter option follow-ups: generic pickup and grabbed-by-an-enemy poses for imported fighters (Sektor build v61), the title follows the chosen fighter, and Enemy Randomization defaults off in the web app; runtime Pending. ([PS-31](Status-Update-Log#ps-31-2026-11-10))

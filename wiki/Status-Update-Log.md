@@ -4,6 +4,14 @@
 
 ## From Project status
 
+### PS-32 (2026-11-10)
+
+**2026-11-10 Fighter recompiler milestone 3, tasks 1–3: reading aid, MKT routine registry and readings of every Reptile and Sektor special. Static-confirmed (donor reading); Implementation/CI-confirmed (tool and tests).**
+
+- **Reading aid:** `fighter_import/reading.py` (dataflow constants, dispatcher resolution, child processes and callbacks followed) on a dependency-free MIPS III decoder.
+- **Readings:** acid spit, both forceballs (one routine, two speeds, 96-tick cooldowns), invisibility (a flag set by a short body), the shared ninja slide and the elbow dash; no unknown calls remain ([MKT move readings](Fighter-Recompiler-MKT-Moves)).
+- **Next:** milestone 2 (component catalogue, host checks of Quan Chi's forceball and the Eye item, move-program format, generic projectile).
+
 ### PS-31 (2026-11-10)
 
 **2026-11-10 Fighter option follow-ups: pickup and grabbed poses (importer), title follows the fighter, Enemy Randomization off by default. Implementation/CI-confirmed; runtime Pending.**
