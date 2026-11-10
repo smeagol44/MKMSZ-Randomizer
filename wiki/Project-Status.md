@@ -14,6 +14,8 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 ## Recent updates
 
+- 2026-11-10 Sektor R4 presentation (help text, outfit, donor-generated Power Ups icons), the pickup-mode new-power popup (production), and generic importer recipes for slide, death and falling to death, Runtime-confirmed bounded in composition v10–v13; next, the Fighter product option. ([PS-29](Status-Update-Log#ps-29-2026-11-10))
+- 2026-11-10 Sektor R4 gameplay (tiers on Sub-Zero's Power Up slots, removals, Ice costs) Runtime-confirmed bounded in composition v05/v08; a rope-companion texture overflow that corrupted Toasty and a rope-hit hang were traced from user save states and fixed (v08); next, R4 presentation. ([PS-28](Status-Update-Log#ps-28-2026-11-10))
 - 2026-11-10 Sektor integration step 5, stage 1: production-composition proofs v01–v04 put Sektor in a CLI-built randomizer ROM; v02/v04 Runtime-confirmed bounded after fixing a KSEG1 return-address hang (Toasty hook) and a teleport fall-through; next, R4 gating and the product option (enemy randomization deferred: experimental, treated as broken until re-implemented). ([PS-27](Status-Update-Log#ps-27-2026-11-10))
 - 2026-11-09 Sektor integration step 3: fighter file and donor samples Runtime-confirmed from above 16 MiB in a 32 MiB image (proof v49); next, R4 power mapping (user decisions). ([PS-26](Status-Update-Log#ps-26-2026-11-09))
 - 2026-11-09 Rainbow outfit removed from production (user decision, integration plan step 2): the mode is rejected and no longer offered in the CLI or web app; other builds are byte-identical. ([PS-25](Status-Update-Log#ps-25-2026-11-09))

@@ -1,5 +1,14 @@
 # XP and progression
 
+## Power Upgrade pickups show the native new-power popup — 2026-11-10
+
+**Runtime-confirmed bounded** (user, Sektor composition v12: "the popup icon is working perfectly"). This is a production change for every Powers-as-pickups build.
+
+- **Stock trigger.** The stock central XP award `0x8002E104` re-evaluates the tier after adding XP. When the tier rises, it starts process `0x80062FF0` through `0x8002830C` (class `0x100`) and stores the new tier at the new controller's `+0x680`. That popup draws the tier's Power Ups icon (`icon_table[tier]`, palette `0x800B1B28`) at (`0x90`, `0x1E`) for `0x50` ticks.
+- **What pickup mode lacked.** Pickup mode bypasses that award. Its progression callback now starts the same process with the tier the evaluator returns, null-checked when no process is free, before the pickup sound.
+- **Space.** The XP payload keeps its `0xE0` bytes, clear of the optional runtime tail. To make room, delay slots carry the call arguments, the stack restore and the restore helper's XP store, and fixed addresses use LUI plus offset. Layout: callback `+0x00..+0x98`, threshold table `+0x98`, stage-init restore `+0xAC..+0xDC`.
+- **Behaviour.** Otherwise unchanged; emulator tests cover the callback, the nine-reward cap, a refused process, and the restore storing XP before the four-box reload.
+
 ## Stage XP limits removed in both modes — 2026-10-27
 
 **Runtime-confirmed bounded; promotion approved (2026-10-27).** The maintainer reported proof v01 good and requested PR #174 merge; evidence is limited to that manual proof, not an exhaustive matrix. Stage-specific XP limits are always disabled, including when **Powers as pickups** is OFF. Both progression patches guard the eight main-stage halfwords at ROM `0xA6FFC + stage_id*2` and set them to the common native maximum `20000`. Entries 6/7 already contain `20000`, so all ten native stage entries have the same ceiling. This preserves the existing pickup-mode behavior and game's overall XP range; OFF still uses stock combat XP stores, combo EXPERIENCE UI, ordinary Herbs and earned-XP persistence. The independent Fortress requirement and power thresholds are unchanged. Earlier dated proof descriptions retaining stock stage caps describe their historical artifacts, not current behavior.
@@ -120,7 +129,7 @@ Progression uses state `+0x40` for acquired reward count and `+0x44` for persist
 
 Nine rewards are selected only after the ordinary 84-location layout is finalized, using the independent domain `MKMSZR:PROGRESSION:HERBS:V1\0`. Only generated Herbs locations are eligible. Their presentation pointer is replaced with globally resident Ice Blue palette descriptor `0x800B1E68`. The late presentation wrapper calls the existing progression callback and then runs the Runtime-confirmed three-pulse white flash; the stage-local Herbs model/resource selector is preserved. The ordinary shuffle is not perturbed and no foreign resource import or new allocation is required.
 
-The acquisition callback advances to the next threshold, stores count/XP, writes current XP, and calls native tier evaluator `0x80074FBC` at the safe pickup-acquisition point. It does not add an inventory item.
+The acquisition callback advances to the next threshold, stores count/XP, writes current XP, and calls native tier evaluator `0x80074FBC` at the safe pickup-acquisition point. From 2026-11-10 it also starts the native new-power popup with the returned tier (see above). It does not add an inventory item.
 
 At stage initialization, production restores the persistent XP value and then performs the existing four-box reconstruction. It deliberately **does not** call the native tier evaluator there.
 

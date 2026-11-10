@@ -2480,6 +2480,106 @@ All of these are the Reverse Elbow v6 proof infrastructure plus the takeover sto
 | Sound (v10) | Donor ADPCM sample at ROM `0xF20000..0xF20BE1`. In the sound bank, MKMSZ event 335's track (`0x97BCB8`, patch kept 492), subpatch 335 (`0x94A194`), waveform 325 (`0x94DFB0`, offset → `0xF20000`) and predictor 325 (`0x9653B8`) hold the donor records. |
 | Body | Repacked file `0x87` at ROM `0xF40000`, end pointer `0xA5668`. Teleport scripts SINK/DROP/LANDA/LANDB occupy the file tail up to `+0x45BE0`. |
 
+### R4 gameplay and the rope companion (Sektor builds v54–v58, composition proofs v05–v09)
+
+Integration plan step 4 (R4) gameplay, with the [user decisions](MKT-to-MKMSZ-Compatibility-Layer#4-r4-power-mapping-needs-user-decisions). **Runtime-confirmed bounded:** the user tested v05 and v08 (v08: "Everything seems to be working perfectly. I didn't find any issues."). The routes were not itemised, and the shuffled-order build had no separate report. v09 changes only the Homing Missile cost (user decision after v08) and has no runtime report yet.
+
+**Tiers** (`fighter_import.actions.sektor_tiers`). Each Sektor move takes one Sub-Zero Power Up slot by reading that slot's stock gate instruction (`slti v0,v0,N` after the evaluator `0x80074FBC`; the power-order shuffle rewrites only `N`):
+- **Straight Missile:** `tier_straight` refuses an airborne start, then tail-calls the stock LP condition `0x8004A304`. Its ground path is the Ice Blast slot with cost `0x20`; its airborne path is Air Ice Blast, now unreachable.
+- **Double and Homing Missiles:** `tier_double` / `tier_homing` replicate that condition's ground checks, with their own cost and the threshold read at run time from the Ice Shatter gate `0x800509A0` / Air Ice Blast gate `0x8004A3BC`. The Homing Missile keeps its target picker after the condition.
+- **Teleport:** keeps the stock down-Ice LK condition `0x8004A4A4` (Directional Ice slot). Its payload action never touches the meter, so it was always free; the earlier plan note that the proofs charged `0x60` was wrong.
+- **Stock edits** (`stock_edits`, recomputed by the composition builder from the randomizer ROM after the shuffle):
+  - the HK table's only record (Directional Ice up, ROM `0xB1B98`) gets mask 0, which ends the table;
+  - both Ice Shatter paths skip after their gates (ROM `0x515A4` / `0x535C8`: `bnez v0,+6` → `b +6`), so the gates stay readable;
+  - Super Slide's gate (ROM `0x3D728`) takes the Freeze on Contact slot's threshold (ROM `0x5B5DC`).
+- **Costs:** the three missiles share the lifted Ice root, which takes `0x20` at launch. The Double and Homing stubs take the rest: `0x10` for the double (`0x30` in all) and, from v58, `0x20` for the homing (`0x40` in all; v54–v57 used `0x60`).
+
+**Rope companion.** The user reported Toasty drawn with a broken head on Earth, after the rope and the door checkpoint (v05; RMG save state):
+- **What the state showed:** Toasty's slice 1 (slot `0x201`, `0x803A70C0`) held `0x8B8` bytes of a 55×113 Sektor frame.
+- **Mechanism:**
+  - The rope states P28/P29 draw with token 16 (`0x80030B6C`): a companion actor (controller `+0x650`) shows the first operand through the slot at controller `+0x6E8`. The player constructor allocates that slot small (`0x8001C2B4(0x20,0x40)` at `0x8002ED54`).
+  - The takeover had mapped both operands of all 11 pairs to one 55×113 fallback frame. Each upload therefore overflowed the slot into the storage allocated just before it (top-down), which in production is Toasty's.
+  - A death reload never re-creates the companion, so the bug went away after dying.
+- **v06/v07 (Rejected / failed):** the companion was removed (`frame, 13, 13`, then `13, 13, frame` to keep the stock cursor positions). Both hung when a spike trap hit Sektor on the rope.
+- **Hang cause:** a multi-process frame simulation of the user's second save state (v07) faults in Earth's overlay routine `0x802F05F4`. It reads controller `+0x650` and sets `companion+0x64 |= 0x20` without a null check, i.e. a store to address `0x64`. An earlier search for companion readers covered only the main code segment.
+- **v57/v08 fix:** the companion is kept, and every pair points its companion operand at an 8×8 raw type-0 image of index 0 (`fighter_import.attachment.companion_frame`), placed after the relocation table in file `0x87`. With the companion created in the simulation, the hit sequence (`0x802F0640/58/70`) completes and the rope loop resumes over 80 frames. The user then confirmed v08.
+
+| ROM (seed `SEKTOR-PROD-1`, `--debug-all-keys`) | SHA-256 | CRC1 / CRC2 |
+|---|---|---|
+| `MKMSZR_sektor_production-composition_proof_v05.z64` | `903cfe1d758eaeb549ccde6668a6a43c5d962c5e16e483e92a51cd17dc79c7b1` | `41AC6D30 / 3F5A25C8` |
+| `MKMSZR_sektor-shuffled_production-composition_proof_v05.z64` (seed `SEKTOR-R4-SHUFFLE`, shuffled) | `a046f8ce8db4b425ff1a33ab7827fd99eb92ef527b6334dba778db7e2f12cffa` | `3B2C4D8C / F22494CD` |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v05.z64` | `29aeda84a8c51ae0e68a5d34af5e0acbaa8f12666f1b74c6be9422fa5042e1f3` | `41AC6D30 / 3F5A25C8` |
+| `MKMSZR_sektor_production-composition_proof_v06.z64` (rejected) | `92f184975b4d536fb05da97e5cfeda393c15f81224bb24dad62b64d9f125129c` | same |
+| `MKMSZR_sektor_production-composition_proof_v07.z64` (rejected) | `e162a900d7ad00e18246c67c7106c6336e5d4a048b392d1efcc093e96560d025` | same |
+| `MKMSZR_sektor_production-composition_proof_v08.z64` | `85e3c33d4d6784f2c07f11c1c742524de4246dd159f258d3015e84b7cc90d63e` | same |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v08.z64` | `17ff276b882a6545627c0074fc21de490403d5b9d01f8fd6d284736d7b7f45ef` | same |
+| `MKMSZR_sektor_production-composition_proof_v09.z64` | `dd141b887d6f1e39be8c701486897f28b14b16e07303f126d8a06eea90f1e29a` | same |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v09.z64` | `e382ddeeded5d003db00996d0597ebc848562c3d412ff925e2a7227b13be3d28` | same |
+
+The v06/v07 all-powers builds differ from their normal builds only by the two `--all-powers` words. Each builder reproduces its ROM at HEAD (v54–v57 pass `COSTS_V54` explicitly).
+
+Not established: presentation (Power Ups names, "—" labels, HUD, outfit recolour), the product option, and full-seed coverage.
+
+### R4 presentation and common animations (Sektor builds v59–v60, composition proofs v10–v13)
+
+**Runtime-confirmed bounded** by the user:
+- the help text was left as built: the user noted the move names are not visible in the randomizer, and kept them;
+- the icons and the new-power popup ("look fantastic", "working perfectly");
+- Slide and Super Slide ("look amazing");
+- death ("a bit goofy but still good (accepted)");
+- the falling-to-death loop ("Worked perfectly", v13).
+
+The animation recipes are **generic importer rules** (user design): they use only the basic MKT animation set every fighter shares. Sektor is the test case.
+
+- **Power Ups help text (v10, `fighter_import.power_help`).**
+  - The nine help records (title | command | description string lists, `[0x800A6B30,0x800A6CA0)`) and their strings (`[0x800AE5D8,0x800AE914)`) are rebuilt in place, keyed by the Sub-Zero power whose slot each move took. They therefore follow the power-order shuffle, and the help table (ROM `0xA78A0`) is remapped.
+  - `"LOW PUNCH"` at `0x800AE604` stays in place, because the button-name table `0x800AEBB8` shares it. Empty slots show `--`.
+- **Outfit (v10, `fighter_import.outfit`).** The `--outfit` option recolours Sektor's red palette entries 3, 5, 7, 9, B, D and E (file `+0x4584C`).
+  - Hue, preset, seeded and RGB modes set an absolute hue, as for Sub-Zero.
+  - `red` is his own colour, and `green` swaps red and green.
+  - Before this, the option silently changed only the stale stock file.
+- **Power Ups icons (v11, `fighter_import.power_icons`).** The format and storage are in [Native HUD and UI](Native-HUD-and-UI#power-ups-icons-and-help).
+  - **Source:** built at build time from the donor ROM (no stored art), from donor frames in their MKT palettes: Sektor `0x800BC12C`, ROCKET_P `0x800BC3AC`, crosshair `0x800BC3D0`.
+  - **Recipe:** the frames are placed on a steel radial background, box-averaged to 28×28 and clipped to the stock circle. All nine icons are then reduced together to the shared 64 colours by a fixed median cut.
+  - **Icons:**
+
+    | Icon | Composition |
+    |---|---|
+    | Straight Missile | RBCHEST2 with ROCKETD1 |
+    | Double Missile | RBCHEST2 with two ROCKETD1 |
+    | Homing Missile | Climbing rocket plus crosshair (its dither fill left out) |
+    | Teleport | 2nd emerge frame (user choice over the uppercut and 4th-frame options) |
+    | Slide | Sweep frame |
+    | Super Slide | Sweep frame with two after-images |
+    | Empty slots | Dash disc |
+    | Polar Blast | Stock icon |
+
+  - **Packing:** file `0x5D` is re-packed in its production slot with an exact round trip.
+- **New-power popup on Power Upgrade pickups (production change).** See [XP and progression](XP-and-Progression#power-upgrade-pickups-show-the-native-new-power-popup--2026-11-10).
+- **Slide / Super Slide (v12, `fighter_import.common_moves`):** host secondary 2 (shared with secondary 1; both moves play it through `0x8002FE54(1,2)`) = duck frame 1, duck-turn frame 1, duck-low-kick frame 3.
+- **Death (v12):** host primary `0x2A` = the knockdown's fall-back and landing phases, the lying frame held. Secondary 9 points into the knockdown's lying phase, so source sequences are read by phase, not by span.
+- **Falling to death (v13):** traced from an RMG save state on Water.
+  - A process-list replay showed the pit fall selecting the knockdown (primary `0x1E`), then `0x8002FE54(1,8)`.
+  - Host secondary 8 is Sub-Zero's 8-frame long-fall loop, which the takeover had left on the idle fallback.
+  - It now holds the last fall-back frame, keeping the loop's jump.
+- **Recipe rules.** The recipes rewrite only frame words; tokens, operands, callback words and phase ends stay. Each slot's script spans up to the next script any table entry points at.
+
+| ROM (seed `SEKTOR-PROD-1`, `--debug-all-keys`) | SHA-256 | CRC1 / CRC2 |
+|---|---|---|
+| `MKMSZR_sektor_production-composition_proof_v10.z64` | `d1cde35354cfab7e184aaa8d21893428768dc83fdc0609f358b1a769a6d7820c` | `F553CC4E / C253BC7E` |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v10.z64` | `dc7284f7dc053997e1ccfd2a9471a06571a75c45cf0ae0cf11254a28fa3d3f8b` | same |
+| `MKMSZR_sektor-shuffled-all-powers_production-composition_proof_v10.z64` (seed `SEKTOR-R4-SHUFFLE`) | `b92dc661f1c266bb66ed11c84d56df91857c0f3ddd5933713025a01a1557a91b` | `9EEE1402 / 745F8558` |
+| `MKMSZR_sektor-purple-all-powers_production-composition_proof_v10.z64` (`--outfit purple`) | `01649d0578c7be426803deabb90d55c42e08a14ee3db03c66a299a404630d294` | `F04BC874 / 0DC66AF5` |
+| `MKMSZR_sektor_production-composition_proof_v11.z64` | `3d714239b782d6c98c2d8c909017ec8527666b8c9c070e4c874f2989847deafa` | `27F00AFA / 0AE04CC7` |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v11.z64` | `7e7c90aea22cc5355291dc153d29a96abf116960c524d2f4520e6acd866455b1` | same |
+| `MKMSZR_sektor-shuffled-all-powers_production-composition_proof_v11.z64` | `c00e436d70b103ca9c3da501304141837e7f8cfbec5e9da78c83617feab95e55` | `5C4C1A56 / CDC39EC9` |
+| `MKMSZR_sektor_production-composition_proof_v12.z64` | `800ef7f12e227f0be3346ce11a12ff84bbd6e5bd00f899ea16ac982c7d42466b` | `27F00AFA / 0AE04CC7` |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v12.z64` | `e19d14867b126bd443672b6a082e59011511c6fb293fe6dab87cf5eceb0425a7` | same |
+| `MKMSZR_sektor_production-composition_proof_v13.z64` | `e1f83b25cf0e323bce151f92f36a866fca57c25fc5bb807d86cc76f39e580248` | same |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v13.z64` | `f2dfe388d1edb70a30ebeeb745ee6aa8b16350ffc67c9cd60fe5a34c59b64562` | same |
+
+From v12 the `--all-powers` option finds its two words by instruction content. The XP payload layout changed with the popup.
+
 ### Known limits after v08
 
 - Only the teleport sound is imported; Sektor's other sounds (voice, footsteps and so on) are still Sub-Zero's.

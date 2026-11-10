@@ -539,7 +539,13 @@ From Sektor proofs v42–v46 ([proof history](Sektor-Takeover-Proof-History#heat
 | **Second projectile from one launch.** Jumping back into the lifted Ice root at its mode-0 offset setup (`0x8004AD40`) after the flight child is created (`0x8004B0E8`), with the parent's script cursor rewound to the creation token, creates a second, independent projectile through the whole stock creation path. The offset globals `0x80111DB8`/`0x802E7E08` must be re-initialised (the staging overwrites them), which `0x8004AD40` does. | Runtime-confirmed (v46). |
 | **Projectile exit from a callback.** `0x8004CDF8(actor)` (the flight loop's own exit) may be called from the loop's per-tick callback to end the projectile; it does not return. | Implementation/CI-confirmed (v43–v46); its runtime path is the rare proximity miss. |
 
-Sektor proof special table (proof-only): LP `0xB1B0C` `B,B,F + LP` Double Missile (was Ice Clone), LP `0xB1B38` `F,F + LP` straight rocket (was `D,F + LP` Ice Blast), LK `0xB1B68` `F,F + LK` teleport (was down Ice), HP `0xB1C80` `F,D,B + HP` heat-seeking rocket (was Freeze on Contact).
+Sektor proof special table (proof-only): LP `0xB1B0C` `B,B,F + LP` Double Missile (was Ice Clone), LP `0xB1B38` `F,F + LP` straight rocket (was `D,F + LP` Ice Blast), LK `0xB1B68` `F,F + LK` teleport (was down Ice), HP `0xB1C80` `F,D,B + HP` heat-seeking rocket (was Freeze on Contact). From Sektor builder v54 (R4), the records' conditions are `tier_straight` (straight), `tier_double` and `tier_homing` (homing, followed by the target picker); the teleport keeps the stock LK condition. The HK table is empty, so Directional Ice up is gone ([R4](Sektor-Takeover-Proof-History#r4-gameplay-and-the-rope-companion-sektor-builds-v54v58-composition-proofs-v05v09)).
+
+| Finding | Evidence |
+|---|---|
+| **Read a slot's tier from its gate.** The power-order shuffle rewrites only the immediate of each `slti v0,v0,N` tier gate, so a payload condition can compare the evaluator's tier with the halfword at gate + 2 at run time. | Implementation/CI-confirmed (model sweep); Runtime-confirmed bounded in Sektor composition v05/v08. |
+| **Keep the rope companion.** Stage overlay code assumes the token-16 companion exists while the player hangs from a rope (Earth `0x802F05F4` writes through controller `+0x650` unchecked). An imported fighter must keep token 16 and give the companion a frame that fits the small slot at controller `+0x6E8`. | Runtime-confirmed: v06/v07 hang, v08 fix. |
+
 
 ## Throw and teleport additions (2026-11-09)
 

@@ -128,6 +128,36 @@ The floors a fighter stands on are polylines held in a per-stage table:
 - **Ledge branch.** For a falling fighter whose head passes a flag-`0x800` region's level, the ledge branch snaps the actor to the nearest region end (x and y), sets its floor, clears `+0x6B2`, plays sound `0x13` and installs `0x80025E48` through `0x80032CD4`. That routine requests player state 1 (controller `+0x6DC = 1`) and restarts the process at its live dispatch `0x80028F3C`. State 1 being the ledge hang is a strong inference (consistent with the observed hang), not traced.
 - **Moving platforms.** These are a separate scan (`0x800258FC`), as are attach objects (`0x80026D40`).
 
+## Permanent image package
+
+**Static-confirmed** (loader `0x80002DC8`; checked byte-for-byte against a gameplay save state for file `0x5D`). Stage and common image banks (global files such as `0x5D` common, `0x5E` title, `0x5F` and the per-stage banks; flag `1` in the file table) are LZW packages (see [ROM overlay and resource map](ROM-Overlay-and-Resource-Map)). They decode to:
+
+| Offset | Content |
+|---|---|
+| `+0x0` | record count |
+| `+0x4` | spare word |
+| `+0x8` | records, back to back |
+
+Each record is a 12-byte header and its pixels:
+
+| Header offset | Content |
+|---|---|
+| `+0x0` | flags word; bit 31 = CI4 (half stride) |
+| `+0x4` | width word; stride = low byte, `0` = 256 |
+| `+0x6` | height |
+| `+0x8` | texture ID |
+| `+0xA` | spare |
+
+The pixels follow the header (`stride × height` bytes, padded to even). The loader installs each record as a fixed texture slot with that ID (`0x8001C058` / `0x8001C1FC` → `0x8001BF70`). Clean file `0x5D` decodes to 168 records (`0x10988` bytes). The Power Ups icons are records 90–99. The production inventory HUD appends sprite `0x46C`.
+
+## Power Ups help records
+
+**Static-confirmed** (2026-11-10).
+- **Records.** A help record is a zero-terminated list of string pointers; the word `1` separates its groups: title, then command, then description. The nine stock records fill `[0x800A6B30,0x800A6CA0)`.
+- **Strings.** Their strings (4-aligned, zero-terminated, uppercase, digits, `, . -` and space, at most 18 characters a line) fill `[0x800AE5D8,0x800AE914)`.
+- **Table.** The table at `0x800A6CA0` (ROM `0xA78A0`) names one record per slot. The power-order shuffle permutes it, and `0x80074318` reads it.
+- **Shared string.** The button-name table at `0x800AEBB8` also points at `"LOW PUNCH"` (`0x800AE604`).
+
 ## Ordinary-enemy stream
 
 Streams are big-endian 32-bit words, terminated by `0x0000FFFF`, and dispatched for opcodes `0..9` by table `0x800AD7A0`. Common spawn opcodes `0`, `1`, and `9` occupy `0x1C` bytes:
@@ -287,3 +317,5 @@ Every stock descriptor checked is preceded by zero (the Ice and rocket entries, 
 For a new dynamic allocation, `0x8001C2B4` rounds requested width up to 32 before allocating backing storage and initially writes that aligned width to both `+0x04` and `+0x08`. Its reuse path can return an inactive record whose `+0x04/+0x06` capacity is sufficient **without updating `+0x08`**. Stock image-building callers therefore rewrite `record+0x08` after allocation with the source image's actual DRAM row width. Toasty v23-v37 omitted that caller-owned initialization; see [Toasty visual research](Toasty-Visual-Research).
 
 Fresh storage is taken top-down: `0x800BF2FC` holds the lowest live storage address (reset to `0x80400000` by stage setup `0x8001CA38`). A fresh allocation fails with `-1` if it would go below the texture bump pointer `0x801AE478`, but the bump side `0x8001BF70` has no bounds check against it. Release `0x8001C424` clears `+0x0E`. For stack storage (`+0x0C == 0`) that is the current lowest, it raises `0x800BF2FC` to the lowest remaining active stack storage above it, or to `0x80400000`. Freed storage elsewhere is reclaimed only when everything below it is released. The render pass `0x800185B8` sets `+0x08 = align4(width)` and `+0x0A = height` for each uploaded frame, so a slot must be sized for its largest frame.
+
+**Overflow hazard (Runtime-confirmed through the Sektor composition v05 Toasty corruption).** Nothing limits an upload to the slot's capacity. A frame larger than the slot overwrites the storage allocated just before it, which sits at higher addresses because storage is handed out top-down. Every frame drawn through a slot, including a companion's, must fit that slot's `+0x04/+0x06` capacity ([R4 history](Sektor-Takeover-Proof-History#r4-gameplay-and-the-rope-companion-sektor-builds-v54v58-composition-proofs-v05v09)).

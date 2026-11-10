@@ -830,6 +830,20 @@ Open donor question: **process tick rate.** MKT's scheduler `0x8005A758` runs on
 
 Host translation choices (user-approved): `F,D,B + HP` replaces Freeze on Contact, `B,B,F + LP` replaces Ice Clone, `F,F + LP` replaces the stock `D,F + LP`; the homing target is the nearest living enemy in the teleport's range (MKMSZ has several opponents, MKT one), and the move is refused without one. Tier gating and the rest of the command table remain R4.
 
+## Common animations for host-only states (2026-11-10)
+
+**Runtime-confirmed bounded with Sektor** (user design; [history](Sektor-Takeover-Proof-History#r4-presentation-and-common-animations-sektor-builds-v59v60-composition-proofs-v10v13)). MKT fighters share their basic animation set, which has the same table-0 indices for every fighter. The importer maps that set onto the MKMSZ player slots of the same meaning (stance, duck, duck turn, duck low kick, knockdown, jump, …).
+
+Player states with no MKT counterpart are built from that already-mapped set, so they work for any imported fighter (`fighter_import.common_moves`):
+
+| Host state | Built from |
+|---|---|
+| Slide / Super Slide (secondary 2) | duck frame 1, duck-turn frame 1, duck-low-kick frame 3 |
+| Death (primary `0x2A`) | the knockdown's fall-back and landing phases, lying frame held |
+| Falling to death (secondary 8) | the last fall-back frame, held |
+
+The recipes rewrite only the frame words of the host script, keeping its tokens, operands, callback words, phase ends and loop jumps, so the host's timing and cursor positions stay stock.
+
 ## Known missing generic adapter functions
 
 1. **Donor action-phase runner** — express donor phase ordering, sleeps, branch-on-contact, timeout, facing changes, and guaranteed native cleanup without rewriting scheduler glue per move.
