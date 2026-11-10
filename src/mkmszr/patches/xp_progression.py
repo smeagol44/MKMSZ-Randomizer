@@ -35,9 +35,11 @@ from ..mips import (
     jalr,
     jr,
     lhu,
+    lui,
     lw,
     sll,
     sltiu,
+    split_address,
     sw,
     words_blob,
 )
@@ -123,39 +125,69 @@ def build_progression_locations(seed: str) -> tuple[tuple[int, int], ...]:
     return tuple(values[:PROGRESSION_REWARD_COUNT])
 
 
+# Native new-power popup (Static-confirmed): the central XP award 0x8002E104 starts process
+# 0x80062FF0 (class 0x100, via 0x8002830C) when the evaluated tier rises and stores the new
+# tier at the new controller's +0x680; the popup draws that tier's Power Ups icon for 0x50
+# ticks. Pickup mode bypasses that award, so the progression callback starts it itself.
+NEW_POWER_POPUP_VA = 0x80062FF0
+START_PROCESS_VA = 0x8002830C
+POPUP_PROCESS_CLASS = 0x100
+POPUP_TIER_OFFSET = 0x680
+
+
+def _hi(address: int) -> int:
+    return split_address(address)[0]
+
+
+def _lo(address: int) -> int:
+    value = split_address(address)[1]
+    return value - 0x10000 if value & 0x8000 else value
+
+
 def _build_callback(table_va: int) -> bytes:
+    count_va = STATE_UNCACHED_BASE + PROGRESSION_COUNT_OFFSET
+    xp_va = STATE_UNCACHED_BASE + PROGRESSION_XP_OFFSET
+    if _hi(count_va) != _hi(xp_va):
+        raise AssertionError("progression count and XP words straddle a LUI boundary")
     e = Emitter()
     e.emit(addiu("sp", "sp", -0x18), sw("ra", 0x10, "sp"))
-    e.emit(*address_words("t0", STATE_UNCACHED_BASE))
-    e.emit(lw("t1", PROGRESSION_COUNT_OFFSET, "t0"))
+    e.emit(lui("t0", _hi(count_va)))
+    e.emit(lw("t1", _lo(count_va), "t0"))
     e.emit(sltiu("t2", "t1", PROGRESSION_REWARD_COUNT))
     e.beq("t2", "zero", "done")
-    e.emit(NOP)
+    e.emit(lui("t3", _hi(table_va)))  # delay slot: harmless when the branch is taken
 
-    e.emit(*address_words("t3", table_va))
     e.emit(sll("t4", "t1", 1), addu("t3", "t3", "t4"))
-    e.emit(lhu("t5", 0, "t3"))
+    e.emit(lhu("t5", _lo(table_va), "t3"))
     e.emit(addiu("t1", "t1", 1))
-    e.emit(sw("t1", PROGRESSION_COUNT_OFFSET, "t0"))
-    e.emit(sw("t5", PROGRESSION_XP_OFFSET, "t0"))
+    e.emit(sw("t1", _lo(count_va), "t0"))
+    e.emit(sw("t5", _lo(xp_va), "t0"))
 
-    e.emit(*address_words("t6", CURRENT_XP_VA))
-    e.emit(sw("t5", 0, "t6"))
+    e.emit(lui("t6", _hi(CURRENT_XP_VA)))
+    e.emit(sw("t5", _lo(CURRENT_XP_VA), "t6"))
 
     # Refresh the game's native power-tier state from the exact new threshold.
-    e.emit(addu("a0", "t5", "zero"))
     e.emit(*address_words("t9", XP_TIER_EVALUATOR_VA))
-    e.emit(jalr("t9"), NOP)
+    e.emit(jalr("t9"), addu("a0", "t5", "zero"))  # a0 set in the delay slot
+
+    # Start the native new-power popup on that tier, as the stock XP award does.
+    e.emit(sw("v0", 0x14, "sp"))
+    e.emit(*address_words("a1", NEW_POWER_POPUP_VA))
+    e.emit(*address_words("t9", START_PROCESS_VA))
+    e.emit(jalr("t9"), addiu("a0", "zero", POPUP_PROCESS_CLASS))
+    e.beq("v0", "zero", "no_popup")
+    e.emit(lw("t0", 0x14, "sp"))  # delay slot: harmless without a process
+    e.emit(sw("t0", POPUP_TIER_OFFSET, "v0"))
+    e.label("no_popup")
 
     # Match ordinary pickup feedback without adding an inventory item.
     e.emit(addiu("a0", "zero", 0x3B))
     e.emit(addu("a1", "zero", "zero"))
-    e.emit(addiu("a2", "zero", 0x40))
     e.emit(*address_words("t9", PICKUP_SOUND_VA))
-    e.emit(jalr("t9"), NOP)
+    e.emit(jalr("t9"), addiu("a2", "zero", 0x40))
 
     e.label("done")
-    e.emit(lw("ra", 0x10, "sp"), addiu("sp", "sp", 0x18), jr("ra"), NOP)
+    e.emit(lw("ra", 0x10, "sp"), jr("ra"), addiu("sp", "sp", 0x18))
     return e.finish()
 
 
@@ -168,17 +200,17 @@ def _build_restore() -> bytes:
     transitions and title-menu direct-stage routing.
     """
 
+    xp_va = STATE_UNCACHED_BASE + PROGRESSION_XP_OFFSET
     e = Emitter()
     e.emit(addiu("sp", "sp", -0x18), sw("ra", 0x10, "sp"))
-    e.emit(*address_words("t0", STATE_UNCACHED_BASE))
-    e.emit(lw("t1", PROGRESSION_XP_OFFSET, "t0"))
-    e.emit(*address_words("t2", CURRENT_XP_VA))
-    e.emit(sw("t1", 0, "t2"))
+    e.emit(lui("t0", _hi(xp_va)))
+    e.emit(lw("t1", _lo(xp_va), "t0"))
+    e.emit(lui("t2", _hi(CURRENT_XP_VA)))
 
     e.emit(*address_words("t9", LOAD_MASK_WRAPPER_UNCACHED_VA))
-    e.emit(jalr("t9"), NOP)
+    e.emit(jalr("t9"), sw("t1", _lo(CURRENT_XP_VA), "t2"))  # XP stored in the delay slot
 
-    e.emit(lw("ra", 0x10, "sp"), addiu("sp", "sp", 0x18), jr("ra"), NOP)
+    e.emit(lw("ra", 0x10, "sp"), jr("ra"), addiu("sp", "sp", 0x18))
     return e.finish()
 
 

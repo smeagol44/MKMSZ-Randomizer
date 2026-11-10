@@ -290,3 +290,72 @@ def test_both_modes_reject_an_unexpected_stage_cap_before_writing(pickup_mode: b
     with pytest.raises(PatchError, match="guard failed"):
         patch.apply(rom, PatchContext(seed="BCBDBF"))
     assert bytes(rom.data) == before
+
+
+def _run_callback(count: int, tier: int, process: int):
+    from mips_eval import Machine
+
+    from mkmszr.data.addresses import PICKUP_SOUND_VA
+    from mkmszr.patches import xp_progression as xp
+
+    base = xp.PROGRESSION_CALLBACK_ENTRY
+    m = Machine(PROGRESSION_EXTENSION, base)
+    m.store(STATE_UNCACHED_BASE + PROGRESSION_COUNT_OFFSET, count)
+    m.regs[29], m.regs[31] = 0x80200000, 0x80001000
+    calls, pc = [], base
+    while True:
+        stop = m.run(pc)
+        if stop.kind != "call":
+            break
+        target = stop.target & 0x1FFFFFFF
+        calls.append((target, m.regs[4], m.regs[5], m.regs[6]))
+        if target == XP_TIER_EVALUATOR_VA & 0x1FFFFFFF:
+            m.regs[2] = tier
+        elif target == xp.START_PROCESS_VA & 0x1FFFFFFF:
+            m.regs[2] = process
+        elif target != PICKUP_SOUND_VA & 0x1FFFFFFF:
+            raise AssertionError(hex(stop.target))
+        pc = stop.resume
+    assert stop.kind == "return" and stop.target == 0x80001000 and m.regs[29] == 0x80200000
+    return m, calls
+
+
+def test_pickup_award_starts_the_native_new_power_popup() -> None:
+    from mkmszr.data.addresses import CURRENT_XP_VA
+    from mkmszr.patches import xp_progression as xp
+
+    m, calls = _run_callback(count=2, tier=3, process=0x80300000)
+    threshold = xp.XP_THRESHOLDS[2]
+    assert m.load(STATE_UNCACHED_BASE + PROGRESSION_COUNT_OFFSET) == 3
+    assert m.load(STATE_UNCACHED_BASE + xp.PROGRESSION_XP_OFFSET) == threshold
+    assert m.load(CURRENT_XP_VA) == threshold
+    targets = [c[0] for c in calls]
+    assert targets[0] == XP_TIER_EVALUATOR_VA & 0x1FFFFFFF and calls[0][1] == threshold
+    assert targets[1] == xp.START_PROCESS_VA & 0x1FFFFFFF
+    assert calls[1][1:3] == (xp.POPUP_PROCESS_CLASS, xp.NEW_POWER_POPUP_VA)
+    assert m.load(0x80300000 + xp.POPUP_TIER_OFFSET) == 3
+    assert calls[2][1:] == (0x3B, 0, 0x40)  # pickup sound unchanged
+
+
+def test_pickup_award_survives_no_free_process_and_stops_after_nine() -> None:
+    _m, calls = _run_callback(count=0, tier=1, process=0)
+    assert len(calls) == 3  # evaluator, popup start (refused), sound
+    m, calls = _run_callback(count=9, tier=9, process=0x80300000)
+    assert calls == [] and m.load(STATE_UNCACHED_BASE + PROGRESSION_COUNT_OFFSET) == 9
+
+
+def test_stage_restore_writes_persistent_xp_then_reloads_boxes() -> None:
+    from mips_eval import Machine
+
+    from mkmszr.data.addresses import CURRENT_XP_VA
+    from mkmszr.patches import xp_progression as xp
+
+    base = xp.PROGRESSION_CALLBACK_ENTRY
+    m = Machine(PROGRESSION_EXTENSION, base)
+    m.store(STATE_UNCACHED_BASE + xp.PROGRESSION_XP_OFFSET, 1410)
+    m.regs[29], m.regs[31] = 0x80200000, 0x80001000
+    stop = m.run(base + PROGRESSION_RESTORE_OFFSET)
+    assert stop.kind == "call" and stop.target == LOAD_MASK_WRAPPER_UNCACHED_VA
+    assert m.load(CURRENT_XP_VA) == 1410  # stored before the wrapper runs (delay slot)
+    stop = m.run(stop.resume)
+    assert stop.kind == "return" and stop.target == 0x80001000 and m.regs[29] == 0x80200000
