@@ -38,6 +38,8 @@ FIXED_VA = 0xA01B30F0  # production pool tail after the Inventory legend (ends 0
 POOL_BASE, POOL_END = 0x801AF820, 0x801B3420
 FILE_TABLE, FILE_1A, FILE_87 = 0x000A5010, 0x1A, 0x87
 TAIL = (0x01820000, 0x0186E4C0)
+# --all-powers: progression extension (ROM 0xF10200) restore load and award XP store.
+ALL_POWERS_RESTORE, ALL_POWERS_AWARD = 0x00F10200 + 0xB0, 0x00F10200 + 0x48
 SOUND_TABLES = (0x00947000, 0x00980000)  # patch/subpatch/wave/book/track records
 
 # Sektor words (transplanted), by ROM offset or range [start, end).
@@ -89,6 +91,9 @@ def main() -> None:
     p.add_argument("mkt_rom", type=Path)
     p.add_argument("-o", "--output", type=Path, default=Path("MKMSZR_sektor_production-composition_proof_v04.z64"))
     p.add_argument("--seed", default="SEKTOR-PROD-1")
+    p.add_argument("--all-powers", action="store_true",
+                   help="test convenience: every stage entry sets current XP to 20000 (all nine power tiers) "
+                        "and Power pickups no longer lower it")  # fmt: skip
     p.add_argument("cli_args", nargs="*", help="extra randomizer CLI options (after --)")
     args = p.parse_args()
     if any("specials" in a.lower() for a in args.cli_args):
@@ -151,6 +156,16 @@ def main() -> None:
     # The transplanted load/throw jal words already target the fixed loader at FIXED_VA.
     for site in LOAD_JAL_SITES:
         assert be32(rom, site) == 0x0C000000 | ((man["load_wrapper"] >> 2) & 0x03FFFFFF), hex(site)
+
+    # 4. Optional test convenience (powers-as-pickups mode only). The move gates call the native
+    # tier evaluator 0x80074FBC on current XP 0x8011200C, so XP alone decides the powers.
+    if args.all_powers:
+        for off, old, new in (
+            (ALL_POWERS_RESTORE, 0x8D090044, 0x34094E20),  # lw t1,0x44(t0) -> ori t1,zero,20000
+            (ALL_POWERS_AWARD, 0xADCD0000, 0x00000000),  # sw t5,0(t6) (current XP) -> nop
+        ):
+            assert be32(rom, off) == old, (hex(off), "needs Powers as pickups ON")
+            put32(rom, off, new)
 
     crc1, crc2 = calculate_crc_6102(rom)
     put32(rom, 0x10, crc1)
