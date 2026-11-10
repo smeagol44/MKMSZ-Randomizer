@@ -14,7 +14,7 @@ Last consolidated: 2026-10-01. Focused global-generation promotion update: 2026-
 
 ## Recent updates
 
-- 2026-11-10 MKT → MKMSZ fighter work now follows the fixed [Fighter recompiler plan](Fighter-Recompiler-Plan) (MKT frontend → engine-neutral micro-components → MKMSZ backend; Sektor as regression gate, Reptile as the first new fighter); progress on [Fighter recompiler status](Fighter-Recompiler-Status). Next: step 0.
+- 2026-11-10 MKT → MKMSZ fighter work now follows the fixed [Fighter recompiler plan](Fighter-Recompiler-Plan) (MKT reading → fighter description of engine-neutral micro-components → MKMSZ backend; Sektor as regression gate, Reptile as the next fighter); progress on [Fighter recompiler status](Fighter-Recompiler-Status). Next: milestone 1 (fighter description and generic body builder).
 - 2026-11-10 Fighter option follow-ups: generic pickup and grabbed-by-an-enemy poses for imported fighters (Sektor build v61), the title follows the chosen fighter, and Enemy Randomization defaults off in the web app; runtime Pending. ([PS-31](Status-Update-Log#ps-31-2026-11-10))
 - 2026-11-10 The "Fighter" product option (`--fighter sektor`, web "Swap character" window with MKT's select screen decoded from the donor) is Implementation/CI-confirmed: it reproduces composition v13 byte for byte, and browser and Python builds match; next, the user's full-seed Sektor test. ([PS-30](Status-Update-Log#ps-30-2026-11-10))
 - 2026-11-10 Sektor R4 presentation (help text, outfit, donor-generated Power Ups icons), the pickup-mode new-power popup (production), and generic importer recipes for slide, death and falling to death, Runtime-confirmed bounded in composition v10–v13; next, the Fighter product option. ([PS-29](Status-Update-Log#ps-29-2026-11-10))
