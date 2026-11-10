@@ -35,6 +35,11 @@ When a static investigation establishes a durable function/global identity, sign
 
 These answer different questions. A diagnostic shortcut can isolate one mechanism without satisfying the product requirements in [Project status](Project-Status). An implementation stepping stone and the requested final behavior can therefore have different scopes.
 
+**Emulator save states as static input.** A user-supplied save state is a snapshot of real runtime state, analysed without running an emulator; conclusions from it are static analysis of runtime-captured state, labelled as such.
+- **Handling.** Treat it as untrusted: extract it into its own directory and read it with isolated Python.
+- **Project64 format.** Magic `0x23D8A6C8`, RAM size field `0x800000`; RDRAM from file offset `0x75C` as little-endian words. A sleeping process's saved context in its controller: `+0x08` ra, `+0x0C` sp, `+0x10` fp, `+0x14` gp, `+0x18..` s0–s7. Process list head `0x80111EAC`.
+- **Frame simulation.** Code can be resumed from a saved context on the RDRAM image with `tests/mips_eval.Machine`: break on the sleep (`0x80028794`) and on calls outside the question, model them explicitly, and run the per-tick check of interest between ticks. Other processes are not executed, so anything they do (e.g. another fighter's fall) must be modelled. A result is trusted only when the model reproduces a second, later save state (Sektor composition v03 fall-through).
+
 ## Bounded experiment model
 
 A bounded experiment connects one hypothesis to a small guarded change and an observable outcome. Changing one runtime-critical variable at a time helps distinguish competing explanations; combining allocation and lifecycle changes made the first XP production failure harder to isolate.

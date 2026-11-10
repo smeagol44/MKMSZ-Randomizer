@@ -10,7 +10,10 @@ one at a time. Equivalence is structural:
 * ``j``/``jal`` to targets inside the routine are retargeted to the copy;
 * ``j``/``jal`` to external targets keep their 28-bit target. Executed from a
   KSEG1 payload they reach the KSEG1 alias of the same code (uncached), exactly as
-  the Runtime-confirmed teleport payload already does;
+  the Runtime-confirmed teleport payload already does. With ``cached_calls`` they go
+  instead to stubs appended to the copy that jump to the KSEG0 (cached) target with
+  ``ra`` unchanged, so stock code runs as the game calls it (production hooks that
+  check return addresses, such as Toasty's, then recognise the caller);
 * every other word is identical, except explicit, reported ``patches``.
 
 :func:`lift` returns the copy plus a report; :func:`verify` re-checks a copy
@@ -36,6 +39,8 @@ class LiftResult:
     dst_va: int
     relocated: list[int] = field(default_factory=list)  # source VAs of retargeted j/jal
     patched: dict[int, tuple[int, int]] = field(default_factory=dict)  # va -> (old, new)
+    stubs: dict[int, int] = field(default_factory=dict)  # external target -> stub VA
+    stubbed: dict[int, int] = field(default_factory=dict)  # source VA -> external target
 
 
 def _words(code: bytes) -> list[int]:
@@ -77,8 +82,23 @@ def check_self_contained(code: bytes, src_va: int) -> None:
                 raise LiftError(f"address constant at {pc:#x} points inside the routine")
 
 
+def stub_words(target: int) -> list[int]:
+    """``lui t9, %hi; addiu t9, t9, %lo; jr t9; nop`` for ``target``."""
+
+    return [
+        0x3C190000 | (((target + 0x8000) >> 16) & 0xFFFF),
+        0x27390000 | (target & 0xFFFF),
+        0x03200008,
+        0,
+    ]
+
+
 def lift(
-    code: bytes, src_va: int, dst_va: int, patches: dict[int, int] | None = None
+    code: bytes,
+    src_va: int,
+    dst_va: int,
+    patches: dict[int, int] | None = None,
+    cached_calls: bool = False,
 ) -> LiftResult:
     """Copy ``code`` (loaded at ``src_va``) to run at ``dst_va``; apply word ``patches``."""
 
@@ -107,6 +127,30 @@ def lift(
             raise LiftError(f"patch address {va:#x} outside the routine")
         result.patched[va] = (out[index], new & 0xFFFFFFFF)
         out[index] = new & 0xFFFFFFFF
+    if cached_calls:
+        targets: list[int] = []
+        for index, word in enumerate(words):
+            pc = src_va + 4 * index
+            if pc in result.patched or pc in result.relocated or word >> 26 not in (2, 3):
+                continue
+            target = _target(word, pc)
+            if index + 1 < len(words):
+                delay = words[index + 1]
+                if delay and (
+                    (delay >> 16) & 31 == 25 or (delay >> 26 == 0 and (delay >> 11) & 31 == 25)
+                ):
+                    raise LiftError(f"delay slot after {pc:#x} writes t9")
+            if target not in targets:
+                targets.append(target)
+            result.stubbed[pc] = target
+        base = dst_va + 4 * len(out)
+        for k, target in enumerate(targets):
+            result.stubs[target] = base + 16 * k
+        for pc, target in result.stubbed.items():
+            index = (pc - src_va) // 4
+            out[index] = (out[index] & 0xFC000000) | ((result.stubs[target] >> 2) & 0x03FFFFFF)
+        for target in targets:
+            out.extend(stub_words(target))
     result.code = b"".join(word.to_bytes(4, "big") for word in out)
     return result
 
@@ -116,8 +160,13 @@ def verify(original: bytes, lifted: LiftResult) -> None:
 
     old = _words(original)
     new = _words(lifted.code)
-    if len(old) != len(new):
+    if len(new) != len(old) + 4 * len(lifted.stubs):
         raise LiftError("length changed")
+    for target, stub in lifted.stubs.items():
+        k = (stub - lifted.dst_va) // 4
+        if new[k : k + 4] != stub_words(target):
+            raise LiftError(f"stub for {target:#x} is wrong")
+    new = new[: len(old)]
     for index, (a, b) in enumerate(zip(old, new, strict=True)):
         va = lifted.src_va + 4 * index
         if va in lifted.patched:
@@ -125,6 +174,13 @@ def verify(original: bytes, lifted: LiftResult) -> None:
                 raise LiftError(f"patch at {va:#x} not applied")
             continue
         if a == b:
+            continue
+        if va in lifted.stubbed:
+            stub = lifted.stubs[lifted.stubbed[va]]
+            if a >> 26 != b >> 26 or _target(b, lifted.dst_va + 4 * index) != stub:
+                raise LiftError(f"stubbed call at {va:#x} has the wrong target")
+            if _target(a, va) != lifted.stubbed[va]:
+                raise LiftError(f"stub at {va:#x} serves the wrong target")
             continue
         if va not in lifted.relocated or a >> 26 != b >> 26:
             raise LiftError(f"unexpected difference at {va:#x}")

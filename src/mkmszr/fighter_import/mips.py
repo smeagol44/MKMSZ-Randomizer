@@ -49,9 +49,24 @@ REGISTERS = [
 REG = {name: index for index, name in enumerate(REGISTERS)}
 
 
+# Default for new assemblers: call stock code through its cached KSEG0 address (see
+# Assembler.cached_calls). Off by default so earlier proof builders reproduce exactly.
+DEFAULT_CACHED_CALLS = False
+
+
+def _kseg0_stock(address: int) -> bool:
+    return 0x80000000 <= (address & 0xFFFFFFFF) < 0xA0000000
+
+
 class Assembler:
-    def __init__(self, base: int) -> None:
+    def __init__(self, base: int, cached_calls: bool | None = None) -> None:
         self.base = base
+        # cached_calls: from KSEG1 code, ``jal``/``j`` to a KSEG0 (stock) address go through
+        # ``t9`` (``jalr``/``jr``) so the stock routine runs from KSEG0 as the game calls
+        # it, with stock return addresses. A plain ``jal`` from KSEG1 would run the KSEG1
+        # alias and return-address checks in production hooks (e.g. Toasty's dispatcher at
+        # the strike core) would not recognise the caller.
+        self.cached_calls = DEFAULT_CACHED_CALLS if cached_calls is None else cached_calls
         self.code: list[int] = []
         self.labels: dict[str, int] = {}
         self.fixups: list[tuple[int, str, str]] = []
@@ -175,11 +190,25 @@ class Assembler:
         self._i(0x2B, rs, rt, offset)
 
     # control flow (all with a nop delay slot)
+    def _through_t9(self, address: int) -> bool:
+        return self.cached_calls and self.base >> 29 == 5 and _kseg0_stock(address)
+
     def jal(self, address: int) -> None:
+        if self._through_t9(address):
+            self.lui("t9", ((address + 0x8000) >> 16) & 0xFFFF)
+            self.addiu("t9", "t9", ((address & 0xFFFF) ^ 0x8000) - 0x8000)
+            self.jalr("t9")
+            return
         self.raw((3 << 26) | ((address >> 2) & 0x03FFFFFF))
         self.nop()
 
     def j(self, address: int) -> None:
+        if self._through_t9(address):
+            self.lui("t9", ((address + 0x8000) >> 16) & 0xFFFF)
+            self.addiu("t9", "t9", ((address & 0xFFFF) ^ 0x8000) - 0x8000)
+            self.jr("t9")
+            self.nop()
+            return
         self.raw((2 << 26) | ((address >> 2) & 0x03FFFFFF))
         self.nop()
 

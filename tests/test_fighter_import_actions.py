@@ -130,6 +130,54 @@ def test_lifter_relocates_internal_jumps_only() -> None:
     assert out.relocated == [src + 4] and words[3] == 0x24040004
 
 
+def test_lifter_cached_calls_go_through_kseg0_stubs() -> None:
+    from mips_eval import Machine
+
+    from mkmszr.fighter_import import lifter
+
+    src, dst = 0x8004B584, 0xA01B0000
+    code = _code(
+        0x0C00AE81,  # jal 0x8002BA04 (strike core, external)
+        0x00000000,
+        0x08000000 | ((src + 0x14) >> 2) & 0x03FFFFFF,  # j src+0x14 (internal)
+        0x0C00AE81,  # jal 0x8002BA04 again: same stub
+        0x00000000,
+        0x03E00008,
+        0x00000000,
+    )
+    out = lifter.lift(code, src, dst, cached_calls=True)
+    lifter.verify(code, out)
+    assert out.stubs == {0x8002BA04: dst + 0x1C} and set(out.stubbed) == {src, src + 0x0C}
+    m = Machine(out.code, dst)
+    m.regs[31] = 0x80001000
+    stop = m.run(dst)
+    # the stock routine is entered at its cached address, returning into the copy
+    assert stop.kind == "return" and stop.target == 0x8002BA04 and m.regs[31] == dst + 8
+    with pytest.raises(lifter.LiftError):  # a delay slot that writes t9
+        lifter.lift(_code(0x0C00AE81, 0x24190001, 0x03E00008, 0), src, dst, cached_calls=True)
+    broken = bytearray(out.code)
+    broken[0x1C:0x20] = (0x3C198004).to_bytes(4, "big")  # wrong %hi
+    with pytest.raises(lifter.LiftError):
+        lifter.verify(code, lifter.LiftResult(bytes(broken), src, dst, out.relocated, out.patched,
+                                              out.stubs, out.stubbed))  # fmt: skip
+
+
+def test_assembler_cached_calls_enter_stock_code_at_kseg0() -> None:
+    from mips_eval import Machine
+
+    a = Assembler(0xA01B0000, cached_calls=True)
+    a.jal(0x8002BA04)
+    a.j(0x8001C528)
+    b = Assembler(0xA01B0000)
+    b.jal(0x8002BA04)
+    assert words(b) == [0x0C00AE81, 0]  # default: unchanged
+    m = Machine(a.link(), 0xA01B0000)
+    stop = m.run(0xA01B0000)
+    assert stop.kind == "call" and stop.target == 0x8002BA04
+    stop = m.run(stop.resume)
+    assert stop.kind == "return" and stop.target == 0x8001C528
+
+
 def test_lifter_rejects_non_self_contained_code() -> None:
     from mkmszr.fighter_import import lifter
 
