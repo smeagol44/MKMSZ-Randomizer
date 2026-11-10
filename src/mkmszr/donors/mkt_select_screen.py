@@ -12,7 +12,8 @@ user-supplied save state at the select screen byte for byte):
   u16 column, u16 row, u16 fighter id, u16 0}`` ended by a zero descriptor; read by
   ``0x80007E48`` (fighter id at ``+8``) and the select-screen setup ``0x800069A4``.
   Descriptors ``1`` and ``2`` are the two hidden slots (drawn with descriptor
-  ``0x803E40A4``). Fighter names: pointer table ``0x800A6004``.
+  ``0x803E40A4``). Fighter names: pointer table ``0x800A6000``, indexed by fighter id
+  (``0`` KANO, ... ``7`` SEKTOR).
 * **Portrait descriptors** ``{u32 image, u16 height 45, u16 width 34, u32 0, u32 palette}``
   in the select-screen file ROM ``[0x1364F4, 0x145EF0)``, loaded at RAM ``0x803E1534``.
   Images use codec ``0x14`` (dispatcher ``0x80081C4C``; PackBits ``0x8008209C``) and decode to
@@ -43,7 +44,7 @@ from .mkt_n64 import validate_mkt_n64_rev2
 WIDTH, HEIGHT = 320, 240
 SCISSOR = (319, 239)  # the display list's scissor: column 319 and row 239 stay black
 GRID_TABLE = 0xA2940
-NAME_TABLE = 0xA6004
+NAME_TABLE = 0xA6000
 VA_BASE = 0x80000000
 CSS_FILE = (0x1364F4, 0x145EF0, 0x803E1534)  # ROM start, ROM end, RAM base
 BG_FILE = (0x34A540, 0x3560F0, 0x803F0F30)
@@ -71,7 +72,7 @@ BG_DRAW = (
 )  # fmt: skip
 BG_PLATES = ((0x803F6378, 0, 219, 205), (0x803F6358, 0, 10, 204))  # drawn over the portraits
 # MKT fighter ids the importer can bring into MKMSZ -> RandomizerConfig.fighter.
-IMPORTABLE = {6: "sektor"}
+IMPORTABLE = {7: "sektor"}
 
 
 class SelectScreenError(ValueError):
@@ -222,6 +223,8 @@ def render(rom: bytes, importable: dict[int, str] | None = None) -> dict:
         if len(pixels) != PORTRAIT[0] * PORTRAIT[1]:
             raise SelectScreenError("unexpected portrait data size")
         fighter = None if cell["hidden"] else importable.get(cell["fighter_id"])
+        if fighter and cell["name"].lower().replace("-", "") != fighter.replace("-", ""):
+            raise SelectScreenError(f"fighter id {cell['fighter_id']} is {cell['name']!r}, not {fighter!r}")
         x = GRID_ORIGIN[0] + CELL[0] * cell["column"]
         y = GRID_ORIGIN[1] + CELL[1] * cell["row"]
         _blit(canvas, pixels, PORTRAIT[0], PORTRAIT[0], PORTRAIT[1], x, y,
