@@ -28,11 +28,18 @@ def _word(data: bytes | bytearray, off: int) -> int:
     return int.from_bytes(data[off : off + 4], "big")
 
 
-def single_actor(data: bytes | bytearray, pairs: tuple[int, ...] = ATTACHMENT_PAIRS) -> bytearray:
+def single_actor(
+    data: bytes | bytearray, pairs: tuple[int, ...] = ATTACHMENT_PAIRS, nops_first: bool = False
+) -> bytearray:
     """Return a copy of fighter file ``data`` with each companion pair drawn by the owner only.
 
     Every pair must still be a token-16 triple whose companion frame is the owner frame (the
-    takeover's fallback); anything else is refused rather than silently dropping art."""
+    takeover's fallback); anything else is refused rather than silently dropping art.
+
+    ``nops_first`` (composition v07) writes ``13, 13, owner`` instead: the no-ops run first
+    in the same advance, so after every advance the cursor rests where token 16 left it (the
+    start of the next triple), not one word in. False reproduces v55 / composition v06,
+    which hung when a spike trap hit Sektor on the rope (user report)."""
 
     out = bytearray(data)
     for off in pairs:
@@ -41,5 +48,6 @@ def single_actor(data: bytes | bytearray, pairs: tuple[int, ...] = ATTACHMENT_PA
             raise ValueError(f"no token-16 pair at +{off:#x}")
         if companion != owner:
             raise ValueError(f"companion frame differs from the owner at +{off:#x}")
-        out[off : off + 12] = b"".join(v.to_bytes(4, "big") for v in (owner, TOKEN_NOP, TOKEN_NOP))
+        words = (TOKEN_NOP, TOKEN_NOP, owner) if nops_first else (owner, TOKEN_NOP, TOKEN_NOP)
+        out[off : off + 12] = b"".join(v.to_bytes(4, "big") for v in words)
     return out

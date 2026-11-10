@@ -35,3 +35,10 @@ def test_single_actor_refuses_other_content() -> None:
         att.single_actor(_file({**pairs, 0x32C: (16, 0x1E1B4, 0x1DFCC)}))  # stock arm pair
     with pytest.raises(ValueError):
         att.single_actor(_file({**pairs, 0x3AC: (2, 0, 0)}))
+
+
+def test_nops_first_keeps_the_stock_cursor_positions() -> None:
+    data = _file({off: (16, 0x1F82C, 0x1F82C) for off in att.ATTACHMENT_PAIRS})
+    out = att.single_actor(data, nops_first=True)
+    for off in att.ATTACHMENT_PAIRS:
+        assert out[off : off + 12] == bytes.fromhex("0000000d0000000d0001f82c")
