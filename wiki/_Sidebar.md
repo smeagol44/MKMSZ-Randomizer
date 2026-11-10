@@ -50,6 +50,7 @@
 
 - [Enemy randomization](Enemy-Randomization)
 - [Player actions and special moves](Player-Actions-and-Special-Moves)
+- [Fighter recompiler plan](Fighter-Recompiler-Plan) · [status](Fighter-Recompiler-Status)
 - [MKT compatibility overview](MKT-to-MKMSZ-Compatibility-Layer)
 - [MKT adapter primitives](MKT-Adapter-Primitives)
 - [MKT fighter asset translation](MKT-Fighter-Asset-Translation)
