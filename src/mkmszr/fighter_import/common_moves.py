@@ -73,9 +73,29 @@ def slot_span(data: bytes | bytearray, slot: tuple[int, int]) -> tuple[int, int]
     if not start:
         raise ValueError(f"slot {slot} has no script")
     later = [o for o in _starts(data) if o > start]
-    if not later:
-        raise ValueError(f"slot {slot} is the last script; its end is unknown")
-    return start, later[0]
+    if later:
+        return start, later[0]
+    # A relocated script after every other script start (computed layout): it ends at the first
+    # word that is neither a phase end, a token (with its operands) nor a frame record.
+    p = start
+    while p + 4 <= len(data):
+        value = _word(data, p)
+        if value == 0:
+            p += 4
+        elif MKMSZ.is_token(value):
+            operands = len(MKMSZ.operands[value])
+            if value == 6:
+                operands += MKMSZ.callback_extra_words.get(_word(data, p + 4), 0)
+            p += 4 * (1 + operands)
+            if value == 1:
+                break
+        elif value % 4 == 0 and value + 8 <= len(data) and _word(data, value) == value + 8 and _word(data, value + 4) == 0:
+            p += 4
+        else:
+            break
+    if p == start:
+        raise ValueError(f"slot {slot} has no script words")
+    return start, p
 
 
 def frame_positions(data: bytes | bytearray, slot: tuple[int, int]) -> list[int]:

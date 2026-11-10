@@ -209,6 +209,18 @@ That is `0x11AC` larger than v59/v62 and `0x1064` above the Runtime-confirmed v4
 The compact proof therefore reduced the first runtime requirement to **one fully-open chest pose + one horizontal rocket pose** and quantized those two target buffers only against the existing 40,737-pattern dictionary with exact transparency masks. v64 reaches file `0x87 = 0x4E788`, only `0x244` above the v49 working footprint. v69/v70 then refine the code/lifecycle side while retaining the compact asset strategy. Fortress/Prison allocation boundaries were not revalidated for v64-v70, so these larger footprints remain **proof-specific**, not new safe-size ceilings.
 
 
+### Roster body-frame survey and palettes (2026-11-10)
+
+**Static-confirmed** (MKT N64 USA Rev. 2, every fighter id 0–25; `tests/test_fighter_body_build.py`, ROM-backed). Scope: the frames the importer uses: body slots `0x00..0x22` (except `0x0D`, `0x10`), Run `0x4A` and the flip poses `0x47`.
+
+- **Codecs.** Body frames use codecs 22 and 24 everywhere; codec 23 appears in the male ninjas (5 frames), Cage (27), Rayden (2) and Baraka (5); codec 15 in the robots and Rayden. All decode with the dispatcher's codecs 15/22/23/24 (`fighter_import.body_build.Donor`).
+- **Codec 16 in body slots.** Kano (`0x47`), Jax (`0x15`), Nightwolf (`0x13..0x15`), Kabal (`0x21`) and Kitana/Jade/Mileena (`0x0A..0x0C`) have codec-16 (4-bit RLE) frames in those slots; they now decode (`projectile.decode_mkt_codec16`). Which palette they are drawn with is **Pending** (they may be object art with their own palette).
+- **Even-height storage.** Some codec-24 images (Rayden) store `align4(w) × align2(h)` bytes for an odd `h`; the importer keeps the declared rows.
+- **Not frame records.** Sonya's slot `0x15` holds bare object descriptors (image, size, anchor, palette pointer `0x800BB2EC`), not fighter frame records. Fighter ids 26–30 are repeated `KHAMELEON` names over other fighters' banks, not fighters.
+- **Multi-part frame records** (zero-terminated descriptor lists) are flattened onto their first part.
+- **Palettes.** `0x800A1738` holds one palette-record pointer per fighter id (`u32 count` = 32, then RGBA5551 words; Sektor `0x800BC12C`, Reptile `0x800B9F3C`, green-dominant). `0x800A3660` is a second table (identical for the male ninjas; probably alternates, Pending). The `auto` colour method reduces the used donor colours to 15 plus transparent (weighted median cut by pixel use); its visual acceptance is a milestone-4 runtime gate.
+- **Reptile body, static build:** 156 frames (142 body, 9 Run, 5 flip), 31 donor colours used; the file stays at the stock size with `0x13E88` bytes free for moves (Sektor's accepted body leaves `0x5234` before his moves). Six body scripts (`0x09`, `0x11`, `0x12`, `0x13`, `0x15`, `0x1E`) are longer than the host span and are packed.
+
 ### MKT select screen assets
 
 **Static-confirmed** (MKT N64 USA Rev. 2; every decode matches the decoded copy in the RAM of a user save state at the select screen, byte for byte). Used by the web "Swap character" window (`src/mkmszr/donors/mkt_select_screen.py`).

@@ -7,9 +7,12 @@ is ``tests/test_fighter_swap.py::test_sektor_build_matches_the_proof_line`` (ROM
 from __future__ import annotations
 
 import io
+import os
 import re
 import tokenize
 from pathlib import Path
+
+import pytest
 
 from mkmszr.fighter_import import body_build as bb
 
@@ -84,3 +87,81 @@ def test_knapsack_fills_the_capacity_best() -> None:
     sizes = {"a": 12, "b": 8, "c": 20, "d": 4}
     packed = bb.knapsack(list(sizes), sizes, 24)
     assert sum(sizes[k] for k in packed) == 24
+
+
+def test_reduce_palette_is_deterministic_and_keeps_transparency() -> None:
+    from collections import Counter
+
+    palette = [0x07C0] + [((i * 7 % 32) << 11) | ((i * 13 % 32) << 6) | ((i * 3 % 32) << 1) | 1 for i in range(1, 32)]
+    usage = Counter({i: (i * 37) % 101 + 1 for i in range(32)})
+    usage[5] = 0
+    index_map, words = bb.reduce_palette(palette, usage)
+    assert (index_map, words) == bb.reduce_palette(palette, Counter(dict(reversed(list(usage.items())))))
+    assert index_map[0] == 0 and all(1 <= index_map[i] <= 15 for i in range(1, 32))
+    assert len(words) == 16 and words[0] == 0 and all(w & 0x8000 for w in words[1:])
+
+
+# ---------------------------------------------------------------- ROM-backed
+
+CLEAN, MKT = os.environ.get("MKMSZR_CLEAN_ROM"), os.environ.get("MKMSZR_MKT_ROM")
+needs_mkt = pytest.mark.skipif(not MKT, reason="needs MKMSZR_MKT_ROM")
+needs_roms = pytest.mark.skipif(not (CLEAN and MKT), reason="needs MKMSZR_CLEAN_ROM and MKMSZR_MKT_ROM")
+BODY_SLOTS = [i for i in range(0x23) if i not in (0x0D, 0x10)] + [0x4A, bb.MKT_FLIPPED]
+# Documented exceptions (Wiki MKT-Fighter-Asset-Translation): Sonya's MKT slot 0x15 holds bare
+# object descriptors with their own palette pointer, not fighter frame records.
+NOT_FRAME_RECORDS = {(1, 0x15)}
+
+
+@needs_mkt
+def test_every_body_frame_of_the_roster_decodes() -> None:
+    from mkmszr.fighter_import.script import MKT as DIALECT
+
+    mkt = Path(MKT).read_bytes()
+    for fighter in range(26):  # ids 26-30 repeat KHAMELEON over other fighters' banks
+        donor = bb.Donor(mkt, fighter)
+        for slot in BODY_SLOTS:
+            if (fighter, slot) in NOT_FRAME_RECORDS:
+                continue
+            p, ends = donor.table0[slot], 0
+            for _ in range(80):
+                v = donor.m32(p)
+                if v == 0:
+                    ends += 1
+                    p += 4
+                    if ends >= 8:
+                        break
+                    continue
+                if v == 1:
+                    break
+                if DIALECT.is_token(v):
+                    p += 4 * (1 + len(DIALECT.operands[v]))
+                    continue
+                assert donor.is_frame(v), (fighter, hex(slot), hex(v))
+                p += 4
+
+
+@needs_mkt
+def test_computed_layout_folds_the_donor_branch() -> None:
+    mkt = Path(MKT).read_bytes()
+    from mkmszr.fighter_import.mkt_fighter import MktRom
+
+    donor = bb.Donor(mkt, 19)  # Reptile: idle opens with "8, 0x13, 0x2B8" (branch taken for 0x13)
+    starts = set(donor.table0) | set(MktRom(mkt).table1(19))
+    words = bb.linearise(donor, 0x00, starts)
+    assert 8 not in words and all(isinstance(w, tuple) and w[0] == "frame" for w in words[:2])
+    assert words[-2] == 1 and words[-1][0] == "jump"
+
+
+@needs_roms
+def test_reptile_body_builds_and_fits() -> None:
+    from mkmszr.fighter_import import common_moves as cm
+    from mkmszr.fighter_import import description as fd
+
+    body = bb.build_body(fd.load("reptile"), Path(CLEAN).read_bytes(), Path(MKT).read_bytes(), bb.Extras())
+    r = body.report
+    assert r["appended_items"] == 0 and r["file_end"] == bb.FILE87_SIZE  # stock-size file
+    assert r["chain_free"] >= 0x10000  # room left for his moves
+    assert (r["frames"], r["run"]) == (156, 9)
+    out = cm.apply(bytes(body.file), stock=body.clean_file, flipped=body.flipped)
+    assert len(cm.frames(out, cm.PICKUP)) == 5 and len(set(cm.frames(out, cm.LONG_FALL))) == 1
+    assert cm.frames(out, (1, 9)) == cm.phase_frames(out, cm.KNOCKDOWN, 2)[-2:]  # S09 follows the knockdown
