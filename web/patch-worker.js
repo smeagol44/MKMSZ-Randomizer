@@ -49,6 +49,7 @@ const PATCH_PY = [
   "    persist_hp=bool(web_persist_hp),",
   "    debug_all_keys=bool(web_debug_all_keys),",
   "    audio_fifo_fix=not bool(web_disable_audio_fix),",
+  "    fighter=str(web_fighter),",
   "    game_settings=GameSettingsConfig(",
   "        turn_lock=bool(web_turn_lock),",
   "        attack_modern=bool(web_attack_modern),",
@@ -67,6 +68,7 @@ const PATCH_PY = [
   "    _config,",
   "    toasty_assets=_toasty_assets,",
   "    temple_intro_audio_assets=_temple_intro_audio_assets,",
+  "    fighter_donor=_mkt_bytes if _config.fighter != 'sub-zero' else None,",
   ")",
   "Path('/tmp/output.z64').write_bytes(_result.data)",
   "if Path('/tmp/output.z64').read_bytes() != _result.data:",
@@ -79,6 +81,7 @@ const PATCH_PY = [
   "    'required_powers': _result.required_powers_count,",
   "    'required_xp': _result.required_powers_xp,",
   "    'enemy_randomization': bool(web_enemy_randomization),",
+  "    'fighter': _config.fighter,",
   "}"
 ].join("\n");
 
@@ -236,6 +239,7 @@ function setPatchGlobals(config, hasDonor) {
   pyodide.globals.set("web_persist_hp", config.persistHp);
   pyodide.globals.set("web_debug_all_keys", config.debugAllKeys);
   pyodide.globals.set("web_disable_audio_fix", config.disableAudioFix);
+  pyodide.globals.set("web_fighter", config.fighter ?? "sub-zero");
 }
 
 async function patchRom(message) {
@@ -245,6 +249,9 @@ async function patchRom(message) {
   }
   if (message.hasDonor && !donorReady) {
     throw new Error("The selected MKT donor is not validated.");
+  }
+  if ((message.config.fighter ?? "sub-zero") !== "sub-zero" && !message.hasDonor) {
+    throw new Error("An imported fighter needs the validated MKT donor.");
   }
 
   unlinkIfPresent("/tmp/output.z64");

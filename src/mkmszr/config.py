@@ -6,6 +6,7 @@ from typing import Literal
 DifficultyMode = Literal["very_easy", "easy", "medium", "hard", "very_hard"]
 GlobalCompletionMode = Literal["all_85", "game_beatable"]
 CompletionMode = Literal["all_checks", "beatable"]
+Fighter = Literal["sub-zero", "sektor"]
 
 
 @dataclass(frozen=True)
@@ -49,8 +50,13 @@ class RandomizerConfig:
     persist_hp: bool = True
     debug_all_keys: bool = False
     audio_fifo_fix: bool = True
+    fighter: Fighter = "sub-zero"
 
     def __post_init__(self) -> None:
+        if self.fighter not in ("sub-zero", "sektor"):
+            raise ValueError("fighter must be sub-zero or sektor")
+        if self.fighter != "sub-zero" and self.game_settings.specials_modern:
+            raise ValueError("an imported fighter requires SPECIALS: CLASSIC")
         if self.difficulty not in ("very_easy", "easy", "medium", "hard", "very_hard"):
             raise ValueError("difficulty must be very_easy, easy, medium, hard, or very_hard")
         if type(self.lives) is not int or not 1 <= self.lives <= 10:
