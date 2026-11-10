@@ -42,3 +42,23 @@ def test_nops_first_keeps_the_stock_cursor_positions() -> None:
     out = att.single_actor(data, nops_first=True)
     for off in att.ATTACHMENT_PAIRS:
         assert out[off : off + 12] == bytes.fromhex("0000000d0000000d0001f82c")
+
+
+def test_transparent_companion_keeps_token_16_and_the_owner_frame() -> None:
+    data = _file({off: (16, 0x1F82C, 0x1F82C) for off in att.ATTACHMENT_PAIRS})
+    out = att.transparent_companion(data, 0x3D010)
+    for off in att.ATTACHMENT_PAIRS:
+        assert out[off : off + 12] == bytes.fromhex("000000100003d0100001f82c")
+
+
+def test_companion_frame_layout() -> None:
+    blob, shape = att.companion_frame(0x3D000)
+    word = lambda o: int.from_bytes(blob[o - 0x3D000 : o - 0x3D000 + 4], "big")
+    assert shape == 0x3D010 and word(shape + 4) == 0  # one-part shape
+    desc = word(shape)
+    assert word(desc - 4) == 0  # the zero word before every descriptor
+    image, size = word(desc), word(desc + 4)
+    assert size == (8 << 16) | 8 and word(image) == 0  # raw type 0
+    assert blob[image - 0x3D000 + 4 :] == bytes(64) and len(blob) == image - 0x3D000 + 4 + 64
+    with pytest.raises(ValueError):
+        att.companion_frame(0x3D002)
