@@ -89,3 +89,44 @@ def test_outfit_recolors_only_the_red_entries() -> None:
     assert outfit.recolor(data, "seeded", seed="X") == outfit.recolor(data, "seeded", seed="X")
     with pytest.raises(ValueError):
         outfit.recolor(data, "hue")
+
+
+def _package(images: list[tuple[int, int, int, bytes]]) -> bytes:
+    """A decoded image package: count, spare word, then (flags, width word, height, id, 0) + pixels."""
+
+    out = bytearray(len(images).to_bytes(4, "big") + bytes(4))
+    for flags, width, image_id, pixels in images:
+        height = len(pixels) // ((width // 2) if flags & 0x80000000 else width)
+        out += flags.to_bytes(4, "big") + ((width << 8) | width).to_bytes(2, "big")
+        out += height.to_bytes(2, "big") + image_id.to_bytes(2, "big") + bytes(2) + pixels
+        if len(pixels) & 1:
+            out += b"\0"
+    return bytes(out)
+
+
+def test_icon_records_and_replacement() -> None:
+    from mkmszr.fighter_import import power_icons as pi
+
+    icon = bytes(range(256)) * 3 + bytes(16)
+    package = _package([(0, 0x20, 0x258, bytes(0x20 * 3)), (0x80000000, 0x10, 0x300, bytes(5 * 8)),
+                        (0, 0x1C, 0x3C8, icon), (0, 0x07, 0x3D2, bytes(7 * 7))])  # fmt: skip
+    table = pi.records(package)
+    assert set(table) == {0x258, 0x300, 0x3C8, 0x3D2}
+    assert table[0x300][1:] == (8, 5)  # CI4: half stride
+    assert package[table[0x3C8][0] : table[0x3C8][0] + pi.PIXELS] == icon
+    new = bytes(reversed(icon))
+    out = pi.replace_icons(package, {0x3C8: new})
+    assert out[table[0x3C8][0] : table[0x3C8][0] + pi.PIXELS] == new
+    assert len(out) == len(package) and pi.records(out) == table
+    with pytest.raises(ValueError):
+        pi.replace_icons(package, {0x3D2: new})
+
+
+def test_icon_palette_reduction_is_deterministic() -> None:
+    from mkmszr.fighter_import import power_icons as pi
+
+    colours = [((i * 37) % 256, (i * 91) % 256, (i * 13) % 256) for i in range(500)]
+    a = pi.median_cut(colours, 63)
+    assert a == pi.median_cut(list(reversed(colours)), 63) and len(a) == 63
+    for word in (0x0000, 0x7FFF, 0x52BB, 0x0890):
+        assert pi.rgb_to_bgr555(pi.bgr555_to_rgb(word)) == word
