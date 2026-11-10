@@ -213,7 +213,7 @@ The other outfit modes (`SubZeroPalettePatch`, hue/RGB presets, also used by the
 
 ### 4. R4 power mapping (needs user decisions)
 
-**User decisions (2026-11-09).** They apply when the Sektor option is on. **Gameplay done (2026-11-10):** tiers, removals and costs are Runtime-confirmed bounded in composition proofs v05/v08; v09 lowers the Homing Missile cost to `0x40` (user decision). Presentation is still pending. See the [proof history](Sektor-Takeover-Proof-History#r4-gameplay-and-the-rope-companion-sektor-builds-v54v58-composition-proofs-v05v09).
+**User decisions (2026-11-09).** They apply when the Sektor option is on. **Gameplay done (2026-11-10):** tiers, removals and costs are Runtime-confirmed bounded in composition proofs v05/v08; v09 lowers the Homing Missile cost to `0x40` (user decision). **Presentation done (2026-11-10, composition v10–v11):** help text, outfit colour, and Power Ups icons generated from the donor art. Composition v12–v13 also add generic slide, death and falling-to-death animations, plus the production new-power popup on pickups ([history](Sektor-Takeover-Proof-History#r4-presentation-and-common-animations-sektor-builds-v59v60-composition-proofs-v10v13)). See the [proof history](Sektor-Takeover-Proof-History#r4-gameplay-and-the-rope-companion-sektor-builds-v54v58-composition-proofs-v05v09).
 
 | Tier slot | Sub-Zero power | Sektor |
 |---:|---|---|

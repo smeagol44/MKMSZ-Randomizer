@@ -95,6 +95,16 @@ The reconciled 1.0 HUD must expose:
 
 The existing Runtime-confirmed `BOX n OF 4` text satisfies only the storage-state part of that requirement. The native text path at `0x80073E74` remains the preferred basis for persistent labels. A text-first implementation is acceptable; geometric icons or textured elements should use the proven gameplay-HUD queue only where they materially improve the final HUD and have their own bounded validation.
 
+## Power Ups icons and help
+
+**Static-confirmed** (2026-11-10); the Sektor replacement is Runtime-confirmed bounded in composition v11/v12 ([history](Sektor-Takeover-Proof-History#r4-presentation-and-common-animations-sektor-builds-v59v60-composition-proofs-v10v13)).
+
+- **Who draws the icons.** The Power Ups strip builder `0x800750F0` and the new-power popup `0x80062FF0` draw entries of the icon table (ROM `0xA6BB0` / VA `0x800A5FB0`, one texture ID per power slot; the popup indexes it by tier from `0x800A5FAC`). Both call `0x80073CEC` with palette record `0x800B1B28` (ROM `0xB2728`: count `0x40`, then 64 BGR555 colours, index 0 transparent). Nothing else reads that palette.
+- **Where the icons live.** The icons are texture IDs `0x3C8..0x3D1`, 28×28 CI8 records 90–99 of the permanent image bank in global file `0x5D` ([format](Data-Structures-and-Encodings#permanent-image-package)). All stock icons share one circle of non-zero pixels. `0x3D0` (a skull) is not in the table.
+- **ID reuse.** IDs `0x3C0+` are reused per screen: another screen (`0x80078F84`) draws IDs `0x3C6..` with its own palette `0x800B2760`. An ID names a loaded slot, not a fixed image.
+- **Production ownership of file `0x5D`.** The inventory HUD patch already relocates file `0x5D` to `[0x01809000,0x01814000)` to append its portrait sprite `0x46C`. Any icon change decodes that package, edits records in place and re-packs it within that capacity.
+- **Help text.** The help text of each slot is a record from the table at ROM `0xA78A0` ([format](Data-Structures-and-Encodings#power-ups-help-records)). The move names are not shown in the randomizer's normal flow (user note); Sektor's builds rebuild them anyway.
+
 ## Related canonical owners
 
 - [1.0 requirements and roadmap](1.0-Requirements-and-Roadmap) — normative HUD requirement and final acceptance gate.

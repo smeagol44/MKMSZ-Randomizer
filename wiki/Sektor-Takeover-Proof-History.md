@@ -2520,6 +2520,66 @@ The v06/v07 all-powers builds differ from their normal builds only by the two `-
 
 Not established: presentation (Power Ups names, "—" labels, HUD, outfit recolour), the product option, and full-seed coverage.
 
+### R4 presentation and common animations (Sektor builds v59–v60, composition proofs v10–v13)
+
+**Runtime-confirmed bounded** by the user:
+- the help text was left as built: the user noted the move names are not visible in the randomizer, and kept them;
+- the icons and the new-power popup ("look fantastic", "working perfectly");
+- Slide and Super Slide ("look amazing");
+- death ("a bit goofy but still good (accepted)");
+- the falling-to-death loop ("Worked perfectly", v13).
+
+The animation recipes are **generic importer rules** (user design): they use only the basic MKT animation set every fighter shares. Sektor is the test case.
+
+- **Power Ups help text (v10, `fighter_import.power_help`).**
+  - The nine help records (title | command | description string lists, `[0x800A6B30,0x800A6CA0)`) and their strings (`[0x800AE5D8,0x800AE914)`) are rebuilt in place, keyed by the Sub-Zero power whose slot each move took. They therefore follow the power-order shuffle, and the help table (ROM `0xA78A0`) is remapped.
+  - `"LOW PUNCH"` at `0x800AE604` stays in place, because the button-name table `0x800AEBB8` shares it. Empty slots show `--`.
+- **Outfit (v10, `fighter_import.outfit`).** The `--outfit` option recolours Sektor's red palette entries 3, 5, 7, 9, B, D and E (file `+0x4584C`).
+  - Hue, preset, seeded and RGB modes set an absolute hue, as for Sub-Zero.
+  - `red` is his own colour, and `green` swaps red and green.
+  - Before this, the option silently changed only the stale stock file.
+- **Power Ups icons (v11, `fighter_import.power_icons`).** The format and storage are in [Native HUD and UI](Native-HUD-and-UI#power-ups-icons-and-help).
+  - **Source:** built at build time from the donor ROM (no stored art), from donor frames in their MKT palettes: Sektor `0x800BC12C`, ROCKET_P `0x800BC3AC`, crosshair `0x800BC3D0`.
+  - **Recipe:** the frames are placed on a steel radial background, box-averaged to 28×28 and clipped to the stock circle. All nine icons are then reduced together to the shared 64 colours by a fixed median cut.
+  - **Icons:**
+
+    | Icon | Composition |
+    |---|---|
+    | Straight Missile | RBCHEST2 with ROCKETD1 |
+    | Double Missile | RBCHEST2 with two ROCKETD1 |
+    | Homing Missile | Climbing rocket plus crosshair (its dither fill left out) |
+    | Teleport | 2nd emerge frame (user choice over the uppercut and 4th-frame options) |
+    | Slide | Sweep frame |
+    | Super Slide | Sweep frame with two after-images |
+    | Empty slots | Dash disc |
+    | Polar Blast | Stock icon |
+
+  - **Packing:** file `0x5D` is re-packed in its production slot with an exact round trip.
+- **New-power popup on Power Upgrade pickups (production change).** See [XP and progression](XP-and-Progression#power-upgrade-pickups-show-the-native-new-power-popup--2026-11-10).
+- **Slide / Super Slide (v12, `fighter_import.common_moves`):** host secondary 2 (shared with secondary 1; both moves play it through `0x8002FE54(1,2)`) = duck frame 1, duck-turn frame 1, duck-low-kick frame 3.
+- **Death (v12):** host primary `0x2A` = the knockdown's fall-back and landing phases, the lying frame held. Secondary 9 points into the knockdown's lying phase, so source sequences are read by phase, not by span.
+- **Falling to death (v13):** traced from an RMG save state on Water.
+  - A process-list replay showed the pit fall selecting the knockdown (primary `0x1E`), then `0x8002FE54(1,8)`.
+  - Host secondary 8 is Sub-Zero's 8-frame long-fall loop, which the takeover had left on the idle fallback.
+  - It now holds the last fall-back frame, keeping the loop's jump.
+- **Recipe rules.** The recipes rewrite only frame words; tokens, operands, callback words and phase ends stay. Each slot's script spans up to the next script any table entry points at.
+
+| ROM (seed `SEKTOR-PROD-1`, `--debug-all-keys`) | SHA-256 | CRC1 / CRC2 |
+|---|---|---|
+| `MKMSZR_sektor_production-composition_proof_v10.z64` | `d1cde35354cfab7e184aaa8d21893428768dc83fdc0609f358b1a769a6d7820c` | `F553CC4E / C253BC7E` |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v10.z64` | `dc7284f7dc053997e1ccfd2a9471a06571a75c45cf0ae0cf11254a28fa3d3f8b` | same |
+| `MKMSZR_sektor-shuffled-all-powers_production-composition_proof_v10.z64` (seed `SEKTOR-R4-SHUFFLE`) | `b92dc661f1c266bb66ed11c84d56df91857c0f3ddd5933713025a01a1557a91b` | `9EEE1402 / 745F8558` |
+| `MKMSZR_sektor-purple-all-powers_production-composition_proof_v10.z64` (`--outfit purple`) | `01649d0578c7be426803deabb90d55c42e08a14ee3db03c66a299a404630d294` | `F04BC874 / 0DC66AF5` |
+| `MKMSZR_sektor_production-composition_proof_v11.z64` | `3d714239b782d6c98c2d8c909017ec8527666b8c9c070e4c874f2989847deafa` | `27F00AFA / 0AE04CC7` |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v11.z64` | `7e7c90aea22cc5355291dc153d29a96abf116960c524d2f4520e6acd866455b1` | same |
+| `MKMSZR_sektor-shuffled-all-powers_production-composition_proof_v11.z64` | `c00e436d70b103ca9c3da501304141837e7f8cfbec5e9da78c83617feab95e55` | `5C4C1A56 / CDC39EC9` |
+| `MKMSZR_sektor_production-composition_proof_v12.z64` | `800ef7f12e227f0be3346ce11a12ff84bbd6e5bd00f899ea16ac982c7d42466b` | `27F00AFA / 0AE04CC7` |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v12.z64` | `e19d14867b126bd443672b6a082e59011511c6fb293fe6dab87cf5eceb0425a7` | same |
+| `MKMSZR_sektor_production-composition_proof_v13.z64` | `e1f83b25cf0e323bce151f92f36a866fca57c25fc5bb807d86cc76f39e580248` | same |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v13.z64` | `f2dfe388d1edb70a30ebeeb745ee6aa8b16350ffc67c9cd60fe5a34c59b64562` | same |
+
+From v12 the `--all-powers` option finds its two words by instruction content. The XP payload layout changed with the popup.
+
 ### Known limits after v08
 
 - Only the teleport sound is imported; Sektor's other sounds (voice, footsteps and so on) are still Sub-Zero's.

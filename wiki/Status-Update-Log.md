@@ -4,6 +4,22 @@
 
 ## From Project status
 
+### PS-29 (2026-11-10)
+
+**2026-11-10 Sektor R4 presentation, the pickup new-power popup, and generic common animations (composition v10–v13): Runtime-confirmed bounded.**
+
+- **Presentation.**
+  - Power Ups help text rebuilt per slot, following the shuffle.
+  - The outfit option recolours Sektor's red armour.
+  - Power Ups icons are generated at build time from the MKT donor art and written into the common image package (file `0x5D`) and its shared palette.
+- **Production change.** Powers-as-pickups now starts the native new-power popup on every Power Upgrade, as stock XP gains do.
+- **Importer.** Generic recipes from the shared MKT animation set (user design, for any imported fighter):
+  - Slide / Super Slide = duck 1, duck-turn 1, duck-low-kick 3;
+  - death = knockdown fall-back and landing;
+  - falling to death = the last fall-back frame, held. That slot was found by replaying a user save state.
+- **Next.** The "Fighter" product option (CLI/web) as a guarded `patches` module with CI, then a full-seed run.
+- **Identity.** v13 SHA-256 `e1f83b25cf0e323bce151f92f36a866fca57c25fc5bb807d86cc76f39e580248`; builders at `f3d5679` ([history](Sektor-Takeover-Proof-History#r4-presentation-and-common-animations-sektor-builds-v59v60-composition-proofs-v10v13)).
+
 ### PS-28 (2026-11-10)
 
 **2026-11-10 Sektor R4 gameplay and the rope companion, composition proofs v05–v09: Runtime-confirmed bounded (v05, v08).**
@@ -157,6 +173,18 @@
 **Focused lifecycle update (2026-10-01): lifecycle v06 is Runtime-confirmed and promoted to the shared production pipeline.** The exact accepted reference is Very Hard / 9 total lives / 5 continues / persistent HP ON. The shared core now parameterizes that same lifecycle control flow for build-time difficulty, starting lives (1..10), starting continues (0..5), and persistent HP ON/OFF; browser defaults are Very Hard / 5 / 3 / HP ON. Non-reference combinations are Implementation/CI-confirmed pending representative runtime coverage. v04 remains **Rejected / unsafe composition**. See [Lifecycle static closure](Lifecycle-Static-Closure-v05), [Persistence/inventory/lifecycle](Persistence-Inventory-and-Lifecycle), and [Web patcher/product behavior](Web-Patcher-and-Product).
 
 ## From Runtime validation status
+
+### RV-24 (2026-11-10)
+
+**2026-11-10 Sektor composition proofs v10–v13: Runtime-confirmed bounded.**
+- **v11 / v12:**
+  - "The powers icons look fantastic, and the popup icon is working perfectly."
+  - "both slides look amazing";
+  - death "a bit goofy but still good (accepted)".
+- **v13:** the falling-to-death loop "Worked perfectly".
+- **Help text:** not visible in the randomizer (user note); kept as built.
+
+Bounded routes; not exhaustive.
 
 ### RV-23 (2026-11-10)
 

@@ -35,6 +35,7 @@ Current project maturity and priorities are owned by [Project status](Project-St
 
 Dated update notes are kept verbatim in the [Status update log](Status-Update-Log); newest first.
 
+- 2026-11-10 Sektor composition proofs v10–v13 (presentation, pickup popup, common animations) — Runtime-confirmed bounded. ([RV-24](Status-Update-Log#rv-24-2026-11-10))
 - 2026-11-10 Sektor composition proofs v05 and v08 (R4 gameplay, rope companion) — Runtime-confirmed bounded; v06/v07 Rejected / failed (rope-hit hang). ([RV-23](Status-Update-Log#rv-23-2026-11-10))
 - 2026-11-10 Sektor production-composition proofs v02 and v04 — Runtime-confirmed bounded; v01 Rejected / failed (hang). ([RV-22](Status-Update-Log#rv-22-2026-11-10))
 - 2026-11-09 Sektor assets above 16 MiB, proof v49 — Runtime-confirmed bounded. ([RV-21](Status-Update-Log#rv-21-2026-11-09))
