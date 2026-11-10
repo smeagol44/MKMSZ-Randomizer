@@ -105,6 +105,29 @@ Empty stock slots use `0xFFFFFFFF`. Foreign-stage keys appear in the live window
 
 The ordinary player classifier at `0x80029200..0x800292C8` derives `+0x704` without searching for a target: Right stores the actor facing bit directly, while Left stores it XOR `0x10`. This makes the field a ready-made world-direction/facing mismatch signal for control-assist work.
 
+## Stock floor regions
+
+**Static-confirmed** (traced through `0x80024BA8` → `0x80025ED4`). A read-only probe that models these records is Runtime-confirmed bounded in Sektor composition proofs v03/v04 ([proof history](Sektor-Takeover-Proof-History#production-composition-sektor-builds-v50v53-composition-proofs-v01v04)).
+
+The floors a fighter stands on are polylines held in a per-stage table:
+
+| Item | Location / format |
+|---|---|
+| Count | word `0x80290998` |
+| Records | pointer `*0x800C2568`, stride `0xB8` |
+| Enabled | byte `0x801AE580[i]` per record |
+| Base x / y / z | record words `+0x00` / `+0x04` / `+0x08` (world units) |
+| Point count | record word `+0x0C` |
+| Points | from `+0x10`, stride 8: `dx`, `dy` signed halfwords relative to the base |
+| Flags | record word `+0x94`: `0x300` = shaping modes (not modelled by the probe); `0x800` = ledge region |
+
+- **Match.** A record applies to an actor when `|z − base z| <= 0x80` and its x lies between the first and the last point. The floor there is `base y + dy` of the first point whose x exceeds the actor's x. y grows downward.
+- **Effect.** The stock writes `floor << 8` to actor y `+0x30` and controller `+0x6B4`.
+- **Controller `+0x6B4` values.** `0x7FBC00` means no floor below (written by `0x80024BA8` when nothing matched). `0x7D0000` is written while the fighter rises or is attached; an airborne target can still hold it a frame after crossing its floor.
+- **Airborne crossing.** When controller `+0x6B2` or actor `+0x10` is non-zero, `0x80025ED4` lands the fighter by crossing, using the previous y `+0x3C`. A fighter already below the floor does not land.
+- **Ledge branch.** For a falling fighter whose head passes a flag-`0x800` region's level, the ledge branch snaps x to the nearest region end and installs the hang routine `0x80025E48` (via `0x80032CD4`).
+- **Moving platforms.** These are a separate scan (`0x800258FC`), as are attach objects (`0x80026D40`).
+
 ## Ordinary-enemy stream
 
 Streams are big-endian 32-bit words, terminated by `0x0000FFFF`, and dispatched for opcodes `0..9` by table `0x800AD7A0`. Common spawn opcodes `0`, `1`, and `9` occupy `0x1C` bytes:

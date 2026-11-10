@@ -246,6 +246,16 @@ Analysis that led to these choices:
 
 A "Fighter: Sub-Zero / Sektor" build option (off by default, requires the donor ROM), implemented as a guarded `src/mkmszr/patches` module built from the `fighter_import` library rather than a proof builder; CI guards for every site and allocation; then the usual gates: a disposable production-composition proof, bounded manual tests, and a full-seed run with Sektor on.
 
+**Stage 1 done (2026-11-10): production-composition proofs v01–v04, Runtime-confirmed bounded (v02, v04).**
+- **What they are.** A randomizer ROM built by the real CLI, with Sektor's classified changes transplanted in. Each changed word is either Sektor or proof infrastructure; unclassified words and owner conflicts fail the build. The fixed loader goes in the pool tail `[0x801B30F0,0x801B3360)` inside file `0x1A`, and file `0x87` plus the samples go in `[0x01820000,0x0186E4C0)`. No owner conflict was found in the tested seed.
+- **What changed.** Composition exposed two defects the clean-ROM proofs could not. Stock code called from the KSEG1 payload made KSEG1 return addresses that production's Toasty hook did not recognise (v01 hang; stock calls now go through KSEG0). The teleport could reappear below a floor read from a falling target (v03; now snapped onto the nearest probed floor).
+- **Details.** See the [proof history](Sektor-Takeover-Proof-History#production-composition-sektor-builds-v50v53-composition-proofs-v01v04).
+- **Remaining stages.**
+  - A build with enemy randomization on.
+  - R4 gating, costs and presentation per the decisions above.
+  - The product option (CLI/web) as a `patches` module with CI guards.
+  - A full-seed run with Sektor on.
+
 ## Related pages
 
 - [MKT adapter primitives](MKT-Adapter-Primitives)

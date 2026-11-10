@@ -4,6 +4,17 @@
 
 ## From Project status
 
+### PS-27 (2026-11-10)
+
+**2026-11-10 Sektor integration step 5, stage 1: production-composition proofs v01–v04, Runtime-confirmed bounded (v02, v04).**
+
+- **Result.** Sektor runs inside a CLI-built randomizer ROM (seed `SEKTOR-PROD-1`, `--debug-all-keys`). His changes are transplanted by explicit classification, with conflict checks against production's owners. The fixed loader sits in the pool tail `[0x801B30F0,0x801B3360)` inside file `0x1A`; file `0x87` and the samples sit at `[0x01820000,0x0186E4C0)`.
+- **Defects found and fixed.**
+  - v01 hung on a teleport hit: stock code called from the KSEG1 payload returned to KSEG1 addresses, which production's Toasty hook does not recognise. Stock calls now go through KSEG0 (`cached_calls`, v51 / composition v02).
+  - A rare teleport fall-through (v03, Prison) was traced from two user save states to a placement height read from a target overshooting its floor. The reappear is now snapped onto the nearest probed floor (v53 / composition v04).
+- **Next.** Enemy randomization with Sektor, R4 gating/costs/presentation, the product option, a full-seed run ([plan](MKT-to-MKMSZ-Compatibility-Layer#5-product-option-and-gates)).
+- **Identity.** v04 SHA-256 `f10419fb32d142626f75bd17988cb8e960cd79fddc96039556e524f1aa1b08f9`; builders at `f188da2` / `9635f3e` ([proof history](Sektor-Takeover-Proof-History#production-composition-sektor-builds-v50v53-composition-proofs-v01v04)).
+
 ### PS-26 (2026-11-09)
 
 **2026-11-09 Sektor integration step 3 (sound and ROM space): proof v49 Runtime-confirmed bounded.** In a 32 MiB image, Sektor's fighter file `0x87` (`0x01820000`) and all donor sound samples (`0x01866000`, 16 wave records repointed) load and play from the generated-output tail. Candidate production region `[0x01820000,0x0186E4C0)` ([Memory map](Memory-and-Allocation-Map)). Next: step 4, R4 power mapping, which needs user decisions. v49 SHA-256 `c43825618b89917bb7176b2ab8cf4be7722048ab9b7b47d8e9a3a54372161c4f` (builder `5f8e4fc`).
@@ -136,6 +147,16 @@
 **Focused lifecycle update (2026-10-01): lifecycle v06 is Runtime-confirmed and promoted to the shared production pipeline.** The exact accepted reference is Very Hard / 9 total lives / 5 continues / persistent HP ON. The shared core now parameterizes that same lifecycle control flow for build-time difficulty, starting lives (1..10), starting continues (0..5), and persistent HP ON/OFF; browser defaults are Very Hard / 5 / 3 / HP ON. Non-reference combinations are Implementation/CI-confirmed pending representative runtime coverage. v04 remains **Rejected / unsafe composition**. See [Lifecycle static closure](Lifecycle-Static-Closure-v05), [Persistence/inventory/lifecycle](Persistence-Inventory-and-Lifecycle), and [Web patcher/product behavior](Web-Patcher-and-Product).
 
 ## From Runtime validation status
+
+### RV-22 (2026-11-10)
+
+**2026-11-10 Sektor production-composition proofs v01–v04: v02 and v04 Runtime-confirmed bounded; v01 Rejected / failed.**
+- **v01:** "it hanged at the moment I was about to hit an enemy with the teleport uppercut. Happened at wind".
+- **v02:** "It works, it worked with toasty as well. No issues so far."
+- **v03:** the user supplied two Project64 save states of a reproducible fall-through (Prison, target falling from an air kick); the cause was found by static analysis of those states ([proof history](Sektor-Takeover-Proof-History#production-composition-sektor-builds-v50v53-composition-proofs-v01v04)).
+- **v04:** tested on the `--all-powers` build: "Seems to be working perfectly, so I'll accept this fix."
+
+Bounded routes in one seed; not exhaustive.
 
 ### RV-21 (2026-11-09)
 

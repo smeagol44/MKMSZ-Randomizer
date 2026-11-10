@@ -2415,7 +2415,7 @@ All four MKT Sektor specials now run on the Sektor body: the `F,F + LK` teleport
 
 Host facts used: the stock Ice root refuses to start while a class-`0x700` process (a live rocket) exists (`0x80028510(0x700)` at `0x8004ABB0`), so both straight commands and the homing rocket are one-at-a-time and block each other (MKT allows three homing rockets). A double puts two smoke trails on screen (about 22 live puffs); the pool reserve still holds, and the texture storage per puff is the one unguarded budget (user choice: leave it, no live-puff cap).
 
-Open details, all deferred by the user: smoke timing and the tick ratio (and the rocket speed re-check), explosion alpha after the v43 colour fix, MKT's faster chest open against a reacting opponent, and the unexplained teleport fall. Tier gating, the remaining Sub-Zero specials and MODERN controls belong to R4.
+Open details, all deferred by the user: smoke timing and the tick ratio (and the rocket speed re-check), explosion alpha after the v43 colour fix, MKT's faster chest open against a reacting opponent, and the unexplained teleport fall (resolved in composition v04). Tier gating, the remaining Sub-Zero specials and MODERN controls belong to R4.
 
 ### Option C: heap-neutral file and relocatable payload (v47–v48)
 
@@ -2427,6 +2427,47 @@ Step 1 of the [production integration plan](MKT-to-MKMSZ-Compatibility-Layer#sek
 Runtime: the user reports both "working as expected, no issues found whatsoever" (bounded manual test of all moves).
 
 - **v49 (integration step 3):** v48 grown to a 32 MiB image (`0xFF` fill, as production's generated output), with file `0x87` moved to ROM `[0x01820000,0x018659E0)` and the whole donor sample block to `[0x01866000,0x0186E4C0)`; the file-table entry and the 16 wave records (offsets from the sample table `0x9B0650`) are repointed and the old locations wiped. Static check: moved bytes identical, wave offsets shifted by exactly `0x946000`, nothing else changed. **Runtime-confirmed:** every Sektor sound and all graphics work ("all sounds and graphics work fine"), so the audio path streams samples from above 16 MiB; no production sample sat there before.
+
+### Production composition (Sektor builds v50–v53, composition proofs v01–v04)
+
+Integration plan step 5, stage 1: a disposable randomizer ROM with Sektor in it, before any product module. **Runtime-confirmed bounded** (composition v02 and v04, manual tests by the user, Toasty included); not a production integration.
+
+**Composition builder** (`Experimental/SektorTransplantBuilders/production/MKMSZR_build_sektor_production_vNN.py`). It builds a normal randomizer ROM with the real CLI, then the Sektor proof line from the clean ROM with its fixed loader linked for the production pool tail (`--fixed-va 0xA01B30F0`, v50). It then transplants only Sektor's changes:
+
+- **Every changed word is classified.** Each word the Sektor build changes in the first 16 MiB is, by explicit list, either Sektor (transplanted: load/throw `jal` sites, the transfer bound and entries, the reaction entry, voice table, knee root, Run rate, file-`0x87` entry, strike pointer, the special records and combo records, the sound tables) or proof infrastructure (dropped: bootstrap stub, file `0x1B`, arena hook, debug stage menu, boot-logo skip, max-EXP cheat). An unclassified word fails the build, and so does a transplanted word that the randomizer ROM no longer holds at its clean value (an owner conflict). 1240 words move.
+- **Fixed loader and assets.** The fixed loader goes into production's shared file `0x1A` at KSEG0 `0x801B30F0` (pool tail after the Inventory legend; ROM `[0x018198D0,0x01819B40)`; the file-`0x1A` entry end is extended). File `0x87` and the donor samples are copied to `[0x01820000,0x0186E4C0)`, as in v49.
+- **Options.** SPECIALS must stay on CLASSIC. `--all-powers` (v04 builder, test convenience) makes every stage entry restore XP 20000 and stops Power pickups lowering it. The move gates call the tier evaluator `0x80074FBC` on current XP `0x8011200C`, so XP alone decides the powers.
+
+| Build | Change | Result |
+|---|---|---|
+| Sektor v50 | v49 + `--fixed-va` / `--manifest` (link the fixed loader for another address, record the outputs) | Builder support |
+| Composition v01 | v50 transplanted into a seeded randomizer ROM (fixed loader `0x268` bytes) | **Rejected / failed:** the game hung when a teleport uppercut was about to hit (Wind) |
+| Sektor v51 / composition v02 | Every call from the payload and the lifted routines into stock code goes through its KSEG0 address (`lui t9; addiu t9; jalr t9`; `j` as `jr t9`); fixed loader `0x270` bytes | **Runtime-confirmed:** teleport hits work, with Toasty |
+| Sektor v52 / composition v03 | Read-only floor probe before the teleport reappears: the far-side spot, else the near side (mirrored around the target), else the target's x | Fixed the drop-off case; a rare fall-through remained (Prison) |
+| Sektor v53 / composition v04 | The probe returns the floor nearest to the placement height (within `0x40` units) and Sektor is placed exactly on it | **Runtime-confirmed:** user accepted the fix ("seems to be working perfectly"), tested on the `--all-powers` build |
+
+**v01 hang: KSEG1 return addresses.** The payload executes from KSEG1. A `jal` keeps the top four bits of the PC, so stock code called by `jal` from the payload ran in KSEG1 too, and every return address it made was a KSEG1 address. Production's Toasty dispatcher at the strike core recognises its caller by comparing `ra` with `0x8002DF30`, and `controls_run` compares return addresses the same way. Seeing `0xA002DF30`, it took the wrong path. The clean-ROM proofs never had those hooks. Fix: `fighter_import.mips.Assembler(cached_calls=True)` and `lifter.lift(cached_calls=True)` (lifted external `j`/`jal` go through appended KSEG0 stubs; a delay slot that writes `t9` is rejected).
+
+**Teleport fall-through.** The probe models the stock floor regions (record format in [Data structures](Data-Structures-and-Encodings#stock-floor-regions)).
+- **Cause (v03).** Found from two Project64 save states supplied by the user (Prison, an enemy falling from an air kick). The reposition read the target in the one frame where it had passed 22.5 px below its floor, before its own landing snap. Its floor word still held the airborne `0x7D0000`, so the own-floor fallback kept the target's height, and the v03 probe accepted it (within 32 units).
+- **What followed.** Sektor emerged at y 214.47 under a floor at 192. The per-tick check `0x80024BA8` matched no floor, set `+0x6B4 = 0x7FBC00` and installed the walk-off fall `0x80025230` (action `0x30A`). The ledge branch of `0x80025ED4` then caught him falling below the floor of the flag-`0x800` (ledge) region and snapped him to its nearest end, the left one, outside the first wall, hanging (user-observed).
+- **Evidence.** The second save state matches exactly: x = the target's x on that frame + 40; the previous y = the target's overshoot height; `vy = 0xF0A2`, one tick of gravity `0x7851`.
+- **Reproduction.** A frame simulator (`tests/mips_eval.Machine` on the save state's RDRAM, Sektor's process resumed from its saved context, the target's ballistic fall modelled) reproduces the second save state from the first with v03. It shows the window is a single frame, which is why the fall was rare. With v04, every tested timing lands normally, hit or not.
+- **Earlier report.** This also accounts for the unreproduced post-v40 fall report.
+
+Identities (seed `SEKTOR-PROD-1`, `--debug-all-keys`; clean MKMSZ and MKT Rev. 2 inputs verified by SHA-256):
+
+| ROM | SHA-256 | CRC1 / CRC2 |
+|---|---|---|
+| `MKMSZR_sektor_production-composition_proof_v01.z64` | `4b1ad41fc6d3a4ed01a5641ccd7568207154ecc7ed5782c9583925b4ddf05c34` | `193E8F38 / F53060F7` |
+| `MKMSZR_sektor_production-composition_proof_v02.z64` | `12dbfafdc75ed66cda1ed707fa77e01e3096ed0cbea69892853b419510bfa8b8` | `193E62BC / F042B3AC` |
+| `MKMSZR_sektor_production-composition_proof_v03.z64` | `d813fc5781aca383b459a79a99edb9c72f1a62ed4550097a8ecc0175bb549c1b` | `193F8CAC / D310B97D` |
+| `MKMSZR_sektor_production-composition_proof_v04.z64` | `f10419fb32d142626f75bd17988cb8e960cd79fddc96039556e524f1aa1b08f9` | `193F9394 / E4D44F1A` |
+| `MKMSZR_sektor-all-powers_production-composition_proof_v04.z64` (`--all-powers`) | `62d1cba4f1e23a20e62f292c0f244817a936553b1c2a3a410ce0d7323913bf6c` | `193F9394 / E4D44F1A` (the two changed words lie outside the CRC range) |
+
+Each builder reproduces its ROM at the commit that added it; with `floor_probe` / `probe_snap` off the library emits the earlier bytes (v03 rebuilt byte-identically after the v04 change).
+
+Not established: exhaustive stage, enemy and route coverage; enemy randomization with Sektor; R4 tier gating, presentation and the product option (step 5, later stages).
 
 
 All of these are the Reverse Elbow v6 proof infrastructure plus the takeover storage, guarded against clean bytes. **None is a production allocation.**
@@ -2445,7 +2486,7 @@ All of these are the Reverse Elbow v6 proof infrastructure plus the takeover sto
 - The drop shadow stays visible during sink and emerge: the shadow renderer is not yet located.
 - MKT's 16-tick velocity lead on placement is omitted.
 - Facing uses the stock nearest-opponent helper, so with two close enemies Sektor could face the nearer one.
-- A target standing at a drop-off edge could place Sektor over the drop. A single unreproduced report after v40 matches this (Sektor appeared at floor level and fell to the floor below); cause unconfirmed. A fix would probe for a floor at the placement before committing to it.
+- A target standing at a drop-off edge could place Sektor over the drop. A single unreproduced report after v40 matches this (Sektor appeared at floor level and fell to the floor below); cause unconfirmed. A fix would probe for a floor at the placement before committing to it. **Resolved (composition v03/v04):** the reappear spot is probed against the stock floor regions and snapped onto the nearest floor; the reproduced cause was a placement height read from a target overshooting its floor ([production composition](#production-composition-sektor-builds-v50v53-composition-proofs-v01v04)).
 - Only bounded manual routes were tested; this is not exhaustive coverage.
 
 ## Canonical ownership and remaining limits
