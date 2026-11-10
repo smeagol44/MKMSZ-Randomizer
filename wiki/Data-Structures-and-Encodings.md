@@ -125,7 +125,7 @@ The floors a fighter stands on are polylines held in a per-stage table:
 - **Effect.** The stock writes `floor << 8` to actor y `+0x30` and controller `+0x6B4`.
 - **Controller `+0x6B4` values.** `0x7FBC00` means no floor below (written by `0x80024BA8` when nothing matched). `0x7D0000` is written while the fighter rises or is attached; an airborne target can still hold it a frame after crossing its floor.
 - **Airborne crossing.** When controller `+0x6B2` or actor `+0x10` is non-zero, `0x80025ED4` lands the fighter by crossing, using the previous y `+0x3C`. A fighter already below the floor does not land.
-- **Ledge branch.** For a falling fighter whose head passes a flag-`0x800` region's level, the ledge branch snaps x to the nearest region end and installs the hang routine `0x80025E48` (via `0x80032CD4`).
+- **Ledge branch.** For a falling fighter whose head passes a flag-`0x800` region's level, the ledge branch snaps the actor to the nearest region end (x and y), sets its floor, clears `+0x6B2`, plays sound `0x13` and installs `0x80025E48` through `0x80032CD4`. That routine requests player state 1 (controller `+0x6DC = 1`) and restarts the process at its live dispatch `0x80028F3C`. State 1 being the ledge hang is a strong inference (consistent with the observed hang), not traced.
 - **Moving platforms.** These are a separate scan (`0x800258FC`), as are attach objects (`0x80026D40`).
 
 ## Ordinary-enemy stream
