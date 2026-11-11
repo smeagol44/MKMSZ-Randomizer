@@ -36,6 +36,10 @@ Body fields:
   donor word count ``n`` or explicit ``words``, and ``hybrid`` (non-frame words stay stock).
   ``inherited_groups``/``run_groups`` split the body and Run frames into entropy groups;
   ``frame_edits`` sets host script words (file offset) to donor frames.
+* ``commands`` (optional): move program name -> the Sub-Zero power whose command record the
+  move's MKT command takes over (its action, condition and transfer selector; ``null``: no
+  action yet), and ``remove_commands``: Sub-Zero command records dropped although no move
+  takes them (``fighter_import.commands``; milestone 4 step 2).
 * ``legacy``: frozen Sektor-era modules this fighter still uses (plan rule 4).
 """
 
@@ -116,6 +120,8 @@ class FighterDescription:
     donor_name: str
     body: Body
     legacy: tuple[str, ...]
+    commands: dict[str, str | None] = field(default_factory=dict)
+    remove_commands: tuple[str, ...] = ()
 
 
 def _int(value: Any, where: str, errors: list[str]) -> int | None:
@@ -250,7 +256,23 @@ def validate(data: Any) -> FighterDescription:
     if not isinstance(legacy, list) or any(x not in LEGACY_MODULES for x in legacy):
         errors.append(f"legacy: a list of {', '.join(LEGACY_MODULES)}")
         legacy = []
-    unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes"}
+    from .commands import HOST_POWERS
+
+    commands = data.get("commands", {})
+    if not isinstance(commands, dict) or any(
+        not isinstance(k, str) or (v is not None and v not in HOST_POWERS) for k, v in commands.items()
+    ):
+        errors.append(f"commands: move name -> one of {', '.join(HOST_POWERS)} or null")
+        commands = {}
+    remove = data.get("remove_commands", [])
+    if not isinstance(remove, list) or any(r not in HOST_POWERS for r in remove):
+        errors.append(f"remove_commands: a list of {', '.join(HOST_POWERS)}")
+        remove = []
+    called = [v for v in commands.values() if v]
+    if len(called) != len(set(called)) or set(called) & set(remove):
+        errors.append("commands: each host power is taken by one move and not removed")
+    unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes",
+                           "commands", "remove_commands"}  # fmt: skip
     if unknown:
         errors.append(f"unknown keys: {', '.join(sorted(unknown))}")
     if errors:
@@ -258,7 +280,7 @@ def validate(data: Any) -> FighterDescription:
     return FighterDescription(
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
         body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots),
-        legacy=tuple(legacy),
+        legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove),
     )  # fmt: skip
 
 

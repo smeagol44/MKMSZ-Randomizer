@@ -60,7 +60,7 @@ v01 causes and the generic fixes in v02 (`fighter_import.body_build`; Sektor's e
 |---|---|---|
 | `MKMSZR_reptile-inputs_common_proof_v01.z64` | `fe87bb2af266d0cc6505c4b967f78403ddb5488ae2f323113df0c3f37b698603` | **Runtime-confirmed (bounded)** by the owner (2026-11-11): all three combos work, every hit is animated, and the finishers launch correctly with no corruption. The throw is "a bit off but acceptable". Reproducible at commit `b9d1c80`. |
 | `MKMSZR_reptile-inputs_common_proof_v02.z64` | `51adc9d3c59af671062441020940541ca6d204375d84959a202a2ba5bec196a8` | Changes from v01: knockback finisher at 10 damage (owner decision, Sektor too: build v62); throw by Sektor's lead-in rule (`shift:-1`). Owner (2026-11-11): damage **Runtime-confirmed** ("very good", Reptile and Sektor); throw **Rejected / failed** ("actually worse ... earlier instead of later"). Reproducible at commit `e16c816`. |
-| `MKMSZR_reptile-inputs_common_proof_v03.z64` | `a3c7e4487d9dd56d225877862f6e95c7bf6349bf7d4ce76f3030d73c9490e570` | **Pending** owner test. v02 with the throw one place earlier than v01 (`shift:+1`); differs from v02 only inside file `0x87`. |
+| `MKMSZR_reptile-inputs_common_proof_v03.z64` | `a3c7e4487d9dd56d225877862f6e95c7bf6349bf7d4ce76f3030d73c9490e570` | **Runtime-confirmed (bounded)** by the owner (2026-11-11): the throw "looks much better now". v02 with the throw one place earlier than v01 (`shift:+1`); differs from v02 only inside file `0x87`. **Step 2a done.** |
 
 v01 is the accepted body plus:
 
@@ -75,6 +75,24 @@ Outside file `0x87`, v01 changes only the CRCs, the kick root (ROM `0xA1CE8`) an
 - **v01** fitted the throw phase by phase: 2/6/7 MKT frames into the host's 2/5/2.
 - **v02** used the rule Sektor's throw was accepted with. In proof v55 his visuals ran about one tick ahead of the grab, so the fix moved them later and started on the stance pose. For Reptile, this made the throw worse.
 - **v03** uses `body.phase_slots` mode `shift:N`. Host position *p*, counted over all three phases, shows donor frame *p + N* of the grab and throw phases; the stance fills the positions before them, and the retract the ones after. v02 is `shift:-1`, Sektor's v55 corresponds to `shift:-2`, and Reptile v03 is `shift:+1`: his second reach frame, his six throw frames from the second position, then the retract's ends.
+
+**Step 2b, special commands.** `MKMSZR_reptile-inputs_common_proof_v04.z64` (SHA-256 `2b7de49257700fba35dddc4a56b8eb094fef9fae79b91f450085f3af0c48a30b`), **Pending** owner test. It is v03 plus Reptile's MKT commands through the generic `fighter_import.commands` (description `commands`), each calling the Sub-Zero power it replaces:
+
+| Reptile command | Calls | Host table |
+|---|---|---|
+| Acid Spit, F,F + HP | Ice Blast | HP |
+| Forceball fast, F,F + HP+LP | Directional Ice (down) | HP and LP, both buttons checked |
+| Forceball slow, B,B + HP+LP | Ice Clone | HP and LP, both buttons checked |
+| Invisibility, U,D + HK | Freeze on Contact | HK |
+| Reverse Elbow, B,F + LK | nothing yet (Ice Shatter has no command record) | LK emptied |
+
+The other powers and records:
+
+- Directional Ice up is removed (D,F + HK).
+- Spine Rip and Polar Blast keep their HP commands.
+- Slide and Super Slide keep the host's own recognizers (Reptile's MKT slide is the same B + LP + BL + LK).
+
+The HP table grows to five records, so it moves to the v6 proof arena ([allocations](Memory-and-Allocation-Map#proof-only-allocations-generic-projectile-v01v06-2026-11-11)). The arena's loader also sets maximum EXP, so every power is unlocked. Until step 4 removes Air Ice Blast, Acid Spit uses Ice Blast's stock condition, so an airborne F,F + HP still gives Air Ice Blast from tier 4.
 
 Other stand-in poses left after the body: relocated stock scripts that nothing points to any more, and host-only states with no MKT counterpart established: the Ice projectile script P24, inherited "flipped by" labels P28–P31, and secondary slots S05–S0C and S2A. These are not "easy" animations; reachability is Pending.
 

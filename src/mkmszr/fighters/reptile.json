@@ -67,6 +67,16 @@
       "grabbed"
     ]
   },
+  "commands": {
+    "acid_spit": "ice_blast",
+    "forceball_fast": "directional_ice_down",
+    "forceball_slow": "ice_clone",
+    "elbow_dash": null,
+    "invisibility": "freeze_on_contact"
+  },
+  "remove_commands": [
+    "directional_ice_up"
+  ],
   "legacy": [],
   "notes": "Body only (milestone 1). Colour method auto is implemented in milestone 1; moves, presentation and progression come in milestones 2-5 with the owner's decisions."
 }
