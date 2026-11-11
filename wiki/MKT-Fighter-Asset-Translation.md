@@ -324,6 +324,8 @@ The proof artifact is `MKMSZR_sektor-16color_common-proof_v01.z64` (SHA-256 `e33
 
 This is an importer policy, not a claim that historical Sektor proofs used only 16 colors. The v53/v60 32-color resident-TLUT line remains valid runtime evidence for palette ownership and alternate-palette binding. The generic route should preserve those semantic lessons while quantizing/remapping the imported fighter body to 16 colors unless new technical evidence shows unacceptable quality, animation-specific palette breakage, collision with required effect/attachment colors, or another concrete incompatibility.
 
+**Automatic reduction (2026-11-11).** Sektor's 16-colour palette and index map are hand-made; other fighters use the `auto` method of the generic body builder. Plain median cut was **Rejected / failed** on Reptile (body proof v01: black merged with dark green, greys with skin). The method now reduces within the palette's ramps and never merges across hues; palettes not laid out as ramps fall back to median cut. Details and test ROMs: [status](Fighter-Recompiler-Status#milestone-4--progress). Runtime acceptance is Pending (Reptile body proof v02).
+
 The 16-color decision also does **not** change the target storage contract: imported frames must still be emitted as valid MKMSZ-native Type-5 assets with correct dimensions, anchors, dictionary/model encoding, palette binding, and lifecycle ownership. Do not infer a new raw 4-bpp target format merely from the 16-color palette policy.
 
 ### Mechanical-arm palette

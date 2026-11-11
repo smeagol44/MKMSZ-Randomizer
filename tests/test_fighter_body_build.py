@@ -101,6 +101,38 @@ def test_reduce_palette_is_deterministic_and_keeps_transparency() -> None:
     assert len(words) == 16 and words[0] == 0 and all(w & 0x8000 for w in words[1:])
 
 
+def test_reduce_palette_keeps_ramps_apart() -> None:
+    from collections import Counter
+
+    def mkt(r, g, b):
+        return (r << 11) | (g << 6) | (b << 1) | 1
+
+    # Reptile-like: 11 greys down to black, 7 greens, 13 browns; the darkest green is heavily
+    # used and median cut used to merge it with black.
+    greys = [mkt(v, v, v) for v in (29, 24, 20, 16, 12, 10, 8, 6, 4, 2, 0)]
+    greens = [mkt(1, g, 1) for g in (13, 12, 10, 9, 7, 5, 3)]
+    browns = [mkt(26 - 2 * k, max(0, 20 - 2 * k), max(0, 16 - 2 * k)) for k in range(13)]
+    palette = [0x07C0, *greys, *greens, *browns]
+    assert [len(r) for r in bb.palette_ramps(palette)] == [11, 7, 13]
+    usage = Counter({i: 1000 for i in range(1, 32)})
+    usage[18] = 100000
+    index_map, words = bb.reduce_palette(palette, usage)
+    ramp_of = {i: 0 if i <= 11 else 1 if i <= 18 else 2 for i in range(1, 32)}
+    for i in range(1, 32):
+        for j in range(1, 32):
+            if index_map[i] == index_map[j]:
+                assert ramp_of[i] == ramp_of[j], (i, j)
+    w = words[index_map[11]]
+    assert w & 31 == (w >> 5) & 31 == (w >> 10) & 31 <= 2  # black stays a neutral near-black
+
+
+def test_lying_landing_keeps_the_last_landing_frame() -> None:
+    f = [("frame", r) for r in range(6)]
+    assert bb.lying_landing([*f[:3], 0, f[3], f[4], 0]) == [*f[:3], 0, f[4], 0]
+    assert bb.lying_landing([*f[:3], 0, f[3], 0]) == [*f[:3], 0, f[3], 0]
+    assert bb.lying_landing([*f[:2], 1, ("jump", 0)]) == [*f[:2], 1, ("jump", 0)]
+
+
 # ---------------------------------------------------------------- ROM-backed
 
 CLEAN, MKT = os.environ.get("MKMSZR_CLEAN_ROM"), os.environ.get("MKMSZR_MKT_ROM")
@@ -161,7 +193,21 @@ def test_reptile_body_builds_and_fits() -> None:
     r = body.report
     assert r["appended_items"] == 0 and r["file_end"] == bb.FILE87_SIZE  # stock-size file
     assert r["chain_free"] >= 0x10000  # room left for his moves
-    assert (r["frames"], r["run"]) == (156, 9)
+    assert (r["frames"], r["run"]) == (155, 9)
     out = cm.apply(bytes(body.file), stock=body.clean_file, flipped=body.flipped)
     assert len(cm.frames(out, cm.PICKUP)) == 5 and len(set(cm.frames(out, cm.LONG_FALL))) == 1
-    assert cm.frames(out, (1, 9)) == cm.phase_frames(out, cm.KNOCKDOWN, 2)[-2:]  # S09 follows the knockdown
+    # The lying pose (S09, the knockdown's phase 2) is one frame: the donor landing's last.
+    lying = body.shape_map[0x27DC]
+    assert cm.frames(out, (1, 9)) == [lying] == cm.phase_frames(out, cm.KNOCKDOWN, 2)[-1:]
+    assert cm.frames(out, cm.DEATH)[-1] == lying
+    # The punches keep the host's retract and switch phases (stock tail after the loop).
+    assert any("TAIL slot 0x0E: 16" in line for line in body.log)
+    assert any("TAIL slot 0x0F: 15" in line for line in body.log)
+    for slot in (0x0E, 0x0F):
+        root = bb.be32(out, 4 * slot)
+        stock = [bb.be32(body.clean_file, root + 4 * i) for i in range(28 if slot == 0x0E else 27)]
+        now = [bb.be32(out, root + 4 * i) for i in range(len(stock))]
+        assert [w for w in now if w not in body.shape_map.values()] == [
+            w for w in stock if w not in body.stock_shape_set
+        ]  # tokens, operands, phase ends and jumps are stock
+        assert all(w in body.shape_map.values() for w, s in zip(now, stock) if s in body.stock_shape_set)

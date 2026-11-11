@@ -18,11 +18,12 @@ import bisect
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from fractions import Fraction
 from functools import lru_cache
 
 from .description import FighterDescription
 from .mkt_fighter import MktRom
-from .script import MKT
+from .script import MKMSZ, MKT
 
 MKT_FLIPPED = 0x47  # MKT table-0 slot whose first phase is the fighter's flip poses
 MKT_PALETTE_TABLE = 0x800A1738  # per-fighter primary palette record pointers (count, RGBA5551 words)
@@ -739,6 +740,116 @@ def _host_layout(clean_file: bytes):
     return primary, [(o, v) for o, v in entries if v]
 
 
+def lying_landing(words: list) -> list:
+    """The knockdown's landing phase reduced to its last frame, the lying pose.
+
+    The host shows only the first frame of the knockdown's second phase on some routes
+    (``0x8005AC00``: select phase 2 of primary 0x1E, one ``animation_advance``), and secondary 9
+    (the lying pose) points at that phase; stock Sub-Zero's phase is that single pose. MKT
+    landings can open with a bounce (Reptile ``0x27C8``, legs up) before the lying frame
+    (``0x27DC``), which the host would then hold (Reptile body proof v01, owner: "dead
+    animation is not the lying flat")."""
+
+    if any(isinstance(w, tuple) and w[0] == "jump" for w in words) or words.count(0) < 2:
+        return words
+    a = words.index(0) + 1
+    b = words.index(0, a)
+    frames = [w for w in words[a:b] if isinstance(w, tuple) and w[0] == "frame"]
+    if len(frames) < 2 or len(frames) != b - a:
+        return words
+    return [*words[:a], frames[-1], *words[b:]]
+
+
+KNOCKDOWN_SLOT = 0x1E
+
+
+def _host_items(data: bytes, start: int, end: int) -> list[tuple[int, int, str]]:
+    """(offset, word, kind) of the host script words in ``[start, end)``; kind is ``frame``,
+    ``end``, ``token`` or ``operand``."""
+
+    out, p = [], start
+    while p < end:
+        v = be32(data, p)
+        if v == 0 or not MKMSZ.is_token(v):
+            out.append((p, v, "frame" if v else "end"))
+            p += 4
+            continue
+        n = len(MKMSZ.operands[v]) + (MKMSZ.callback_extra_words.get(be32(data, p + 4), 0) if v == 6 else 0)
+        out.append((p, v, "token"))
+        out += [(p + 4 * k, be32(data, p + 4 * k), "operand") for k in range(1, 1 + n)]
+        p += 4 * (1 + n)
+    return out
+
+
+def stock_tails(clean_file: bytes, slot_cfg: dict, translated: dict, stock_shapes: set[int],
+                new_shapes: set[int]) -> tuple[dict, list]:  # fmt: skip
+    """The host-only phases after a computed in-place script's loop, kept and translated.
+
+    Some stock scripts carry phases after their own loop that the host reaches by phase or by
+    jump: the punches (primary 0x0E/0x0F) retract, and switch from one punch to the other
+    through a frame of each and a jump into the other punch's script (stock 0x0E: ``f4,
+    0x0F-phase-2-frame-3, jump 0x58C``). MKT scripts end at the loop, so the computed layout
+    left these phases empty and switching punches showed nothing (Reptile body proof v01,
+    owner). When the imported script has the stock shape up to the loop (frames where stock
+    has frames, the same tokens and operands elsewhere), its tail keeps the stock tokens,
+    operands and jumps, and each stock frame becomes the imported frame that holds the same
+    place in the imported scripts (the slot's own first). Returns (file offset -> word, log)."""
+
+    matched = {}
+    for slot, cfg in sorted(slot_cfg.items()):
+        if not cfg.get("computed") or cfg["mode"] != "inplace":
+            continue
+        root, vals = cfg["target"], translated[slot]
+        items = _host_items(clean_file, root, root + 4 * cfg["capacity"])
+        loop = next((i for i, (_, v, kind) in enumerate(items) if kind == "token" and v in (1, 2)), None)
+        if loop is None:
+            continue
+        main = (items[loop][0] - root) // 4 + (2 if items[loop][1] == 1 else 1)
+        if main != len(vals) or main >= cfg["capacity"]:
+            continue
+        head = [(p, v, kind) for p, v, kind in items if p < root + 4 * main]
+        if all(vals[(p - root) // 4] in new_shapes if kind == "frame" else vals[(p - root) // 4] == v
+               for p, v, kind in head):  # fmt: skip
+            matched[slot] = (root, main, items)
+    own: dict = {}
+    anywhere: dict = {}
+    for slot, (root, main, items) in matched.items():
+        for p, v, kind in items:
+            if kind == "frame" and p < root + 4 * main:
+                own.setdefault((slot, v), translated[slot][(p - root) // 4])
+                anywhere.setdefault(v, translated[slot][(p - root) // 4])
+    heads = [(r, r + 4 * m) for r, m, _ in matched.values()]
+    writes, log = {}, []
+    for slot, (root, main, items) in matched.items():
+        span_end = root + 4 * slot_cfg[slot]["capacity"]
+        out: dict | None = {}
+        prev = None
+        for p, v, kind in items:
+            if p < root + 4 * main:
+                prev = (v, kind)
+                continue
+            if kind == "frame":
+                role = own.get((slot, v), anywhere.get(v))
+                if v not in stock_shapes or role is None:
+                    out = None
+                    break
+                out[p] = role
+            elif kind == "operand" and prev == (1, "token") and not (
+                any(lo <= v < hi for lo, hi in heads) or root + 4 * main <= v < span_end
+            ):
+                out = None  # a jump outside the kept scripts
+                break
+            else:
+                out[p] = v
+            prev = (v, kind)
+        if out is None:
+            log.append(f"TAIL slot 0x{slot:02X}: stock tail left empty (a frame or jump has no place)")
+            continue
+        writes.update(out)
+        log.append(f"TAIL slot 0x{slot:02X}: {len(out)} stock tail words kept")
+    return writes, log
+
+
 def _computed_cfg(description, donor: Donor, clean_file: bytes) -> dict:
     reader = MktRom(donor.mkt)
     starts = set(donor.table0) | set(reader.table1(donor.fighter_id))
@@ -746,6 +857,8 @@ def _computed_cfg(description, donor: Donor, clean_file: bytes) -> dict:
     cfg = {}
     for slot in description.body.slots:
         words = linearise(donor, slot, starts)
+        if slot == KNOCKDOWN_SLOT:
+            words = lying_landing(words)
         root = be32(clean_file, 4 * slot)
         end = next((r for r in primary if r > root), TYPE_START)
         capacity = (end - root) // 4
@@ -785,19 +898,100 @@ def _slot_cfg(description: FighterDescription, donor: Donor, clean_file: bytes) 
     return cfg
 
 
-def reduce_palette(donor_palette: list[int], usage: Counter, colours: int = 16) -> tuple[list[int], list[int]]:
-    """Weighted median cut of the donor palette to ``colours`` entries (entry 0 transparent).
+def _rgb(w: int) -> tuple[int, int, int]:
+    return ((w >> 11) & 31, (w >> 6) & 31, (w >> 1) & 31)
 
-    Returns (index map for every donor index, host BGR555 words for the reduced entries)."""
 
-    from .projectile import mkt_color_to_host
+def palette_ramps(donor_palette: list[int]) -> list[list[int]]:
+    """Donor palette indices 1.. split into ramps: runs that go from light to dark in one hue.
 
-    def rgb(w):
-        return ((w >> 11) & 31, (w >> 6) & 31, (w >> 1) & 31)
+    MKT fighter palettes are laid out as ramps (Reptile: 11 greys down to black, 7 greens, 13
+    browns). A ramp ends where brightness rises or where two coloured entries change hue."""
 
+    ramps: list[list[int]] = []
+    cur: list[int] = []
+    prev = None
+    for i in range(1, len(donor_palette)):
+        c = _rgb(donor_palette[i])
+        if prev is not None:
+            rise = sum(c) > sum(prev) + 1
+            hue = (max(c) - min(c) >= 3 and max(prev) - min(prev) >= 3
+                   and c.index(max(c)) != prev.index(max(prev)))  # fmt: skip
+            if rise or hue:
+                ramps.append(cur)
+                cur = []
+        cur.append(i)
+        prev = c
+    if cur:
+        ramps.append(cur)
+    return ramps
+
+
+def _ramp_reduction(donor_palette: list[int], usage: Counter, budget: int):
+    """Contiguous segments of each ramp, ``budget`` in all, with the least usage-weighted
+    squared error (exact arithmetic); None when the used ramps outnumber the budget."""
+
+    ramps = palette_ramps(donor_palette)
+    used = [any(usage.get(i) for i in r) for r in ramps]
+    if sum(used) > budget:
+        return None
+    # Unused entries weigh 1 against 2**20 per pixel: they get a centre without moving it.
+    weight = {i: (usage.get(i, 0) << 20) + 1 for i in range(len(donor_palette))}
+
+    def cost(idx):
+        w = sum(weight[i] for i in idx)
+        sq = sum(weight[i] * sum(v * v for v in _rgb(donor_palette[i])) for i in idx)
+        lin = [sum(weight[i] * _rgb(donor_palette[i])[a] for i in idx) for a in range(3)]
+        return Fraction(sq * w - sum(v * v for v in lin), w)
+
+    def split(r):  # best[k] and the k segments, by dynamic programming over cut points
+        n = len(r)
+        best: list[list[Fraction | None]] = [[None] * (n + 1) for _ in range(n + 1)]
+        cut = [[0] * (n + 1) for _ in range(n + 1)]
+        best[0][0] = Fraction(0)
+        for k in range(1, n + 1):
+            for j in range(k, n + 1):
+                for i in range(k - 1, j):
+                    prev = best[k - 1][i]
+                    if prev is None:
+                        continue
+                    v = prev + cost(r[i:j])
+                    if best[k][j] is None or v < best[k][j]:
+                        best[k][j], cut[k][j] = v, i
+        segs = {}
+        for k in range(1, n + 1):
+            out, j = [], n
+            for kk in range(k, 0, -1):
+                out.append(r[cut[kk][j] : j])
+                j = cut[kk][j]
+            segs[k] = out[::-1]
+        return best, segs
+
+    tables = [split(r) for r in ramps]
+    dp: dict[int, tuple[Fraction, list[int]]] = {0: (Fraction(0), [])}
+    for (best, _), r, u in zip(tables, ramps, used, strict=True):
+        nxt: dict[int, tuple[Fraction, list[int]]] = {}
+        for spent, (c, choice) in sorted(dp.items()):
+            for k in range(1, len(r) + 1) if u else (0,):
+                if spent + k > budget:
+                    break
+                v = c + (best[k][len(r)] if k else 0)
+                if spent + k not in nxt or v < nxt[spent + k][0]:
+                    nxt[spent + k] = (v, [*choice, k])
+        dp = nxt
+    spent = min(dp, key=lambda s: (dp[s][0], s))
+    boxes = []
+    for (_, segs), k in zip(tables, dp[spent][1], strict=True):
+        if k:
+            boxes += segs[k]
+    return boxes, weight
+
+
+def _median_cut(donor_palette: list[int], usage: Counter, budget: int):
+    rgb = _rgb
     used = [i for i in range(1, len(donor_palette)) if usage.get(i)]
     boxes = [used] if used else []
-    while len(boxes) < colours - 1:
+    while len(boxes) < budget:
         best, axis, best_key = None, 0, (-1,)
         for bi, box in enumerate(boxes):
             if len(box) < 2:
@@ -817,10 +1011,28 @@ def reduce_palette(donor_palette: list[int], usage: Counter, colours: int = 16) 
             if 2 * run >= total:
                 break
         boxes[best:best + 1] = [box[:cut], box[cut:]]
+    return boxes, usage
+
+
+def reduce_palette(donor_palette: list[int], usage: Counter, colours: int = 16) -> tuple[list[int], list[int]]:
+    """The donor palette reduced to ``colours`` entries (entry 0 transparent).
+
+    Each ramp of the donor palette (:func:`palette_ramps`) keeps its own colours, merged only
+    with its neighbours in the ramp, so black never becomes a dark green and greys never take
+    a skin tone (Reptile body proof v01, owner: "colors are messed up"). A palette that is not
+    laid out as ramps falls back to a weighted median cut.
+
+    Returns (index map for every donor index, host BGR555 words for the reduced entries)."""
+
+    from .projectile import mkt_color_to_host
+
+    rgb = _rgb
+    reduced = _ramp_reduction(donor_palette, usage, colours - 1)
+    boxes, weight_of = reduced if reduced is not None else _median_cut(donor_palette, usage, colours - 1)
     centres = []
     for box in boxes:
-        weight = sum(usage[i] for i in box)
-        centres.append(tuple(round(sum(rgb(donor_palette[i])[a] * usage[i] for i in box) / weight) for a in range(3)))
+        weight = sum(weight_of[i] for i in box)
+        centres.append(tuple(round(sum(rgb(donor_palette[i])[a] * weight_of[i] for i in box) / weight) for a in range(3)))
     index_map = [0] * len(donor_palette)
     for k, box in enumerate(boxes, 1):
         for i in box:
@@ -1013,6 +1225,12 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
             for off, phase in cfg["aliases"]:
                 put32(file87, off, target + 4 * phase_starts[min(phase, len(phase_starts) - 1)])
                 log.append(f"ALIAS table 0x{off:X} -> slot 0x{slot:02X} phase {phase}")
+
+    tails, tail_log = stock_tails(clean_file, slot_cfg, translated, stock_shape_set, set(shape_map.values()))
+    for pos, word in tails.items():
+        put32(file87, pos, word)
+        owned.add(pos)
+    log += tail_log
 
     # Push (MKMSZ only): the Run poses over the seven native Push ticks.
     clean_push = [f32(PUSH_TARGET + 4 * i) for i in range(9)]

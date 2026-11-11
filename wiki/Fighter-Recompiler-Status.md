@@ -36,6 +36,22 @@
 - [ ] The owner accepts a full-seed run.
 - [ ] Sektor regression unchanged, or the difference explained and re-accepted; full suite passes; this page updated in each PR.
 
+### Milestone 4 — progress
+
+**Step 1, body.** Builders in `Experimental/FighterRecompilerProofs/` (disposable test ROMs; MKMSZ USA Rev. 0 clean ROM plus MKT N64 USA Rev. 2).
+
+| Test ROM | SHA-256 | State |
+|---|---|---|
+| `MKMSZR_reptile-body_common_proof_v01.z64` | `452e6afe85fb1e8b0f3897a39d970c65f7917285c13096282fec0a9247ca6569` | **Rejected / failed** in part (owner, 2026-11-11): colours wrong; dead pose not lying flat; HP↔LP switch shows no animation; combos missing (step 2). Reproducible at commit `dc6cc5a` only. |
+| `MKMSZR_reptile-body_common_proof_v02.z64` | `e5cd5d5149d1d16370fa92a10ea48c9ebea67c21c72b0c60901f5faacf62ccef` | **Pending** owner test. Differs from v01 only inside file `0x87` (`0x748920..0x78E300`); CRCs unchanged. |
+
+v01 causes and the generic fixes in v02 (`fighter_import.body_build`; Sektor's explicit layout and palette are untouched and its pinned outputs are unchanged):
+
+- **Colours** (Static-confirmed cause). Median cut merged across hues: black with the heavily used darkest green (the black undersuit turned green), and two greys with skin browns. MKT palettes are laid out as ramps (Reptile: 11 greys down to black, 7 greens, 13 browns). The `auto` method now keeps each ramp's colours apart: contiguous segments per ramp, 15 in all, with the least pixel-weighted error (exact arithmetic). A palette that is not laid out as ramps (3 of the 26 MKT fighters' palettes) falls back to median cut. The brown belt, flap and shin wraps are in the donor art.
+- **Dead pose** (Static-confirmed cause). Host routes show only the first frame of the knockdown's second phase (`0x8005AC00`: `select_primary_phase2(0x1E)` and one `animation_advance`), and secondary 9 (lying) points at that phase. Stock Sub-Zero's phase is the single lying pose. Reptile's MKT landing is a bounce frame (`0x27C8`, legs up) and then lying (`0x27DC`). The computed layout now keeps only the landing's last frame there, so death and lying end flat. The bounce frame is dropped, and the knockdown now fits in place.
+- **HP↔LP switch** (Static-confirmed cause). Stock primaries `0x0E`/`0x0F` carry host-only phases after their loop: retract, a single pose, and switch phases that go through one frame of each punch and jump into the other punch's script (`0x58C`, `0x57C`, `0x51C`, `0x50C`). MKT scripts end at the loop, so the computed layout left those phases empty. When the imported script has the stock shape up to the loop, it now keeps the stock tail (tokens, operands, jumps) and translates each stock frame to the imported frame in the same place. This gives the same roles as Sektor's hand layout.
+- **Pit fall** (unchanged): the held pose is the knockdown's last fall frame (`0x27B4`), as for Sektor.
+
 **Milestones 2 and 3: done (2026-11-11).**
 
 ### Milestones 2 and 3 — agreed tasks (owner, 2026-11-10)
