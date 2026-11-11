@@ -156,7 +156,9 @@ The native path, without patching the Ice root:
 - **Command:** `commands.lower(..., overrides)` points the command record at the new condition and the action thunk.
 - **Projectile:** backend v1. `place_art(at=...)` can now write the art into the fighter file's free body tail, so the file keeps its stock size and place (Sektor proof v47's heap-neutral rule). `emit_process(prefix=...)` lets several projectiles share one payload.
 
-First use: Reptile specials proof v01 (forceballs, Pending).
+First use: Reptile specials proofs v01–v03 (forceballs).
+
+- **Throw helper:** MKT's token 11 creates a helper object from a frame, and tokens 12/14 step it, one helper frame per body frame. The frame after a helper step is the helper's, not a body pose. `lower_projectile.donor_helper` reads it, and `place_art(helper=...)` adds its frames and script. `emit_helper` is the process `emit_action(helper=...)` starts with the throw. Reptile's forceball (the ball forming in his hands) is the first use, Pending.
 
 ### Eye item
 

@@ -123,9 +123,12 @@ def emit_charge(a: Assembler, amount: int) -> None:
 
 
 def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: int,
-                animations: dict[tuple[int, int], int], child: str) -> None:  # fmt: skip
+                animations: dict[tuple[int, int], int], child: str,
+                helper: str | None = None) -> None:  # fmt: skip
     """The action root for a move program (never returns). ``animations``: donor animation
-    (table, slot) -> host secondary slot holding it; ``child``: the projectile process label."""
+    (table, slot) -> host secondary slot holding it; ``child``: the projectile process label;
+    ``helper``: the throw helper's process label (``lower_projectile.emit_helper``), started
+    with the throw animation."""
 
     a.label(label)
     host.enter_action(a, host.Frame(size=0x40, strike_offset=0x30), ())
@@ -145,6 +148,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             key = (int(anim["table"]), int(anim["slot"]))
             if key not in animations or step.get("until") != "phase_end":
                 raise ValueError(f"{label}: animation {key} has no host slot / unsupported end")
+            if helper is not None:
+                lp.emit_spawn(a, helper, after=f"{label}_helper{k}")
             a.li("a0", 1)
             a.li("a1", animations[key])
             a.jal(lp.F_SELECT)

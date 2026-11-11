@@ -79,3 +79,14 @@ def test_backend_reproduces_the_runtime_confirmed_proof() -> None:
     spec.loader.exec_module(v07)
     rom, _ = v07.build(Path(CLEAN).read_bytes(), Path(MKT).read_bytes())  # type: ignore[arg-type]
     assert hashlib.sha256(rom).hexdigest() == V06_SHA256
+
+
+@pytest.mark.skipif(not os.environ.get("MKMSZR_MKT_ROM"), reason="needs MKMSZR_MKT_ROM")
+def test_reptile_forceball_helper() -> None:
+    from mkmszr.fighter_import.body_build import Donor
+
+    donor = Donor(Path(os.environ["MKMSZR_MKT_ROM"]).read_bytes(), 19)
+    helper = lp.donor_helper(donor, {"table": 1, "slot": 5})
+    # Token 11 creates it from 0x2FD4 with the second body pose; tokens 12 step it.
+    assert helper == lp.Helper((0x2FD4, 0x3000, 0x3028, 0x3050), 1)
+    assert lp.donor_helper(donor, {"table": 1, "slot": 2}) is None  # the slide has none
