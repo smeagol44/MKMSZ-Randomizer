@@ -105,6 +105,7 @@ COMPONENTS: dict[str, dict[str, str]] = {
         "speed": "vel",
         "rate": "ticks",
         "strike": "strike",
+        "palette?": "int",
         "accel?": "vel",
         "cap?": "vel",
         "hum?": "hum",

@@ -119,8 +119,10 @@
       "rate": "MKT 0x80079B94",
       "strike": "MKT 0x800B03CC",
       "hum": "MKT 0x80079C68",
-      "impact": "MKT 0x80079BEC"
-     }
+      "impact": "MKT 0x80079BEC",
+      "palette": "MKT 0x800BECE4"
+     },
+     "palette": "0x800BECE4"
     },
     {
      "op": "sleep",
@@ -254,8 +256,10 @@
       "rate": "MKT 0x80079B94",
       "strike": "MKT 0x800B03CC",
       "hum": "MKT 0x80079C68",
-      "impact": "MKT 0x80079BEC"
-     }
+      "impact": "MKT 0x80079BEC",
+      "palette": "MKT 0x800BECE4"
+     },
+     "palette": "0x800BECE4"
     },
     {
      "op": "sleep",

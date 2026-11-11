@@ -4,7 +4,9 @@
 
 ## Current milestone
 
-**Milestone 3 — Reading aid for MKT moves** and **milestone 2 — Component library and MKMSZ backend v1**: in progress (started 2026-11-10, run in parallel).
+**Milestone 4 — Reptile**: next; its task list and checklist are agreed with the owner when it starts.
+
+**Milestones 2 and 3: done (2026-11-11).**
 
 ### Milestones 2 and 3 — agreed tasks (owner, 2026-11-10)
 
@@ -20,18 +22,18 @@ Milestone 2:
 5. **Done (static):** RE check of the reuse ideas, both host-side: MKMSZ Quan Chi's forceball and the Eye item's effect for invisibility. Quan Chi's forceball is a **code/gameplay reference** for projectile creation, hit triggers, the launch effect and sound; the assets still come from MKT (owner, 2026-11-10). Findings on [components](Fighter-Recompiler-Components#host-references): Quan Chi's projectile uses the native enemy-projectile build and collision path, which a type-4 (player) projectile can use after one guarded table edit; the Eye is a timed stealth-from-AI state with a dark tint.
 6. Move-program format and validator; Reptile's and Sektor's moves written as data; gaps listed — **done** (`src/mkmszr/fighters/moves/*.json`, 12 gaps listed).
 7. Owner review of the catalogue.
-8. Backend v1, starting with the generic projectile (no Ice Blast patching) — **proof line done**: [generic projectile lowering](Fighter-Recompiler-Components#generic-projectile-lowering), Runtime-confirmed bounded in proof v06 (Sub-Zero throws Reptile's MKT forceball; owner: "really good"). Next: the backend module that builds it from the move program.
+8. Backend v1, starting with the generic projectile (no Ice Blast patching) — **proof line done**: [generic projectile lowering](Fighter-Recompiler-Components#generic-projectile-lowering), Runtime-confirmed bounded in proof v06 (Sub-Zero throws Reptile's MKT forceball; owner: "really good"). Backend v1: `fighter_import/lower_projectile.py` builds it from the move program; proof v07 (backend, from `reptile.json`) is byte-identical to v06.
 
 ### Milestones 2 and 3 — acceptance checklist
 
 - [x] Every special of Sektor and Reptile is read, with unknown calls flagged and nothing guessed (`tests/test_fighter_reading.py`: no unknown calls, ROM-backed).
 - [x] The registry covers every routine those moves call.
 - [x] Provenance convention agreed (owner, 2026-11-11; enforced by the program validator).
-- [ ] Component catalogue reviewed by the owner.
+- [x] Component catalogue reviewed by the owner (2026-11-11; answers under Owner decisions).
 - [x] Every Reptile special and every Sektor move expressible as a move program; gaps listed (`tests/test_fighter_components.py`). New components follow the owner review.
-- [ ] Each implemented component has a lowering test.
-- [ ] Generic projectile built without Ice-root patches (proof v06 done; backend module next).
-- [ ] Sektor's pinned outputs unchanged; full suite passes; this page updated in the same PR.
+- [x] Each implemented component has a lowering test (`projectile`: `tests/test_lower_projectile.py`).
+- [x] Generic projectile built without Ice-root patches (backend `lower_projectile`; v07 = v06 byte for byte, Runtime-confirmed bounded).
+- [x] Sektor's pinned outputs unchanged (`tests/test_fighter_swap.py`, ROM-backed); full suite passes; this page updated in the same PR.
 
 **Milestone 1 — Fighter description and generic body builder: done (2026-11-10).**
 
@@ -68,8 +70,8 @@ PRs: 1 inventory and description format; 2 generic builder; 3 codec 23, roster d
 | Milestone | Status | Agreed tasks / checklist | Evidence / PR |
 |---|---|---|---|
 | 1 Fighter description and generic body builder | **Done** (2026-11-10) | See above | #197 inventory and format; #198 generic builder; PR 3 roster decode, computed layout, auto colour, Reptile body |
-| 2 Component library and MKMSZ backend v1 | In progress (tasks 4–6 done; review next) | See above | PR: components, programs, host references |
-| 3 Reading aid for MKT moves | Tasks 1–3 done; the readers of the invisibility flag and slide stamp remain | See above | #200 reading aid, registry, readings |
+| 2 Component library and MKMSZ backend v1 | **Done** (2026-11-11) | See above | #201 components, programs, host references; #202 review, projectile proofs v01–v07, backend `lower_projectile` |
+| 3 Reading aid for MKT moves | **Done** (2026-11-11) | See above | #200 reading aid, registry, readings |
 | 4 Reptile | Not started | — | — |
 | 5 Generic product integration | Not started | — | — |
 | 6 Review and next fighters | Not started | — | — |
@@ -79,6 +81,10 @@ PRs: 1 inventory and description format; 2 generic builder; 3 codec 23, roster d
 Fighter- or move-specific code outside fighter descriptions and components (plan rule 3). At plan start: everything Sektor-specific in `fighter_import/` (including `sektor_build.py` and `actions/robo_*`, frozen legacy under rule 4) and `patches/fighter_swap.py`; milestone 1 itemises it.
 
 ## Open items carried forward
+
+- The readers of Reptile's MKT invisibility flag (object `+0x24` bit `0x20`) and of the slide stamp are not traced (milestone 3 leftovers; not needed while invisibility lowers to the Eye).
+- Backend v1 lowers only `projectile`; the other components lower with milestone 4. Production placement of move code and art (fighter file, fixed loader) is milestone 5; the proofs use proof-only allocations.
+- MKT timing: frames and sound cadence convert one host tick per MKT tick (projectile proofs); the rocket speed conversion is to be revisited (owner: slightly off, not twice).
 
 - Reptile's body (computed layout, auto colour) is static only; its runtime acceptance is part of milestone 4.
 - Codec-16 frames in some fighters' body slots: palette semantics Pending (not needed for Reptile).

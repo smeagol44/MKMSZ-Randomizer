@@ -120,6 +120,14 @@ The same build-and-collide pattern is used by the armed grunts (`0x80043EB0`) an
 
 **Runtime-confirmed bounded (owner, proof v06, 2026-11-11):** Sub-Zero (clean ROM) throws Reptile's MKT forceball on `F,F + LK`; it looks, sounds, hits and launches like MKT's. Builders in `Experimental/FighterRecompilerProofs/` (v01–v06), each reproducible from the clean ROMs.
 
+**Backend v1 (Implementation/CI-confirmed):** `fighter_import/lower_projectile.py` lowers a move program's `projectile` step:
+- **Art:** `donor_part` reads the MKT script part (frames, loop, and the token-13 palette); `place_art` lays out the type-4 frames, the 64-colour palette record and the frame scripts in the fighter file.
+- **Sounds:** `install_sounds` hosts the donor samples.
+- **Strike and reaction:** `strike_record` builds the record; `REACTION_LOWERING` maps the reaction meaning, with the arc converted.
+- **Code:** `emit_spawn`, `emit_process` and `emit_data`.
+
+Proof v07 builds the projectile from `reptile.json` (`forceball_fast`) through this module and is **byte-identical to v06** (`tests/test_lower_projectile.py`, ROM-backed).
+
 The native path, without patching the Ice root:
 
 1. **Child process.** `controller_clone_alloc(0x700, child)`: class `0x700`, as Ice uses, so it hits enemies (Quan Chi's `0x800` would hit the player). The parent copies its opponent links (`+0x63C`, `+0x640`) into the child and clears `+0x638`, as `0x8004CBC4` does.
