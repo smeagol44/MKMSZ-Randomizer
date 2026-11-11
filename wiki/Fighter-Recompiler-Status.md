@@ -110,6 +110,12 @@ The HP table grows to five records, so it moves to the v6 proof arena ([allocati
 
 That condition refuses in native stage 1 (**Wind**, `0x8009A910 == 1`), within 320 ticks of the timestamp `0x80111FD4`, with Ice below `0x60`, while airborne, or without a free 128×128 texture. Outside Wind (v05, owner) the command works and takes Ice Clone's Ice, so the v04 report was the stock Wind refusal. No clone appears with Reptile's body. The clone's own presentation with an imported body is not investigated (Pending, low value), because step 3 replaces the action.
 
+**Step 3, specials.** Test ROMs build on inputs v05:
+
+| Test ROM | SHA-256 | Contents | State |
+|---|---|---|---|
+| `MKMSZR_reptile-specials_common_proof_v01.z64` | `a0b8f788c8100b5fce48125daf399543770e486922f39b0fc3e9a354ea63f6fd` | Both forceballs as Reptile's own specials ([special actions](Fighter-Recompiler-Components#special-actions-milestone-4-step-3-2026-11-11)). Forceball fast is in Directional Ice's slot (tier gate `0x8004A4F4`, Ice `0x60`); Forceball slow is in Ice Clone's (gate `0x8004A2A8`, Ice `0x60`). His MKT throw (table-1 slot 5, phases 1–2) is in host secondary `0x25`. The projectile is backend v1 at MKT speeds (fast `0x59999`, slow `0x26666`) with the accepted strike, arc and sounds. Acid Spit is still Ice Blast. The MKT cooldown and opponent-state conditions are not lowered yet; the host's one-live-projectile rule applies instead. | **Pending** owner test |
+
 Other stand-in poses left after the body: relocated stock scripts that nothing points to any more, and host-only states with no MKT counterpart established: the Ice projectile script P24, inherited "flipped by" labels P28–P31, and secondary slots S05–S0C and S2A. These are not "easy" animations; reachability is Pending.
 
 **Milestones 2 and 3: done (2026-11-11).**

@@ -146,9 +146,25 @@ def place_art(
     step: dict[str, Any],
     slots: tuple[int, int],
     budget: int,
+    at: int | None = None,
 ) -> ArtLayout:
-    """Append the projectile's art to the fighter file and point table-1 ``slots`` (empty in
-    stock) at its flight and impact scripts."""
+    """Put the projectile's art in the fighter file and point table-1 ``slots`` (empty in
+    stock) at its flight and impact scripts. By default it is appended; with ``at`` it is
+    written from that offset inside the file (e.g. the body region's free tail, Sektor proof
+    v47's heap-neutral placement) and must end by ``budget``."""
+
+    cursor = len(file87) if at is None else at
+
+    def put(data: bytes) -> int:
+        nonlocal cursor
+        start = cursor
+        if at is not None and set(file87[start : start + len(data)]) - {0xFF}:
+            raise ValueError(f"fighter file bytes at 0x{start:X} are not free")
+        if start + len(data) > len(file87):
+            file87.extend(bytes(start + len(data) - len(file87)))
+        file87[start : start + len(data)] = data
+        cursor = start + len(data)
+        return start
 
     donor = Donor(mkt, donor_id)
     flight = donor_part(donor, step["art"])
@@ -174,8 +190,8 @@ def place_art(
         frames += [_frame(donor, r, 32) for r in impact_rels]
         rels += impact_rels
     art = effects.EffectArt(tuple(frames), tuple(colours), compressed=True)
-    placed = effects.layout(art, (len(file87) + 3) & ~3)
-    file87 += bytes(placed.offset - len(file87)) + placed.data
+    placed = effects.layout(art, (cursor + 3) & ~3)
+    put(bytes(placed.offset - cursor) + placed.data)
     script_at = placed.script - placed.offset
     shape = {
         rel: int.from_bytes(placed.data[script_at + 4 * i : script_at + 4 * i + 4], "big")
@@ -183,13 +199,11 @@ def place_art(
     }
 
     def script(words: list[int]) -> int:
-        at = len(file87)
-        file87.extend(b"".join(w.to_bytes(4, "big") for w in words))
-        return at
+        return put(b"".join(w.to_bytes(4, "big") for w in words))
 
     rate = _int(step["rate"])
     flight_words = [shape[r] for r in flight.frames for _ in range(rate)]
-    flight_at = len(file87)
+    flight_at = cursor
     script(flight_words + [1, flight_at])  # loop
     impact_ticks = 0
     entries = [(slots[0], flight_at)]
@@ -197,16 +211,16 @@ def place_art(
         impact_rate = _int(impact_step["rate"])
         impact_words = [shape[r] for r in impact.frames for _ in range(impact_rate)]
         impact_ticks = len(impact_words)
-        impact_at = len(file87)
+        impact_at = cursor
         script(impact_words + [1, impact_at + 4 * (impact_ticks - 1)])  # hold the last frame
         entries.append((slots[1], impact_at))
-    if len(file87) > budget:
-        raise ValueError(f"fighter file 0x{len(file87):X} exceeds the budget 0x{budget:X}")
-    for slot, at in entries:
+    if cursor > budget:
+        raise ValueError(f"projectile art ends at 0x{cursor:X}, past the budget 0x{budget:X}")
+    for slot, where in entries:
         off = 0x104 + 4 * slot
         if file87[off : off + 4] != bytes(4):
             raise ValueError(f"table-1 slot 0x{slot:X} is not empty")
-        file87[off : off + 4] = at.to_bytes(4, "big")
+        file87[off : off + 4] = where.to_bytes(4, "big")
     w, h = art.slot_size
     return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h)
 
@@ -331,9 +345,11 @@ def emit_spawn(a: Assembler, child: str = "projectile", after: str = "after_spaw
     a.label(after)
 
 
-def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: str = "play") -> None:
+def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: str = "play",
+                 prefix: str = "") -> None:  # fmt: skip
     """The projectile process. Needs :func:`host.emit_sound_player` (label ``player``) and
-    :func:`emit_data` (labels ``record`` and ``reaction``) in the same assembly."""
+    :func:`emit_data` (labels ``record`` and ``reaction``) in the same assembly. ``prefix``
+    names its internal labels, so several processes can share one assembly."""
 
     a.label(child)
     a.addiu("sp", "sp", -0x40)
@@ -360,22 +376,22 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.li("t0", p.speed)
     a.lw("t1", 0x700, "s0")
     a.li("t2", 0x10)
-    a.bne("t1", "t2", "set_vel")
+    a.bne("t1", "t2", prefix + "set_vel")
     a.subu("t0", "zero", "t0")
-    a.label("set_vel")
+    a.label(prefix + "set_vel")
     a.sw("t0", 0x14, "s1")
     a.li("a0", 1)
     a.li("a1", p.art.flight_slot)
     a.jal(F_SELECT)
     a.li("s3", 0)
-    a.label("fly")
+    a.label(prefix + "fly")
     if p.hum_event is not None:
         a.addiu("s3", "s3", 1)
         a.slti("t0", "s3", p.hum_every)
-        a.bnez("t0", "no_hum")
+        a.bnez("t0", prefix + "no_hum")
         a.addiu("s3", "s3", -p.hum_every)
         host.play_sound(a, p.hum_event, player)
-        a.label("no_hum")
+        a.label(prefix + "no_hum")
     host.load_controller(a)
     a.la("a0", "record")
     a.lui("t0", KSEG1_TO_KSEG0 >> 16)
@@ -385,7 +401,7 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.jal(F_COLLIDE)
     a.andi("v0", "v0", 0xFFFF)
     a.li("t0", 0x8000)
-    a.beq("v0", "t0", "on_contact")
+    a.beq("v0", "t0", prefix + "on_contact")
     host.load_controller(a)
     a.move("a0", "s1")
     a.jal(F_ADVANCE)
@@ -395,9 +411,9 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.move("a0", "s1")
     a.li("a1", OFFSCREEN_MARGIN)
     a.jal(F_OFFSCREEN)
-    a.beqz("v0", "fly")
-    a.beq("zero", "zero", "done")
-    a.label("on_contact")
+    a.beqz("v0", prefix + "fly")
+    a.beq("zero", "zero", prefix + "done")
+    a.label(prefix + "on_contact")
     if p.impact_event is not None:
         host.play_sound(a, p.impact_event, player)
     if p.art.impact_slot is not None:
@@ -407,15 +423,15 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         a.li("a1", p.art.impact_slot)
         a.jal(F_SELECT)
         a.li("s2", p.art.impact_ticks)
-        a.label("impact_loop")
+        a.label(prefix + "impact_loop")
         host.load_controller(a)
         a.move("a0", "s1")
         a.jal(F_ADVANCE)
         a.li("a0", 1)
         a.jal(F_SLEEP)
         a.addiu("s2", "s2", -1)
-        a.bnez("s2", "impact_loop")
-    a.label("done")
+        a.bnez("s2", prefix + "impact_loop")
+    a.label(prefix + "done")
     host.load_controller(a)
     a.move("a0", "s1")
     a.li("a1", ACTOR_LIST)
@@ -423,8 +439,8 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.lw("a0", 0x20, "sp")
     a.jal(F_TEX_RELEASE)
     a.jal(F_EXIT)
-    a.label("child_hang")
-    a.beq("zero", "zero", "child_hang")
+    a.label(prefix + "child_hang")
+    a.beq("zero", "zero", prefix + "child_hang")
 
 
 def emit_data(a: Assembler, p: Lowered, base: int) -> None:

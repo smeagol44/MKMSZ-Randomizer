@@ -792,6 +792,31 @@ def phase_slot_frames(donor: Donor, slots, sources: dict | None = None) -> dict[
     return out
 
 
+def donor_frames_by_phase(donor: Donor, root: int, starts: set[int]) -> list[list[int]]:
+    """Frames of the donor script at ``root`` grouped by phase, every token skipped (with its
+    operands), up to a jump/stop or the next script start."""
+
+    phases: list[list[int]] = [[]]
+    pos = root
+    for _ in range(4 * MAX_SCRIPT_WORDS):
+        v = donor.m32(pos)
+        if v == 0:
+            phases.append([])
+            pos += 4
+            if pos in starts:
+                break
+        elif MKT.is_token(v):
+            if v in (1, 2):
+                break
+            pos += 4 * (1 + len(MKT.operands[v]))
+        else:
+            if not donor.is_shape(v):
+                raise LayoutError(f"word 0x{v:X} at 0x{pos:X} is not a frame")
+            phases[-1].append(v)
+            pos += 4
+    return [p for p in phases if p]
+
+
 def phase_fill(clean_file: bytes, slot: int, phases: list[list[int]], mode: str = "phases",
                stance: int | None = None, table: int = 0) -> dict[int, int]:  # fmt: skip
     """Host frame positions of primary ``slot``'s stock script -> donor frames.
@@ -1149,7 +1174,12 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
                 old_shapes.append(rel)
     phase_sources = phase_slot_frames(donor, body_d.phase_slots)
     secondary_sources = phase_slot_frames(donor, body_d.secondary_slots, body_d.secondary_slots)
-    for phases in [*phase_sources.values(), *secondary_sources.values()]:
+    if body_d.secondary_scripts:
+        _t1 = MktRom(donor.mkt).table1(donor.fighter_id)
+        _starts = set(donor.table0) | set(_t1)
+    new_scripts = {s: donor_frames_by_phase(donor, (donor.table0 if t == 0 else _t1)[i], _starts)[:n]
+                   for s, (t, i, n) in body_d.secondary_scripts.items()}  # fmt: skip
+    for phases in [*phase_sources.values(), *secondary_sources.values(), *new_scripts.values()]:
         for rel in (r for p in phases for r in p):
             if rel not in old_shapes:
                 old_shapes.append(rel)
@@ -1226,8 +1256,14 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
 
     item_sizes = {k: 32 + len(enc.streams[k]) for k in all_keys}
     script_items = [("script", s) for s, c in sorted(slot_cfg.items()) if c["mode"] == "packed"]
+    for s, phases in sorted(new_scripts.items()):
+        if be32(clean_file, 0x104 + 4 * s):
+            raise LayoutError(f"secondary slot 0x{s:02X} is not empty in the host file")
+        script_items.append(("secondary", s))
+        item_sizes[("secondary", s)] = 4 * sum(len(p) + 1 for p in phases)
     for it in script_items:
-        item_sizes[it] = 4 * slot_cfg[it[1]]["n"]
+        if it[0] == "script":
+            item_sizes[it] = 4 * slot_cfg[it[1]]["n"]
     items = list(all_keys) + script_items
     cap = TYPE_END - reclaim_cursor
     packed = knapsack(items, item_sizes, cap)
@@ -1325,6 +1361,14 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
             put32(file87, pos, shape_map[rel])
             owned.add(pos)
         log.append(f"SECONDARY slot 0x{slot:02X}: host script kept, donor frames by phase")
+    for s, phases in new_scripts.items():
+        at = item_offsets[("secondary", s)]
+        words = [w for p in phases for w in [*(shape_map[r] for r in p), 0]]
+        for i, w in enumerate(words):
+            put32(file87, at + 4 * i, w)
+            owned.add(at + 4 * i)
+        put32(file87, 0x104 + 4 * s, at)
+        log.append(f"NEW SCRIPT secondary 0x{s:02X} at 0x{at:X}: {len(phases)} donor phases")
     tails, tail_log = stock_tails(clean_file, slot_cfg, translated, stock_shape_set, set(shape_map.values()))
     for pos, word in tails.items():
         put32(file87, pos, word)

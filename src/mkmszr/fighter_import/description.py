@@ -28,6 +28,9 @@ Body fields:
   phase, scaled by position. Used where the donor has the animation a host-only state plays,
   e.g. the MKT ninjas' slide (Reptile table-1 slot 2) for host secondary 2 (Slide, Super Slide),
   instead of the generic ``slide`` recipe.
+* ``body.secondary_scripts`` (optional): empty host secondary slot -> ``"table1:0xNN:P"``
+  (or ``table0``): a new script with the frames of the donor script's first P phases (tokens
+  dropped), for animations a host-only special plays (Reptile's forceball and acid throws).
 * ``body.run``: the MKT slot with the Run poses (``0x4A`` for every MKT fighter) and the host
   Run rate.
 * ``body.colour``: colour depth and method. ``explicit`` gives the 32→16 index map and the
@@ -115,6 +118,7 @@ class Body:
     sources: dict[int, tuple[int, int]] = field(default_factory=dict)  # host slot -> (table, index)
     phase_slots: dict[int, str] = field(default_factory=dict)  # host slot -> "phases" | "shift:N"
     secondary_slots: dict[int, tuple[int, int]] = field(default_factory=dict)  # host S slot -> (table, index)
+    secondary_scripts: dict[int, tuple[int, int, int]] = field(default_factory=dict)  # -> (table, index, phases)
 
 
 @dataclass(frozen=True)
@@ -267,6 +271,17 @@ def validate(data: Any) -> FighterDescription:
             errors.append(f"body.secondary_slots[{key}]: expected 'table0:0xNN' or 'table1:0xNN'")
         elif slot is not None:
             secondary[slot] = (int(table[-1]), idx)
+    new_scripts: dict[int, tuple[int, int, int]] = {}
+    raw_new = body_d.get("secondary_scripts", {}) if isinstance(body_d, dict) else {}
+    for key, value in (raw_new if isinstance(raw_new, dict) else {}).items():
+        slot = _int(key, f"body.secondary_scripts key {key!r}", errors)
+        m = re.fullmatch(r"table([01]):(0x[0-9A-Fa-f]{1,2}):([1-9])", str(value))
+        if slot is None or not 0 <= slot < 0x2B or slot in secondary or not m:
+            errors.append(f"body.secondary_scripts[{key}]: empty host secondary slot -> 'table1:0xNN:P'")
+        else:
+            new_scripts[slot] = (int(m.group(1)), int(m.group(2), 16), int(m.group(3)))
+    if not isinstance(raw_new, dict):
+        errors.append("body.secondary_scripts: expected an object")
     if sources and "layout" in body_d:
         errors.append("body.slot_sources: only with the computed layout")
     anims = _get(body_d, "common_animations", list, "body", errors) or []
@@ -302,7 +317,7 @@ def validate(data: Any) -> FighterDescription:
         raise DescriptionError("; ".join(errors))
     return FighterDescription(
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
-        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary),
+        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts),
         legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove),
     )  # fmt: skip
 
