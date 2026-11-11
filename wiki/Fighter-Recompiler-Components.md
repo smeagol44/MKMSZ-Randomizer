@@ -143,6 +143,23 @@ The native path, without patching the Ice root:
 
 **Proof-only infrastructure** (not production allocations; [memory map](Memory-and-Allocation-Map#proof-only-allocations-generic-projectile-v01v06-2026-11-11)): the teleport proofs' v6 payload arena widened to 2 KiB, file `0x87` relocated and enlarged at ROM `0xF20000`, table-1 slots `0x0D`/`0x12`, samples at `0xF70000` in host chains 335/336, the lifted reaction in dummy reaction slot `0x2B`. Production placement goes through the fighter file and fixed loader (milestone 5).
 
+### Special actions (milestone 4 step 3, 2026-11-11)
+
+`fighter_import.lower_special` turns a move program into a host special in the slot of the Sub-Zero power it replaces.
+
+- **Condition:** `emit_gate_condition` is the logic of Sektor's runtime-accepted missile conditions, made generic. It requires:
+  - ground only, not grabbed, not busy;
+  - no live class-`0x700` projectile and no special lock;
+  - the replaced power's Ice cost;
+  - the replaced power's tier, read at run time from its stock gate instruction (`GATES`), so the power-order shuffle still applies.
+- **Action:** `emit_action` is entered through the Ice-root selector table (`0x8004AA4C`, selectors 3+). It runs the steps `begin`, `animate` (a donor animation copied into a host secondary slot by `body.secondary_scripts`), `projectile`, `sleep`, `finish` and `end`. `stamp` (MKT cooldown) is not lowered yet.
+- **Command:** `commands.lower(..., overrides)` points the command record at the new condition and the action thunk.
+- **Projectile:** backend v1. `place_art(at=...)` can now write the art into the fighter file's free body tail, so the file keeps its stock size and place (Sektor proof v47's heap-neutral rule). `emit_process(prefix=...)` lets several projectiles share one payload.
+
+First use: Reptile specials proofs v01–v03 (forceballs).
+
+- **Throw helper:** MKT's token 11 creates a helper object from a frame, and tokens 12/14 step it, one helper frame per body frame. The frame after a helper step is the helper's, not a body pose. `lower_projectile.donor_helper` reads it, and `place_art(helper=...)` adds its frames and script. `emit_helper` is the process `emit_action(helper=...)` starts with the throw. It follows the owner's body (cursor in the throw script) rather than a clock; clocked versions drifted (specials proofs v03–v07). It goes at the launch through a handover (`emit_helper_handover`), because two type-4 projectile objects must not coexist (v04 crashed). Reptile's forceball (the ball forming in his hands) is the first use, Pending (specials proof v08).
+
 ### Eye item
 
 The Eye (item `0x03`) uses `0x80072584` (item-use table `0x800A6268`). The Inventory then starts the timer process `0x80072644` (class `0x100`).

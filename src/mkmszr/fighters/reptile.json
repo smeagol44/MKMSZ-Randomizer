@@ -48,6 +48,9 @@
     "phase_slots": {
       "0x23": "shift:+1"
     },
+    "secondary_scripts": {
+      "0x25": "table1:0x05:2"
+    },
     "secondary_slots": {
       "0x02": "table1:0x02"
     },

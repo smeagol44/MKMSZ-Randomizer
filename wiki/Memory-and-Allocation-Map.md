@@ -225,6 +225,19 @@ Clean-ROM-based disposable artifacts (`Experimental/FighterRecompilerProofs/`, [
 | Data `0x800A1190[0x2B]` (ROM `0xA1E3C`) | Dummy reaction slot (stock `0x8004E0C0`) → lifted reaction in the payload (v04+) | Runtime-confirmed bounded |
 | File `0x87` table-1 `0x0D`, `0x12` | Empty stock slots → forceball flight and impact scripts | Runtime-confirmed bounded |
 
+Reptile specials proof v01 (2026-11-11, Pending) enlarges the same v6 arena to 4 KiB: ROM `[0x00F10000,0x00F11000)` → RDRAM `[0x801AF420,0x801B0420)`, heap floor `0x801B0420`. Specials proof v05 makes it 6 KiB: ROM `[0x00F10000,0x00F11800)`, heap floor `0x801B0C20`. Sektor's teleport line ran 16 KiB here. Contents:
+
+- the moved HP command table;
+- the forceball conditions, actions and projectile processes;
+- the command stubs.
+
+It also uses:
+
+- transfer-table entries 3–4 (`0x800A105C`/`0x800A1060`), with the selector bound at `0x4B654` set to 5;
+- the type-4 file pointer and reaction slot `0x2B`, as in the projectile proofs;
+- the forceball art and scripts inside fighter file `0x87`'s free body tail (`[chain_start, 0x41684)`), with table-1 slots `0x0D`, `0x12` and `0x25`;
+- projectile samples after the voice samples (ROM `0xF220F0`).
+
 Reptile inputs proof v04 (2026-11-11, Pending) reuses the same v6 arena, with no other allocation:
 
 | Range / site | Use | Evidence |

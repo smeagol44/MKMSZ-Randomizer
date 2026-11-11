@@ -96,18 +96,22 @@ class Lowered:
     report: list[str]
 
 
-def _host_record(clean: bytes, cmd: Command, cond: int) -> bytes:
+def _host_record(clean: bytes, cmd: Command, cond: int, override: tuple[int, int, int] | None) -> bytes:
     stock = record_at(clean, HOST_POWERS[cmd.calls], VA_TO_ROM)  # type: ignore[index]
+    selector, action = (_u32(stock, 4), _u32(stock, 12)) if override is None else (override[0], override[2])
     rec = bytearray(cmd.record)
-    rec[4:16] = stock[4:8] + cond.to_bytes(4, "big") + stock[12:16]
+    rec[4:16] = selector.to_bytes(4, "big") + cond.to_bytes(4, "big") + action.to_bytes(4, "big")
     return bytes(rec)
 
 
 def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
-          stub_base: int) -> Lowered:  # fmt: skip
+          stub_base: int, overrides: dict[str, tuple[int, int, int]] | None = None) -> Lowered:  # fmt: skip
     """Host tables for ``commands``. ``storage``: VA (KSEG1) where grown tables go, in order;
-    ``stub_base``: VA (KSEG1) of the condition stubs, linked after the tables are placed."""
+    ``stub_base``: VA (KSEG1) of the condition stubs, linked after the tables are placed.
+    ``overrides``: command name -> (transfer selector, condition, action) of the move's own
+    special (milestone 4 step 3) instead of the replaced power's."""
 
+    overrides = overrides or {}
     unwired = [c.name for c in commands if c.calls is None]
     used = {c.calls for c in commands if c.calls}
     for name in used | remove:
@@ -148,14 +152,18 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
                 report.append(f"{table.button}: keep {_name(va)}")
                 continue
             assert cmd is not None and cmd.calls is not None
+            override = overrides.get(cmd.name)
             stock_cond = _u32(record_at(clean, HOST_POWERS[cmd.calls], VA_TO_ROM), 8)
+            if override is not None:
+                stock_cond = override[1]
             cond = stock_cond
             if cmd.held:
                 label = f"held_{table.button}_{k}"
                 cond = a.pc()
                 _emit_held(a, label, cmd.held, stock_cond, place[table.button] + RECORD * (k + 1))
-            recs.append(_host_record(clean, cmd, cond))
-            report.append(f"{table.button}: {cmd.name} -> {cmd.calls}" + (" (held check)" if cmd.held else ""))
+            recs.append(_host_record(clean, cmd, cond, override))
+            target = f"own special (slot of {cmd.calls})" if override else cmd.calls
+            report.append(f"{table.button}: {cmd.name} -> {target}" + (" (held check)" if cmd.held else ""))
         out[table.button] = recs
     if unwired:
         report.append("no action yet: " + ", ".join(unwired))

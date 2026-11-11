@@ -123,6 +123,51 @@ def donor_part(donor: Donor, anim: dict[str, Any]) -> DonorPart:
     return DonorPart(tuple(frames), palette, loops)
 
 
+@dataclass(frozen=True)
+class Helper:
+    """MKT's throw helper (token 11 creates it from a frame, tokens 12/14 step it: e.g.
+    Reptile's forceball forming in his hands): its frame for each body frame from ``start``."""
+
+    frames: tuple[int, ...]
+    start: int  # index of the body frame it first shows with
+
+
+def donor_helper(donor: Donor, anim: dict[str, Any]) -> Helper | None:
+    """The helper shown during part ``anim['part']`` (1-based, default 1) of the animation."""
+
+    table, slot, part = _int(anim["table"]), _int(anim["slot"]), _int(anim.get("part", 1))
+    p = donor.m32((0 if table == 0 else MKT_TABLE1) + 4 * slot)
+    for _ in range(part - 1):
+        while True:
+            v = donor.m32(p)
+            p += 4
+            if v == 0:
+                break
+            if MKT.is_token(v):
+                p += 4 * len(MKT.operands[v])
+    shown: list[int | None] = []
+    helper, step_next = None, False
+    while True:
+        v = donor.m32(p)
+        if v in (0, 1):
+            break
+        if MKT.is_token(v):
+            if v == 11:
+                helper = donor.m32(p + 4)
+            step_next = v in (12, 14)
+            p += 4 * (1 + len(MKT.operands[v]))
+            continue
+        if step_next:
+            helper, step_next = v, False
+        else:
+            shown.append(helper)
+        p += 4
+    if helper is None:
+        return None
+    start = next(i for i, h in enumerate(shown) if h is not None)
+    return Helper(tuple(h for h in shown[start:] if h is not None), start)
+
+
 def _frame(donor: Donor, rel: int, shift: int) -> effects.EffectFrame:
     f = donor.frame(rel)
     indices = bytes(0 if v == 0 else v + shift for v in f["padded"])
@@ -137,6 +182,9 @@ class ArtLayout:
     impact_ticks: int
     tex_w: int
     tex_h: int
+    helper_slot: int | None = None
+    helper_start: int = 0  # body pose (0-based) the helper first shows with
+    helper_frames: int = 0  # helper frames, one per body pose from helper_start
 
 
 def place_art(
@@ -146,9 +194,28 @@ def place_art(
     step: dict[str, Any],
     slots: tuple[int, int],
     budget: int,
+    at: int | None = None,
+    helper: Helper | None = None,
+    helper_slot: int | None = None,
+    throw_rate: int = 0,
 ) -> ArtLayout:
-    """Append the projectile's art to the fighter file and point table-1 ``slots`` (empty in
-    stock) at its flight and impact scripts."""
+    """Put the projectile's art in the fighter file and point table-1 ``slots`` (empty in
+    stock) at its flight and impact scripts. By default it is appended; with ``at`` it is
+    written from that offset inside the file (e.g. the body region's free tail, Sektor proof
+    v47's heap-neutral placement) and must end by ``budget``."""
+
+    cursor = len(file87) if at is None else at
+
+    def put(data: bytes) -> int:
+        nonlocal cursor
+        start = cursor
+        if at is not None and set(file87[start : start + len(data)]) - {0xFF}:
+            raise ValueError(f"fighter file bytes at 0x{start:X} are not free")
+        if start + len(data) > len(file87):
+            file87.extend(bytes(start + len(data) - len(file87)))
+        file87[start : start + len(data)] = data
+        cursor = start + len(data)
+        return start
 
     donor = Donor(mkt, donor_id)
     flight = donor_part(donor, step["art"])
@@ -173,9 +240,13 @@ def place_art(
         impact_rels = list(dict.fromkeys(impact.frames))
         frames += [_frame(donor, r, 32) for r in impact_rels]
         rels += impact_rels
+    if helper is not None:  # the helper's frames take the flight palette (MKT binds it from them)
+        helper_rels = [r for r in dict.fromkeys(helper.frames) if r not in rels]
+        frames += [_frame(donor, r, 0) for r in helper_rels]
+        rels += helper_rels
     art = effects.EffectArt(tuple(frames), tuple(colours), compressed=True)
-    placed = effects.layout(art, (len(file87) + 3) & ~3)
-    file87 += bytes(placed.offset - len(file87)) + placed.data
+    placed = effects.layout(art, (cursor + 3) & ~3)
+    put(bytes(placed.offset - cursor) + placed.data)
     script_at = placed.script - placed.offset
     shape = {
         rel: int.from_bytes(placed.data[script_at + 4 * i : script_at + 4 * i + 4], "big")
@@ -183,13 +254,11 @@ def place_art(
     }
 
     def script(words: list[int]) -> int:
-        at = len(file87)
-        file87.extend(b"".join(w.to_bytes(4, "big") for w in words))
-        return at
+        return put(b"".join(w.to_bytes(4, "big") for w in words))
 
     rate = _int(step["rate"])
     flight_words = [shape[r] for r in flight.frames for _ in range(rate)]
-    flight_at = len(file87)
+    flight_at = cursor
     script(flight_words + [1, flight_at])  # loop
     impact_ticks = 0
     entries = [(slots[0], flight_at)]
@@ -197,18 +266,30 @@ def place_art(
         impact_rate = _int(impact_step["rate"])
         impact_words = [shape[r] for r in impact.frames for _ in range(impact_rate)]
         impact_ticks = len(impact_words)
-        impact_at = len(file87)
+        impact_at = cursor
         script(impact_words + [1, impact_at + 4 * (impact_ticks - 1)])  # hold the last frame
         entries.append((slots[1], impact_at))
-    if len(file87) > budget:
-        raise ValueError(f"fighter file 0x{len(file87):X} exceeds the budget 0x{budget:X}")
-    for slot, at in entries:
+    if helper is not None:
+        if helper_slot is None or throw_rate <= 0:
+            raise ValueError("a helper needs its table-1 slot and the throw's frame rate")
+        # One word per helper frame: the helper process points its cursor at the frame for the
+        # owner's current body pose (:func:`emit_helper`), so it cannot drift from the body.
+        helper_at = cursor
+        n = len(helper.frames)
+        script([shape[r] for r in helper.frames] + [1, helper_at + 4 * (n - 1)])
+        entries.append((helper_slot, helper_at))
+    if cursor > budget:
+        raise ValueError(f"projectile art ends at 0x{cursor:X}, past the budget 0x{budget:X}")
+    for slot, where in entries:
         off = 0x104 + 4 * slot
         if file87[off : off + 4] != bytes(4):
             raise ValueError(f"table-1 slot 0x{slot:X} is not empty")
-        file87[off : off + 4] = at.to_bytes(4, "big")
+        file87[off : off + 4] = where.to_bytes(4, "big")
     w, h = art.slot_size
-    return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h)
+    if helper is None:
+        return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h)
+    return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h,
+                     helper_slot, helper.start, len(helper.frames))  # fmt: skip
 
 
 # ---- sounds, strike and reaction --------------------------------------------------------------
@@ -331,9 +412,11 @@ def emit_spawn(a: Assembler, child: str = "projectile", after: str = "after_spaw
     a.label(after)
 
 
-def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: str = "play") -> None:
+def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: str = "play",
+                 prefix: str = "") -> None:  # fmt: skip
     """The projectile process. Needs :func:`host.emit_sound_player` (label ``player``) and
-    :func:`emit_data` (labels ``record`` and ``reaction``) in the same assembly."""
+    :func:`emit_data` (labels ``record`` and ``reaction``) in the same assembly. ``prefix``
+    names its internal labels, so several processes can share one assembly."""
 
     a.label(child)
     a.addiu("sp", "sp", -0x40)
@@ -360,22 +443,22 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.li("t0", p.speed)
     a.lw("t1", 0x700, "s0")
     a.li("t2", 0x10)
-    a.bne("t1", "t2", "set_vel")
+    a.bne("t1", "t2", prefix + "set_vel")
     a.subu("t0", "zero", "t0")
-    a.label("set_vel")
+    a.label(prefix + "set_vel")
     a.sw("t0", 0x14, "s1")
     a.li("a0", 1)
     a.li("a1", p.art.flight_slot)
     a.jal(F_SELECT)
     a.li("s3", 0)
-    a.label("fly")
+    a.label(prefix + "fly")
     if p.hum_event is not None:
         a.addiu("s3", "s3", 1)
         a.slti("t0", "s3", p.hum_every)
-        a.bnez("t0", "no_hum")
+        a.bnez("t0", prefix + "no_hum")
         a.addiu("s3", "s3", -p.hum_every)
         host.play_sound(a, p.hum_event, player)
-        a.label("no_hum")
+        a.label(prefix + "no_hum")
     host.load_controller(a)
     a.la("a0", "record")
     a.lui("t0", KSEG1_TO_KSEG0 >> 16)
@@ -385,7 +468,7 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.jal(F_COLLIDE)
     a.andi("v0", "v0", 0xFFFF)
     a.li("t0", 0x8000)
-    a.beq("v0", "t0", "on_contact")
+    a.beq("v0", "t0", prefix + "on_contact")
     host.load_controller(a)
     a.move("a0", "s1")
     a.jal(F_ADVANCE)
@@ -395,9 +478,9 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.move("a0", "s1")
     a.li("a1", OFFSCREEN_MARGIN)
     a.jal(F_OFFSCREEN)
-    a.beqz("v0", "fly")
-    a.beq("zero", "zero", "done")
-    a.label("on_contact")
+    a.beqz("v0", prefix + "fly")
+    a.beq("zero", "zero", prefix + "done")
+    a.label(prefix + "on_contact")
     if p.impact_event is not None:
         host.play_sound(a, p.impact_event, player)
     if p.art.impact_slot is not None:
@@ -407,15 +490,15 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         a.li("a1", p.art.impact_slot)
         a.jal(F_SELECT)
         a.li("s2", p.art.impact_ticks)
-        a.label("impact_loop")
+        a.label(prefix + "impact_loop")
         host.load_controller(a)
         a.move("a0", "s1")
         a.jal(F_ADVANCE)
         a.li("a0", 1)
         a.jal(F_SLEEP)
         a.addiu("s2", "s2", -1)
-        a.bnez("s2", "impact_loop")
-    a.label("done")
+        a.bnez("s2", prefix + "impact_loop")
+    a.label(prefix + "done")
     host.load_controller(a)
     a.move("a0", "s1")
     a.li("a1", ACTOR_LIST)
@@ -423,8 +506,141 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.lw("a0", 0x20, "sp")
     a.jal(F_TEX_RELEASE)
     a.jal(F_EXIT)
-    a.label("child_hang")
-    a.beq("zero", "zero", "child_hang")
+    a.label(prefix + "child_hang")
+    a.beq("zero", "zero", prefix + "child_hang")
+
+
+HELPER_IDLE, HELPER_SHOWN, HELPER_LAUNCH = 0, 1, 2
+
+
+def phase_end_ticks(rate: int) -> int:
+    """Ticks per frame of the host's ``animate_to_phase_end`` (``0x80031070``) at ``rate``: an odd
+    rate of 2 or more sleeps ``rate - 1`` (Static-confirmed, ``0x80031094..0x800310AC``). The
+    throw helper steps at this pace to stay with the body (specials proof v05, owner: "too
+    slow")."""
+
+    return rate - 1 if rate & 1 and rate >= 2 else rate
+HELPER_MAX_TICKS = 120  # safety cap: the helper never outlives this
+
+
+def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body_slot: int) -> None:
+    """The throw helper's process (spawned with :func:`emit_spawn` at the start of the throw).
+
+    It follows the owner's body: each tick it reads the player's animation cursor in the throw
+    script (table-1 ``body_slot``) and, for body pose *k* >= ``art.helper_start``, shows the
+    helper frame of that pose (MKT's script order: one helper step per body pose), its last
+    frame held. It is built when its first pose comes up and goes when the action asks for the
+    launch (:func:`emit_helper_handover`); no collision. Specials proofs v03-v07 timed it on
+    its own clock and drifted a pose or more (owner). ``dx``/``dy``: offset from the owner."""
+
+    state = label + "_state"
+    a.label(label)
+    a.addiu("sp", "sp", -0x40)
+    a.li("s2", -1)  # last body pose shown
+    a.li("s3", 0)  # built
+    a.li("s4", HELPER_MAX_TICKS)
+    a.label(label + "_loop")
+    a.la("t0", state)
+    a.lw("t1", 0, "t0")
+    a.li("t2", HELPER_LAUNCH)
+    a.beq("t1", "t2", label + "_end")
+    a.lui("t0", host.hi(host.PLAYER_CTRL))
+    a.lw("t0", host.lo(host.PLAYER_CTRL), "t0")
+    a.lw("t1", host.CTRL_SCRIPT_CURSOR, "t0")
+    a.lw("t2", host.CTRL_ACTOR, "t0")
+    a.lw("t2", host.ACTOR_FILE_BASE, "t2")
+    a.lw("t3", 0x104 + 4 * body_slot, "t2")
+    a.addu("t3", "t2", "t3")
+    a.subu("t1", "t1", "t3")
+    a.sra("t1", "t1", 2)
+    a.addiu("t1", "t1", -1)  # body pose on screen (the cursor is past it)
+    a.slti("t4", "t1", art.helper_start)
+    a.bnez("t4", label + "_wait")
+    a.slti("t4", "t1", art.helper_start + art.helper_frames)
+    a.beqz("t4", label + "_wait")  # past the throw: keep the last frame
+    a.beq("t1", "s2", label + "_wait")
+    a.move("s2", "t1")
+    a.bnez("s3", label + "_show")
+    host.load_controller(a)
+    a.lhu("a0", 0x78, "s1")  # owner type (4)
+    a.li("a1", art.helper_slot)
+    a.li("a2", ACTOR_D8)
+    a.li("a3", art.tex_w)
+    a.li("t0", art.tex_h)
+    a.sw("t0", 0x10, "sp")
+    a.addiu("t0", "sp", 0x20)
+    a.sw("t0", 0x14, "sp")
+    a.li("t0", art.palette_record)
+    a.sw("t0", 0x18, "sp")
+    a.jal(F_PROJ_BUILD)
+    host.load_controller(a)
+    a.move("a0", "s1")
+    a.li("a1", dx)
+    a.li("a2", dy)
+    a.jal(F_OFFSET)
+    a.li("s3", 1)
+    a.la("t0", state)
+    a.li("t1", HELPER_SHOWN)
+    a.sw("t1", 0, "t0")
+    a.label(label + "_show")
+    host.load_controller(a)
+    a.lw("t2", host.ACTOR_FILE_BASE, "s1")
+    a.lw("t3", 0x104 + 4 * art.helper_slot, "t2")
+    a.addu("t3", "t2", "t3")
+    a.addiu("t1", "s2", -art.helper_start)
+    a.sll("t1", "t1", 2)
+    a.addu("t3", "t3", "t1")
+    a.sw("t3", host.CTRL_SCRIPT_CURSOR, "s0")
+    a.move("a0", "s1")
+    a.jal(F_ADVANCE)
+    a.label(label + "_wait")
+    a.li("a0", 1)
+    a.jal(F_SLEEP)
+    a.addiu("s4", "s4", -1)
+    a.bnez("s4", label + "_loop")
+    a.label(label + "_end")
+    a.beqz("s3", label + "_gone")
+    host.load_controller(a)
+    a.move("a0", "s1")
+    a.li("a1", ACTOR_LIST)
+    a.jal(F_ACTOR_REMOVE)
+    a.lw("a0", 0x20, "sp")
+    a.jal(F_TEX_RELEASE)
+    a.label(label + "_gone")
+    a.la("t0", state)
+    a.sw("zero", 0, "t0")
+    a.jal(F_EXIT)
+    a.label(label + "_hang")
+    a.beq("zero", "zero", label + "_hang")
+
+
+def emit_helper_handover(a: Assembler, label: str, tag: str) -> None:
+    """In the owner's action, before the launch: ask the helper ``label`` to go and wait (at
+    most ``HELPER_MAX_TICKS``) until it has removed itself and released its texture."""
+
+    state = label + "_state"
+    a.la("t0", state)
+    a.lw("t1", 0, "t0")
+    a.beqz("t1", tag + "_gone")
+    a.li("t1", HELPER_LAUNCH)
+    a.sw("t1", 0, "t0")
+    a.li("s2", HELPER_MAX_TICKS)
+    a.label(tag + "_wait")
+    a.li("a0", 1)
+    a.jal(F_SLEEP)
+    a.la("t0", state)
+    a.lw("t1", 0, "t0")
+    a.beqz("t1", tag + "_gone")
+    a.addiu("s2", "s2", -1)
+    a.bnez("s2", tag + "_wait")
+    a.label(tag + "_gone")
+
+
+def emit_helper_data(a: Assembler, label: str) -> None:
+    """The helper's state word (idle 0, shown 1, launch requested 2)."""
+
+    a.label(label + "_state")
+    a.raw(HELPER_IDLE)
 
 
 def emit_data(a: Assembler, p: Lowered, base: int) -> None:
