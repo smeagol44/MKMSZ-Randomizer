@@ -770,16 +770,20 @@ def lying_landing(words: list) -> list:
 KNOCKDOWN_SLOT = 0x1E
 
 
-def phase_slot_frames(donor: Donor, slots) -> dict[int, list[list[int]]]:
-    """Per phase slot, the donor table-0 script's frames grouped by phase."""
+def phase_slot_frames(donor: Donor, slots, sources: dict | None = None) -> dict[int, list[list[int]]]:
+    """Per phase slot, the donor script's frames grouped by phase (table 0 index *slot*, or
+    ``sources[slot] = (table, index)``)."""
 
     if not slots:
         return {}
-    starts = set(donor.table0) | set(MktRom(donor.mkt).table1(donor.fighter_id))
+    table1 = MktRom(donor.mkt).table1(donor.fighter_id)
+    starts = set(donor.table0) | set(table1)
     out = {}
     for slot in slots:
+        table, index = (sources or {}).get(slot, (0, slot))
+        root = (donor.table0 if table == 0 else table1)[index]
         phases: list[list[int]] = [[]]
-        for w in linearise(donor, slot, starts):
+        for w in linearise(donor, slot, starts, root):
             if w == 0:
                 phases.append([])
             elif isinstance(w, tuple) and w[0] == "frame" and donor.is_shape(w[1]):
@@ -789,7 +793,7 @@ def phase_slot_frames(donor: Donor, slots) -> dict[int, list[list[int]]]:
 
 
 def phase_fill(clean_file: bytes, slot: int, phases: list[list[int]], mode: str = "phases",
-               stance: int | None = None) -> dict[int, int]:  # fmt: skip
+               stance: int | None = None, table: int = 0) -> dict[int, int]:  # fmt: skip
     """Host frame positions of primary ``slot``'s stock script -> donor frames.
 
     ``phases``: phase *k* takes donor phase *k* (the last donor phase for later ones), scaled by
@@ -799,7 +803,7 @@ def phase_fill(clean_file: bytes, slot: int, phases: list[list[int]], mode: str 
     Sektor's accepted throw (proof v55) has its visuals two places late (``shift:-2``);
     Reptile's MKT throw lands right one place early (owner, inputs proofs v01-v02)."""
 
-    root = be32(clean_file, 4 * slot)
+    root = be32(clean_file, (4 * slot) if table == 0 else (0x104 + 4 * slot))
     _, entries = _host_layout(clean_file)  # every table entry starts a script (the throw ends at +0x928)
     end = min((v for _, v in entries if v > root), default=TYPE_START)
     host: list[list[int]] = [[]]
@@ -1144,7 +1148,8 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
             if rel not in old_shapes:
                 old_shapes.append(rel)
     phase_sources = phase_slot_frames(donor, body_d.phase_slots)
-    for phases in phase_sources.values():
+    secondary_sources = phase_slot_frames(donor, body_d.secondary_slots, body_d.secondary_slots)
+    for phases in [*phase_sources.values(), *secondary_sources.values()]:
         for rel in (r for p in phases for r in p):
             if rel not in old_shapes:
                 old_shapes.append(rel)
@@ -1315,6 +1320,11 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
             put32(file87, pos, shape_map[rel])
             owned.add(pos)
         log.append(f"PHASES slot 0x{slot:02X}: host script kept, donor frames ({mode})")
+    for slot, phases in secondary_sources.items():
+        for pos, rel in phase_fill(clean_file, slot, phases, "phases", table=1).items():
+            put32(file87, pos, shape_map[rel])
+            owned.add(pos)
+        log.append(f"SECONDARY slot 0x{slot:02X}: host script kept, donor frames by phase")
     tails, tail_log = stock_tails(clean_file, slot_cfg, translated, stock_shape_set, set(shape_map.values()))
     for pos, word in tails.items():
         put32(file87, pos, word)

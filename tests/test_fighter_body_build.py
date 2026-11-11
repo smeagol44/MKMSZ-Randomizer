@@ -195,8 +195,10 @@ def test_reptile_body_builds_and_fits() -> None:
     r = body.report
     assert r["appended_items"] == 0 and r["file_end"] == bb.FILE87_SIZE  # stock-size file
     assert r["chain_free"] >= 0x10000  # room left for his moves
-    assert (r["frames"], r["run"]) == (175, 9)  # 155 + 12 combo (MKT table 1 slot 0) + 8 throw
-    out = cm.apply(bytes(body.file), stock=body.clean_file, flipped=body.flipped)
+    assert (r["frames"], r["run"]) == (177, 9)  # 155 + 12 combo (MKT t1[0]) + 8 throw + 2 slide (t1[2])
+    out = cm.apply(bytes(body.file), stock=body.clean_file, flipped=body.flipped, slide=False)
+    # Reptile's own MKT slide (table-1 slot 2) on host secondary 2 (body.secondary_slots).
+    assert cm.frames(out, cm.SLIDE) == [body.shape_map[r] for r in (0x1E54, 0x2F94, 0x2FA8)]
     assert len(cm.frames(out, cm.PICKUP)) == 5 and len(set(cm.frames(out, cm.LONG_FALL))) == 1
     # The lying pose (S09, the knockdown's phase 2) is one frame: the donor landing's last.
     lying = body.shape_map[0x27DC]

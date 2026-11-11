@@ -48,6 +48,9 @@
     "phase_slots": {
       "0x23": "shift:+1"
     },
+    "secondary_slots": {
+      "0x02": "table1:0x02"
+    },
     "slot_sources": {
       "0x10": "table1:0x00"
     },
@@ -60,7 +63,6 @@
       "method": "auto"
     },
     "common_animations": [
-      "slide",
       "death",
       "long_fall",
       "pickup",

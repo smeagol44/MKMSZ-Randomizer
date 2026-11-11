@@ -76,7 +76,14 @@ Outside file `0x87`, v01 changes only the CRCs, the kick root (ROM `0xA1CE8`) an
 - **v02** used the rule Sektor's throw was accepted with. In proof v55 his visuals ran about one tick ahead of the grab, so the fix moved them later and started on the stance pose. For Reptile, this made the throw worse.
 - **v03** uses `body.phase_slots` mode `shift:N`. Host position *p*, counted over all three phases, shows donor frame *p + N* of the grab and throw phases; the stance fills the positions before them, and the retract the ones after. v02 is `shift:-1`, Sektor's v55 corresponds to `shift:-2`, and Reptile v03 is `shift:+1`: his second reach frame, his six throw frames from the second position, then the retract's ends.
 
-**Step 2b, special commands.** `MKMSZR_reptile-inputs_common_proof_v04.z64` (SHA-256 `2b7de49257700fba35dddc4a56b8eb094fef9fae79b91f450085f3af0c48a30b`), **Pending** owner test. It is v03 plus Reptile's MKT commands through the generic `fighter_import.commands` (description `commands`), each calling the Sub-Zero power it replaces:
+**Step 2b, special commands.**
+
+| Test ROM | SHA-256 | State |
+|---|---|---|
+| `MKMSZR_reptile-inputs_common_proof_v04.z64` | `2b7de49257700fba35dddc4a56b8eb094fef9fae79b91f450085f3af0c48a30b` | Owner (2026-11-11): "everything else looking good". **Runtime-confirmed (bounded):** Acid Spit, Forceball fast, Invisibility and the kept commands. **Pending:** Forceball slow (see below). **Rejected:** the slide, which was still the generic duck-based recipe; ninjas have their own MKT slide. Reproducible at commit `469b725`. |
+| `MKMSZR_reptile-inputs_common_proof_v05.z64` | `317d2099abc6e1947e8e0e4ada30ee39b00fb2b9ad67a49429607044ec5216a7` | **Pending** owner test. v04 with Reptile's MKT slide (table-1 slot 2: crouch and two slide poses) on host secondary 2 (Slide and Super Slide) through `body.secondary_slots`. |
+
+v04 is v03 plus Reptile's MKT commands through the generic `fighter_import.commands` (description `commands`), each calling the Sub-Zero power it replaces:
 
 | Reptile command | Calls | Host table |
 |---|---|---|
@@ -93,6 +100,15 @@ The other powers and records:
 - Slide and Super Slide keep the host's own recognizers (Reptile's MKT slide is the same B + LP + BL + LK).
 
 The HP table grows to five records, so it moves to the v6 proof arena ([allocations](Memory-and-Allocation-Map#proof-only-allocations-generic-projectile-v01v06-2026-11-11)). The arena's loader also sets maximum EXP, so every power is unlocked. Until step 4 removes Air Ice Blast, Acid Spit uses Ice Blast's stock condition, so an airborne F,F + HP still gives Air Ice Blast from tier 4.
+
+**Forceball slow (v04: "didn't seem to work").** Statically, every input order reaches Ice Clone's stock condition `0x8004A22C`, as Forceball fast reaches Directional Ice's:
+
+- the held check needs HP and LP at `0x800BF2EE`;
+- the HP and LP tables scan on from the next record when it fails;
+- the run double-taps accept forward only;
+- Super Slide's check needs exactly LP+HP+Block.
+
+That condition refuses in native stage 1 (**Wind**, `0x8009A910 == 1`), within 320 ticks of the timestamp `0x80111FD4`, with Ice below `0x60`, while airborne, or without a free 128×128 texture. The likely cause is one of these stock refusals, for example a test in Wind (Hypothesis; the owner's stage is to be confirmed). Step 3 replaces the action and its condition in any case.
 
 Other stand-in poses left after the body: relocated stock scripts that nothing points to any more, and host-only states with no MKT counterpart established: the Ice projectile script P24, inherited "flipped by" labels P28–P31, and secondary slots S05–S0C and S2A. These are not "easy" animations; reachability is Pending.
 

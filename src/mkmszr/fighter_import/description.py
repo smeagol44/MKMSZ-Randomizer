@@ -23,6 +23,11 @@ Body fields:
   places earlier (N < 0: later, the stance pose first); the retract fills what is left. Used
   for the throw (0x23) to line the donor's grab up with the host's (Sektor proof v55 is two
   places late; Reptile's, owner-tested, one place early).
+* ``body.secondary_slots`` (optional): host secondary slot -> ``"table0:0xNN"`` or
+  ``"table1:0xNN"``: the host script is kept and takes that donor script's frames phase by
+  phase, scaled by position. Used where the donor has the animation a host-only state plays,
+  e.g. the MKT ninjas' slide (Reptile table-1 slot 2) for host secondary 2 (Slide, Super Slide),
+  instead of the generic ``slide`` recipe.
 * ``body.run``: the MKT slot with the Run poses (``0x4A`` for every MKT fighter) and the host
   Run rate.
 * ``body.colour``: colour depth and method. ``explicit`` gives the 32→16 index map and the
@@ -109,6 +114,7 @@ class Body:
     layout: Layout | None = None
     sources: dict[int, tuple[int, int]] = field(default_factory=dict)  # host slot -> (table, index)
     phase_slots: dict[int, str] = field(default_factory=dict)  # host slot -> "phases" | "shift:N"
+    secondary_slots: dict[int, tuple[int, int]] = field(default_factory=dict)  # host S slot -> (table, index)
 
 
 @dataclass(frozen=True)
@@ -246,12 +252,29 @@ def validate(data: Any) -> FighterDescription:
             errors.append(f"body.phase_slots[{key}]: mode 'phases' or 'shift:N'")
         elif slot is not None:
             phase_slots[slot] = mode
+    secondary: dict[int, tuple[int, int]] = {}
+    raw_sec = body_d.get("secondary_slots", {}) if isinstance(body_d, dict) else {}
+    if not isinstance(raw_sec, dict):
+        errors.append("body.secondary_slots: expected an object")
+        raw_sec = {}
+    for key, value in raw_sec.items():
+        slot = _int(key, f"body.secondary_slots key {key!r}", errors)
+        table, _, index = str(value).partition(":")
+        idx = _int(index, f"body.secondary_slots[{key}]", errors) if index else None
+        if slot is not None and not 0 <= slot < 0x2B:
+            errors.append(f"body.secondary_slots[{key}]: host secondary slot 0x00..0x2A")
+        elif table not in ("table0", "table1") or idx is None or not 0 <= idx < 0x80:
+            errors.append(f"body.secondary_slots[{key}]: expected 'table0:0xNN' or 'table1:0xNN'")
+        elif slot is not None:
+            secondary[slot] = (int(table[-1]), idx)
     if sources and "layout" in body_d:
         errors.append("body.slot_sources: only with the computed layout")
     anims = _get(body_d, "common_animations", list, "body", errors) or []
     for a in anims:
         if a not in COMMON_ANIMATIONS:
             errors.append(f"body.common_animations: unknown {a!r} (known: {', '.join(COMMON_ANIMATIONS)})")
+    if "slide" in anims and 0x02 in secondary:
+        errors.append("body.secondary_slots: secondary 0x02 replaces the generic 'slide' recipe; drop one")
     legacy = data.get("legacy", [])
     if not isinstance(legacy, list) or any(x not in LEGACY_MODULES for x in legacy):
         errors.append(f"legacy: a list of {', '.join(LEGACY_MODULES)}")
@@ -279,7 +302,7 @@ def validate(data: Any) -> FighterDescription:
         raise DescriptionError("; ".join(errors))
     return FighterDescription(
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
-        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots),
+        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary),
         legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove),
     )  # fmt: skip
 
