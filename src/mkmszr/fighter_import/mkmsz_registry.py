@@ -141,8 +141,9 @@ REGISTRY: dict[int, MktRoutine] = {
     ),
     0x80049668: _m(
         "quanchi_projectile",
-        "projectile: sound 0x12, build from secondary slot 3, speed 6.0 px/tick, collision selector "
-        "0x11 each tick, bounce away on contact, sound 2 every 8 ticks, ends offscreen (margin 200)",
+        "projectile (class 0x800 child): sound 0x12, build from secondary slot 3, speed 6.0 px/tick, "
+        "collision selector 0x11 until the first contact; on a blocked contact the ball deflects "
+        "(0x802ECD88 == 1), otherwise it flies on; sound 2 every 8 ticks; ends offscreen (margin 200)",
     ),
     # -- globals ------------------------------------------------------------------------------
     0x802ECE20: _g("current_controller", "running controller (+0x6E0 actor, +0x640 opponent)", _F),
@@ -157,6 +158,10 @@ REGISTRY: dict[int, MktRoutine] = {
     ),
     0x800AF340: _g("type_strike_table", "per-type strike-record tables (type 4: 0x800AF484)", _F),
     0x800A6268: _g("item_use_table", "item-use handlers by item id (3: eye_use)", _F),
+    0x802ECD88: _g(
+        "strike_blocked",
+        "set to 1 by the collision core on its blocked paths (block damage from record +0x0B)",
+    ),
     0x800A5FA0: _g("item_effects", "active item effect bits (bit 0: Eye); cleared at stage start"),
 }
 

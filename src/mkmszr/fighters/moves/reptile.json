@@ -76,8 +76,8 @@
       "part": 3
      },
      "offset": [
-      0,
-      0
+      -30,
+      -36
      ],
      "speed": "0x59999",
      "rate": 3,
@@ -114,13 +114,15 @@
      },
      "src": {
       "art": "MKT 0x80079B84",
-      "offset": "MKT 0x8007F7EC",
+      "offset": "owner",
       "speed": "MKT 0x80079A98",
       "rate": "MKT 0x80079B94",
       "strike": "MKT 0x800B03CC",
       "hum": "MKT 0x80079C68",
-      "impact": "MKT 0x80079BEC"
-     }
+      "impact": "MKT 0x80079BEC",
+      "palette": "MKT 0x800BECE4"
+     },
+     "palette": "0x800BECE4"
     },
     {
      "op": "sleep",
@@ -211,8 +213,8 @@
       "part": 3
      },
      "offset": [
-      0,
-      0
+      -30,
+      -36
      ],
      "speed": "0x26666",
      "rate": 3,
@@ -249,13 +251,15 @@
      },
      "src": {
       "art": "MKT 0x80079B84",
-      "offset": "MKT 0x8007F7EC",
+      "offset": "owner",
       "speed": "MKT 0x80079AF0",
       "rate": "MKT 0x80079B94",
       "strike": "MKT 0x800B03CC",
       "hum": "MKT 0x80079C68",
-      "impact": "MKT 0x80079BEC"
-     }
+      "impact": "MKT 0x80079BEC",
+      "palette": "MKT 0x800BECE4"
+     },
+     "palette": "0x800BECE4"
     },
     {
      "op": "sleep",
