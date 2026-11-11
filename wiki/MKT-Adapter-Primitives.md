@@ -390,7 +390,7 @@ MKT keeps each fighter's two roots in `0x800A8EB0` (punch, entered from HP) and 
 - a table-1 animation becomes host primary `0x10`, which the description fills from that donor slot (`body.slot_sources`);
 - strike selectors `0x02` and `0x12` become `0x04`; `0x00`, `0x01` and `0x05` stay.
 
-It reproduces Sektor's runtime-accepted v62 records byte for byte (`tests/test_combos.py`; Static/Implementation-confirmed). Reptile (Pending, inputs proof v01): `HP, HP, D+LP`, `HP, HP, HK, B+HK` and `HK, HK, B+HK`. His combo animation is MKT table-1 slot 0, and his roundhouse finisher (selector `0x12`, damage 10) becomes knockback `0x04`. Owner decision (2026-11-11): that knockback does 10 damage, MKT's value, instead of the stock 7. The record `0x800B0E30` (ROM `0xB1A30`, damage byte `+10`) is read only by the combo driver. This applies to Sektor too (build v62).
+It reproduces Sektor's runtime-accepted v62 records byte for byte (`tests/test_combos.py`; Static/Implementation-confirmed). Reptile (Pending, inputs proof v01): `HP, HP, D+LP`, `HP, HP, HK, B+HK` and `HK, HK, B+HK`. His combo animation is MKT table-1 slot 0, and his roundhouse finisher (selector `0x12`, damage 10) becomes knockback `0x04`. Owner decision (2026-11-11): that knockback does 10 damage, MKT's value, instead of the stock 7. The record `0x800B0E30` (ROM `0xB1A30`, damage byte `+10`) is read only by the combo driver. This applies to Sektor too (build v62). Runtime-confirmed (bounded) by the owner on both fighters.
 
 ## Special-move command translation
 

@@ -793,8 +793,11 @@ def phase_fill(clean_file: bytes, slot: int, phases: list[list[int]], mode: str 
     """Host frame positions of primary ``slot``'s stock script -> donor frames.
 
     ``phases``: phase *k* takes donor phase *k* (the last donor phase for later ones), scaled by
-    position, end points kept. ``lead-in``: the donor frames of every phase but the last, in
-    order, fill the last host positions and ``stance`` the ones before (Sektor proof v55)."""
+    position, end points kept. ``shift:N`` (signed): host position *p*, counted over all
+    phases, shows frame *p + N* of the donor's phases but the last (its retract) in order;
+    before them ``stance``, after them the retract scaled over the remaining positions.
+    Sektor's accepted throw (proof v55) has its visuals two places late (``shift:-2``);
+    Reptile's MKT throw lands right one place early (owner, inputs proofs v01-v02)."""
 
     root = be32(clean_file, 4 * slot)
     _, entries = _host_layout(clean_file)  # every table entry starts a script (the throw ends at +0x928)
@@ -807,12 +810,23 @@ def phase_fill(clean_file: bytes, slot: int, phases: list[list[int]], mode: str 
             break
         elif kind == "frame":
             host[-1].append(p)
-    if mode == "lead-in":
+    if mode.startswith("shift:"):
+        shift = int(mode[6:])
         frames = [r for p in (phases[:-1] if len(phases) > 1 else phases) for r in p]
+        retract = phases[-1] if len(phases) > 1 else frames[-1:]
         positions = [p for ph in host for p in ph]
-        if stance is None or len(frames) > len(positions):
-            raise LayoutError(f"slot 0x{slot:02X}: {len(frames)} lead-in frames for {len(positions)} places")
-        seq = [stance] * (len(positions) - len(frames)) + frames
+        if stance is None and shift < 0:
+            raise LayoutError(f"slot 0x{slot:02X}: a negative shift needs the stance pose")
+        after = [p for p in range(len(positions)) if p + shift >= len(frames)]
+        seq = []
+        for p in range(len(positions)):
+            if p + shift < 0:
+                seq.append(stance)
+            elif p + shift < len(frames):
+                seq.append(frames[p + shift])
+            else:
+                k, n = after.index(p), len(after)
+                seq.append(retract[0] if n == 1 else retract[round(k * (len(retract) - 1) / (n - 1))])
         return dict(zip(positions, seq, strict=True))
     out = {}
     for k, positions in enumerate(p for p in host if p):

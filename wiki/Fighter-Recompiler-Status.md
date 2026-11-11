@@ -59,7 +59,8 @@ v01 causes and the generic fixes in v02 (`fighter_import.body_build`; Sektor's e
 | Test ROM | SHA-256 | State |
 |---|---|---|
 | `MKMSZR_reptile-inputs_common_proof_v01.z64` | `fe87bb2af266d0cc6505c4b967f78403ddb5488ae2f323113df0c3f37b698603` | **Runtime-confirmed (bounded)** by the owner (2026-11-11): all three combos work, every hit is animated, and the finishers launch correctly with no corruption. The throw is "a bit off but acceptable". Reproducible at commit `b9d1c80`. |
-| `MKMSZR_reptile-inputs_common_proof_v02.z64` | `51adc9d3c59af671062441020940541ca6d204375d84959a202a2ba5bec196a8` | **Pending** owner test. Changes from v01: knockback finisher at 10 damage (owner decision, Sektor too: build v62); throw by Sektor's lead-in rule. |
+| `MKMSZR_reptile-inputs_common_proof_v02.z64` | `51adc9d3c59af671062441020940541ca6d204375d84959a202a2ba5bec196a8` | Changes from v01: knockback finisher at 10 damage (owner decision, Sektor too: build v62); throw by Sektor's lead-in rule (`shift:-1`). Owner (2026-11-11): damage **Runtime-confirmed** ("very good", Reptile and Sektor); throw **Rejected / failed** ("actually worse ... earlier instead of later"). Reproducible at commit `e16c816`. |
+| `MKMSZR_reptile-inputs_common_proof_v03.z64` | `a3c7e4487d9dd56d225877862f6e95c7bf6349bf7d4ce76f3030d73c9490e570` | **Pending** owner test. v02 with the throw one place earlier than v01 (`shift:+1`); differs from v02 only inside file `0x87`. |
 
 v01 is the accepted body plus:
 
@@ -69,7 +70,11 @@ v01 is the accepted body plus:
 
 Outside file `0x87`, v01 changes only the CRCs, the kick root (ROM `0xA1CE8`) and the records `0xB1CB0..0xB1D00`; v02 also changes the knockback damage byte at ROM `0xB1A3A`.
 
-v01 fitted the throw phase by phase (2/6/7 MKT frames into the host's 2/5/2). v02 uses the rule Sektor's throw was accepted with (proof v55: his visuals ran about one tick ahead of the grab). The host keeps its throw script; the MKT grab and throw frames, without the retract, fill its last positions, and the stance pose fills the ones before. For Reptile that is the stance, then his 2 + 6 frames (`body.phase_slots` mode `lead-in`).
+**Throw timing.** In every version the host keeps its throw script (tokens, phase ends, timing), and the donor frames are aligned with it:
+
+- **v01** fitted the throw phase by phase: 2/6/7 MKT frames into the host's 2/5/2.
+- **v02** used the rule Sektor's throw was accepted with. In proof v55 his visuals ran about one tick ahead of the grab, so the fix moved them later and started on the stance pose. For Reptile, this made the throw worse.
+- **v03** uses `body.phase_slots` mode `shift:N`. Host position *p*, counted over all three phases, shows donor frame *p + N* of the grab and throw phases; the stance fills the positions before them, and the retract the ones after. v02 is `shift:-1`, Sektor's v55 corresponds to `shift:-2`, and Reptile v03 is `shift:+1`: his second reach frame, his six throw frames from the second position, then the retract's ends.
 
 Other stand-in poses left after the body: relocated stock scripts that nothing points to any more, and host-only states with no MKT counterpart established: the Ice projectile script P24, inherited "flipped by" labels P28–P31, and secondary slots S05–S0C and S2A. These are not "easy" animations; reachability is Pending.
 

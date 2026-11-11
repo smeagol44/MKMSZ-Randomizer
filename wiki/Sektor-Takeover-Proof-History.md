@@ -2596,7 +2596,7 @@ Owner decision while testing Reptile's combos: the combo knockback finishers do 
   - Sektor build v62: SHA-256 `e35df9c55330ff6d2ce2d19fab7c357c421e3b0884f3a4a7826ca62df95240c4`.
   - `--fighter sektor --seed SEKTOR-PROD-1 --debug-all-keys`: SHA-256 `0c739f81669f2f02b11fe99f290ebe9b6353ac5f491b623be48fd12ee17395a2`.
   - Each differs from its v61 counterpart only at ROM `0xB1A3A` and the CRCs.
-- **State:** Implementation/CI-confirmed; runtime Pending (owner test of `MKMSZR_sektor-knockback-10_full-seed_build_v01.z64`).
+- **State:** Runtime-confirmed (bounded) by the owner on `MKMSZR_sektor-knockback-10_full-seed_build_v01.z64` (2026-11-11, "very good").
 
 ### Known limits after v08
 

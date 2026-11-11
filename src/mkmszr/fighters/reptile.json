@@ -46,7 +46,7 @@
       "0x22"
     ],
     "phase_slots": {
-      "0x23": "lead-in"
+      "0x23": "shift:+1"
     },
     "slot_sources": {
       "0x10": "table1:0x00"

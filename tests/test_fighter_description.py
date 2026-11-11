@@ -70,7 +70,7 @@ def test_layout_rejects_bad_places_and_overlaps() -> None:
         (lambda d: d.update(moves=[]), "unknown keys"),
         (lambda d: d["body"].update(slot_sources={"0x10": "table1:0x00"}), "slot_sources"),
         (lambda d: d["body"].update(phase_slots={"0x00": "phases"}), "phase_slots"),
-        (lambda d: d["body"].update(phase_slots={"0x23": "late"}), "lead-in"),
+        (lambda d: d["body"].update(phase_slots={"0x23": "late"}), "shift:N"),
     ],
 )
 def test_validator_rejects(change, message) -> None:
@@ -111,7 +111,7 @@ def test_donors_and_the_same_index_slot_rule() -> None:
 
 def test_reptile_sources_and_phase_slots() -> None:
     reptile = fd.load("reptile")
-    assert reptile.body.sources == {0x10: (1, 0x00)} and reptile.body.phase_slots == {0x23: "lead-in"}
+    assert reptile.body.sources == {0x10: (1, 0x00)} and reptile.body.phase_slots == {0x23: "shift:+1"}
     data = copy.deepcopy(_raw("reptile"))
     data["body"]["slot_sources"] = {"0x10": "table2:0x00"}
     with pytest.raises(fd.DescriptionError, match="table0"):

@@ -18,10 +18,11 @@ Body fields:
   primary 0x10) is his MKT table-1 slot 0, the animation his combo records select.
 * ``body.phase_slots`` (optional): host primary slot -> mode, for slots that keep the host
   script (tokens, phase ends, timing) and take the frames of MKT table 0 index *i*. ``phases``:
-  phase by phase, scaled by position. ``lead-in``: the donor frames of every phase but the
-  last (its retract), in order, at the end of the host's frame positions, the stance pose
-  before them (Sektor's runtime-accepted throw rule, proof v55: visuals one tick later so the
-  grab lands with the host's; used for the throw, 0x23).
+  phase by phase, scaled by position. ``shift:N`` (signed integer): the donor frames of every
+  phase but the last (its retract) in order over all the host's frame positions, moved N
+  places earlier (N < 0: later, the stance pose first); the retract fills what is left. Used
+  for the throw (0x23) to line the donor's grab up with the host's (Sektor proof v55 is two
+  places late; Reptile's, owner-tested, one place early).
 * ``body.run``: the MKT slot with the Run poses (``0x4A`` for every MKT fighter) and the host
   Run rate.
 * ``body.colour``: colour depth and method. ``explicit`` gives the 32→16 index map and the
@@ -42,6 +43,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import re
 from dataclasses import dataclass, field
 from importlib import resources
 from typing import Any
@@ -102,7 +104,7 @@ class Body:
     common_animations: tuple[str, ...]
     layout: Layout | None = None
     sources: dict[int, tuple[int, int]] = field(default_factory=dict)  # host slot -> (table, index)
-    phase_slots: dict[int, str] = field(default_factory=dict)  # host slot -> "phases" | "lead-in"
+    phase_slots: dict[int, str] = field(default_factory=dict)  # host slot -> "phases" | "shift:N"
 
 
 @dataclass(frozen=True)
@@ -228,14 +230,14 @@ def validate(data: Any) -> FighterDescription:
     phase_slots: dict[int, str] = {}
     raw_phase = body_d.get("phase_slots", {}) if isinstance(body_d, dict) else {}
     if not isinstance(raw_phase, dict):
-        errors.append("body.phase_slots: expected an object (slot -> 'phases' or 'lead-in')")
+        errors.append("body.phase_slots: expected an object (slot -> 'phases' or 'shift:N')")
         raw_phase = {}
     for key, mode in raw_phase.items():
         slot = _int(key, f"body.phase_slots key {key!r}", errors)
         if slot is not None and (slot in slots or not 0 <= slot <= 0x40):
             errors.append(f"body.phase_slots[{key}]: 0x{slot:02X} is a body slot or out of range")
-        elif mode not in ("phases", "lead-in"):
-            errors.append(f"body.phase_slots[{key}]: mode 'phases' or 'lead-in'")
+        elif not (mode == "phases" or (isinstance(mode, str) and re.fullmatch(r"shift:[+-]?\d{1,2}", mode))):
+            errors.append(f"body.phase_slots[{key}]: mode 'phases' or 'shift:N'")
         elif slot is not None:
             phase_slots[slot] = mode
     if sources and "layout" in body_d:
