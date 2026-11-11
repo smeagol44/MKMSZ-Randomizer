@@ -195,7 +195,7 @@ def test_reptile_body_builds_and_fits() -> None:
     r = body.report
     assert r["appended_items"] == 0 and r["file_end"] == bb.FILE87_SIZE  # stock-size file
     assert r["chain_free"] >= 0x10000  # room left for his moves
-    assert (r["frames"], r["run"]) == (155, 9)
+    assert (r["frames"], r["run"]) == (175, 9)  # 155 + 12 combo (MKT table 1 slot 0) + 8 throw
     out = cm.apply(bytes(body.file), stock=body.clean_file, flipped=body.flipped)
     assert len(cm.frames(out, cm.PICKUP)) == 5 and len(set(cm.frames(out, cm.LONG_FALL))) == 1
     # The lying pose (S09, the knockdown's phase 2) is one frame: the donor landing's last.
@@ -213,6 +213,10 @@ def test_reptile_body_builds_and_fits() -> None:
             w for w in stock if w not in body.stock_shape_set
         ]  # tokens, operands, phase ends and jumps are stock
         assert all(w in body.shape_map.values() for w, s in zip(now, stock) if s in body.stock_shape_set)
+    # Combo animation (host primary 0x10) from MKT table-1 slot 0; throw (0x23) by phase.
+    assert body.slot_cfg[0x10]["donor"] == bb.MktRom(Path(MKT).read_bytes()).table1(19)[0]
+    throw = cm.frames(out, (0, 0x23))
+    assert len(throw) == 9 and body.shape_map[0x29D0] == throw[0] and body.shape_map[0x2A5C] == throw[6]
 
 
 @needs_mkt

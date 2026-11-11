@@ -9,7 +9,7 @@
 ### Milestone 4 — agreed tasks (owner, 2026-11-11)
 
 1. **Body:** a test ROM with Reptile's body (generic body builder, computed layout, auto colour) and his MKT voice set. The owner checks poses, colours, the common animations and the voices.
-2. **Inputs:** combos and the remaining easy animations. Reptile's MKT special commands are wired to Sub-Zero's stock specials for now.
+2. **Inputs:** combos and the remaining easy animations. Reptile's MKT special commands are wired to Sub-Zero's stock specials for now. Split into 2a (combos, combo animation, throw) and 2b (special commands; the host HP table needs room for three records, and the forceballs need their both-buttons condition).
 3. **Specials:** each step changes only the actions; the commands from step 2 stay. Order and replaced power slot:
 
    | Order | Reptile | Replaces (Sub-Zero slot) |
@@ -53,6 +53,16 @@ v01 causes and the generic fixes in v02 (`fighter_import.body_build`; Sektor's e
 - **HP↔LP switch** (Static-confirmed cause). Stock primaries `0x0E`/`0x0F` carry host-only phases after their loop: retract, a single pose, and switch phases that go through one frame of each punch and jump into the other punch's script (`0x58C`, `0x57C`, `0x51C`, `0x50C`). MKT scripts end at the loop, so the computed layout left those phases empty. When the imported script has the stock shape up to the loop, it now keeps the stock tail (tokens, operands, jumps) and translates each stock frame to the imported frame in the same place. This gives the same roles as Sektor's hand layout.
 - **Pit fall** (unchanged): the held pose is the knockdown's last fall frame (`0x27B4`), as for Sektor.
 - **Palette, v03** (Static-confirmed cause). v01 and v02 read Reptile's palette from `0x800A1738[19]`. That table is not indexed by fighter id past 16: entry `17 + k` is the alternate palette of fighter `k`, so v01/v02 used another fighter's alternate (11 greys, 7 dark greens, 13 browns). The per-fighter table is `0x800A3660`. Its entry equals the palette that the fighter's first frame binds for every fighter with its own art (14 fighters, including 5 where `0x800A1738` differs). For fighters that share art (ninjas, robots) it holds the costume recolour in the shared layout. Reptile `0x800BE864`: entries 1–8 skin, 9–16 greys and black (16, the suit, is the most used), 17–31 green, which matches MKT's character select. Fighter 24 binds `0x800BB7EC`, but its entry `0x800B9AAC` has another layout (Pending; not an import target). Generic projectile proofs v01–v03 showed the same wrong palette for the forceball; v04 onwards bind the forceball's own palette and are unaffected.
+
+**Step 2a, combos and throw.** `MKMSZR_reptile-inputs_common_proof_v01.z64` (SHA-256 `fe87bb2af266d0cc6505c4b967f78403ddb5488ae2f323113df0c3f37b698603`), **Pending** owner test. It is the accepted body plus:
+
+- Reptile's MKT combo strings through the generic `fighter_import.combos` ([record grammar](MKT-Adapter-Primitives#record-grammar-and-the-generic-component-2026-11-11)): `HP, HP, D+LP`, `HP, HP, HK, B+HK` and `HK, HK, B+HK`;
+- his combo animation (MKT table-1 slot 0) in host primary `0x10` (`body.slot_sources`);
+- his MKT throw poses in the host throw script, phase by phase (`body.phase_slots`; host tokens and timing kept).
+
+The roundhouse finisher's strike `0x12` (damage 10) becomes knockback `0x04` (damage 7). Outside file `0x87` it changes only the CRCs, the kick root (ROM `0xA1CE8`) and the records `0xB1CB0..0xB1D00`.
+
+Other stand-in poses left after the body: relocated stock scripts that nothing points to any more, and host-only states with no MKT counterpart established: the Ice projectile script P24, inherited "flipped by" labels P28–P31, and secondary slots S05–S0C and S2A. These are not "easy" animations; reachability is Pending.
 
 **Milestones 2 and 3: done (2026-11-11).**
 

@@ -365,6 +365,33 @@ For every donor combo edge:
 
 Numeric equality alone is insufficient.
 
+### Record grammar and the generic component (2026-11-11)
+
+**Static-confirmed** from the MKMSZ parser `0x8004D764`, driver `0x8004D4C8` and animation selector `0x8004D9A8`, and the MKT driver (strike lookup at `0x8005D17C`). The two games share one 16-byte record:
+
+| Offset | Meaning |
+|---|---|
+| `+0` | flags: `0x80` marks the last option of an option list |
+| `+1` | input window (ticks) |
+| `+2` (u16) | hit animation: high byte = slot (`0x80 \| n` = secondary/table-1 slot `n`), low byte = phase |
+| `+4` | animation rate (ticks per frame) |
+| `+5` | button index (low nibble): 0 HP, 1 LP, 3 HK |
+| `+6` (u16) | recovery animation, same encoding |
+| `+8` | strike selector: index into the combo strike table (MKMSZ `0x800B0D48`, MKT `0x800B1C4C`) |
+| `+9` | extra condition (index into `0x800A1170`): 1 away, 4 down |
+| `+12` (u32) | next option list, or a small value (recovery wait, end of string) |
+
+MKT keeps each fighter's two roots in `0x800A8EB0` (punch, entered from HP) and `0x800A8F28` (kick, entered from HK). MKMSZ's player graph is ROM `0xB1CB0` (six stock records), with roots at ROM `0xA1C70` and `0xA1CE8`. The two strike tables give the same reaction number for the same index; only the box and some damages differ. The unsafe host reaction is `0x12`, reached through indices 2 and 18.
+
+`fighter_import.combos` implements the rule generically:
+
+- records, option lists, windows, rates, buttons and conditions are copied, and pointers are relocated;
+- table-0 animations keep their slot;
+- a table-1 animation becomes host primary `0x10`, which the description fills from that donor slot (`body.slot_sources`);
+- strike selectors `0x02` and `0x12` become `0x04`; `0x00`, `0x01` and `0x05` stay.
+
+It reproduces Sektor's runtime-accepted v62 records byte for byte (`tests/test_combos.py`; Static/Implementation-confirmed). Reptile (Pending, inputs proof v01): `HP, HP, D+LP`, `HP, HP, HK, B+HK` and `HK, HK, B+HK`. His combo animation is MKT table-1 slot 0, and his roundhouse finisher (selector `0x12`, damage 10) becomes knockback `0x04` (damage 7).
+
 ## Special-move command translation
 
 **Static-confirmed (2026-11-07).** The MKT special-move command record has exactly the `0x2C`-byte layout of the MKMSZ descriptor in [Player actions and special moves](Player-Actions-and-Special-Moves#low-kick-descriptor-and-special-action-path). That layout is: two `u16` button masks, `u32` transfer selector, condition pointer, action pointer, `u16` input window, six facing-right and seven facing-left `u16` tokens, and a zero `u16` table sentinel.

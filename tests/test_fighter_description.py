@@ -68,6 +68,8 @@ def test_layout_rejects_bad_places_and_overlaps() -> None:
         (lambda d: d["body"]["common_animations"].append("fly"), "fly"),
         (lambda d: d["legacy"].append("reptile-acid"), "legacy"),
         (lambda d: d.update(moves=[]), "unknown keys"),
+        (lambda d: d["body"].update(slot_sources={"0x10": "table1:0x00"}), "slot_sources"),
+        (lambda d: d["body"].update(phase_slots=["0x00"]), "phase_slots"),
     ],
 )
 def test_validator_rejects(change, message) -> None:
@@ -104,3 +106,12 @@ def test_donors_and_the_same_index_slot_rule() -> None:
     wrong = fd.validate({**_raw("sektor"), "donor": {**_raw("sektor")["donor"], "fighter_id": 6}})
     with pytest.raises(fd.DescriptionError, match="SINDEL"):
         fd.check_donor(wrong, mkt)
+
+
+def test_reptile_sources_and_phase_slots() -> None:
+    reptile = fd.load("reptile")
+    assert reptile.body.sources == {0x10: (1, 0x00)} and reptile.body.phase_slots == (0x23,)
+    data = copy.deepcopy(_raw("reptile"))
+    data["body"]["slot_sources"] = {"0x10": "table2:0x00"}
+    with pytest.raises(fd.DescriptionError, match="table0"):
+        fd.validate(data)
