@@ -191,7 +191,7 @@ def _check_value(kind: str, value: Any, where: str, errors: list[str]) -> None:
              "homing is {aim_dy, speed, explode_within}")  # fmt: skip
     elif kind == "impact":
         need(isinstance(value, dict) and "end" in value and set(value) <= {
-            "anim", "rate", "sound", "effect", "at", "end", "bounce"}, "impact keys")  # fmt: skip
+            "anim", "rate", "sound", "effect", "at", "end", "bounce", "adjust"}, "impact keys")  # fmt: skip
     elif kind == "steps":
         need(isinstance(value, list), "expected a list of steps")
     else:  # pragma: no cover - catalogue error

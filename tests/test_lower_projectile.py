@@ -95,3 +95,35 @@ def test_reptile_forceball_helper() -> None:
 def test_phase_end_pace_matches_the_host() -> None:
     # 0x80031070: an odd rate of 2 or more sleeps rate - 1 between frames.
     assert [lp.phase_end_ticks(r) for r in (1, 2, 3, 4, 5)] == [1, 2, 2, 4, 4]
+
+
+def test_acid_stagger_push_is_scaled_from_the_rocket() -> None:
+    # MKT acid 0x26666 against MKT rocket 0x33333, whose host stumble push 0x56666 was accepted.
+    assert lp.stumble_push("acid_stagger") == 0x40CCC
+    assert lp.REACTION_LOWERING["acid_stagger"]["kind"] == "stumble"
+
+
+@pytest.mark.skipif(not os.environ.get("MKMSZR_CLEAN_ROM"), reason="needs MKMSZR_CLEAN_ROM")
+def test_acid_stagger_lift() -> None:
+    from mkmszr.fighter_import.mipsdis import decode
+
+    clean = Path(os.environ["MKMSZR_CLEAN_ROM"]).read_bytes()
+    dst = 0xA01B0000
+    code = lp.lift_stumble(clean, "acid_stagger", dst)
+    word = lambda i: int.from_bytes(code[4 * i : 4 * i + 4], "big")
+    assert word(38) == 0  # the trap's 8-tick hit pause is gone
+    assert (word(46), word(48)) == (0x3C020004, 0x34420CCC)  # +0x40CCC
+    assert (word(49), word(50)) == (0x3C02FFFB, 0x3442F334)  # -0x40CCC
+    assert decode(word(17), dst + 4 * 17).text == f"j 0x{dst + 4 * 33:X}"  # internal jump moved
+
+
+@pytest.mark.skipif(not os.environ.get("MKMSZR_MKT_ROM"), reason="needs MKMSZR_MKT_ROM")
+def test_virtual_art_entries() -> None:
+    mkt = Path(os.environ["MKMSZR_MKT_ROM"]).read_bytes()
+    moves, _ = components.load_programs("reptile")
+    acid = next(s for s in next(m for m in moves if m.name == "acid_spit").steps if s["op"] == "projectile")
+    file87 = bytearray(b"\xff" * 0x40000)
+    art = lp.place_art(file87, mkt, 19, acid, None, 0x40000, at=0x20000)
+    assert art.virtual and art.impact_slot is not None
+    for index, at in ((art.flight_slot, art.flight_at), (art.impact_slot, art.impact_at)):
+        assert int.from_bytes(file87[0x104 + 4 * index : 0x108 + 4 * index], "big") == at

@@ -67,7 +67,7 @@ A move program is data (`src/mkmszr/fighters/moves/<fighter>.json`, format 1):
 | `elbow_hold` | MKT `0x74`: grounded victim held about 20 ticks, airborne rejected | Pending |
 | `launch` | MKT `0x24`: damaging launch, flight and landing | Pending |
 | `knockback_arc` | MKT `0x71` (forceball): victim action `0x625`, launched on an arc **toward the attacker** (`do_jump(-0x2CCCC, -0x6CCCC, 0x5199)` through `0x8006EBB0`; direction from the owner's comparison of proofs v02/v03, not from the static sign reading) | Lifted copy of host `0x25` (`0x80057C14`) with the converted MKT arc `0x800321D0(-0x3B73B, -0x90623, 0x5A3C)` and without its stock hit sound (Runtime-confirmed bounded, proof v06) |
-| `acid_stagger` | MKT `0x72` (acid): victim action `0x626`, staggers back; details Pending | Pending |
+| `acid_stagger` | MKT `0x72` (acid): victim action `0x626`, staggers back. Host (2026-11-11): the lifted Fire spiked-rod trap stumble that Sektor's rocket was accepted with (`0x80051280`), without its 8-tick pause, push `0x56666 × 0x26666 / 0x33333 = 0x40CCC` (`lower_projectile`, kind `stumble`) | Pending (specials proof v10) |
 | `rocket_stumble` | MKT rocket reaction → `zap_stumble` | *existing* (Sektor rocket) |
 | `uppercut` | teleport strike | host reaction `0x08` (*existing*) |
 | `blocked`, `none` | stock blocked reaction / no reaction | — |
@@ -158,6 +158,12 @@ The native path, without patching the Ice root:
 
 First use: Reptile specials proofs v01–v03 (forceballs).
 
+- **Acid Spit (specials proof v10):**
+  - **Close-range checks:** extra strike records with the donor boxes, checked after each of the first frames before flight (`emit_process`).
+  - **Impact at the opponent:** move to the opponent, flip, offset by the donor `adjust`.
+  - **Stumble reactions:** lifted at their place in the payload (`lift_stumble`).
+  - **Virtual art entries:** the host has only four empty table-1 slots. Scripts are reached by cursor offset, and `projectile_actor_build` takes an index whose `0x104 + 4·index` word sits in the art (`fighter_select_animation` truncates the index to 16 bits, so it is not used there).
+  - **Virtual body scripts:** `body.secondary_scripts` keys `0x40–0x7F`.
 - **Throw helper:** MKT's token 11 creates a helper object from a frame, and tokens 12/14 step it, one helper frame per body frame. The frame after a helper step is the helper's, not a body pose. `lower_projectile.donor_helper` reads it, and `place_art(helper=...)` adds its frames and script. `emit_helper` is the process `emit_action(helper=...)` starts with the throw. It follows the owner's body (cursor in the throw script) rather than a clock; clocked versions drifted (specials proofs v03–v07). It goes at the launch through a handover (`emit_helper_handover`), because two type-4 projectile objects must not coexist (v04 crashed). Reptile's forceball (the ball forming in his hands) is the first use, Pending (specials proof v08).
 
 ### Eye item

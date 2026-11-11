@@ -371,16 +371,25 @@
        "after": 2
       }
      ],
+     "palette": "0x800BEC14",
      "impact": {
       "anim": {
        "table": 1,
-       "slot": 7
+       "slot": 6,
+       "part": 4
       },
       "rate": 3,
+      "sound": {
+       "fighter": 16
+      },
       "effect": {
        "mkt_fx": 47
       },
       "at": "opponent",
+      "adjust": [
+       -153,
+       0
+      ],
       "end": "animation"
      },
      "src": {
@@ -390,6 +399,7 @@
       "rate": "MKT 0x800798DC",
       "strike": "MKT 0x800B03EC",
       "checks": "MKT 0x800798B0",
+      "palette": "MKT 0x800BEC14",
       "impact": "MKT 0x80079920"
      }
     },

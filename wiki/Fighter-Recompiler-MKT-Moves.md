@@ -131,6 +131,15 @@ Units below are raw donor values. Velocities are 16.16 fixed point per process t
   2. `create_fx(0x2F)`.
   3. `match_me_to_opponent`, `flip_single`, `multi_adjust_xy(self, -153, 0)`.
   4. Slot 6 part 4 at 3 ticks per frame, then `proj_delete`.
+- **Art and palette (2026-11-11, Static-confirmed):**
+  - Slot 6 holds the whole move: part 1 is the throw, whose token 11 creates the mouth helper `0x315C` with pose 4; part 2 is the retract; part 3 is the flight (`315C`, `3188` for the two arc steps, then the loop `31B0 31C4`); part 4 is the splash, 8 frames, anchors x −83…−142.
+  - Slot 7 holds bare object descriptors (9×9 droplets, palette `0x800BEC14`): `create_fx(0x2F)`'s art, not the splash. The move program's impact had slot 7 and is corrected to slot 6 part 4, with the `adjust` (−153, 0) and the sizzle (the attacker's fighter sound `0x10`, played by reaction `0x72`).
+  - The helper `0x315C` binds palette `0x800BEC14`: acid's palette, as `0x800BECE4` is the forceball's.
+- **Reaction `0x72`** (`0x800547C8`):
+  - victim action `0x626`;
+  - plays the attacker's fighter sound `0x10` (`0x80005810`);
+  - calls `0x80057538(0, 0x80057790, 0, 0)` (a per-tick victim effect, Pending);
+  - sleeps 2, sets `+0x420 = 0x26666`, then `0x80057F94`. `0x80057F94` is the same stumble tail as `zap_stumble` (Sektor's rocket, push `0x33333`).
 - **Strike `0x12`** (`0x800B03EC`): box `(193, 27, 64, 12)`, reaction `0x72` / blocked `0x01`, damage 15 / block 4.
 
 ### Invisibility
