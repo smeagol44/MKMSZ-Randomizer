@@ -118,7 +118,7 @@ These five stream records are mechanically dispatched by the ordinary interprete
 
 ### Static fighter-type names relevant to the ordinary pool
 
-The clean N64 Test Characters records at VA `0x8009AC28` and their adjacent name table provide a direct type/name mapping. Type `0x00` MONK1 is the separately handled Earth entry; the 24 table records then align with names MONK2 through SHINNOK.
+The clean N64 Test Characters records at VA `0x8009AC28` and their adjacent name table provide a direct type/name mapping. Type `0x00` MONK1 is the separately handled Earth entry; the 24 table records then align with names MONK2 through SHINNOK. Records 22 and 23 give the two Fortress alternates: type `0x1B` **QUANCHI** (fighter file `0x93`, resource pointer `0x802C1BFC`) and type `0x1D` **SHINNOK** (file `0x96`, pointer `0x802C19C0`) (Static-confirmed 2026-11-11; Quan Chi's AI action lists and projectile are read on [Fighter recompiler components](Fighter-Recompiler-Components#host-references)).
 
 For the 19 ordinary-branch types in this matrix:
 

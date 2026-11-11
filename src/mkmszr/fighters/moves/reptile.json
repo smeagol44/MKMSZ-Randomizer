@@ -1,0 +1,890 @@
+{
+ "format": 1,
+ "fighter": "reptile",
+ "donor": {
+  "fighter_id": 19,
+  "name": "REPTILE"
+ },
+ "moves": [
+  {
+   "name": "forceball_fast",
+   "command": {
+    "buttons": "0x90",
+    "tokens": [
+     9,
+     9
+    ],
+    "window": 24,
+    "src": "MKT 0x800AC810",
+    "conditions": [
+     {
+      "kind": "cooldown",
+      "key": "forceball_fast",
+      "ticks": 96,
+      "src": "MKT 0x80052834"
+     },
+     {
+      "kind": "opponent_state",
+      "what": "opponent fighter id != 0x1F and opponent process +0x408 < 4",
+      "src": "MKT 0x80052858"
+     },
+     {
+      "kind": "buttons_held",
+      "mask": "0x90",
+      "src": "MKT 0x80052918"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "stamp",
+     "key": "forceball_fast",
+     "src": {
+      "key": "MKT 0x80079A74"
+     }
+    },
+    {
+     "op": "begin",
+     "action_mkt": "0x22",
+     "face": true,
+     "stop": true,
+     "src": {
+      "action_mkt": "MKT 0x80079A88",
+      "face": "MKT 0x80050440",
+      "stop": "MKT 0x80050428"
+     }
+    },
+    {
+     "op": "animate",
+     "anim": {
+      "table": 1,
+      "slot": 5
+     },
+     "rate": 3,
+     "until": "phase_end",
+     "src": {
+      "anim": "MKT 0x80079B20",
+      "rate": "MKT 0x80079B18",
+      "until": "MKT 0x8000D9CC"
+     }
+    },
+    {
+     "op": "projectile",
+     "art": {
+      "table": 1,
+      "slot": 5,
+      "part": 3
+     },
+     "offset": [
+      0,
+      0
+     ],
+     "speed": "0x59999",
+     "rate": 3,
+     "strike": {
+      "box": [
+       99,
+       44,
+       47,
+       61
+      ],
+      "damage": 18,
+      "block_damage": 2,
+      "reaction": "knockback_arc",
+      "blocked_reaction": "blocked"
+     },
+     "hum": {
+      "sound": {
+       "fighter": 18
+      },
+      "every": 3
+     },
+     "impact": {
+      "anim": {
+       "table": 1,
+       "slot": 5,
+       "part": 4
+      },
+      "rate": 3,
+      "sound": {
+       "fighter": 5
+      },
+      "at": "projectile",
+      "end": "animation"
+     },
+     "src": {
+      "art": "MKT 0x80079B84",
+      "offset": "MKT 0x8007F7EC",
+      "speed": "MKT 0x80079A98",
+      "rate": "MKT 0x80079B94",
+      "strike": "MKT 0x800B03CC",
+      "hum": "MKT 0x80079C68",
+      "impact": "MKT 0x80079BEC"
+     }
+    },
+    {
+     "op": "sleep",
+     "ticks": 8,
+     "src": {
+      "ticks": "MKT 0x80079B34"
+     }
+    },
+    {
+     "op": "finish",
+     "rate": 4,
+     "src": {
+      "rate": "MKT 0x80079B40"
+     }
+    },
+    {
+     "op": "end"
+    }
+   ]
+  },
+  {
+   "name": "forceball_slow",
+   "command": {
+    "buttons": "0x90",
+    "tokens": [
+     8,
+     8
+    ],
+    "window": 24,
+    "src": "MKT 0x800AC868",
+    "conditions": [
+     {
+      "kind": "cooldown",
+      "key": "forceball_slow",
+      "ticks": 96,
+      "src": "MKT 0x80052834"
+     },
+     {
+      "kind": "opponent_state",
+      "what": "opponent fighter id != 0x1F and opponent process +0x408 < 4",
+      "src": "MKT 0x80052858"
+     },
+     {
+      "kind": "buttons_held",
+      "mask": "0x90",
+      "src": "MKT 0x80052918"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "stamp",
+     "key": "forceball_slow",
+     "src": {
+      "key": "MKT 0x80079ACC"
+     }
+    },
+    {
+     "op": "begin",
+     "action_mkt": "0x22",
+     "face": true,
+     "stop": true,
+     "src": {
+      "action_mkt": "MKT 0x80079A88",
+      "face": "MKT 0x80050440",
+      "stop": "MKT 0x80050428"
+     }
+    },
+    {
+     "op": "animate",
+     "anim": {
+      "table": 1,
+      "slot": 5
+     },
+     "rate": 3,
+     "until": "phase_end",
+     "src": {
+      "anim": "MKT 0x80079B20",
+      "rate": "MKT 0x80079B18",
+      "until": "MKT 0x8000D9CC"
+     }
+    },
+    {
+     "op": "projectile",
+     "art": {
+      "table": 1,
+      "slot": 5,
+      "part": 3
+     },
+     "offset": [
+      0,
+      0
+     ],
+     "speed": "0x26666",
+     "rate": 3,
+     "strike": {
+      "box": [
+       99,
+       44,
+       47,
+       61
+      ],
+      "damage": 18,
+      "block_damage": 2,
+      "reaction": "knockback_arc",
+      "blocked_reaction": "blocked"
+     },
+     "hum": {
+      "sound": {
+       "fighter": 18
+      },
+      "every": 3
+     },
+     "impact": {
+      "anim": {
+       "table": 1,
+       "slot": 5,
+       "part": 4
+      },
+      "rate": 3,
+      "sound": {
+       "fighter": 5
+      },
+      "at": "projectile",
+      "end": "animation"
+     },
+     "src": {
+      "art": "MKT 0x80079B84",
+      "offset": "MKT 0x8007F7EC",
+      "speed": "MKT 0x80079AF0",
+      "rate": "MKT 0x80079B94",
+      "strike": "MKT 0x800B03CC",
+      "hum": "MKT 0x80079C68",
+      "impact": "MKT 0x80079BEC"
+     }
+    },
+    {
+     "op": "sleep",
+     "ticks": 8,
+     "src": {
+      "ticks": "MKT 0x80079B34"
+     }
+    },
+    {
+     "op": "finish",
+     "rate": 4,
+     "src": {
+      "rate": "MKT 0x80079B40"
+     }
+    },
+    {
+     "op": "end"
+    }
+   ]
+  },
+  {
+   "name": "acid_spit",
+   "command": {
+    "buttons": "0x10",
+    "tokens": [
+     9,
+     9
+    ],
+    "window": 18,
+    "src": "MKT 0x800AC83C"
+   },
+   "steps": [
+    {
+     "op": "begin",
+     "action_mkt": "0x23",
+     "face": true,
+     "stop": true,
+     "src": {
+      "action_mkt": "MKT 0x80079814",
+      "face": "MKT 0x80050440",
+      "stop": "MKT 0x80050428"
+     }
+    },
+    {
+     "op": "sound",
+     "sound": {
+      "fighter": 8
+     },
+     "src": {
+      "sound": "MKT 0x80079828"
+     }
+    },
+    {
+     "op": "animate",
+     "anim": {
+      "table": 1,
+      "slot": 6
+     },
+     "rate": 3,
+     "until": "phase_end",
+     "src": {
+      "anim": "MKT 0x80079838",
+      "rate": "MKT 0x80079830",
+      "until": "MKT 0x8000D9CC"
+     }
+    },
+    {
+     "op": "projectile",
+     "art": {
+      "table": 1,
+      "slot": 6,
+      "part": 3
+     },
+     "offset": [
+      0,
+      0
+     ],
+     "speed": "0x66666",
+     "rate": 3,
+     "strike": {
+      "box": [
+       193,
+       27,
+       64,
+       12
+      ],
+      "damage": 15,
+      "block_damage": 4,
+      "reaction": "acid_stagger",
+      "blocked_reaction": "blocked"
+     },
+     "checks": [
+      {
+       "box": [
+        75,
+        23,
+        41,
+        10
+       ],
+       "after": 1
+      },
+      {
+       "box": [
+        120,
+        23,
+        41,
+        10
+       ],
+       "after": 2
+      }
+     ],
+     "impact": {
+      "anim": {
+       "table": 1,
+       "slot": 7
+      },
+      "rate": 3,
+      "effect": {
+       "mkt_fx": 47
+      },
+      "at": "opponent",
+      "end": "animation"
+     },
+     "src": {
+      "art": "MKT 0x8007989C",
+      "offset": "MKT 0x8007F7EC",
+      "speed": "MKT 0x800798D8",
+      "rate": "MKT 0x800798DC",
+      "strike": "MKT 0x800B03EC",
+      "checks": "MKT 0x800798B0",
+      "impact": "MKT 0x80079920"
+     }
+    },
+    {
+     "op": "sleep",
+     "ticks": 31,
+     "src": {
+      "ticks": "MKT 0x80079854"
+     }
+    },
+    {
+     "op": "finish",
+     "rate": 4,
+     "src": {
+      "rate": "MKT 0x80079860"
+     }
+    },
+    {
+     "op": "end"
+    }
+   ]
+  },
+  {
+   "name": "invisibility",
+   "command": {
+    "buttons": "0x20",
+    "tokens": [
+     7,
+     6
+    ],
+    "window": 32,
+    "src": "MKT 0x800AC9A8"
+   },
+   "steps": [
+    {
+     "op": "begin",
+     "action_mkt": "0x30C",
+     "face": true,
+     "stop": true,
+     "src": {
+      "action_mkt": "MKT 0x8007392C",
+      "face": "MKT 0x80050440",
+      "stop": "MKT 0x80050428"
+     }
+    },
+    {
+     "op": "animate",
+     "anim": {
+      "table": 1,
+      "slot": 1
+     },
+     "rate": 2,
+     "until": "phase_end",
+     "src": {
+      "anim": "MKT 0x80073944",
+      "rate": "MKT 0x80073940",
+      "until": "MKT 0x8000D9CC"
+     }
+    },
+    {
+     "op": "effect",
+     "effect": {
+      "mkt_fx": 30
+     },
+     "src": {
+      "effect": "MKT 0x8007394C"
+     }
+    },
+    {
+     "op": "sound",
+     "sound": {
+      "fighter": 9
+     },
+     "src": {
+      "sound": "MKT 0x80073954"
+     }
+    },
+    {
+     "op": "sleep",
+     "ticks": 10,
+     "src": {
+      "ticks": "MKT 0x8007395C"
+     }
+    },
+    {
+     "op": "stealth",
+     "ticks": 1200,
+     "src": {
+      "ticks": "owner"
+     }
+    },
+    {
+     "op": "end"
+    }
+   ]
+  },
+  {
+   "name": "slide",
+   "command": {
+    "buttons": "0xC8",
+    "tokens": [],
+    "window": 0,
+    "src": "MKT 0x800AC8F0",
+    "conditions": [
+     {
+      "kind": "holding_away",
+      "src": "MKT 0x80052944"
+     },
+     {
+      "kind": "buttons_held",
+      "mask": "0xC8",
+      "src": "MKT 0x80052990"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "begin",
+     "action_mkt": "0x210",
+     "face": true,
+     "stop": true,
+     "src": {
+      "action_mkt": "MKT 0x8004A2BC",
+      "face": "MKT 0x80050440",
+      "stop": "MKT 0x80050428"
+     }
+    },
+    {
+     "op": "velocity",
+     "x": "0x66666",
+     "src": {
+      "x": "MKT 0x8004A2F0"
+     }
+    },
+    {
+     "op": "animate",
+     "anim": {
+      "table": 1,
+      "slot": 2
+     },
+     "rate": 4,
+     "until": "running",
+     "src": {
+      "anim": "MKT 0x8004A300",
+      "rate": "MKT 0x8004A308",
+      "until": "MKT 0x8004A340"
+     }
+    },
+    {
+     "op": "sound",
+     "sound": {
+      "fighter": 6
+     },
+     "src": {
+      "sound": "MKT 0x8004A310"
+     }
+    },
+    {
+     "op": "strike",
+     "strike": {
+      "box": [
+       0,
+       0,
+       0,
+       0
+      ],
+      "damage": 0,
+      "block_damage": 0,
+      "reaction": "none",
+      "blocked_reaction": "blocked"
+     },
+     "ticks": 28,
+     "skip": 8,
+     "on_hit": [
+      {
+       "op": "pose",
+       "anim": {
+        "table": 1,
+        "slot": 2,
+        "offset": 2
+       },
+       "src": {
+        "anim": "MKT 0x8004A38C"
+       }
+      },
+      {
+       "op": "sleep",
+       "ticks": 3,
+       "src": {
+        "ticks": "MKT 0x8004A3A8"
+       }
+      },
+      {
+       "op": "stop"
+      },
+      {
+       "op": "wait",
+       "until": "opponent_settled",
+       "src": {
+        "until": "MKT 0x8004A3B8"
+       }
+      }
+     ],
+     "on_block": [],
+     "src": {
+      "strike": "MKT 0x8004A370",
+      "ticks": "MKT 0x8004A31C",
+      "skip": "MKT 0x8004A350"
+     }
+    },
+    {
+     "op": "stop"
+    },
+    {
+     "op": "pose",
+     "anim": {
+      "table": 1,
+      "slot": 2,
+      "offset": 1
+     },
+     "src": {
+      "anim": "MKT 0x8004A454"
+     }
+    },
+    {
+     "op": "sleep",
+     "ticks": 4,
+     "src": {
+      "ticks": "MKT 0x8004A45C"
+     }
+    },
+    {
+     "op": "pose",
+     "anim": {
+      "table": 1,
+      "slot": 2,
+      "offset": 0
+     },
+     "src": {
+      "anim": "MKT 0x8004A468"
+     }
+    },
+    {
+     "op": "sleep",
+     "ticks": 4,
+     "src": {
+      "ticks": "MKT 0x8004A470"
+     }
+    },
+    {
+     "op": "stamp",
+     "key": "slide",
+     "src": {
+      "key": "MKT 0x8004A480"
+     }
+    },
+    {
+     "op": "end"
+    }
+   ]
+  },
+  {
+   "name": "elbow_dash",
+   "command": {
+    "buttons": "0x40",
+    "tokens": [
+     9,
+     8
+    ],
+    "window": 16,
+    "src": "MKT 0x800ACA5C"
+   },
+   "steps": [
+    {
+     "op": "begin",
+     "action_mkt": "0x216",
+     "face": true,
+     "stop": true,
+     "src": {
+      "action_mkt": "MKT 0x800467FC",
+      "face": "MKT 0x80050440",
+      "stop": "MKT 0x80050428"
+     }
+    },
+    {
+     "op": "animate",
+     "anim": {
+      "table": 0,
+      "slot": 74
+     },
+     "rate": 1,
+     "until": "manual",
+     "src": {
+      "anim": "MKT 0x80046814",
+      "rate": "MKT 0x80046854",
+      "until": "MKT 0x80046854"
+     }
+    },
+    {
+     "op": "velocity",
+     "x": "0xA6666",
+     "src": {
+      "x": "MKT 0x8004681C"
+     }
+    },
+    {
+     "op": "strike",
+     "strike": {
+      "box": [
+       43,
+       9,
+       34,
+       110
+      ],
+      "damage": 0,
+      "block_damage": 0,
+      "reaction": "elbow_hold",
+      "blocked_reaction": "blocked"
+     },
+     "ticks": 16,
+     "every_tick": [
+      {
+       "op": "next_frame"
+      },
+      {
+       "op": "pass_through",
+       "ticks": 3,
+       "src": {
+        "ticks": "MKT 0x80046864"
+       }
+      }
+     ],
+     "only_if": "opponent_settled",
+     "on_hit": [
+      {
+       "op": "repeat",
+       "count": 14,
+       "steps": [
+        {
+         "op": "sleep",
+         "ticks": 1,
+         "src": {
+          "ticks": "MKT 0x80046938"
+         }
+        },
+        {
+         "op": "next_frame"
+        },
+        {
+         "op": "pass_through",
+         "ticks": 3,
+         "src": {
+          "ticks": "MKT 0x8004694C"
+         }
+        }
+       ],
+       "src": {
+        "count": "MKT 0x80046930"
+       }
+      },
+      {
+       "op": "stop"
+      },
+      {
+       "op": "sleep",
+       "ticks": 6,
+       "src": {
+        "ticks": "MKT 0x8004697C"
+       }
+      },
+      {
+       "op": "face"
+      },
+      {
+       "op": "animate",
+       "anim": {
+        "table": 1,
+        "slot": 11
+       },
+       "rate": 2,
+       "until": "phase_end",
+       "src": {
+        "anim": "MKT 0x80046994",
+        "rate": "MKT 0x8004699C",
+        "until": "MKT 0x8000DB98"
+       }
+      },
+      {
+       "op": "velocity",
+       "x": "0xA6666",
+       "src": {
+        "x": "MKT 0x800469A8"
+       }
+      },
+      {
+       "op": "strike",
+       "strike": {
+        "box": [
+         68,
+         11,
+         39,
+         60
+        ],
+        "damage": 13,
+        "block_damage": 3,
+        "reaction": "launch",
+        "blocked_reaction": "blocked"
+       },
+       "ticks": 20,
+       "on_hit": [],
+       "src": {
+        "strike": "MKT 0x800B042C",
+        "ticks": "MKT 0x800469C0"
+       }
+      },
+      {
+       "op": "stop"
+      },
+      {
+       "op": "sleep",
+       "ticks": 20,
+       "src": {
+        "ticks": "MKT 0x80046A38"
+       }
+      },
+      {
+       "op": "finish",
+       "rate": 3,
+       "src": {
+        "rate": "MKT 0x80046A40"
+       }
+      }
+     ],
+     "on_block": [
+      {
+       "op": "stop"
+      },
+      {
+       "op": "pose",
+       "anim": {
+        "table": 0,
+        "slot": 74,
+        "offset": 3
+       },
+       "src": {
+        "anim": "MKT 0x80047130"
+       }
+      },
+      {
+       "op": "shake",
+       "dx": 4,
+       "dy": 0,
+       "count": 4,
+       "ticks": 3,
+       "src": {
+        "dx": "MKT 0x80047144",
+        "dy": "MKT 0x80047148",
+        "count": "MKT 0x80047150",
+        "ticks": "MKT 0x80047138"
+       }
+      }
+     ],
+     "src": {
+      "strike": "MKT 0x800B041C",
+      "ticks": "MKT 0x80046834",
+      "every_tick": "MKT 0x8004685C",
+      "only_if": "MKT 0x8004686C"
+     }
+    },
+    {
+     "op": "end"
+    }
+   ]
+  }
+ ],
+ "gaps": [
+  {
+   "move": "forceball_fast, forceball_slow",
+   "what": "condition opponent_state: meaning of opponent fighter id 0x1F and opponent process +0x408 Pending"
+  },
+  {
+   "move": "acid_spit",
+   "what": "acid_stagger reaction (MKT 0x72) needs its full reading before a host reaction is chosen"
+  },
+  {
+   "move": "acid_spit",
+   "what": "the arc checks run strike_box_check with explicit boxes; the fighter-16 exception (opponent16_proc_check) is not modelled"
+  },
+  {
+   "move": "invisibility",
+   "what": "MKT sets object flag 0x20 and the flag's readers are Pending; the program lowers it to the MKMSZ Eye stealth state (owner's direction); the duration 1200 ticks is the Eye's, not a donor value"
+  },
+  {
+   "move": "slide",
+   "what": "slide strike record is the per-fighter strike-table entry 0x10 (not yet decoded); box/damage/reaction placeholders; player_word_store(xvel/2) on contact not modelled; the stamp's reader is Pending"
+  },
+  {
+   "move": "elbow_dash",
+   "what": "strike_flag (0x8014C3B8) meaning: the program treats it as 'blocked'; Pending"
+  }
+ ]
+}

@@ -1,0 +1,582 @@
+{
+ "format": 1,
+ "fighter": "sektor",
+ "donor": {
+  "fighter_id": 7,
+  "name": "SEKTOR"
+ },
+ "legacy": "Sektor's moves stay frozen legacy code (plan rule 4); these programs only prove the vocabulary",
+ "moves": [
+  {
+   "name": "straight_rocket",
+   "command": {
+    "buttons": "0x80",
+    "tokens": [
+     9,
+     9
+    ],
+    "window": 32,
+    "src": "MKT 0x800AB250",
+    "conditions": [
+     {
+      "kind": "projectiles_below",
+      "count": 1,
+      "src": "MKT 0x8005A614"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "begin",
+     "action_mkt": "0x0",
+     "face": true,
+     "stop": true,
+     "src": {
+      "action_mkt": "MKT 0x8007BF84",
+      "face": "MKT 0x8007CE70",
+      "stop": "MKT 0x8007CE70"
+     }
+    },
+    {
+     "op": "sound",
+     "sound": {
+      "fighter": 11
+     },
+     "src": {
+      "sound": "MKT 0x8007CE70"
+     }
+    },
+    {
+     "op": "sound",
+     "sound": {
+      "fighter": 3
+     },
+     "src": {
+      "sound": "MKT 0x8007C100"
+     }
+    },
+    {
+     "op": "projectile",
+     "art": {
+      "table": 1,
+      "slot": 67,
+      "part": 4
+     },
+     "offset": [
+      5,
+      38
+     ],
+     "speed": "0x33333",
+     "rate": 3,
+     "strike": {
+      "box": [
+       0,
+       0,
+       0,
+       0
+      ],
+      "damage": 0,
+      "block_damage": 0,
+      "reaction": "rocket_stumble",
+      "blocked_reaction": "blocked"
+     },
+     "impact": {
+      "effect": {
+       "mkt_fx": 5
+      },
+      "at": "projectile",
+      "end": "effect"
+     },
+     "trail": {
+      "effect": {
+       "mkt_fx": 4
+      },
+      "every": 2
+     },
+     "src": {
+      "art": "MKT 0x8007C100",
+      "offset": "MKT 0x8007C048",
+      "speed": "MKT 0x8007C100",
+      "rate": "MKT 0x8007C100",
+      "strike": "MKT 0x8007C100",
+      "impact": "MKT 0x8007C9F0",
+      "trail": "MKT 0x8007C7C8"
+     }
+    },
+    {
+     "op": "sleep",
+     "ticks": 32,
+     "src": {
+      "ticks": "MKT 0x8007C068"
+     }
+    },
+    {
+     "op": "end"
+    }
+   ]
+  },
+  {
+   "name": "double_rocket",
+   "command": {
+    "buttons": "0x80",
+    "tokens": [
+     9,
+     8,
+     8
+    ],
+    "window": 32,
+    "src": "MKT 0x800AB26C",
+    "conditions": [
+     {
+      "kind": "projectiles_below",
+      "count": 1,
+      "src": "MKT 0x8005A614"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "begin",
+     "action_mkt": "0x0",
+     "face": true,
+     "stop": true,
+     "src": {
+      "action_mkt": "MKT 0x8007BFC8",
+      "face": "MKT 0x8007CE70",
+      "stop": "MKT 0x8007CE70"
+     }
+    },
+    {
+     "op": "sound",
+     "sound": {
+      "fighter": 11
+     },
+     "src": {
+      "sound": "MKT 0x8007CE70"
+     }
+    },
+    {
+     "op": "sound",
+     "sound": {
+      "fighter": 3
+     },
+     "src": {
+      "sound": "MKT 0x8007C100"
+     }
+    },
+    {
+     "op": "projectile",
+     "art": {
+      "table": 1,
+      "slot": 67,
+      "part": 4
+     },
+     "offset": [
+      5,
+      38
+     ],
+     "speed": "0x33333",
+     "rate": 3,
+     "strike": {
+      "box": [
+       0,
+       0,
+       0,
+       0
+      ],
+      "damage": 0,
+      "block_damage": 0,
+      "reaction": "rocket_stumble",
+      "blocked_reaction": "blocked"
+     },
+     "impact": {
+      "effect": {
+       "mkt_fx": 5
+      },
+      "at": "projectile",
+      "end": "effect"
+     },
+     "trail": {
+      "effect": {
+       "mkt_fx": 4
+      },
+      "every": 2
+     },
+     "src": {
+      "art": "MKT 0x8007C100",
+      "offset": "MKT 0x8007C048",
+      "speed": "MKT 0x8007C100",
+      "rate": "MKT 0x8007C100",
+      "strike": "MKT 0x8007C100",
+      "impact": "MKT 0x8007C9F0",
+      "trail": "MKT 0x8007C7C8"
+     }
+    },
+    {
+     "op": "sleep",
+     "ticks": 10,
+     "src": {
+      "ticks": "MKT 0x8007C068"
+     }
+    },
+    {
+     "op": "sound",
+     "sound": {
+      "fighter": 3
+     },
+     "src": {
+      "sound": "MKT 0x8007C100"
+     }
+    },
+    {
+     "op": "projectile",
+     "art": {
+      "table": 1,
+      "slot": 67,
+      "part": 4
+     },
+     "offset": [
+      5,
+      38
+     ],
+     "speed": "0x33333",
+     "rate": 3,
+     "strike": {
+      "box": [
+       0,
+       0,
+       0,
+       0
+      ],
+      "damage": 0,
+      "block_damage": 0,
+      "reaction": "rocket_stumble",
+      "blocked_reaction": "blocked"
+     },
+     "impact": {
+      "effect": {
+       "mkt_fx": 5
+      },
+      "at": "projectile",
+      "end": "effect"
+     },
+     "trail": {
+      "effect": {
+       "mkt_fx": 4
+      },
+      "every": 2
+     },
+     "src": {
+      "art": "MKT 0x8007C100",
+      "offset": "MKT 0x8007C048",
+      "speed": "MKT 0x8007C100",
+      "rate": "MKT 0x8007C100",
+      "strike": "MKT 0x8007C100",
+      "impact": "MKT 0x8007C9F0",
+      "trail": "MKT 0x8007C7C8"
+     }
+    },
+    {
+     "op": "sleep",
+     "ticks": 48,
+     "src": {
+      "ticks": "MKT 0x8007C068"
+     }
+    },
+    {
+     "op": "end"
+    }
+   ]
+  },
+  {
+   "name": "homing_rocket",
+   "command": {
+    "buttons": "0x10",
+    "tokens": [
+     8,
+     7,
+     9
+    ],
+    "window": 22,
+    "src": "MKT 0x800AB288",
+    "conditions": [
+     {
+      "kind": "projectiles_below",
+      "count": 3,
+      "src": "MKT 0x8007BF38"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "begin",
+     "action_mkt": "0x0",
+     "face": true,
+     "stop": true,
+     "src": {
+      "action_mkt": "MKT 0x8007BF38",
+      "face": "MKT 0x8007CE70",
+      "stop": "MKT 0x8007CE70"
+     }
+    },
+    {
+     "op": "sound",
+     "sound": {
+      "fighter": 11
+     },
+     "src": {
+      "sound": "MKT 0x8007CE70"
+     }
+    },
+    {
+     "op": "sound",
+     "sound": {
+      "fighter": 12
+     },
+     "src": {
+      "sound": "MKT 0x8007BF38"
+     }
+    },
+    {
+     "op": "projectile",
+     "art": {
+      "table": 1,
+      "slot": 67,
+      "part": 4
+     },
+     "offset": [
+      5,
+      38
+     ],
+     "speed": "0x4CCCC",
+     "rate": 3,
+     "strike": {
+      "box": [
+       0,
+       0,
+       0,
+       0
+      ],
+      "damage": 0,
+      "block_damage": 0,
+      "reaction": "rocket_stumble",
+      "blocked_reaction": "blocked"
+     },
+     "impact": {
+      "effect": {
+       "mkt_fx": 5
+      },
+      "at": "projectile",
+      "end": "effect"
+     },
+     "trail": {
+      "effect": {
+       "mkt_fx": 4
+      },
+      "every": 2
+     },
+     "homing": {
+      "aim_dy": 54,
+      "speed": "0x50000",
+      "explode_within": 6
+     },
+     "hum": {
+      "sound": {
+       "fighter": 4
+      },
+      "every": 0
+     },
+     "src": {
+      "art": "MKT 0x8007C100",
+      "offset": "MKT 0x8007C048",
+      "speed": "MKT 0x8007C100",
+      "rate": "MKT 0x8007C100",
+      "strike": "MKT 0x8007C100",
+      "impact": "MKT 0x8007C9F0",
+      "trail": "MKT 0x8007C7C8",
+      "homing": "MKT 0x8007C4AC",
+      "hum": "MKT 0x8007C25C"
+     }
+    },
+    {
+     "op": "sleep",
+     "ticks": 32,
+     "src": {
+      "ticks": "MKT 0x8007C068"
+     }
+    },
+    {
+     "op": "end"
+    }
+   ]
+  },
+  {
+   "name": "teleport_uppercut",
+   "command": {
+    "buttons": "0x40",
+    "tokens": [
+     9,
+     9
+    ],
+    "window": 24,
+    "src": "MKT 0x800AB2C0",
+    "conditions": [
+     {
+      "kind": "opponent_state",
+      "what": "opponent action != 0x616 and +0x408 < 2",
+      "src": "MKT 0x8004E8A4"
+     }
+    ]
+   },
+   "steps": [
+    {
+     "op": "begin",
+     "action_mkt": "0x208",
+     "face": false,
+     "stop": false,
+     "src": {
+      "action_mkt": "MKT 0x80048368",
+      "face": "MKT 0x80048368",
+      "stop": "MKT 0x80048368"
+     }
+    },
+    {
+     "op": "sound",
+     "sound": {
+      "fighter": 7
+     },
+     "src": {
+      "sound": "MKT 0x80005760"
+     }
+    },
+    {
+     "op": "pose",
+     "anim": {
+      "table": 0,
+      "slot": 13
+     },
+     "src": {
+      "anim": "MKT 0x80048368"
+     }
+    },
+    {
+     "op": "jump",
+     "x": 0,
+     "y": "0x5F333",
+     "gravity": "0x9599",
+     "until": "below_screen",
+     "src": {
+      "x": "MKT 0x80048368",
+      "y": "MKT 0x80048368",
+      "gravity": "MKT 0x80048368",
+      "until": "MKT 0x802576CE"
+     }
+    },
+    {
+     "op": "relocate",
+     "to": "behind_opponent",
+     "dx": -12,
+     "src": {
+      "to": "MKT 0x8006D9E8",
+      "dx": "MKT 0x8000DD3C"
+     }
+    },
+    {
+     "op": "face"
+    },
+    {
+     "op": "animate",
+     "anim": {
+      "table": 1,
+      "slot": 3
+     },
+     "rate": 5,
+     "until": "running",
+     "src": {
+      "anim": "MKT 0x80048368",
+      "rate": "MKT 0x80048368",
+      "until": "MKT 0x80048368"
+     }
+    },
+    {
+     "op": "jump",
+     "x": 0,
+     "y": "-0x7A666",
+     "gravity": "-0x5199",
+     "until": "surface",
+     "src": {
+      "x": "MKT 0x80048368",
+      "y": "MKT 0x80048368",
+      "gravity": "MKT 0x80048368",
+      "until": "MKT 0x80048368"
+     }
+    },
+    {
+     "op": "strike",
+     "strike": {
+      "box": [
+       0,
+       0,
+       0,
+       0
+      ],
+      "damage": 24,
+      "block_damage": 3,
+      "reaction": "uppercut",
+      "blocked_reaction": "blocked"
+     },
+     "ticks": 60,
+     "only_if": "rising",
+     "on_hit": [],
+     "src": {
+      "strike": "MKT 0x8004859C",
+      "ticks": "MKT 0x80048564",
+      "only_if": "MKT 0x80048564"
+     }
+    },
+    {
+     "op": "jump",
+     "x": 0,
+     "y": 0,
+     "gravity": "0xF000",
+     "until": "landing",
+     "src": {
+      "x": "MKT 0x8006EC50",
+      "y": "MKT 0x8006EC50",
+      "gravity": "MKT 0x80048368",
+      "until": "MKT 0x8006EC50"
+     }
+    },
+    {
+     "op": "end"
+    }
+   ]
+  }
+ ],
+ "gaps": [
+  {
+   "move": "all rockets",
+   "what": "robo_chest_open / robo_chest_close and the recovery proj_recover are robot-specific sequences inside rzap3 (chest animation slots not decoded as data); the begin/sound steps stand in for them"
+  },
+  {
+   "move": "all rockets",
+   "what": "rocket strike 0x12 record values are in the frozen legacy module (stk_ro_zap); not yet written as data"
+  },
+  {
+   "move": "all rockets",
+   "what": "point_rocket (eight direction animations) and per-direction smoke offsets are not expressible; needs a projectile 'direction_art' parameter"
+  },
+  {
+   "move": "homing_rocket",
+   "what": "phase table (8 ticks straight, 16 climbing) and the crosshair object are not expressible; homing needs 'phases' and a 'marker' parameter"
+  },
+  {
+   "move": "teleport_uppercut",
+   "what": "MKT addresses here cite the routine (0x80048368) rather than each instruction; the per-instruction reading is in the Wiki; the host translation (strike box, damage 0x18/3, reaction 0x08) is owner/host-decided"
+  },
+  {
+   "move": "teleport_uppercut",
+   "what": "relocate adds the opponent x-velocity lead in MKT; the host omits it (accepted v08)"
+  }
+ ]
+}

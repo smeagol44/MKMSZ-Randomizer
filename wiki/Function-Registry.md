@@ -199,6 +199,24 @@ Unless marked PS1, addresses are N64 USA Rev. 0. Overlay functions are stage-spe
 | `0x8007AD00` | Stock inventory sanitizer | Runtime-confirmed/replaced | Production replaces with stage-key mask copy; table read uncached at `0xA01B0970` since 2026-11-06 |
 | `0x8007AD4C` | Stock default-inventory loader; production filtered SAVE wrapper | Runtime-confirmed/replaced; ownership corrected statically | Current production computes active backing pointer and tail-calls `0xA01AF5F4`: LIVE -> backing, skipping Glass. It does not reconstruct LIVE. Reconstruction is `0x80099B14 -> 0x8007AD00`. |
 
+### Projectile, item-effect and boss-AI routines for the fighter recompiler (2026-11-11)
+
+Static-confirmed from clean MKMSZ USA Rev. 0; readings and use on [Fighter recompiler components](Fighter-Recompiler-Components#host-references). Reproduce with `python -m mkmszr.fighter_import.reading --mkmsz-rom ROM 0x…` (names from `fighter_import/mkmsz_registry.py`).
+
+| Address | Function | Evidence | Notes |
+|---|---|---|---|
+| `0x80047160` | Projectile build | Static-confirmed | Copies the owner's position to the child controller (`+0x6F4..+0x6FC`), then calls `0x80046F74`. Used by enemy and boss projectiles (28 call sites); not by Ice |
+| `0x80046F74` | Projectile actor build | Static-confirmed | `(type, secondary slot, +0xD8, texture w, [h, out handle, palette offset])`: fighter file `*0x800A0324[type]`, palette at file + offset (`0x8001C528`), actor from table 1 entry `slot` (`0x800281A0`), inserted in `0x80111C98`, actor `+0x78 = type`. `0x800A0324[4]` (player) is 0; this routine is the table's only reader |
+| `0x80035088` | Actor offscreen test | Static-confirmed | `(actor, margin)` → 1 once the actor has left the screen by more than `margin` in its direction of travel |
+| `0x80064FA4` | Actor sound pan | Static-confirmed | Screen-projected pan of the current actor, passed to `0x80064C18` |
+| `0x80030378` | Select primary slot, second phase | Static-confirmed | `0x8002FE54(0, slot)`, then moves the cursor past the first phase |
+| `0x80031070` | Animate to phase end | Static-confirmed | Advances the animation, sleeping `a0` ticks per step, until the phase ends |
+| `0x80072584` | Eye use (item-use table entry 3) | Static-confirmed | Player controller `+0x6BC |= 0x1000`, actor `+0x8C |= 0x4000`, `+0x64 |= 0x2000`, colour `+0xFC/+0xFE/+0x100 = 32` (also the attached actor `+0x650`), `0x800A5FA0 |= 1`, `0x802ECCC6 |= 1` |
+| `0x80072644` | Eye timer process | Static-confirmed | Started by the Inventory (`0x80073BE8`, class `0x100`); sleeps 1200 ticks, then undoes `0x80072584` (colour back to 128) |
+| `0x80005D74` | Enemy AI: player not seen | Static-confirmed | Taken by enemy AI routines while player `+0x6BC & 0x1000`: idle for a random 47..110 ticks |
+| `0x800498A8` | Quan Chi projectile action | Static-confirmed | Type `0x1B` AI action: secondary slot 2 in four steps, child `0x80049668`, sleep 40 |
+| `0x80049668` | Quan Chi projectile process | Static-confirmed | Sound `0x12`; `0x80047160(type, 3, …)`; speed 6.0 px/tick; `0x8004CF3C` selector `0x11` each tick; on contact it bounces back (`vx = -vx/4`, `vy = -4.0`, gravity `0xA000`); sound 2 every 8 ticks; ends when `0x80035088(actor, 200)` |
+
 ### Static lifecycle owners (2026-10-01)
 
 These entries identify stock behavior and proposed seams, not an implemented v05. Detailed call ordering, guards, evidence and remaining limits: [Lifecycle static closure](Lifecycle-Static-Closure-v05).
