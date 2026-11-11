@@ -189,10 +189,6 @@ These are static donor facts. The host-side comparisons (MKMSZ Quan Chi forcebal
 
 Commands: straight rocket (`do_robo_zap` `0x8007BF84`), double rocket (`0x8007BFC8`), homing rocket (`do_robo_zap2` `0x8007BF38`) and teleport (`command_transfer(1, …)` → propell 8 → `0x80048368`). All read with no unknown calls at the move-body level. Their detailed readings, translations and runtime history are in [MKT adapter primitives](MKT-Adapter-Primitives) (rocket and teleport sections) and stay frozen legacy.
 
-## Provenance convention (proposal, owner agreement pending)
+## Provenance convention
 
-The plan asks for a provenance convention. Proposal:
-
-- every value in a move program carries the donor address it was read from, as `"src": "MKT 0x800799B0"` (the instruction or data word);
-- a value with no donor origin carries `"src": "host"` (from MKMSZ) or `"src": "owner"` (an owner decision);
-- the validator rejects a value with no `src`.
+**Accepted by the owner (2026-11-11).** Every value in a move program carries the donor address it was read from (`"MKT 0x800799B0"`); a value with no donor origin carries `"host"` (`"host 0x…"`) or `"owner"`. The program validator rejects a value with no source ([components](Fighter-Recompiler-Components#move-programs)).

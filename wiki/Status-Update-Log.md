@@ -4,6 +4,15 @@
 
 ## From Project status
 
+### PS-33 (2026-11-11)
+
+**2026-11-11 Fighter recompiler milestone 2, tasks 4–6: component catalogue (draft for owner review), move-program format with provenance, Reptile and Sektor moves as data, host references. Implementation/CI-confirmed (format, validator, programs); host findings Static-confirmed.**
+
+- **Vocabulary:** 23 components; Reptile's six specials and Sektor's four moves validate as data, with 12 gaps listed ([components](Fighter-Recompiler-Components)).
+- **Quan Chi (type `0x1B`):** his projectile is built and collided through the native enemy-projectile path (`0x80047160`, `0x8004CF3C`); a player projectile can use it after one guarded table edit, without patching Ice.
+- **Eye:** a 1200-tick stealth-from-AI state with a dark tint (`0x80072584`, timer `0x80072644`).
+- **Next:** owner review of the catalogue, then backend v1 (generic projectile).
+
 ### PS-32 (2026-11-10)
 
 **2026-11-10 Fighter recompiler milestone 3, tasks 1–3: reading aid, MKT routine registry and readings of every Reptile and Sektor special. Static-confirmed (donor reading); Implementation/CI-confirmed (tool and tests).**

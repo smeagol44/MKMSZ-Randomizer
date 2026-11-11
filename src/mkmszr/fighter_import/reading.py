@@ -1,10 +1,10 @@
-"""Reading aid for MKT special moves (Fighter recompiler plan, milestone 3).
+"""Reading aid for game code (Fighter recompiler plan, milestones 2 and 3).
 
-From a command record's action routine, :func:`read` disassembles the donor routine, follows
-constants into call arguments and global accesses, names MKT engine routines from
-:mod:`.mkt_registry`, and flags every call it cannot name. :func:`call_tree` walks unknown
-callees to a depth. A person (normally the assistant) writes the move program from the report;
-nothing here guesses semantics.
+From a routine, :func:`read` disassembles it, follows constants into call arguments and global
+accesses, names routines from the engine's registry, and flags every call it cannot name.
+:func:`call_tree` walks unknown callees to a depth. An :class:`Engine` says which game is read:
+:data:`MKT` (the donor, default) or the host (:mod:`.mkmsz_registry`). A person (normally the
+assistant) writes the move program from the report; nothing here guesses semantics.
 """
 
 from __future__ import annotations
@@ -13,9 +13,11 @@ from dataclasses import dataclass, field
 
 from .mipsdis import REGS, Insn, decode
 from .mkt_fighter import CommandRecord, Handler, InlineCommand, MktRom
-from .mkt_registry import REGISTRY
+from .mkt_registry import REGISTRY as MKT_REGISTRY
+from .mkt_registry import MktRoutine
 
 VA_BASE = 0x80000000
+CODE_START = 0x80000400
 CODE_END = 0x800A0000
 CALLER_SAVED = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 31}
 
@@ -38,16 +40,14 @@ class Reading:
     code_refs: set[int] = field(
         default_factory=set
     )  # routine addresses passed as arguments or stored
+    name: str | None = None
 
     @property
     def unknown_calls(self) -> list[Call]:
         return [c for c in self.calls if c.name is None]
 
     def text(self) -> str:
-        lines = [
-            f"routine 0x{self.entry:08X}"
-            + (f" ({REGISTRY[self.entry].name})" if self.entry in REGISTRY else "")
-        ]
+        lines = [f"routine 0x{self.entry:08X}" + (f" ({self.name})" if self.name else "")]
         for ins in self.insns:
             note = self.notes.get(ins.pc, "")
             lines.append(
@@ -56,20 +56,41 @@ class Reading:
         return "\n".join(lines)
 
 
-def _word(mkt: bytes, va: int) -> int:
-    o = va - VA_BASE
-    return int.from_bytes(mkt[o : o + 4], "big")
+@dataclass(frozen=True)
+class Engine:
+    """A game whose code is read: registry, dispatchers and the VA -> ROM offset mapping."""
+
+    name: str
+    registry: dict[int, MktRoutine]
+    dispatchers: dict[int, tuple[int, int, str]]  # address -> (table, entries, kind)
+    rom_delta: int  # ROM offset = VA - rom_delta (main segment)
+    code_start: int = CODE_START
+    code_end: int = CODE_END
+
+    def word(self, rom: bytes, va: int) -> int:
+        o = va - self.rom_delta
+        return int.from_bytes(rom[o : o + 4], "big")
+
+    def is_code(self, value: int | None) -> bool:
+        return value is not None and self.code_start <= value < self.code_end and value % 4 == 0
+
+    def label(self, va: int | None) -> str | None:
+        entry = self.registry.get(va) if va is not None else None
+        return entry.name if entry else None
 
 
-def extent(mkt: bytes, entry: int, limit: int = 4000) -> list[Insn]:
+def extent(
+    mkt: bytes, entry: int, limit: int = 4000, *, engine: Engine | None = None
+) -> list[Insn]:
     """Instructions of the routine at ``entry``: up to the ``jr ra`` (or tail ``j``) after which no
     forward branch of the routine lands."""
 
+    engine = engine or MKT
     out: list[Insn] = []
     furthest = entry
     pc = entry
     while len(out) < limit:
-        ins = decode(_word(mkt, pc), pc)
+        ins = decode(engine.word(mkt, pc), pc)
         out.append(ins)
         if (
             ins.target is not None
@@ -78,7 +99,7 @@ def extent(mkt: bytes, entry: int, limit: int = 4000) -> list[Insn]:
         ):
             furthest = max(furthest, ins.target)
         if ins.is_return or (ins.op == "j" and not entry <= (ins.target or 0) < entry + 4 * limit):
-            delay = decode(_word(mkt, pc + 4), pc + 4)
+            delay = decode(engine.word(mkt, pc + 4), pc + 4)
             out.append(delay)
             if pc + 8 > furthest:
                 return out
@@ -152,7 +173,7 @@ _MEMOPS = (
     "ldc1",
     "sdc1",
 )
-# Engine dispatchers whose a0 indexes a routine table: address -> (table, entries, kind).
+# MKT dispatchers whose a0 indexes a routine table: address -> (table, entries, kind).
 DISPATCHERS = {
     0x80076F70: (0x800AB140, 56, "special"),  # do_special: context_jump
     0x80045050: (0x800A80D0, 40, "propell"),  # do_body_propell: context_jump
@@ -231,24 +252,23 @@ def _states(insns: list[Insn]) -> tuple[list[dict[int, int] | None], set[int]]:
     return state_in, call_delays
 
 
-def resolve(mkt: bytes, dispatcher: int, index: int) -> int | None:
+MKT = Engine("MKT", MKT_REGISTRY, DISPATCHERS, VA_BASE)
+
+
+def resolve(mkt: bytes, dispatcher: int, index: int, *, engine: Engine | None = None) -> int | None:
     """Routine a dispatcher reaches for a constant index (None: out of range or empty entry)."""
 
-    table, count, _kind = DISPATCHERS[dispatcher]
+    engine = engine or MKT
+    table, count, _kind = engine.dispatchers[dispatcher]
     if not 0 <= index < count:
         return None
-    return _word(mkt, table + 4 * index) or None
+    return engine.word(mkt, table + 4 * index) or None
 
 
-CODE_START = 0x80000400
-
-
-def _is_code(value: int | None) -> bool:
-    return value is not None and CODE_START <= value < CODE_END and value % 4 == 0
-
-
-def read(mkt: bytes, entry: int) -> Reading:
-    insns = extent(mkt, entry)
+def read(mkt: bytes, entry: int, *, engine: Engine | None = None) -> Reading:
+    engine = engine or MKT
+    dispatchers = engine.dispatchers
+    insns = extent(mkt, entry, engine=engine)
     state_in, call_delays = _states(insns)
     calls: list[Call] = []
     globs: dict[int, list[int]] = {}
@@ -260,9 +280,11 @@ def read(mkt: bytes, entry: int) -> Reading:
             if k + 1 in call_delays:
                 _execute(regs, insns[k + 1])
             args = tuple(regs.get(r) for r in (4, 5, 6, 7))
-            refs.update(a for a in args if a is not None and _is_code(a) and a not in DISPATCHERS)
+            refs.update(
+                a for a in args if a is not None and engine.is_code(a) and a not in dispatchers
+            )
             target = ins.target if ins.op == "jal" else regs.get(ins.rs)
-            name = REGISTRY[target].name if target in REGISTRY else None
+            name = engine.label(target)
             calls.append(Call(ins.pc, target, args, name))
             shown = ", ".join(
                 f"{REGS[4 + i]}=" + ("?" if a is None else f"0x{a:X}") for i, a in enumerate(args)
@@ -272,57 +294,66 @@ def read(mkt: bytes, entry: int) -> Reading:
                 if target is not None
                 else f"computed call ({shown})"
             )
-            if target in DISPATCHERS and args[0] is not None:
-                routine = resolve(mkt, target, args[0])
+            if target in dispatchers and args[0] is not None:
+                routine = resolve(mkt, target, args[0], engine=engine)
                 if routine is not None:
-                    note += f" -> {DISPATCHERS[target][2]} 0x{args[0]:X} = 0x{routine:08X}" + (
-                        f" ({REGISTRY[routine].name})" if routine in REGISTRY else ""
+                    label = engine.label(routine)
+                    note += f" -> {dispatchers[target][2]} 0x{args[0]:X} = 0x{routine:08X}" + (
+                        f" ({label})" if label else ""
                     )
             notes[ins.pc] = note
             continue
-        if ins.op == "sw" and _is_code(regs.get(ins.rt)):
+        if ins.op == "sw" and engine.is_code(regs.get(ins.rt)):
             refs.add(regs[ins.rt])
+            label = engine.label(regs[ins.rt])
             notes[ins.pc] = f"stores routine 0x{regs[ins.rt]:08X}" + (
-                f" ({REGISTRY[regs[ins.rt]].name})" if regs[ins.rt] in REGISTRY else ""
+                f" ({label})" if label else ""
             )
         if ins.op in _MEMOPS and ins.rs in regs:
             address = (regs[ins.rs] + ins.imm) & 0xFFFFFFFF
             globs.setdefault(address, []).append(ins.pc)
-            name = REGISTRY[address].name if address in REGISTRY else None
+            name = engine.label(address)
             notes[ins.pc] = f"global 0x{address:08X}" + (f" ({name})" if name else "")
-    return Reading(entry, insns, calls, globs, notes, refs)
+    return Reading(entry, insns, calls, globs, notes, refs, engine.label(entry))
 
 
-def callees(mkt: bytes, reading: Reading) -> list[int]:
+def callees(mkt: bytes, reading: Reading, *, engine: Engine | None = None) -> list[int]:
     """Routines a reading can transfer to: direct calls, resolved dispatcher entries and routine
     addresses it passes as arguments or stores (child processes, callbacks)."""
 
+    engine = engine or MKT
     out = sorted(reading.code_refs)
     for c in reading.calls:
         if c.target is None:
             continue
         out.append(c.target)
-        if c.target in DISPATCHERS and c.args[0] is not None:
-            routine = resolve(mkt, c.target, c.args[0])
+        if c.target in engine.dispatchers and c.args[0] is not None:
+            routine = resolve(mkt, c.target, c.args[0], engine=engine)
             if routine is not None:
                 out.append(routine)
     return out
 
 
-def call_tree(mkt: bytes, entry: int, depth: int = 2) -> dict[int, Reading]:
+def call_tree(
+    mkt: bytes, entry: int, depth: int = 2, *, engine: Engine | None = None
+) -> dict[int, Reading]:
     """Readings of ``entry`` and its callees not yet in the registry, down to ``depth``."""
 
+    engine = engine or MKT
+    registry = engine.registry
     out: dict[int, Reading] = {}
     frontier = [(entry, 0)]
     while frontier:
         va, d = frontier.pop()
-        if va in out or not VA_BASE <= va < CODE_END:
+        if va in out or not engine.is_code(va):
             continue
-        reading = read(mkt, va)
+        reading = read(mkt, va, engine=engine)
         out[va] = reading
         if d < depth:
             frontier += [
-                (t, d + 1) for t in callees(mkt, reading) if t not in REGISTRY or REGISTRY[t].follow
+                (t, d + 1)
+                for t in callees(mkt, reading, engine=engine)
+                if t not in registry or registry[t].follow
             ]
     return out
 
@@ -408,16 +439,26 @@ def main(argv: list[str] | None = None) -> int:
     from pathlib import Path
 
     parser = argparse.ArgumentParser(
-        description="Annotated readings of MKT routines (fighter recompiler, M3)"
+        description="Annotated readings of MKT or MKMSZ routines (fighter recompiler)"
     )
-    parser.add_argument("--mkt-rom", required=True, type=Path)
+    rom = parser.add_mutually_exclusive_group(required=True)
+    rom.add_argument("--mkt-rom", type=Path, help="read MKT (donor) code")
+    rom.add_argument("--mkmsz-rom", type=Path, help="read MKMSZ (host) main-segment code")
     parser.add_argument("--fighter", type=int, help="read every command of this MKT fighter id")
     parser.add_argument("--depth", type=int, default=6)
     parser.add_argument("routines", nargs="*", help="routine addresses (hex)")
     args = parser.parse_args(argv)
-    mkt = args.mkt_rom.read_bytes()
+    engine = MKT
+    if args.mkmsz_rom is not None:
+        from .mkmsz_registry import MKMSZ
+
+        engine, data = MKMSZ, args.mkmsz_rom.read_bytes()
+    else:
+        data = args.mkt_rom.read_bytes()
     if args.fighter is not None:
-        for m in fighter_moves(mkt, args.fighter, args.depth):
+        if engine is not MKT:
+            parser.error("--fighter reads MKT commands; use --mkt-rom")
+        for m in fighter_moves(data, args.fighter, args.depth):
             print(
                 f"== {m.grid} {m.event} masks {m.masks} right {m.right} selector {m.selector} "
                 f"condition {m.condition and hex(m.condition)} action 0x{m.action:08X}"
@@ -431,7 +472,7 @@ def main(argv: list[str] | None = None) -> int:
                     + ("computed" if c.target is None else f"0x{c.target:08X}")
                 )
     for routine in args.routines:
-        print(read(mkt, int(routine, 16)).text())
+        print(read(data, int(routine, 16), engine=engine).text())
     return 0
 
 
