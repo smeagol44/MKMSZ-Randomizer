@@ -198,6 +198,7 @@ def place_art(
     helper: Helper | None = None,
     helper_slot: int | None = None,
     throw_rate: int = 0,
+    helper_lead: int = 0,
 ) -> ArtLayout:
     """Put the projectile's art in the fighter file and point table-1 ``slots`` (empty in
     stock) at its flight and impact scripts. By default it is appended; with ``at`` it is
@@ -273,8 +274,10 @@ def place_art(
     if helper is not None:
         if helper_slot is None or throw_rate <= 0:
             raise ValueError("a helper needs its table-1 slot and the throw's frame rate")
+        # ``helper_lead`` body poses earlier than MKT's script; shown until the throw's last pose.
+        start = max(0, helper.start - helper_lead)
         helper_words = [shape[r] for r in helper.frames for _ in range(throw_rate)]
-        helper_ticks = len(helper_words)
+        helper_ticks = (helper.start + len(helper.frames) - start) * throw_rate
         helper_at = cursor
         script(helper_words + [1, helper_at + 4 * (helper_ticks - 1)])  # hold the last frame
         entries.append((helper_slot, helper_at))
@@ -289,7 +292,7 @@ def place_art(
     if helper is None:
         return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h)
     return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h,
-                     helper_slot, helper_ticks, helper.start * throw_rate)  # fmt: skip
+                     helper_slot, helper_ticks, start * throw_rate)  # fmt: skip
 
 
 # ---- sounds, strike and reaction --------------------------------------------------------------
@@ -512,8 +515,10 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
 
 def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str) -> None:
     """The throw helper's process (spawned with :func:`emit_spawn` at the start of the throw):
-    after ``art.helper_delay`` ticks it shows the helper script at the projectile's spawn point
-    (MKT launches this same object), then removes itself. No collision."""
+    after ``art.helper_delay`` ticks it shows the helper script for ``art.helper_ticks`` ticks
+    (its last frame held), then removes itself. No collision. ``dx``/``dy``: offset from the
+    owner; MKT keeps the helper aligned to the owner (0, 0) and its frames' anchors place it in
+    the hands (specials proof v03, owner: the ball's spawn offset put it over his chest)."""
 
     a.label(label)
     a.addiu("sp", "sp", -0x40)
