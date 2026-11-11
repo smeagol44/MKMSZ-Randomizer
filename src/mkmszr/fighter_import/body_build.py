@@ -793,11 +793,14 @@ def phase_slot_frames(donor: Donor, slots, sources: dict | None = None) -> dict[
 
 
 def donor_frames_by_phase(donor: Donor, root: int, starts: set[int]) -> list[list[int]]:
-    """Frames of the donor script at ``root`` grouped by phase, every token skipped (with its
-    operands), up to a jump/stop or the next script start."""
+    """Body frames of the donor script at ``root`` grouped by phase, every token skipped (with its
+    operands), up to a jump/stop or the next script start. The frame after a helper step (tokens
+    12 and 14) is the helper object's (token 11's actor, e.g. Reptile's forceball forming in his
+    hands), not a body pose, and is skipped too (specials proof v01, owner: Reptile "blinks")."""
 
     phases: list[list[int]] = [[]]
     pos = root
+    helper_next = False
     for _ in range(4 * MAX_SCRIPT_WORDS):
         v = donor.m32(pos)
         if v == 0:
@@ -808,11 +811,14 @@ def donor_frames_by_phase(donor: Donor, root: int, starts: set[int]) -> list[lis
         elif MKT.is_token(v):
             if v in (1, 2):
                 break
+            helper_next = v in (12, 14)
             pos += 4 * (1 + len(MKT.operands[v]))
         else:
             if not donor.is_shape(v):
                 raise LayoutError(f"word 0x{v:X} at 0x{pos:X} is not a frame")
-            phases[-1].append(v)
+            if not helper_next:
+                phases[-1].append(v)
+            helper_next = False
             pos += 4
     return [p for p in phases if p]
 
