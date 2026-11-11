@@ -31,7 +31,7 @@
 
 - [ ] Reptile adds no code outside his description and reusable components (review and test).
 - [x] The owner accepts at runtime (bounded) the body (proof v03, 2026-11-11).
-- [ ] The owner accepts at runtime (bounded) the inputs and combos.
+- [x] The owner accepts at runtime (bounded) the inputs and combos (inputs proofs v03 and v05, 2026-11-11).
 - [ ] The owner accepts at runtime (bounded) each special, in the agreed order.
 - [ ] The owner accepts a full-seed run.
 - [ ] Sektor regression unchanged, or the difference explained and re-accepted; full suite passes; this page updated in each PR.
@@ -81,7 +81,7 @@ Outside file `0x87`, v01 changes only the CRCs, the kick root (ROM `0xA1CE8`) an
 | Test ROM | SHA-256 | State |
 |---|---|---|
 | `MKMSZR_reptile-inputs_common_proof_v04.z64` | `2b7de49257700fba35dddc4a56b8eb094fef9fae79b91f450085f3af0c48a30b` | Owner (2026-11-11): "everything else looking good". **Runtime-confirmed (bounded):** Acid Spit, Forceball fast, Invisibility and the kept commands. **Pending:** Forceball slow (see below). **Rejected:** the slide, which was still the generic duck-based recipe; ninjas have their own MKT slide. Reproducible at commit `469b725`. |
-| `MKMSZR_reptile-inputs_common_proof_v05.z64` | `317d2099abc6e1947e8e0e4ada30ee39b00fb2b9ad67a49429607044ec5216a7` | **Pending** owner test. v04 with Reptile's MKT slide (table-1 slot 2: crouch and two slide poses) on host secondary 2 (Slide and Super Slide) through `body.secondary_slots`. |
+| `MKMSZR_reptile-inputs_common_proof_v05.z64` | `317d2099abc6e1947e8e0e4ada30ee39b00fb2b9ad67a49429607044ec5216a7` | **Runtime-confirmed (bounded)** by the owner (2026-11-11): the slide "looks fantastic", and Forceball slow outside Wind takes Ice. v04 with Reptile's MKT slide (table-1 slot 2: crouch and two slide poses) on host secondary 2 (Slide and Super Slide) through `body.secondary_slots`. **Step 2 done.** |
 
 v04 is v03 plus Reptile's MKT commands through the generic `fighter_import.commands` (description `commands`), each calling the Sub-Zero power it replaces:
 
@@ -108,7 +108,7 @@ The HP table grows to five records, so it moves to the v6 proof arena ([allocati
 - the run double-taps accept forward only;
 - Super Slide's check needs exactly LP+HP+Block.
 
-That condition refuses in native stage 1 (**Wind**, `0x8009A910 == 1`), within 320 ticks of the timestamp `0x80111FD4`, with Ice below `0x60`, while airborne, or without a free 128×128 texture. The likely cause is one of these stock refusals, for example a test in Wind (Hypothesis; the owner's stage is to be confirmed). Step 3 replaces the action and its condition in any case.
+That condition refuses in native stage 1 (**Wind**, `0x8009A910 == 1`), within 320 ticks of the timestamp `0x80111FD4`, with Ice below `0x60`, while airborne, or without a free 128×128 texture. Outside Wind (v05, owner) the command works and takes Ice Clone's Ice, so the v04 report was the stock Wind refusal. No clone appears with Reptile's body. The clone's own presentation with an imported body is not investigated (Pending, low value), because step 3 replaces the action.
 
 Other stand-in poses left after the body: relocated stock scripts that nothing points to any more, and host-only states with no MKT counterpart established: the Ice projectile script P24, inherited "flipped by" labels P28–P31, and secondary slots S05–S0C and S2A. These are not "easy" animations; reachability is Pending.
 
