@@ -4,7 +4,37 @@
 
 ## Current milestone
 
-**Milestone 4 — Reptile**: next; its task list and checklist are agreed with the owner when it starts.
+**Milestone 4 — Reptile**: in progress (started 2026-11-11).
+
+### Milestone 4 — agreed tasks (owner, 2026-11-11)
+
+1. **Body:** a test ROM with Reptile's body (generic body builder, computed layout, auto colour) and his MKT voice set. The owner checks poses, colours, the common animations and the voices.
+2. **Inputs:** combos and the remaining easy animations. Reptile's MKT special commands are wired to Sub-Zero's stock specials for now.
+3. **Specials:** each step changes only the actions; the commands from step 2 stay. Order and replaced power slot:
+
+   | Order | Reptile | Replaces (Sub-Zero slot) |
+   |---|---|---|
+   | 1 | Acid spit | Ice Blast (1) |
+   | 2 | Slide | Slide (2) |
+   | 3 | Forceball (fast) | Directional Ice, up/down Ice Blast (3) |
+   | 4 | Forceball (slow) | Ice Clone (5) |
+   | 5 | Reverse Elbow | Ice Shatter (6) |
+   | 6 | Super Slide (host power, new for Reptile) | Super Slide (7) |
+   | 7 | Invisibility (Eye stealth) | Freeze on Contact (8) |
+   | 8 | Polar Blast (host power, new for Reptile) | Polar Blast (9) |
+
+   Acid spit and both forceballs count as one step (shared projectile lowering). Air Ice Blast (slot 4) is not in the list: removed, as for Sektor (assumption, to confirm).
+4. **Description:** Reptile's fighter description: slots as above, costs reused from the replaced Sub-Zero powers for now, removals and presentation (title, power names and help text, icons, outfit colours).
+5. **Full-seed run** through the production build path, then the Sektor regression check.
+
+### Milestone 4 — acceptance checklist
+
+- [ ] Reptile adds no code outside his description and reusable components (review and test).
+- [ ] The owner accepts at runtime (bounded) the body.
+- [ ] The owner accepts at runtime (bounded) the inputs and combos.
+- [ ] The owner accepts at runtime (bounded) each special, in the agreed order.
+- [ ] The owner accepts a full-seed run.
+- [ ] Sektor regression unchanged, or the difference explained and re-accepted; full suite passes; this page updated in each PR.
 
 **Milestones 2 and 3: done (2026-11-11).**
 
@@ -72,7 +102,7 @@ PRs: 1 inventory and description format; 2 generic builder; 3 codec 23, roster d
 | 1 Fighter description and generic body builder | **Done** (2026-11-10) | See above | #197 inventory and format; #198 generic builder; PR 3 roster decode, computed layout, auto colour, Reptile body |
 | 2 Component library and MKMSZ backend v1 | **Done** (2026-11-11) | See above | #201 components, programs, host references; #202 review, projectile proofs v01–v07, backend `lower_projectile` |
 | 3 Reading aid for MKT moves | **Done** (2026-11-11) | See above | #200 reading aid, registry, readings |
-| 4 Reptile | Not started | — | — |
+| 4 Reptile | In progress | See above | — |
 | 5 Generic product integration | Not started | — | — |
 | 6 Review and next fighters | Not started | — | — |
 
