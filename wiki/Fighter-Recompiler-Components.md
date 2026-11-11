@@ -158,7 +158,7 @@ The native path, without patching the Ice root:
 
 First use: Reptile specials proofs v01–v03 (forceballs).
 
-- **Throw helper:** MKT's token 11 creates a helper object from a frame, and tokens 12/14 step it, one helper frame per body frame. The frame after a helper step is the helper's, not a body pose. `lower_projectile.donor_helper` reads it, and `place_art(helper=...)` adds its frames and script. `emit_helper` is the process `emit_action(helper=...)` starts with the throw. Reptile's forceball (the ball forming in his hands) is the first use, Pending.
+- **Throw helper:** MKT's token 11 creates a helper object from a frame, and tokens 12/14 step it, one helper frame per body frame. The frame after a helper step is the helper's, not a body pose. `lower_projectile.donor_helper` reads it, and `place_art(helper=...)` adds its frames and script. `emit_helper` is the process `emit_action(helper=...)` starts with the throw. It follows the owner's body (cursor in the throw script) rather than a clock; clocked versions drifted (specials proofs v03–v07). It goes at the launch through a handover (`emit_helper_handover`), because two type-4 projectile objects must not coexist (v04 crashed). Reptile's forceball (the ball forming in his hands) is the first use, Pending (specials proof v08).
 
 ### Eye item
 

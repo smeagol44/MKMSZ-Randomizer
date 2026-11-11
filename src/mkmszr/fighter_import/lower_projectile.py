@@ -183,8 +183,8 @@ class ArtLayout:
     tex_w: int
     tex_h: int
     helper_slot: int | None = None
-    helper_ticks: int = 0
-    helper_delay: int = 0  # ticks from the start of the throw
+    helper_start: int = 0  # body pose (0-based) the helper first shows with
+    helper_frames: int = 0  # helper frames, one per body pose from helper_start
 
 
 def place_art(
@@ -198,7 +198,6 @@ def place_art(
     helper: Helper | None = None,
     helper_slot: int | None = None,
     throw_rate: int = 0,
-    helper_lead: int = 0,
 ) -> ArtLayout:
     """Put the projectile's art in the fighter file and point table-1 ``slots`` (empty in
     stock) at its flight and impact scripts. By default it is appended; with ``at`` it is
@@ -270,21 +269,14 @@ def place_art(
         impact_at = cursor
         script(impact_words + [1, impact_at + 4 * (impact_ticks - 1)])  # hold the last frame
         entries.append((slots[1], impact_at))
-    helper_ticks = 0
     if helper is not None:
         if helper_slot is None or throw_rate <= 0:
             raise ValueError("a helper needs its table-1 slot and the throw's frame rate")
-        # ``helper_lead`` body poses earlier than MKT's script (frames that would fall before the
-        # throw are dropped); shown until the throw's last pose. The helper's own process starts
-        # a tick or two after the body and needs a frame to build (specials proof v06: a pose late).
-        start = helper.start - helper_lead
-        frames_shown = helper.frames[max(0, -start) :]
-        start = max(0, start)
-        pace = phase_end_ticks(throw_rate)
-        helper_words = [shape[r] for r in frames_shown for _ in range(pace)]
-        helper_ticks = (helper.start + len(helper.frames) - start) * pace
+        # One word per helper frame: the helper process points its cursor at the frame for the
+        # owner's current body pose (:func:`emit_helper`), so it cannot drift from the body.
         helper_at = cursor
-        script(helper_words + [1, helper_at + 4 * (helper_ticks - 1)])  # hold the last frame
+        n = len(helper.frames)
+        script([shape[r] for r in helper.frames] + [1, helper_at + 4 * (n - 1)])
         entries.append((helper_slot, helper_at))
     if cursor > budget:
         raise ValueError(f"projectile art ends at 0x{cursor:X}, past the budget 0x{budget:X}")
@@ -297,7 +289,7 @@ def place_art(
     if helper is None:
         return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h)
     return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h,
-                     helper_slot, helper_ticks, start * pace)  # fmt: skip
+                     helper_slot, helper.start, len(helper.frames))  # fmt: skip
 
 
 # ---- sounds, strike and reaction --------------------------------------------------------------
@@ -531,20 +523,44 @@ def phase_end_ticks(rate: int) -> int:
 HELPER_MAX_TICKS = 120  # safety cap: the helper never outlives this
 
 
-def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str) -> None:
-    """The throw helper's process (spawned with :func:`emit_spawn` at the start of the throw):
-    after ``art.helper_delay`` ticks it shows the helper script (its last frame held) until the
-    action asks for the launch (:func:`emit_helper_handover`), then removes itself. No
-    collision. Two type-4 projectile objects must not coexist (specials proof v04, owner: crash
-    when the helper outlived the launch), hence the handover through the state word
-    ``label + "_state"`` (:func:`emit_helper_data`). ``dx``/``dy``: offset from the owner."""
+def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body_slot: int) -> None:
+    """The throw helper's process (spawned with :func:`emit_spawn` at the start of the throw).
+
+    It follows the owner's body: each tick it reads the player's animation cursor in the throw
+    script (table-1 ``body_slot``) and, for body pose *k* >= ``art.helper_start``, shows the
+    helper frame of that pose (MKT's script order: one helper step per body pose), its last
+    frame held. It is built when its first pose comes up and goes when the action asks for the
+    launch (:func:`emit_helper_handover`); no collision. Specials proofs v03-v07 timed it on
+    its own clock and drifted a pose or more (owner). ``dx``/``dy``: offset from the owner."""
 
     state = label + "_state"
     a.label(label)
     a.addiu("sp", "sp", -0x40)
-    if art.helper_delay:
-        a.li("a0", art.helper_delay)
-        a.jal(F_SLEEP)
+    a.li("s2", -1)  # last body pose shown
+    a.li("s3", 0)  # built
+    a.li("s4", HELPER_MAX_TICKS)
+    a.label(label + "_loop")
+    a.la("t0", state)
+    a.lw("t1", 0, "t0")
+    a.li("t2", HELPER_LAUNCH)
+    a.beq("t1", "t2", label + "_end")
+    a.lui("t0", host.hi(host.PLAYER_CTRL))
+    a.lw("t0", host.lo(host.PLAYER_CTRL), "t0")
+    a.lw("t1", host.CTRL_SCRIPT_CURSOR, "t0")
+    a.lw("t2", host.CTRL_ACTOR, "t0")
+    a.lw("t2", host.ACTOR_FILE_BASE, "t2")
+    a.lw("t3", 0x104 + 4 * body_slot, "t2")
+    a.addu("t3", "t2", "t3")
+    a.subu("t1", "t1", "t3")
+    a.sra("t1", "t1", 2)
+    a.addiu("t1", "t1", -1)  # body pose on screen (the cursor is past it)
+    a.slti("t4", "t1", art.helper_start)
+    a.bnez("t4", label + "_wait")
+    a.slti("t4", "t1", art.helper_start + art.helper_frames)
+    a.beqz("t4", label + "_wait")  # past the throw: keep the last frame
+    a.beq("t1", "s2", label + "_wait")
+    a.move("s2", "t1")
+    a.bnez("s3", label + "_show")
     host.load_controller(a)
     a.lhu("a0", 0x78, "s1")  # owner type (4)
     a.li("a1", art.helper_slot)
@@ -557,37 +573,40 @@ def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str) -> N
     a.li("t0", art.palette_record)
     a.sw("t0", 0x18, "sp")
     a.jal(F_PROJ_BUILD)
-    a.la("t0", state)
-    a.li("t1", HELPER_SHOWN)
-    a.sw("t1", 0, "t0")
     host.load_controller(a)
     a.move("a0", "s1")
     a.li("a1", dx)
     a.li("a2", dy)
     a.jal(F_OFFSET)
-    a.li("a0", 1)
-    a.li("a1", art.helper_slot)
-    a.jal(F_SELECT)
-    a.li("s2", HELPER_MAX_TICKS)
-    a.label(label + "_loop")
+    a.li("s3", 1)
+    a.la("t0", state)
+    a.li("t1", HELPER_SHOWN)
+    a.sw("t1", 0, "t0")
+    a.label(label + "_show")
     host.load_controller(a)
+    a.lw("t2", host.ACTOR_FILE_BASE, "s1")
+    a.lw("t3", 0x104 + 4 * art.helper_slot, "t2")
+    a.addu("t3", "t2", "t3")
+    a.addiu("t1", "s2", -art.helper_start)
+    a.sll("t1", "t1", 2)
+    a.addu("t3", "t3", "t1")
+    a.sw("t3", host.CTRL_SCRIPT_CURSOR, "s0")
     a.move("a0", "s1")
     a.jal(F_ADVANCE)
+    a.label(label + "_wait")
     a.li("a0", 1)
     a.jal(F_SLEEP)
-    a.la("t0", state)
-    a.lw("t1", 0, "t0")
-    a.li("t2", HELPER_LAUNCH)
-    a.beq("t1", "t2", label + "_end")
-    a.addiu("s2", "s2", -1)
-    a.bnez("s2", label + "_loop")
+    a.addiu("s4", "s4", -1)
+    a.bnez("s4", label + "_loop")
     a.label(label + "_end")
+    a.beqz("s3", label + "_gone")
     host.load_controller(a)
     a.move("a0", "s1")
     a.li("a1", ACTOR_LIST)
     a.jal(F_ACTOR_REMOVE)
     a.lw("a0", 0x20, "sp")
     a.jal(F_TEX_RELEASE)
+    a.label(label + "_gone")
     a.la("t0", state)
     a.sw("zero", 0, "t0")
     a.jal(F_EXIT)
