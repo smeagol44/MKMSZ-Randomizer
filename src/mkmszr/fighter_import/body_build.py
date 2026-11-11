@@ -26,7 +26,13 @@ from .mkt_fighter import MktRom
 from .script import MKMSZ, MKT
 
 MKT_FLIPPED = 0x47  # MKT table-0 slot whose first phase is the fighter's flip poses
-MKT_PALETTE_TABLE = 0x800A1738  # per-fighter primary palette record pointers (count, RGBA5551 words)
+# Per-fighter palette record pointers (count, RGBA5551 words), indexed by MKT fighter id. It
+# matches the palette every fighter with its own art binds in its first frame; fighters that
+# share art (the ninjas, the robots) get their costume recolour in the shared layout (Reptile
+# 0x800BE864, green). 0x800A1738 is not indexed by fighter id past 16 (entries 17+ are the
+# alternates of fighters 0+); reading it gave Reptile another fighter's palette (body proofs
+# v01-v02, owner: "as if the palette was mapped wrongly").
+MKT_PALETTE_TABLE = 0x800A3660
 
 # Host fighter file 0x87 (MKMSZ USA Rev. 0): Static-confirmed layout.
 FILE87_ROM = 0x748920
@@ -353,7 +359,7 @@ class Donor:
         return out
 
     def palette(self):
-        """The fighter's primary MKT palette as RGBA5551 words (index 0 transparent)."""
+        """The fighter's MKT palette as RGBA5551 words (index 0 transparent)."""
 
         va = be32(self.mkt, MKT_PALETTE_TABLE - 0x80000000 + 4 * self.fighter_id)
         o = va - 0x80000000

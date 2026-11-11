@@ -142,6 +142,8 @@ BODY_SLOTS = [i for i in range(0x23) if i not in (0x0D, 0x10)] + [0x4A, bb.MKT_F
 # Documented exceptions (Wiki MKT-Fighter-Asset-Translation): Sonya's MKT slot 0x15 holds bare
 # object descriptors with their own palette pointer, not fighter frame records.
 NOT_FRAME_RECORDS = {(1, 0x15)}
+# Fighter 24 binds 0x800BB7EC but its table entry 0x800B9AAC has another layout (Pending).
+UNEXPLAINED_PALETTES = {24}
 
 
 @needs_mkt
@@ -211,3 +213,26 @@ def test_reptile_body_builds_and_fits() -> None:
             w for w in stock if w not in body.stock_shape_set
         ]  # tokens, operands, phase ends and jumps are stock
         assert all(w in body.shape_map.values() for w, s in zip(now, stock) if s in body.stock_shape_set)
+
+
+@needs_mkt
+def test_palette_table_is_indexed_by_fighter_id() -> None:
+    mkt = Path(MKT).read_bytes()
+
+    def bound(fighter):  # the palette the fighter's first frame binds
+        donor = bb.Donor(mkt, fighter)
+        first = donor.frames(0)[0]
+        return donor.m32((first + 8 if donor.is_shape(first) else donor.parts(first)[0]) + 12)
+
+    binds = {f: bound(f) for f in range(26)}
+    for fighter, palette in binds.items():
+        table = bb.be32(mkt, bb.MKT_PALETTE_TABLE - 0x80000000 + 4 * fighter)
+        if table == palette or fighter in UNEXPLAINED_PALETTES:
+            continue
+        # Shared art (ninjas, robots): the table holds the costume recolour of a palette that
+        # another fighter's art binds too.
+        assert sum(1 for p in binds.values() if p == palette) > 1, fighter
+    assert sum(1 for f, p in binds.items() if p == bb.be32(mkt, bb.MKT_PALETTE_TABLE - 0x80000000 + 4 * f)) >= 14
+    reptile = bb.Donor(mkt, 19).palette()
+    assert len(reptile) == 32
+    assert all(((w >> 6) & 31) > ((w >> 11) & 31) for w in reptile[17:30])  # green ramp
