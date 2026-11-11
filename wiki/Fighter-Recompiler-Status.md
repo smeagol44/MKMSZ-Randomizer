@@ -20,7 +20,7 @@ Milestone 2:
 5. **Done (static):** RE check of the reuse ideas, both host-side: MKMSZ Quan Chi's forceball and the Eye item's effect for invisibility. Quan Chi's forceball is a **code/gameplay reference** for projectile creation, hit triggers, the launch effect and sound; the assets still come from MKT (owner, 2026-11-10). Findings on [components](Fighter-Recompiler-Components#host-references): Quan Chi's projectile uses the native enemy-projectile build and collision path, which a type-4 (player) projectile can use after one guarded table edit; the Eye is a timed stealth-from-AI state with a dark tint.
 6. Move-program format and validator; Reptile's and Sektor's moves written as data; gaps listed — **done** (`src/mkmszr/fighters/moves/*.json`, 12 gaps listed).
 7. Owner review of the catalogue.
-8. Backend v1, starting with the generic projectile (no Ice Blast patching).
+8. Backend v1, starting with the generic projectile (no Ice Blast patching) — **proof line done**: [generic projectile lowering](Fighter-Recompiler-Components#generic-projectile-lowering), Runtime-confirmed bounded in proof v06 (Sub-Zero throws Reptile's MKT forceball; owner: "really good"). Next: the backend module that builds it from the move program.
 
 ### Milestones 2 and 3 — acceptance checklist
 
@@ -30,7 +30,7 @@ Milestone 2:
 - [ ] Component catalogue reviewed by the owner.
 - [x] Every Reptile special and every Sektor move expressible as a move program; gaps listed (`tests/test_fighter_components.py`). New components follow the owner review.
 - [ ] Each implemented component has a lowering test.
-- [ ] Generic projectile built without Ice-root patches.
+- [ ] Generic projectile built without Ice-root patches (proof v06 done; backend module next).
 - [ ] Sektor's pinned outputs unchanged; full suite passes; this page updated in the same PR.
 
 **Milestone 1 — Fighter description and generic body builder: done (2026-11-10).**
@@ -92,6 +92,7 @@ Fighter- or move-specific code outside fighter descriptions and components (plan
   - slide is Sub-Zero's;
   - the elbow dash is the only fully new move.
 - 2026-11-10: automatic recognition of MKT machine code is deferred to milestone 6; Sektor's move modules are frozen legacy.
+- 2026-11-11 (projectile proofs): Reptile's forceball launches its victim toward him (v03 over v02); MKT frames and sound cadence convert at one host tick per MKT tick; the rocket speed conversion stays for now (owner: slightly off, not twice) and is to be revisited later.
 - 2026-11-11 (catalogue review): the component list is accepted and grows as needed; Reptile's invisibility uses the Eye's stealth for now (a mana-draining version is a later idea); Quan Chi's projectile confirmed as the reference move; the generic-projectile direction is still being discussed.
 - 2026-11-11: provenance convention accepted: every move-program value names its source (`MKT 0x…`, `host`, `owner`).
 - 2026-11-10: MKMSZ Quan Chi's forceball is a code/gameplay reference (projectile creation, hit triggers, launch effect, sound) so the host side is not reinvented; Reptile's forceball art and sounds still come from MKT.

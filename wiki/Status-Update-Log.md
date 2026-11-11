@@ -4,6 +4,25 @@
 
 ## From Project status
 
+### PS-34 (2026-11-11)
+
+**2026-11-11 Fighter recompiler milestone 2 task 8: generic projectile on the native enemy-projectile path, Runtime-confirmed bounded (proof v06).**
+
+- **Route:** clean-ROM proof; Sub-Zero `F,F + LK` throws Reptile's MKT forceball (art, palettes, speed, MKT hit box, launch arc toward him, hum and impact sounds). The owner judged v06 "really good".
+- **Path:**
+  - class-`0x700` child process;
+  - `0x80047160` with type 4 after the guarded `0x800A0324[4]` edit;
+  - collision `0x8002BA04`, offscreen exit;
+  - the launch arc in a lifted copy of host reaction `0x25`;
+  - no Ice patching.
+- **Findings:**
+  - the ball's palette comes from the MKT throw animation (`0x800BECE4`);
+  - the victim arc goes toward the attacker;
+  - the spawn needs an owner-calibrated offset;
+  - MKT frame and sound timing converts one host tick per MKT tick.
+- **Builders:** `Experimental/FighterRecompilerProofs/` v01–v06 ([components](Fighter-Recompiler-Components#generic-projectile-lowering)).
+- **Next:** the backend module that builds the projectile from Reptile's move program.
+
 ### PS-33 (2026-11-11)
 
 **2026-11-11 Fighter recompiler milestone 2, tasks 4–6: component catalogue (draft for owner review), move-program format with provenance, Reptile and Sektor moves as data, host references. Implementation/CI-confirmed (format, validator, programs); host findings Static-confirmed.**

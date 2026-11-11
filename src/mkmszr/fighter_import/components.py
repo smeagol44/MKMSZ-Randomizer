@@ -15,6 +15,8 @@ Units (engine-neutral, anchored on donor values and the documented calibrations)
   and ``offset`` (script words); the body builder imports the frames it names.
 * ``sound``: ``{"fighter": n}`` (the donor fighter sound table entry) or ``{"shared": n}``.
 * ``effect``: ``{"mkt_fx": n}`` (donor shared effect index).
+* ``pxpair``: ``[x, y]`` donor pixels, x along the facing (positive forward), y positive down
+  (the projectile spawn offset; proof v06: Reptile's forceball needs ``[-30, -36]``).
 * ``strike``: ``{"box": [x, y, w, h], "damage": n, "block_damage": n, "reaction": name,
   "blocked_reaction": name}``; reactions are meanings from :data:`REACTIONS`.
 
@@ -41,7 +43,7 @@ REACTIONS = {
     "none": "no victim reaction",
     "elbow_hold": "MKT 0x74: grounded victim held about 20 ticks; airborne victims rejected",
     "launch": "MKT 0x24: generic damaging launch, flight and landing",
-    "knockback_arc": "MKT 0x71: victim thrown back on an arc (x -0x2CCCC, y -0x6CCCC, gravity 0x5199)",
+    "knockback_arc": "MKT 0x71: victim launched on an arc toward the attacker (x 0x2CCCC, y -0x6CCCC, gravity 0x5199)",
     "acid_stagger": "MKT 0x72: victim staggers back (+0x420 = 0x26666); details Pending",
     "rocket_stumble": "MKT r_rocket -> zap_stumble: stumble back",
     "uppercut": "teleport strike: host uppercut reaction 0x08 (runtime-confirmed teleport)",

@@ -103,6 +103,11 @@ Units below are raw donor values. Velocities are 16.16 fixed point per process t
   4. `proj_flight(self, strike 0x11)`.
   5. On return: velocity zeroed, `ft_sound(5)`, part 4 of slot 5 (impact) at 3 ticks per frame, `proj_delete`.
 - **Strike `0x11`** (`0x800B03CC`): box `(99, 44, 47, 61)`, reaction `0x71` / blocked `0x01`, damage 18 / block 2.
+- **The ball object and its palette (2026-11-11).**
+  - The throw animation (table 1 slot 5, part 1) creates the ball: script token 11 builds a helper object from frame `0x2FD4`, whose descriptor carries palette `0x800BECE4`. The later part-1 frames (`0x3000`, `0x3028`, `0x3050`) show it growing in the hand.
+  - `proj_process` hands the parent's `+0x440` object to the child (`+0x418`), and the flight frames (part 3) carry no palette of their own, so the ball flies with `0x800BECE4`. Part 4 rebinds the impact palette `0x800BEBD0` (token 13).
+  - Evidence: Static-confirmed from the script, plus an MKT save state (palette table `0x8015DA78` holds both palettes; the ball object `0x8014C3F0` is in its impact frames at Reptile's height). Owner-confirmed by eye in projectile proofs v04–v06.
+- **Victim arc (reaction `0x71`):** `do_jump(-0x2CCCC, -0x6CCCC, 0x5199)`, whose x goes through `0x8006EBB0` (sign chosen by `opponent_to_right`). The victim is launched **toward Reptile**. The owner compared both directions at runtime (proofs v02/v03); the static sign reading had suggested "away" and was wrong.
 - **Condition `forceball_cooldown`** `0x8005281C`. It fails (`0x4000`) in any of these cases:
   - fewer than 96 ticks since this variant's stamp;
   - the opponent object's fighter id (`+0x38`) is `0x1F`;

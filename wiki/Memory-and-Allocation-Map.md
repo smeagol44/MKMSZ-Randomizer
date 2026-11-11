@@ -212,6 +212,19 @@ The intentionally incomplete extents above remain incomplete. A conflict can be 
 
 **16 KiB audio-risk review (2026-10-09):** a new literal audit of the supplied supported clean ROM and exact populated-Fortress/trace v01 diagnostic ROM confirms that the **existing file-0x1A raw payload** occupies RDRAM <code>[0x801AF820,0x801B3420)</code> and ends exactly at the patched arena floor; the expected two stock floor constructors are replaced/absorbed by the guarded arena/bootstrap path. The full named suballocation layout (including draft PR #156 and its 0x64-byte debug tail) has no inter-owner fixed-range overlap. This is not proof of no wild writes, no missed computed references or peak dynamic arena safety. Earlier all-stage 16 KiB profiler measured high-water cursor <code>0x802893E8</code> (margin <code>0x75A8</code>); later accelerated Fortress snapshot cursor <code>0x8028C538</code> (margin <code>0x4458</code>) against upper bound <code>0x80290990</code>. Different conditions/compositions prevent interpreting that difference as a defect or additive pressure from one named module. The unchecked native allocator and separately verified stale-HUD pointer lifetime gap remain distinct unresolved risks. Existing runtime ranges previously documented only as ROM mirrors have now been added explicitly to the RDRAM table; draft/proof slices remain non-production.
 
+### Proof-only allocations: generic projectile v01–v06 (2026-11-11)
+
+Clean-ROM-based disposable artifacts (`Experimental/FighterRecompilerProofs/`, [components](Fighter-Recompiler-Components#generic-projectile-lowering)). They are mutually exclusive with production (they reuse ROM and RDRAM that production owns). None of these is a production allocation or a free-space declaration.
+
+| Range / site | Use | Evidence |
+|---|---|---|
+| ROM `[0x00F10000,0x00F10800)` → RDRAM `[0x801AF420,0x801AFC20)` | Payload (file `0x1B`), the teleport proofs' v6 arena: 1 KiB in v01–v04, 2 KiB from v05 (arena floor `0x801AFC20`) | Runtime-confirmed bounded (v06) |
+| ROM `[0x00F20000,0x00F6879C)` | Relocated, enlarged file `0x87` (stock body + forceball art and scripts, size `0x4879C`, below the v49 budget `0x4E544`) | Runtime-confirmed bounded (v06) |
+| ROM `[0x00F70000,0x00F71440)` | Donor samples for host sound chains 335/336 | Runtime-confirmed bounded (v05/v06) |
+| Data `0x800A0324[4]` (ROM `0xA0F34`) | Type-4 fighter-file pointer → `0x80291C10` (only reader `0x80046F74`) | Runtime-confirmed bounded |
+| Data `0x800A1190[0x2B]` (ROM `0xA1E3C`) | Dummy reaction slot (stock `0x8004E0C0`) → lifted reaction in the payload (v04+) | Runtime-confirmed bounded |
+| File `0x87` table-1 `0x0D`, `0x12` | Empty stock slots → forceball flight and impact scripts | Runtime-confirmed bounded |
+
 ## RDRAM ownership and allocation
 
 The canonical coordinate in this table is the **physical** interval. <code>display_aliases</code> lists KSEG0/KSEG1 views of those same bytes.
