@@ -90,3 +90,8 @@ def test_reptile_forceball_helper() -> None:
     # Token 11 creates it from 0x2FD4 with the second body pose; tokens 12 step it.
     assert helper == lp.Helper((0x2FD4, 0x3000, 0x3028, 0x3050), 1)
     assert lp.donor_helper(donor, {"table": 1, "slot": 2}) is None  # the slide has none
+
+
+def test_phase_end_pace_matches_the_host() -> None:
+    # 0x80031070: an odd rate of 2 or more sleeps rate - 1 between frames.
+    assert [lp.phase_end_ticks(r) for r in (1, 2, 3, 4, 5)] == [1, 2, 2, 4, 4]

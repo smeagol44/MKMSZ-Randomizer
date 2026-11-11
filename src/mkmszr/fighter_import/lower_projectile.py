@@ -276,8 +276,9 @@ def place_art(
             raise ValueError("a helper needs its table-1 slot and the throw's frame rate")
         # ``helper_lead`` body poses earlier than MKT's script; shown until the throw's last pose.
         start = max(0, helper.start - helper_lead)
-        helper_words = [shape[r] for r in helper.frames for _ in range(throw_rate)]
-        helper_ticks = (helper.start + len(helper.frames) - start) * throw_rate
+        pace = phase_end_ticks(throw_rate)
+        helper_words = [shape[r] for r in helper.frames for _ in range(pace)]
+        helper_ticks = (helper.start + len(helper.frames) - start) * pace
         helper_at = cursor
         script(helper_words + [1, helper_at + 4 * (helper_ticks - 1)])  # hold the last frame
         entries.append((helper_slot, helper_at))
@@ -292,7 +293,7 @@ def place_art(
     if helper is None:
         return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h)
     return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h,
-                     helper_slot, helper_ticks, start * throw_rate)  # fmt: skip
+                     helper_slot, helper_ticks, start * pace)  # fmt: skip
 
 
 # ---- sounds, strike and reaction --------------------------------------------------------------
@@ -514,6 +515,15 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
 
 
 HELPER_IDLE, HELPER_SHOWN, HELPER_LAUNCH = 0, 1, 2
+
+
+def phase_end_ticks(rate: int) -> int:
+    """Ticks per frame of the host's ``animate_to_phase_end`` (``0x80031070``) at ``rate``: an odd
+    rate of 2 or more sleeps ``rate - 1`` (Static-confirmed, ``0x80031094..0x800310AC``). The
+    throw helper steps at this pace to stay with the body (specials proof v05, owner: "too
+    slow")."""
+
+    return rate - 1 if rate & 1 and rate >= 2 else rate
 HELPER_MAX_TICKS = 120  # safety cap: the helper never outlives this
 
 
