@@ -513,13 +513,19 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.beq("zero", "zero", prefix + "child_hang")
 
 
+HELPER_IDLE, HELPER_SHOWN, HELPER_LAUNCH = 0, 1, 2
+HELPER_MAX_TICKS = 120  # safety cap: the helper never outlives this
+
+
 def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str) -> None:
     """The throw helper's process (spawned with :func:`emit_spawn` at the start of the throw):
-    after ``art.helper_delay`` ticks it shows the helper script for ``art.helper_ticks`` ticks
-    (its last frame held), then removes itself. No collision. ``dx``/``dy``: offset from the
-    owner; MKT keeps the helper aligned to the owner (0, 0) and its frames' anchors place it in
-    the hands (specials proof v03, owner: the ball's spawn offset put it over his chest)."""
+    after ``art.helper_delay`` ticks it shows the helper script (its last frame held) until the
+    action asks for the launch (:func:`emit_helper_handover`), then removes itself. No
+    collision. Two type-4 projectile objects must not coexist (specials proof v04, owner: crash
+    when the helper outlived the launch), hence the handover through the state word
+    ``label + "_state"`` (:func:`emit_helper_data`). ``dx``/``dy``: offset from the owner."""
 
+    state = label + "_state"
     a.label(label)
     a.addiu("sp", "sp", -0x40)
     if art.helper_delay:
@@ -537,6 +543,9 @@ def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str) -> N
     a.li("t0", art.palette_record)
     a.sw("t0", 0x18, "sp")
     a.jal(F_PROJ_BUILD)
+    a.la("t0", state)
+    a.li("t1", HELPER_SHOWN)
+    a.sw("t1", 0, "t0")
     host.load_controller(a)
     a.move("a0", "s1")
     a.li("a1", dx)
@@ -545,24 +554,60 @@ def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str) -> N
     a.li("a0", 1)
     a.li("a1", art.helper_slot)
     a.jal(F_SELECT)
-    a.li("s2", art.helper_ticks)
+    a.li("s2", HELPER_MAX_TICKS)
     a.label(label + "_loop")
     host.load_controller(a)
     a.move("a0", "s1")
     a.jal(F_ADVANCE)
     a.li("a0", 1)
     a.jal(F_SLEEP)
+    a.la("t0", state)
+    a.lw("t1", 0, "t0")
+    a.li("t2", HELPER_LAUNCH)
+    a.beq("t1", "t2", label + "_end")
     a.addiu("s2", "s2", -1)
     a.bnez("s2", label + "_loop")
+    a.label(label + "_end")
     host.load_controller(a)
     a.move("a0", "s1")
     a.li("a1", ACTOR_LIST)
     a.jal(F_ACTOR_REMOVE)
     a.lw("a0", 0x20, "sp")
     a.jal(F_TEX_RELEASE)
+    a.la("t0", state)
+    a.sw("zero", 0, "t0")
     a.jal(F_EXIT)
     a.label(label + "_hang")
     a.beq("zero", "zero", label + "_hang")
+
+
+def emit_helper_handover(a: Assembler, label: str, tag: str) -> None:
+    """In the owner's action, before the launch: ask the helper ``label`` to go and wait (at
+    most ``HELPER_MAX_TICKS``) until it has removed itself and released its texture."""
+
+    state = label + "_state"
+    a.la("t0", state)
+    a.lw("t1", 0, "t0")
+    a.beqz("t1", tag + "_gone")
+    a.li("t1", HELPER_LAUNCH)
+    a.sw("t1", 0, "t0")
+    a.li("s2", HELPER_MAX_TICKS)
+    a.label(tag + "_wait")
+    a.li("a0", 1)
+    a.jal(F_SLEEP)
+    a.la("t0", state)
+    a.lw("t1", 0, "t0")
+    a.beqz("t1", tag + "_gone")
+    a.addiu("s2", "s2", -1)
+    a.bnez("s2", tag + "_wait")
+    a.label(tag + "_gone")
+
+
+def emit_helper_data(a: Assembler, label: str) -> None:
+    """The helper's state word (idle 0, shown 1, launch requested 2)."""
+
+    a.label(label + "_state")
+    a.raw(HELPER_IDLE)
 
 
 def emit_data(a: Assembler, p: Lowered, base: int) -> None:

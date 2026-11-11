@@ -157,6 +157,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             a.jal(F_TO_PHASE_END)
             host.load_controller(a)
         elif op == "projectile":
+            if helper is not None:  # the helper goes first: one type-4 object at a time
+                lp.emit_helper_handover(a, helper, f"{label}_handover{k}")
+                host.load_controller(a)
             lp.emit_spawn(a, child, after=f"{label}_spawned{k}")
         elif op == "sleep":
             host.sleep_ticks(a, int(step["ticks"]), f"{label}_sleep{k}")

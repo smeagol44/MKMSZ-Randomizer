@@ -225,7 +225,7 @@ Clean-ROM-based disposable artifacts (`Experimental/FighterRecompilerProofs/`, [
 | Data `0x800A1190[0x2B]` (ROM `0xA1E3C`) | Dummy reaction slot (stock `0x8004E0C0`) → lifted reaction in the payload (v04+) | Runtime-confirmed bounded |
 | File `0x87` table-1 `0x0D`, `0x12` | Empty stock slots → forceball flight and impact scripts | Runtime-confirmed bounded |
 
-Reptile specials proof v01 (2026-11-11, Pending) enlarges the same v6 arena to 4 KiB: ROM `[0x00F10000,0x00F11000)` → RDRAM `[0x801AF420,0x801B0420)`, heap floor `0x801B0420`. Sektor's teleport line ran 16 KiB here. Contents:
+Reptile specials proof v01 (2026-11-11, Pending) enlarges the same v6 arena to 4 KiB: ROM `[0x00F10000,0x00F11000)` → RDRAM `[0x801AF420,0x801B0420)`, heap floor `0x801B0420`. Specials proof v05 makes it 6 KiB: ROM `[0x00F10000,0x00F11800)`, heap floor `0x801B0C20`. Sektor's teleport line ran 16 KiB here. Contents:
 
 - the moved HP command table;
 - the forceball conditions, actions and projectile processes;
