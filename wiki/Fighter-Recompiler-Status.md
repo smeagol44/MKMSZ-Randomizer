@@ -23,14 +23,14 @@
    | 7 | Invisibility (Eye stealth) | Freeze on Contact (8) |
    | 8 | Polar Blast (host power, new for Reptile) | Polar Blast (9) |
 
-   Acid spit and both forceballs count as one step (shared projectile lowering). Air Ice Blast (slot 4) is not in the list: removed, as for Sektor (assumption, to confirm).
+   Acid spit and both forceballs count as one step (shared projectile lowering). Air Ice Blast (slot 4) is not in the list: removed, as for Sektor, its slot left blank for now (owner-confirmed 2026-11-11).
 4. **Description:** Reptile's fighter description: slots as above, costs reused from the replaced Sub-Zero powers for now, removals and presentation (title, power names and help text, icons, outfit colours).
 5. **Full-seed run** through the production build path, then the Sektor regression check.
 
 ### Milestone 4 — acceptance checklist
 
 - [ ] Reptile adds no code outside his description and reusable components (review and test).
-- [ ] The owner accepts at runtime (bounded) the body.
+- [x] The owner accepts at runtime (bounded) the body (proof v03, 2026-11-11).
 - [ ] The owner accepts at runtime (bounded) the inputs and combos.
 - [ ] The owner accepts at runtime (bounded) each special, in the agreed order.
 - [ ] The owner accepts a full-seed run.
@@ -44,7 +44,7 @@
 |---|---|---|
 | `MKMSZR_reptile-body_common_proof_v01.z64` | `452e6afe85fb1e8b0f3897a39d970c65f7917285c13096282fec0a9247ca6569` | **Rejected / failed** in part (owner, 2026-11-11): colours wrong; dead pose not lying flat; HP↔LP switch shows no animation; combos missing (step 2). Reproducible at commit `dc6cc5a` only. |
 | `MKMSZR_reptile-body_common_proof_v02.z64` | `e5cd5d5149d1d16370fa92a10ea48c9ebea67c21c72b0c60901f5faacf62ccef` | **Runtime-confirmed (bounded)** by the owner for the lying pose (death and knockdowns) and the HP↔LP switch (both orders). **Rejected / failed** for colours ("as if the palette was mapped wrongly"; compared with MKT's character select). Pit-fall pose accepted as is. Reproducible at commit `fce72cf`. |
-| `MKMSZR_reptile-body_common_proof_v03.z64` | `df6802800031d3b370354669b0173b7e749a5beafa6e5b5b23b781e1132487f2` | **Pending** owner test of the colours. v02 with Reptile's own palette; differs from v02 only inside file `0x87`. |
+| `MKMSZR_reptile-body_common_proof_v03.z64` | `df6802800031d3b370354669b0173b7e749a5beafa6e5b5b23b781e1132487f2` | **Runtime-confirmed (bounded)** by the owner (2026-11-11): colours match MKT ("It's perfect now"). v02 with Reptile's own palette; differs from v02 only inside file `0x87`. **Body accepted (step 1 done).** |
 
 v01 causes and the generic fixes in v02 (`fighter_import.body_build`; Sektor's explicit layout and palette are untouched and its pinned outputs are unchanged):
 
@@ -134,7 +134,7 @@ Fighter- or move-specific code outside fighter descriptions and components (plan
 - Backend v1 lowers only `projectile`; the other components lower with milestone 4. Production placement of move code and art (fighter file, fixed loader) is milestone 5; the proofs use proof-only allocations.
 - MKT timing: frames and sound cadence convert one host tick per MKT tick (projectile proofs); the rocket speed conversion is to be revisited (owner: slightly off, not twice).
 
-- Reptile's body (computed layout, auto colour) is static only; its runtime acceptance is part of milestone 4.
+- Reptile's body (computed layout, auto colour) is Runtime-confirmed (bounded, body proof v03). The owner did not comment on the voices separately, and slide was not tested (no powers unlocked); both are rechecked with the specials.
 - Codec-16 frames in some fighters' body slots: palette semantics Pending (not needed for Reptile).
 
 ## Owner decisions
