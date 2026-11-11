@@ -158,3 +158,4 @@ Append-only. Add one line per new page related to this plan (inventory, componen
 
 - [Fighter recompiler status](Fighter-Recompiler-Status) — living progress page (2026-11-10).
 - [Fighter recompiler inventory](Fighter-Recompiler-Inventory) — milestone 1 inventory of Sektor-specific items (2026-11-10).
+- [Fighter recompiler MKT move readings](Fighter-Recompiler-MKT-Moves) — milestone 3 reading aid, MKT routine registry and the readings of Reptile's and Sektor's specials (2026-11-10).
