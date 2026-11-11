@@ -50,6 +50,7 @@ PAYLOAD_LIMIT = 0x800
 ARENA_LO = (0x801AF420 + PAYLOAD_LIMIT) & 0xFFFF  # 0xFC20, sign-extended under lui 0x801B
 DX, DY = -20, -72
 THROW_TICKS = 12
+HUM_STEP = 2  # hum phase step per host tick; plays at >= 3 (2: every 1.5 host ticks)
 HUM, IMPACT = 0x12, 5  # Reptile ft_sound entries
 HUM_CHAIN = sound.ISOLATED_CHAINS[10]  # host event 335 (the Sektor teleport chain)
 IMPACT_CHAIN = sound.ISOLATED_CHAINS[11]  # host event 336
@@ -133,7 +134,7 @@ def emit_payload(info: dict) -> tuple[bytes, dict[str, int]]:  # type: ignore[ty
     a.jal(v01.F_SELECT)
     a.li("s3", 0)  # hum phase: +2 per host tick, play at >= 3 (every 1.5 host ticks)
     a.label("fly")
-    a.addiu("s3", "s3", 2)
+    a.addiu("s3", "s3", HUM_STEP)
     a.slti("t0", "s3", 3)
     a.bnez("t0", "no_hum")
     a.addiu("s3", "s3", -3)
