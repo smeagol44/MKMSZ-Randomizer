@@ -54,13 +54,22 @@ v01 causes and the generic fixes in v02 (`fighter_import.body_build`; Sektor's e
 - **Pit fall** (unchanged): the held pose is the knockdown's last fall frame (`0x27B4`), as for Sektor.
 - **Palette, v03** (Static-confirmed cause). v01 and v02 read Reptile's palette from `0x800A1738[19]`. That table is not indexed by fighter id past 16: entry `17 + k` is the alternate palette of fighter `k`, so v01/v02 used another fighter's alternate (11 greys, 7 dark greens, 13 browns). The per-fighter table is `0x800A3660`. Its entry equals the palette that the fighter's first frame binds for every fighter with its own art (14 fighters, including 5 where `0x800A1738` differs). For fighters that share art (ninjas, robots) it holds the costume recolour in the shared layout. Reptile `0x800BE864`: entries 1–8 skin, 9–16 greys and black (16, the suit, is the most used), 17–31 green, which matches MKT's character select. Fighter 24 binds `0x800BB7EC`, but its entry `0x800B9AAC` has another layout (Pending; not an import target). Generic projectile proofs v01–v03 showed the same wrong palette for the forceball; v04 onwards bind the forceball's own palette and are unaffected.
 
-**Step 2a, combos and throw.** `MKMSZR_reptile-inputs_common_proof_v01.z64` (SHA-256 `fe87bb2af266d0cc6505c4b967f78403ddb5488ae2f323113df0c3f37b698603`), **Pending** owner test. It is the accepted body plus:
+**Step 2a, combos and throw.**
+
+| Test ROM | SHA-256 | State |
+|---|---|---|
+| `MKMSZR_reptile-inputs_common_proof_v01.z64` | `fe87bb2af266d0cc6505c4b967f78403ddb5488ae2f323113df0c3f37b698603` | **Runtime-confirmed (bounded)** by the owner (2026-11-11): all three combos work, every hit is animated, and the finishers launch correctly with no corruption. The throw is "a bit off but acceptable". Reproducible at commit `b9d1c80`. |
+| `MKMSZR_reptile-inputs_common_proof_v02.z64` | `51adc9d3c59af671062441020940541ca6d204375d84959a202a2ba5bec196a8` | **Pending** owner test. Changes from v01: knockback finisher at 10 damage (owner decision, Sektor too: build v62); throw by Sektor's lead-in rule. |
+
+v01 is the accepted body plus:
 
 - Reptile's MKT combo strings through the generic `fighter_import.combos` ([record grammar](MKT-Adapter-Primitives#record-grammar-and-the-generic-component-2026-11-11)): `HP, HP, D+LP`, `HP, HP, HK, B+HK` and `HK, HK, B+HK`;
 - his combo animation (MKT table-1 slot 0) in host primary `0x10` (`body.slot_sources`);
-- his MKT throw poses in the host throw script, phase by phase (`body.phase_slots`; host tokens and timing kept).
+- his MKT throw poses in the host throw script (`body.phase_slots`; host tokens and timing kept).
 
-The roundhouse finisher's strike `0x12` (damage 10) becomes knockback `0x04` (damage 7). Outside file `0x87` it changes only the CRCs, the kick root (ROM `0xA1CE8`) and the records `0xB1CB0..0xB1D00`.
+Outside file `0x87`, v01 changes only the CRCs, the kick root (ROM `0xA1CE8`) and the records `0xB1CB0..0xB1D00`; v02 also changes the knockback damage byte at ROM `0xB1A3A`.
+
+v01 fitted the throw phase by phase (2/6/7 MKT frames into the host's 2/5/2). v02 uses the rule Sektor's throw was accepted with (proof v55: his visuals ran about one tick ahead of the grab). The host keeps its throw script; the MKT grab and throw frames, without the retract, fill its last positions, and the stance pose fills the ones before. For Reptile that is the stance, then his 2 + 6 frames (`body.phase_slots` mode `lead-in`).
 
 Other stand-in poses left after the body: relocated stock scripts that nothing points to any more, and host-only states with no MKT counterpart established: the Ice projectile script P24, inherited "flipped by" labels P28–P31, and secondary slots S05–S0C and S2A. These are not "easy" animations; reachability is Pending.
 

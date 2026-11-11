@@ -770,7 +770,7 @@ def lying_landing(words: list) -> list:
 KNOCKDOWN_SLOT = 0x1E
 
 
-def phase_slot_frames(donor: Donor, slots: tuple[int, ...]) -> dict[int, list[list[int]]]:
+def phase_slot_frames(donor: Donor, slots) -> dict[int, list[list[int]]]:
     """Per phase slot, the donor table-0 script's frames grouped by phase."""
 
     if not slots:
@@ -788,13 +788,17 @@ def phase_slot_frames(donor: Donor, slots: tuple[int, ...]) -> dict[int, list[li
     return out
 
 
-def phase_fill(clean_file: bytes, slot: int, phases: list[list[int]]) -> dict[int, int]:
-    """Host frame positions of primary ``slot``'s stock script -> donor frames: phase *k* takes
-    donor phase *k* (the last donor phase for later ones), scaled by position, end points kept."""
+def phase_fill(clean_file: bytes, slot: int, phases: list[list[int]], mode: str = "phases",
+               stance: int | None = None) -> dict[int, int]:  # fmt: skip
+    """Host frame positions of primary ``slot``'s stock script -> donor frames.
+
+    ``phases``: phase *k* takes donor phase *k* (the last donor phase for later ones), scaled by
+    position, end points kept. ``lead-in``: the donor frames of every phase but the last, in
+    order, fill the last host positions and ``stance`` the ones before (Sektor proof v55)."""
 
     root = be32(clean_file, 4 * slot)
-    primary, _ = _host_layout(clean_file)
-    end = next((r for r in primary if r > root), TYPE_START)
+    _, entries = _host_layout(clean_file)  # every table entry starts a script (the throw ends at +0x928)
+    end = min((v for _, v in entries if v > root), default=TYPE_START)
     host: list[list[int]] = [[]]
     for p, v, kind in _host_items(clean_file, root, end):
         if kind == "end":
@@ -803,6 +807,13 @@ def phase_fill(clean_file: bytes, slot: int, phases: list[list[int]]) -> dict[in
             break
         elif kind == "frame":
             host[-1].append(p)
+    if mode == "lead-in":
+        frames = [r for p in (phases[:-1] if len(phases) > 1 else phases) for r in p]
+        positions = [p for ph in host for p in ph]
+        if stance is None or len(frames) > len(positions):
+            raise LayoutError(f"slot 0x{slot:02X}: {len(frames)} lead-in frames for {len(positions)} places")
+        seq = [stance] * (len(positions) - len(frames)) + frames
+        return dict(zip(positions, seq, strict=True))
     out = {}
     for k, positions in enumerate(p for p in host if p):
         src = phases[min(k, len(phases) - 1)]
@@ -1283,11 +1294,13 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
                 put32(file87, off, target + 4 * phase_starts[min(phase, len(phase_starts) - 1)])
                 log.append(f"ALIAS table 0x{off:X} -> slot 0x{slot:02X} phase {phase}")
 
+    stance_rel = translated_first_frame(slot_cfg, donor)
     for slot, phases in phase_sources.items():
-        for pos, rel in phase_fill(clean_file, slot, phases).items():
+        mode = body_d.phase_slots[slot]
+        for pos, rel in phase_fill(clean_file, slot, phases, mode, stance_rel).items():
             put32(file87, pos, shape_map[rel])
             owned.add(pos)
-        log.append(f"PHASES slot 0x{slot:02X}: host script kept, donor frames by phase")
+        log.append(f"PHASES slot 0x{slot:02X}: host script kept, donor frames ({mode})")
     tails, tail_log = stock_tails(clean_file, slot_cfg, translated, stock_shape_set, set(shape_map.values()))
     for pos, word in tails.items():
         put32(file87, pos, word)

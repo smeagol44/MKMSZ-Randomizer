@@ -59,3 +59,14 @@ def test_host_graph_is_stock() -> None:
     assert clean[cb.HOST_RECORDS_ROM : end] == cb.STOCK_RECORDS
     roots = [int.from_bytes(clean[p : p + 4], "big") for p in cb.HOST_ROOT_PTRS_ROM]
     assert tuple(roots) == cb.STOCK_ROOTS
+
+
+@needs_mkt
+@needs_clean
+def test_install_raises_the_knockback_damage() -> None:
+    rom = bytearray(Path(CLEAN).read_bytes())
+    rec = cb.KNOCKBACK_RECORD_ROM
+    assert bytes(rom[rec : rec + 16]) == cb.KNOCKBACK_STOCK
+    graph = cb.donor_graph(Path(MKT).read_bytes(), 19)
+    cb.install(rom, cb.lower(graph, 0x00, set(range(0x23))))
+    assert rom[rec + 10] == 10 and rom[rec : rec + 10] == cb.KNOCKBACK_STOCK[:10]

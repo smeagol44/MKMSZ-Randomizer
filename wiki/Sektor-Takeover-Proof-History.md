@@ -2588,6 +2588,16 @@ User requests after the first live-site test: a pick-up-an-item animation and a 
 - **Grabbed:** 14 host victim scripts translated pose by pose (94 frame words) with the host's grab choreography kept; the donor's five flip poses (MKT slot `0x47`) are converted into file `0x87` (165 frames; chain slack `0x1EE0` left). See the [mapping page](Sub-Zero-to-Sektor-Animation-Mapping).
 - **Identity:** Sektor build v61 SHA-256 `ad2ceb4bfe80b4316338207baf49684d54c0ee7c570534692266c9751a88ed86` (fixed loader at `0xA01B30F0`); `--fighter sektor --seed SEKTOR-PROD-1 --debug-all-keys` SHA-256 `7fe0ed360472359e28a81447d16b8c57762037e8fb877b71c57db06bd5601bda`. The production transplant is unchanged (1241 words). Implementation/CI-confirmed; runtime Pending.
 
+### Combo knockback damage 10 (Sektor build v62, production, 2026-11-11)
+
+Owner decision while testing Reptile's combos: the combo knockback finishers do 10 damage instead of 7, for Sektor as well. Selector `0x04` is the knockback that v62 of the combo line chose for MKT's "knocked on back", and MKT's own value for that finisher is 10. Its strike record `0x800B0E30` (ROM `0xB1A30`, entries 4 and 20 of `0x800B0D48`; only the combo driver `0x8004D638` reads it) gets damage byte `+10`: `0x07 → 0x0A`. `patches/fighter_swap.py` classifies the word `0xB1A38` as transplanted.
+
+- **Identity:**
+  - Sektor build v62: SHA-256 `e35df9c55330ff6d2ce2d19fab7c357c421e3b0884f3a4a7826ca62df95240c4`.
+  - `--fighter sektor --seed SEKTOR-PROD-1 --debug-all-keys`: SHA-256 `0c739f81669f2f02b11fe99f290ebe9b6353ac5f491b623be48fd12ee17395a2`.
+  - Each differs from its v61 counterpart only at ROM `0xB1A3A` and the CRCs.
+- **State:** Implementation/CI-confirmed; runtime Pending (owner test of `MKMSZR_sektor-knockback-10_full-seed_build_v01.z64`).
+
 ### Known limits after v08
 
 - Only the teleport sound is imported; Sektor's other sounds (voice, footsteps and so on) are still Sub-Zero's.

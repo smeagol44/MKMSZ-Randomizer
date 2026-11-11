@@ -58,6 +58,7 @@ TRANSPLANT_SITES = frozenset({
     0x000A3AD8, 0x000A3ADC,  # Sub-Zero player voice table (Sektor voice set)
     0x000A5664, 0x000A5668,  # file 0x87 entry (repointed to the tail)
     0x000B00D0,  # strike pointer, selector 0x13
+    0x000B1A38,  # combo knockback strike record (selector 4): damage 7 -> 10 (Sektor build v62, owner)
 })  # fmt: skip
 TRANSPLANT_RANGES = (
     (0x000B1B0C, 0x000B1B94),  # LP (double, straight) and LK (teleport) records

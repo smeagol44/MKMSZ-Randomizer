@@ -16,9 +16,12 @@ Body fields:
   ``"table1:0xNN"``, the donor script a body slot takes instead of table 0 index *i*. Used
   where the donor keeps a host slot's meaning elsewhere, e.g. Reptile's combo animation (host
   primary 0x10) is his MKT table-1 slot 0, the animation his combo records select.
-* ``body.phase_slots`` (optional): host primary slots that keep the host script (tokens,
-  phase ends, timing) and take, phase by phase, the frames of MKT table 0 index *i* scaled by
-  position. Used where the host code drives the slot's phases itself (the throw, 0x23).
+* ``body.phase_slots`` (optional): host primary slot -> mode, for slots that keep the host
+  script (tokens, phase ends, timing) and take the frames of MKT table 0 index *i*. ``phases``:
+  phase by phase, scaled by position. ``lead-in``: the donor frames of every phase but the
+  last (its retract), in order, at the end of the host's frame positions, the stance pose
+  before them (Sektor's runtime-accepted throw rule, proof v55: visuals one tick later so the
+  grab lands with the host's; used for the throw, 0x23).
 * ``body.run``: the MKT slot with the Run poses (``0x4A`` for every MKT fighter) and the host
   Run rate.
 * ``body.colour``: colour depth and method. ``explicit`` gives the 32→16 index map and the
@@ -99,7 +102,7 @@ class Body:
     common_animations: tuple[str, ...]
     layout: Layout | None = None
     sources: dict[int, tuple[int, int]] = field(default_factory=dict)  # host slot -> (table, index)
-    phase_slots: tuple[int, ...] = ()
+    phase_slots: dict[int, str] = field(default_factory=dict)  # host slot -> "phases" | "lead-in"
 
 
 @dataclass(frozen=True)
@@ -222,14 +225,19 @@ def validate(data: Any) -> FighterDescription:
             errors.append(f"body.slot_sources[{key}]: expected 'table0:0xNN' or 'table1:0xNN'")
         elif slot is not None:
             sources[slot] = (int(table[-1]), idx)
-    phase_slots: list[int] = []
-    raw_phase = body_d.get("phase_slots", []) if isinstance(body_d, dict) else []
-    for k, v in enumerate(raw_phase if isinstance(raw_phase, list) else []):
-        slot = _int(v, f"body.phase_slots[{k}]", errors)
-        if slot is not None and (slot in slots or slot in phase_slots or not 0 <= slot <= 0x40):
-            errors.append(f"body.phase_slots[{k}]: 0x{slot:02X} is a body slot, repeated or out of range")
+    phase_slots: dict[int, str] = {}
+    raw_phase = body_d.get("phase_slots", {}) if isinstance(body_d, dict) else {}
+    if not isinstance(raw_phase, dict):
+        errors.append("body.phase_slots: expected an object (slot -> 'phases' or 'lead-in')")
+        raw_phase = {}
+    for key, mode in raw_phase.items():
+        slot = _int(key, f"body.phase_slots key {key!r}", errors)
+        if slot is not None and (slot in slots or not 0 <= slot <= 0x40):
+            errors.append(f"body.phase_slots[{key}]: 0x{slot:02X} is a body slot or out of range")
+        elif mode not in ("phases", "lead-in"):
+            errors.append(f"body.phase_slots[{key}]: mode 'phases' or 'lead-in'")
         elif slot is not None:
-            phase_slots.append(slot)
+            phase_slots[slot] = mode
     if sources and "layout" in body_d:
         errors.append("body.slot_sources: only with the computed layout")
     anims = _get(body_d, "common_animations", list, "body", errors) or []
@@ -247,7 +255,7 @@ def validate(data: Any) -> FighterDescription:
         raise DescriptionError("; ".join(errors))
     return FighterDescription(
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
-        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, tuple(phase_slots)),
+        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots),
         legacy=tuple(legacy),
     )  # fmt: skip
 

@@ -34,7 +34,7 @@ translation"; generalised here):
   fighter description fills from that donor slot (``body.slot_sources``);
 * strike selectors are translated by meaning (:data:`STRIKE_MAP`): selectors whose MKMSZ
   reaction is ``0x12`` ("knocked on back") corrupted the world in Sektor v61 and become the
-  Runtime-confirmed knockback ``0x04``.
+  Runtime-confirmed knockback ``0x04``, whose damage is raised to 10 (owner decision).
 """
 
 from __future__ import annotations
@@ -63,6 +63,12 @@ STRIKE_MAP = {
     0x05: 0x05,  # uppercut (0x15), Sektor v62
     0x12: 0x04,  # knocked on back, damage 10 -> knockback (0x14), damage 7 (Reptile; Pending)
 }
+# Owner decision (2026-11-11, Reptile inputs proof v01): the knockback finisher (host strike
+# record 0x800B0E30, selectors 4 and 20) does 10 damage, MKT's "knocked on back" value,
+# instead of the stock 7. Only the combo driver reads that record (0x8004D638).
+KNOCKBACK_RECORD_ROM, KNOCKBACK_SELECTOR = 0xB1A30, 0x04
+KNOCKBACK_STOCK = bytes.fromhex("00410000003300851412070100000201")
+KNOCKBACK_DAMAGE = 0x0A
 CONDITIONS = {0x00, 0x01, 0x04}  # none, away, down (Sektor v62)
 BUTTONS = {0: "HP", 1: "LP", 2: "LK", 3: "HK", 4: "BL"}
 
@@ -202,5 +208,10 @@ def install(rom: bytearray, low: Lowered) -> None:
         if _u32(rom, ptr) != stock:
             raise ComboError(f"host combo root at ROM 0x{ptr:X} is not stock")
     rom[HOST_RECORDS_ROM : HOST_RECORDS_ROM + len(low.records)] = low.records
+    if KNOCKBACK_SELECTOR in low.strikes.values():
+        rec = KNOCKBACK_RECORD_ROM
+        if bytes(rom[rec : rec + 16]) != KNOCKBACK_STOCK:
+            raise ComboError("host knockback strike record is not stock")
+        rom[rec + 10] = KNOCKBACK_DAMAGE
     for ptr, root in zip(HOST_ROOT_PTRS_ROM, low.roots, strict=True):
         rom[ptr : ptr + 4] = root.to_bytes(4, "big")

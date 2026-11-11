@@ -216,7 +216,9 @@ def test_reptile_body_builds_and_fits() -> None:
     # Combo animation (host primary 0x10) from MKT table-1 slot 0; throw (0x23) by phase.
     assert body.slot_cfg[0x10]["donor"] == bb.MktRom(Path(MKT).read_bytes()).table1(19)[0]
     throw = cm.frames(out, (0, 0x23))
-    assert len(throw) == 9 and body.shape_map[0x29D0] == throw[0] and body.shape_map[0x2A5C] == throw[6]
+    # Sektor's lead-in rule (proof v55): stance, then MKT phases 1-2 (2 + 6 frames), retract dropped.
+    grab = [0x29D0, 0x29E4, 0x29F8, 0x2A0C, 0x2A20, 0x2A34, 0x2A48, 0x2A5C]
+    assert throw == [body.fallback] + [body.shape_map[r] for r in grab]
 
 
 @needs_mkt
