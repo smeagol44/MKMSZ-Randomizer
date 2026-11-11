@@ -228,6 +228,8 @@ A fresh clean-ROM trace reconciled the stock special parser before implementing 
 | Polar Blast | Forward -> Back -> Back + HP | HP record at `0x800B1054`; condition `0x8004A684`; action/root `0x8004BD28`; tier >=9; cost `0xA6` |
 | Spine Rip | Forward -> Down -> Forward + HP | HP record at `0x800B1028`; condition `0x8004A514`; callback `0x80049BE8`; fatality/context checks rather than progression-tier gating |
 
+Table loads (Static-confirmed 2026-11-11): each button event handler loads its table with one `lui a0`/`addiu a0` pair. HP `0x800B1028` (three records) is loaded at `0x8003C88C`/`0x8003C890`, LP `0x800B0F0C` (two) at `0x8003C9D8`, LK `0x800B0F68` (one) at `0x8003C95C`, and HK `0x800B0F98` (one) at `0x8003C850`. A condition that returns `0x4000` ends the scan (`process_exit`); any other result accepts the record.
+
 This reconciliation supersedes the earlier claim that `0x800B0F68` contained two LK records and also corrects the earlier misidentification of the first HP record as Ice Shatter: that record is Spine Rip. Native progression evaluator `0x80074FBC` returns tiers 0..9; the established thresholds remain 85, 258, 834, 1410, 2323, 3315, 4503, 5911, and 7354 XP.
 
 ### Accepted SPECIALS: MODERN mapping

@@ -225,6 +225,14 @@ Clean-ROM-based disposable artifacts (`Experimental/FighterRecompilerProofs/`, [
 | Data `0x800A1190[0x2B]` (ROM `0xA1E3C`) | Dummy reaction slot (stock `0x8004E0C0`) → lifted reaction in the payload (v04+) | Runtime-confirmed bounded |
 | File `0x87` table-1 `0x0D`, `0x12` | Empty stock slots → forceball flight and impact scripts | Runtime-confirmed bounded |
 
+Reptile inputs proof v04 (2026-11-11, Pending) reuses the same v6 arena, with no other allocation:
+
+| Range / site | Use | Evidence |
+|---|---|---|
+| Arena `+0x000..+0x0DE` (KSEG1 `0xA01AF420`) | Moved HP command table: 5 records + sentinel | Pending |
+| Arena `+0x100..+0x200` | Four held-buttons condition stubs (`fighter_import.commands`) | Pending |
+| ROM `0x3D48C`/`0x3D490` (`0x8003C88C`/`0x8003C890`) | HP table load pair → the arena | Pending |
+
 ## RDRAM ownership and allocation
 
 The canonical coordinate in this table is the **physical** interval. <code>display_aliases</code> lists KSEG0/KSEG1 views of those same bytes.

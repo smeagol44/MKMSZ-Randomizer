@@ -365,6 +365,33 @@ For every donor combo edge:
 
 Numeric equality alone is insufficient.
 
+### Record grammar and the generic component (2026-11-11)
+
+**Static-confirmed** from the MKMSZ parser `0x8004D764`, driver `0x8004D4C8` and animation selector `0x8004D9A8`, and the MKT driver (strike lookup at `0x8005D17C`). The two games share one 16-byte record:
+
+| Offset | Meaning |
+|---|---|
+| `+0` | flags: `0x80` marks the last option of an option list |
+| `+1` | input window (ticks) |
+| `+2` (u16) | hit animation: high byte = slot (`0x80 \| n` = secondary/table-1 slot `n`), low byte = phase |
+| `+4` | animation rate (ticks per frame) |
+| `+5` | button index (low nibble): 0 HP, 1 LP, 3 HK |
+| `+6` (u16) | recovery animation, same encoding |
+| `+8` | strike selector: index into the combo strike table (MKMSZ `0x800B0D48`, MKT `0x800B1C4C`) |
+| `+9` | extra condition (index into `0x800A1170`): 1 away, 4 down |
+| `+12` (u32) | next option list, or a small value (recovery wait, end of string) |
+
+MKT keeps each fighter's two roots in `0x800A8EB0` (punch, entered from HP) and `0x800A8F28` (kick, entered from HK). MKMSZ's player graph is ROM `0xB1CB0` (six stock records), with roots at ROM `0xA1C70` and `0xA1CE8`. The two strike tables give the same reaction number for the same index; only the box and some damages differ. The unsafe host reaction is `0x12`, reached through indices 2 and 18.
+
+`fighter_import.combos` implements the rule generically:
+
+- records, option lists, windows, rates, buttons and conditions are copied, and pointers are relocated;
+- table-0 animations keep their slot;
+- a table-1 animation becomes host primary `0x10`, which the description fills from that donor slot (`body.slot_sources`);
+- strike selectors `0x02` and `0x12` become `0x04`; `0x00`, `0x01` and `0x05` stay.
+
+It reproduces Sektor's runtime-accepted v62 records byte for byte (`tests/test_combos.py`; Static/Implementation-confirmed). Reptile (Pending, inputs proof v01): `HP, HP, D+LP`, `HP, HP, HK, B+HK` and `HK, HK, B+HK`. His combo animation is MKT table-1 slot 0, and his roundhouse finisher (selector `0x12`, damage 10) becomes knockback `0x04`. Owner decision (2026-11-11): that knockback does 10 damage, MKT's value, instead of the stock 7. The record `0x800B0E30` (ROM `0xB1A30`, damage byte `+10`) is read only by the combo driver. This applies to Sektor too (build v62). Runtime-confirmed (bounded) by the owner on both fighters.
+
 ## Special-move command translation
 
 **Static-confirmed (2026-11-07).** The MKT special-move command record has exactly the `0x2C`-byte layout of the MKMSZ descriptor in [Player actions and special moves](Player-Actions-and-Special-Moves#low-kick-descriptor-and-special-action-path). That layout is: two `u16` button masks, `u32` transfer selector, condition pointer, action pointer, `u16` input window, six facing-right and seven facing-left `u16` tokens, and a zero `u16` table sentinel.
@@ -376,6 +403,11 @@ Direction tokens are stored **newest first**: `9`/`8` are Right/Left (forward/ba
 - The fighter ID at object `+0x38` indexes two event grids: `0x800A8780` (10 events × 32 fighters, used when the caller's `a2==1`) and `0x800A8AB8` (6 events).
 - Grid entries are small wrappers. Most call the declarative parser `0x8004BEB0(table)`, which covers 108 tables, 205 records and 84 distinct actions.
 - Special-move IDs dispatch through `0x80076F70(id)` → the 56-entry table `0x800AB140` via `context_jump` `0x80080A84`.
+- **Refusal differs (Static-confirmed, 2026-11-11).** MKT's parser `0x8004BEB0` accepts on a condition result of `0x8000` and otherwise tries the next record. MKMSZ's `0x8004A0E0` ends the scan on `0x4000` (`process_exit`) and otherwise accepts. MKT puts a two-button command in each of its buttons' tables and checks the held buttons in its condition (Reptile's forceballs, mask `0x90`, ahead of Acid Spit in the HP table). The mask check alone (`0x8003CCF8`: no pressed button outside the mask) lets either button through. `fighter_import.commands` therefore gives such a command a stub condition. With all buttons held (`0x800BF2EE & 0xFC`, record-mask bits) it tail-calls the host condition; otherwise it hands the rest of the table to the parser from the next record.
+- **Generic lowering (milestone 4 step 2, Pending).** `fighter_import.commands` builds the host button tables:
+  - the donor commands come first, in donor order, each calling the Sub-Zero power the description names (its action, condition and transfer selector);
+  - host records whose power no command takes stay after them, unless removed;
+  - a table that grows moves to owned storage, and its `lui`/`addiu` load pair is repointed. HP is loaded at `0x8003C88C`, LP at `0x8003C9D8`, LK at `0x8003C95C`, HK at `0x8003C850`.
 - Selectors seen in MKT are `0,1,2,3,4,6,7`. Selectors `2,3,4,6,7` appear in records shared by almost every fighter (versus-mode finishers and similar). MKMSZ stock implements only `0` and `1`.
 
 **Robot handlers are imperative.** The robots use per-fighter handlers built on the inline sequence checker `0x8004BFD4(mask, mask, table)`. It takes compact `0x1A`-byte tables (`u16` window, six right, six left) plus custom predicates. Sektor (ID 7):

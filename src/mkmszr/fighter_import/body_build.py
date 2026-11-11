@@ -685,12 +685,13 @@ class LayoutError(ValueError):
     pass
 
 
-def linearise(donor: Donor, slot: int, starts: set[int]) -> list:
-    """MKT table 0 ``slot``'s script as host words: ints, ``("frame", rel)`` and ``("jump", index)``."""
+def linearise(donor: Donor, slot: int, starts: set[int], root: int | None = None) -> list:
+    """MKT table 0 ``slot``'s script (or the script at ``root``) as host words: ints,
+    ``("frame", rel)`` and ``("jump", index)``."""
 
     out: list = []
     at: dict[int, int] = {}
-    pos = donor.table0[slot]
+    pos = donor.table0[slot] if root is None else root
     jumps = []
     while True:
         if len(out) > MAX_SCRIPT_WORDS:
@@ -767,6 +768,77 @@ def lying_landing(words: list) -> list:
 
 
 KNOCKDOWN_SLOT = 0x1E
+
+
+def phase_slot_frames(donor: Donor, slots, sources: dict | None = None) -> dict[int, list[list[int]]]:
+    """Per phase slot, the donor script's frames grouped by phase (table 0 index *slot*, or
+    ``sources[slot] = (table, index)``)."""
+
+    if not slots:
+        return {}
+    table1 = MktRom(donor.mkt).table1(donor.fighter_id)
+    starts = set(donor.table0) | set(table1)
+    out = {}
+    for slot in slots:
+        table, index = (sources or {}).get(slot, (0, slot))
+        root = (donor.table0 if table == 0 else table1)[index]
+        phases: list[list[int]] = [[]]
+        for w in linearise(donor, slot, starts, root):
+            if w == 0:
+                phases.append([])
+            elif isinstance(w, tuple) and w[0] == "frame" and donor.is_shape(w[1]):
+                phases[-1].append(w[1])
+        out[slot] = [p for p in phases if p]
+    return out
+
+
+def phase_fill(clean_file: bytes, slot: int, phases: list[list[int]], mode: str = "phases",
+               stance: int | None = None, table: int = 0) -> dict[int, int]:  # fmt: skip
+    """Host frame positions of primary ``slot``'s stock script -> donor frames.
+
+    ``phases``: phase *k* takes donor phase *k* (the last donor phase for later ones), scaled by
+    position, end points kept. ``shift:N`` (signed): host position *p*, counted over all
+    phases, shows frame *p + N* of the donor's phases but the last (its retract) in order;
+    before them ``stance``, after them the retract scaled over the remaining positions.
+    Sektor's accepted throw (proof v55) has its visuals two places late (``shift:-2``);
+    Reptile's MKT throw lands right one place early (owner, inputs proofs v01-v02)."""
+
+    root = be32(clean_file, (4 * slot) if table == 0 else (0x104 + 4 * slot))
+    _, entries = _host_layout(clean_file)  # every table entry starts a script (the throw ends at +0x928)
+    end = min((v for _, v in entries if v > root), default=TYPE_START)
+    host: list[list[int]] = [[]]
+    for p, v, kind in _host_items(clean_file, root, end):
+        if kind == "end":
+            host.append([])
+        elif kind == "token" and v in (1, 2):
+            break
+        elif kind == "frame":
+            host[-1].append(p)
+    if mode.startswith("shift:"):
+        shift = int(mode[6:])
+        frames = [r for p in (phases[:-1] if len(phases) > 1 else phases) for r in p]
+        retract = phases[-1] if len(phases) > 1 else frames[-1:]
+        positions = [p for ph in host for p in ph]
+        if stance is None and shift < 0:
+            raise LayoutError(f"slot 0x{slot:02X}: a negative shift needs the stance pose")
+        after = [p for p in range(len(positions)) if p + shift >= len(frames)]
+        seq = []
+        for p in range(len(positions)):
+            if p + shift < 0:
+                seq.append(stance)
+            elif p + shift < len(frames):
+                seq.append(frames[p + shift])
+            else:
+                k, n = after.index(p), len(after)
+                seq.append(retract[0] if n == 1 else retract[round(k * (len(retract) - 1) / (n - 1))])
+        return dict(zip(positions, seq, strict=True))
+    out = {}
+    for k, positions in enumerate(p for p in host if p):
+        src = phases[min(k, len(phases) - 1)]
+        n = len(positions)
+        for i, pos in enumerate(positions):
+            out[pos] = src[0] if n == 1 else src[round(i * (len(src) - 1) / (n - 1))]
+    return out
 
 
 def _host_items(data: bytes, start: int, end: int) -> list[tuple[int, int, str]]:
@@ -858,11 +930,14 @@ def stock_tails(clean_file: bytes, slot_cfg: dict, translated: dict, stock_shape
 
 def _computed_cfg(description, donor: Donor, clean_file: bytes) -> dict:
     reader = MktRom(donor.mkt)
-    starts = set(donor.table0) | set(reader.table1(donor.fighter_id))
+    table1 = reader.table1(donor.fighter_id)
+    starts = set(donor.table0) | set(table1)
     primary, entries = _host_layout(clean_file)
     cfg = {}
     for slot in description.body.slots:
-        words = linearise(donor, slot, starts)
+        table, index = description.body.sources.get(slot, (0, slot))
+        source = (donor.table0 if table == 0 else table1)[index]
+        words = linearise(donor, slot, starts, source)
         if slot == KNOCKDOWN_SLOT:
             words = lying_landing(words)
         root = be32(clean_file, 4 * slot)
@@ -874,7 +949,7 @@ def _computed_cfg(description, donor: Donor, clean_file: bytes) -> dict:
                 stock_phase = sum(1 for p in range(root, v, 4) if be32(clean_file, p) == 0)
                 aliases.append((off, stock_phase))
         mode = "inplace" if len(words) <= capacity else "packed"
-        cfg[slot] = {"donor": donor.table0[slot], "mode": mode, "computed": True, "words": words,
+        cfg[slot] = {"donor": source, "mode": mode, "computed": True, "words": words,
                      "n": len(words), "target": root, "capacity": capacity, "aliases": aliases,
                      "shapes": [w[1] for w in words if isinstance(w, tuple) and w[0] == "frame"]}  # fmt: skip
     return cfg
@@ -1072,6 +1147,12 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         for rel in slot_cfg[slot]["shapes"]:
             if rel not in old_shapes:
                 old_shapes.append(rel)
+    phase_sources = phase_slot_frames(donor, body_d.phase_slots)
+    secondary_sources = phase_slot_frames(donor, body_d.secondary_slots, body_d.secondary_slots)
+    for phases in [*phase_sources.values(), *secondary_sources.values()]:
+        for rel in (r for p in phases for r in p):
+            if rel not in old_shapes:
+                old_shapes.append(rel)
     run_rels = donor.frames(body_d.run_slot) if layout is None or layout.run_frames is None else list(layout.run_frames)
     frame_cache = {rel: donor.frame(rel) for rel in old_shapes}
     for r in run_rels:
@@ -1232,6 +1313,18 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
                 put32(file87, off, target + 4 * phase_starts[min(phase, len(phase_starts) - 1)])
                 log.append(f"ALIAS table 0x{off:X} -> slot 0x{slot:02X} phase {phase}")
 
+    stance_rel = translated_first_frame(slot_cfg, donor)
+    for slot, phases in phase_sources.items():
+        mode = body_d.phase_slots[slot]
+        for pos, rel in phase_fill(clean_file, slot, phases, mode, stance_rel).items():
+            put32(file87, pos, shape_map[rel])
+            owned.add(pos)
+        log.append(f"PHASES slot 0x{slot:02X}: host script kept, donor frames ({mode})")
+    for slot, phases in secondary_sources.items():
+        for pos, rel in phase_fill(clean_file, slot, phases, "phases", table=1).items():
+            put32(file87, pos, shape_map[rel])
+            owned.add(pos)
+        log.append(f"SECONDARY slot 0x{slot:02X}: host script kept, donor frames by phase")
     tails, tail_log = stock_tails(clean_file, slot_cfg, translated, stock_shape_set, set(shape_map.values()))
     for pos, word in tails.items():
         put32(file87, pos, word)

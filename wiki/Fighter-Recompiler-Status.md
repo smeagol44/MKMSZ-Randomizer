@@ -9,7 +9,7 @@
 ### Milestone 4 — agreed tasks (owner, 2026-11-11)
 
 1. **Body:** a test ROM with Reptile's body (generic body builder, computed layout, auto colour) and his MKT voice set. The owner checks poses, colours, the common animations and the voices.
-2. **Inputs:** combos and the remaining easy animations. Reptile's MKT special commands are wired to Sub-Zero's stock specials for now.
+2. **Inputs:** combos and the remaining easy animations. Reptile's MKT special commands are wired to Sub-Zero's stock specials for now. Split into 2a (combos, combo animation, throw) and 2b (special commands; the host HP table needs room for three records, and the forceballs need their both-buttons condition).
 3. **Specials:** each step changes only the actions; the commands from step 2 stay. Order and replaced power slot:
 
    | Order | Reptile | Replaces (Sub-Zero slot) |
@@ -31,7 +31,7 @@
 
 - [ ] Reptile adds no code outside his description and reusable components (review and test).
 - [x] The owner accepts at runtime (bounded) the body (proof v03, 2026-11-11).
-- [ ] The owner accepts at runtime (bounded) the inputs and combos.
+- [x] The owner accepts at runtime (bounded) the inputs and combos (inputs proofs v03 and v05, 2026-11-11).
 - [ ] The owner accepts at runtime (bounded) each special, in the agreed order.
 - [ ] The owner accepts a full-seed run.
 - [ ] Sektor regression unchanged, or the difference explained and re-accepted; full suite passes; this page updated in each PR.
@@ -53,6 +53,64 @@ v01 causes and the generic fixes in v02 (`fighter_import.body_build`; Sektor's e
 - **HP↔LP switch** (Static-confirmed cause). Stock primaries `0x0E`/`0x0F` carry host-only phases after their loop: retract, a single pose, and switch phases that go through one frame of each punch and jump into the other punch's script (`0x58C`, `0x57C`, `0x51C`, `0x50C`). MKT scripts end at the loop, so the computed layout left those phases empty. When the imported script has the stock shape up to the loop, it now keeps the stock tail (tokens, operands, jumps) and translates each stock frame to the imported frame in the same place. This gives the same roles as Sektor's hand layout.
 - **Pit fall** (unchanged): the held pose is the knockdown's last fall frame (`0x27B4`), as for Sektor.
 - **Palette, v03** (Static-confirmed cause). v01 and v02 read Reptile's palette from `0x800A1738[19]`. That table is not indexed by fighter id past 16: entry `17 + k` is the alternate palette of fighter `k`, so v01/v02 used another fighter's alternate (11 greys, 7 dark greens, 13 browns). The per-fighter table is `0x800A3660`. Its entry equals the palette that the fighter's first frame binds for every fighter with its own art (14 fighters, including 5 where `0x800A1738` differs). For fighters that share art (ninjas, robots) it holds the costume recolour in the shared layout. Reptile `0x800BE864`: entries 1–8 skin, 9–16 greys and black (16, the suit, is the most used), 17–31 green, which matches MKT's character select. Fighter 24 binds `0x800BB7EC`, but its entry `0x800B9AAC` has another layout (Pending; not an import target). Generic projectile proofs v01–v03 showed the same wrong palette for the forceball; v04 onwards bind the forceball's own palette and are unaffected.
+
+**Step 2a, combos and throw.**
+
+| Test ROM | SHA-256 | State |
+|---|---|---|
+| `MKMSZR_reptile-inputs_common_proof_v01.z64` | `fe87bb2af266d0cc6505c4b967f78403ddb5488ae2f323113df0c3f37b698603` | **Runtime-confirmed (bounded)** by the owner (2026-11-11): all three combos work, every hit is animated, and the finishers launch correctly with no corruption. The throw is "a bit off but acceptable". Reproducible at commit `b9d1c80`. |
+| `MKMSZR_reptile-inputs_common_proof_v02.z64` | `51adc9d3c59af671062441020940541ca6d204375d84959a202a2ba5bec196a8` | Changes from v01: knockback finisher at 10 damage (owner decision, Sektor too: build v62); throw by Sektor's lead-in rule (`shift:-1`). Owner (2026-11-11): damage **Runtime-confirmed** ("very good", Reptile and Sektor); throw **Rejected / failed** ("actually worse ... earlier instead of later"). Reproducible at commit `e16c816`. |
+| `MKMSZR_reptile-inputs_common_proof_v03.z64` | `a3c7e4487d9dd56d225877862f6e95c7bf6349bf7d4ce76f3030d73c9490e570` | **Runtime-confirmed (bounded)** by the owner (2026-11-11): the throw "looks much better now". v02 with the throw one place earlier than v01 (`shift:+1`); differs from v02 only inside file `0x87`. **Step 2a done.** |
+
+v01 is the accepted body plus:
+
+- Reptile's MKT combo strings through the generic `fighter_import.combos` ([record grammar](MKT-Adapter-Primitives#record-grammar-and-the-generic-component-2026-11-11)): `HP, HP, D+LP`, `HP, HP, HK, B+HK` and `HK, HK, B+HK`;
+- his combo animation (MKT table-1 slot 0) in host primary `0x10` (`body.slot_sources`);
+- his MKT throw poses in the host throw script (`body.phase_slots`; host tokens and timing kept).
+
+Outside file `0x87`, v01 changes only the CRCs, the kick root (ROM `0xA1CE8`) and the records `0xB1CB0..0xB1D00`; v02 also changes the knockback damage byte at ROM `0xB1A3A`.
+
+**Throw timing.** In every version the host keeps its throw script (tokens, phase ends, timing), and the donor frames are aligned with it:
+
+- **v01** fitted the throw phase by phase: 2/6/7 MKT frames into the host's 2/5/2.
+- **v02** used the rule Sektor's throw was accepted with. In proof v55 his visuals ran about one tick ahead of the grab, so the fix moved them later and started on the stance pose. For Reptile, this made the throw worse.
+- **v03** uses `body.phase_slots` mode `shift:N`. Host position *p*, counted over all three phases, shows donor frame *p + N* of the grab and throw phases; the stance fills the positions before them, and the retract the ones after. v02 is `shift:-1`, Sektor's v55 corresponds to `shift:-2`, and Reptile v03 is `shift:+1`: his second reach frame, his six throw frames from the second position, then the retract's ends.
+
+**Step 2b, special commands.**
+
+| Test ROM | SHA-256 | State |
+|---|---|---|
+| `MKMSZR_reptile-inputs_common_proof_v04.z64` | `2b7de49257700fba35dddc4a56b8eb094fef9fae79b91f450085f3af0c48a30b` | Owner (2026-11-11): "everything else looking good". **Runtime-confirmed (bounded):** Acid Spit, Forceball fast, Invisibility and the kept commands. **Pending:** Forceball slow (see below). **Rejected:** the slide, which was still the generic duck-based recipe; ninjas have their own MKT slide. Reproducible at commit `469b725`. |
+| `MKMSZR_reptile-inputs_common_proof_v05.z64` | `317d2099abc6e1947e8e0e4ada30ee39b00fb2b9ad67a49429607044ec5216a7` | **Runtime-confirmed (bounded)** by the owner (2026-11-11): the slide "looks fantastic", and Forceball slow outside Wind takes Ice. v04 with Reptile's MKT slide (table-1 slot 2: crouch and two slide poses) on host secondary 2 (Slide and Super Slide) through `body.secondary_slots`. **Step 2 done.** |
+
+v04 is v03 plus Reptile's MKT commands through the generic `fighter_import.commands` (description `commands`), each calling the Sub-Zero power it replaces:
+
+| Reptile command | Calls | Host table |
+|---|---|---|
+| Acid Spit, F,F + HP | Ice Blast | HP |
+| Forceball fast, F,F + HP+LP | Directional Ice (down) | HP and LP, both buttons checked |
+| Forceball slow, B,B + HP+LP | Ice Clone | HP and LP, both buttons checked |
+| Invisibility, U,D + HK | Freeze on Contact | HK |
+| Reverse Elbow, B,F + LK | nothing yet (Ice Shatter has no command record) | LK emptied |
+
+The other powers and records:
+
+- Directional Ice up is removed (D,F + HK).
+- Spine Rip and Polar Blast keep their HP commands.
+- Slide and Super Slide keep the host's own recognizers (Reptile's MKT slide is the same B + LP + BL + LK).
+
+The HP table grows to five records, so it moves to the v6 proof arena ([allocations](Memory-and-Allocation-Map#proof-only-allocations-generic-projectile-v01v06-2026-11-11)). The arena's loader also sets maximum EXP, so every power is unlocked. Until step 4 removes Air Ice Blast, Acid Spit uses Ice Blast's stock condition, so an airborne F,F + HP still gives Air Ice Blast from tier 4.
+
+**Forceball slow (v04: "didn't seem to work").** Statically, every input order reaches Ice Clone's stock condition `0x8004A22C`, as Forceball fast reaches Directional Ice's:
+
+- the held check needs HP and LP at `0x800BF2EE`;
+- the HP and LP tables scan on from the next record when it fails;
+- the run double-taps accept forward only;
+- Super Slide's check needs exactly LP+HP+Block.
+
+That condition refuses in native stage 1 (**Wind**, `0x8009A910 == 1`), within 320 ticks of the timestamp `0x80111FD4`, with Ice below `0x60`, while airborne, or without a free 128×128 texture. Outside Wind (v05, owner) the command works and takes Ice Clone's Ice, so the v04 report was the stock Wind refusal. No clone appears with Reptile's body. The clone's own presentation with an imported body is not investigated (Pending, low value), because step 3 replaces the action.
+
+Other stand-in poses left after the body: relocated stock scripts that nothing points to any more, and host-only states with no MKT counterpart established: the Ice projectile script P24, inherited "flipped by" labels P28–P31, and secondary slots S05–S0C and S2A. These are not "easy" animations; reachability is Pending.
 
 **Milestones 2 and 3: done (2026-11-11).**
 

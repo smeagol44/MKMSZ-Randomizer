@@ -273,16 +273,18 @@ def _write(out: bytearray, positions: list[int], values: list[int]) -> None:
 
 
 def apply(data: bytes | bytearray, long_fall: bool = True, *,
-          stock: bytes | bytearray | None = None, flipped: list[int] | None = None) -> bytearray:
+          stock: bytes | bytearray | None = None, flipped: list[int] | None = None,
+          slide: bool = True) -> bytearray:
     """A copy of fighter file ``data`` with the slide, death and long-fall recipes applied,
     plus pickup and the victim poses when ``stock`` (the clean host file) and ``flipped`` (the
     imported flip-pose frames) are given."""
 
     out = bytearray(data)
-    slide = frame_positions(out, SLIDE)
-    if len(slide) != len(SLIDE_FRAMES):
-        raise ValueError(f"host slide script has {len(slide)} frames, expected {len(SLIDE_FRAMES)}")
-    _write(out, slide, [frames(data, slot)[k] for slot, k in SLIDE_FRAMES])
+    if slide:  # False: the fighter's own slide is already in place (body.secondary_slots)
+        positions = frame_positions(out, SLIDE)
+        if len(positions) != len(SLIDE_FRAMES):
+            raise ValueError(f"host slide script has {len(positions)} frames, expected {len(SLIDE_FRAMES)}")
+        _write(out, positions, [frames(data, slot)[k] for slot, k in SLIDE_FRAMES])
     _write(out, frame_positions(out, DEATH), phase_frames(data, KNOCKDOWN, 2))
     if long_fall:  # False reproduces Sektor builder v59
         _write(out, frame_positions(out, LONG_FALL), phase_frames(data, KNOCKDOWN, 1)[-1:])

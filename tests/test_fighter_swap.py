@@ -22,11 +22,13 @@ from mkmszr.patches import fighter_swap as fs
 from mkmszr.patches.base import PatchContext
 from mkmszr.rom import RomImage
 
-# Sektor build v61 (v60 + pickup and grabbed poses) linked for the production pool tail
+# Sektor build v62 (v61 + combo knockback finishers at 10 damage, owner 2026-11-11; differs from
+# v61 ad2ceb4b... only in ROM 0xB1A3A and the CRCs) linked for the production pool tail
 # (fighter_import.sektor_build). v60 was 28e034af...; composition proof v13 (v60) e1f83b25...
-SEKTOR_BUILD_SHA256 = "ad2ceb4bfe80b4316338207baf49684d54c0ee7c570534692266c9751a88ed86"
-# --fighter sektor --seed SEKTOR-PROD-1 --debug-all-keys (composition v13's config).
-SEKTOR_CLI_SHA256 = "7fe0ed360472359e28a81447d16b8c57762037e8fb877b71c57db06bd5601bda"
+SEKTOR_BUILD_SHA256 = "e35df9c55330ff6d2ce2d19fab7c357c421e3b0884f3a4a7826ca62df95240c4"
+# --fighter sektor --seed SEKTOR-PROD-1 --debug-all-keys (composition v13's config). Build v62:
+# differs from the v61 output 7fe0ed36... only in ROM 0xB1A3A and the CRCs.
+SEKTOR_CLI_SHA256 = "0c739f81669f2f02b11fe99f290ebe9b6353ac5f491b623be48fd12ee17395a2"
 
 
 def test_config_accepts_the_fighters_and_requires_classic_specials() -> None:

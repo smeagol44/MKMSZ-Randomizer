@@ -4,7 +4,7 @@ Mechanically derived from the proof builder
 ``Experimental/SektorTransplantBuilders/teleport/MKMSZR_build_sektor_teleport_v60.py`` (its
 history is in that builder's description and the Wiki proof history), then extended in place:
 v61 adds the donor's five flip poses and the generic pickup and grabbed-by-an-enemy recipes
-(``common_moves``). ``build`` is pinned by hash (``tests/test_fighter_swap.py`` checks
+(``common_moves``); v62 raises the combo knockback finishers' damage from 7 to 10 (owner). ``build`` is pinned by hash (``tests/test_fighter_swap.py`` checks
 it when the ROMs are available). Inputs are the clean MKMSZ USA Rev. 0 ROM and the MKT USA
 Rev. 2 N64 donor ROM; nothing from either is stored here.
 """
@@ -857,6 +857,8 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
     _kr = PAYLOAD_ROM + (KNEE_REC_VA - PAYLOAD_VA)
     assert rom[_kr:_kr + 16].hex() == '8009110101031002040000000000000e'
     _log('COMBOS', 'graph at ROM', hex(COMBO_ROM), 'HK,HK record', hex(KNEE_REC_VA), 'ROM', hex(_kr))
+    # v62: the knockback finishers (strike 0x04, record 0x800B0E30) do 10 damage instead of 7 (owner, 2026-11-11).
+    guarded(0xB1A30, '00410000003300851412070100000201', '004100000033008514120a0100000201')
 
     # Zap script: projectile loop frames (+0xD90/+0xD94), token-0x0B constructor frame (+0xDBC) and the next
     # parent frame (+0xDC4, v80/v89: keeps the parent advance from restoring an Ice descriptor) -> rocket.

@@ -195,8 +195,10 @@ def test_reptile_body_builds_and_fits() -> None:
     r = body.report
     assert r["appended_items"] == 0 and r["file_end"] == bb.FILE87_SIZE  # stock-size file
     assert r["chain_free"] >= 0x10000  # room left for his moves
-    assert (r["frames"], r["run"]) == (155, 9)
-    out = cm.apply(bytes(body.file), stock=body.clean_file, flipped=body.flipped)
+    assert (r["frames"], r["run"]) == (177, 9)  # 155 + 12 combo (MKT t1[0]) + 8 throw + 2 slide (t1[2])
+    out = cm.apply(bytes(body.file), stock=body.clean_file, flipped=body.flipped, slide=False)
+    # Reptile's own MKT slide (table-1 slot 2) on host secondary 2 (body.secondary_slots).
+    assert cm.frames(out, cm.SLIDE) == [body.shape_map[r] for r in (0x1E54, 0x2F94, 0x2FA8)]
     assert len(cm.frames(out, cm.PICKUP)) == 5 and len(set(cm.frames(out, cm.LONG_FALL))) == 1
     # The lying pose (S09, the knockdown's phase 2) is one frame: the donor landing's last.
     lying = body.shape_map[0x27DC]
@@ -213,6 +215,12 @@ def test_reptile_body_builds_and_fits() -> None:
             w for w in stock if w not in body.stock_shape_set
         ]  # tokens, operands, phase ends and jumps are stock
         assert all(w in body.shape_map.values() for w, s in zip(now, stock) if s in body.stock_shape_set)
+    # Combo animation (host primary 0x10) from MKT table-1 slot 0; throw (0x23) by phase.
+    assert body.slot_cfg[0x10]["donor"] == bb.MktRom(Path(MKT).read_bytes()).table1(19)[0]
+    throw = cm.frames(out, (0, 0x23))
+    # shift:+1 (owner): MKT phases 1-2 (2 + 6 frames) one place early, then the retract's ends.
+    grab = [0x29E4, 0x29F8, 0x2A0C, 0x2A20, 0x2A34, 0x2A48, 0x2A5C, 0x2A5C, 0x29E4]
+    assert throw == [body.shape_map[r] for r in grab]
 
 
 @needs_mkt

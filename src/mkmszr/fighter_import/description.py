@@ -12,6 +12,22 @@ Body fields:
   checked against the donor ROM by :func:`check_donor`).
 * ``body.slots``: host primary slots imported by the generic rule "host slot *i* takes MKT
   table 0 index *i*" (Wiki ``Fighter-Recompiler-Inventory``).
+* ``body.slot_sources`` (optional, computed layout only): host slot -> ``"table0:0xNN"`` or
+  ``"table1:0xNN"``, the donor script a body slot takes instead of table 0 index *i*. Used
+  where the donor keeps a host slot's meaning elsewhere, e.g. Reptile's combo animation (host
+  primary 0x10) is his MKT table-1 slot 0, the animation his combo records select.
+* ``body.phase_slots`` (optional): host primary slot -> mode, for slots that keep the host
+  script (tokens, phase ends, timing) and take the frames of MKT table 0 index *i*. ``phases``:
+  phase by phase, scaled by position. ``shift:N`` (signed integer): the donor frames of every
+  phase but the last (its retract) in order over all the host's frame positions, moved N
+  places earlier (N < 0: later, the stance pose first); the retract fills what is left. Used
+  for the throw (0x23) to line the donor's grab up with the host's (Sektor proof v55 is two
+  places late; Reptile's, owner-tested, one place early).
+* ``body.secondary_slots`` (optional): host secondary slot -> ``"table0:0xNN"`` or
+  ``"table1:0xNN"``: the host script is kept and takes that donor script's frames phase by
+  phase, scaled by position. Used where the donor has the animation a host-only state plays,
+  e.g. the MKT ninjas' slide (Reptile table-1 slot 2) for host secondary 2 (Slide, Super Slide),
+  instead of the generic ``slide`` recipe.
 * ``body.run``: the MKT slot with the Run poses (``0x4A`` for every MKT fighter) and the host
   Run rate.
 * ``body.colour``: colour depth and method. ``explicit`` gives the 32→16 index map and the
@@ -25,6 +41,10 @@ Body fields:
   donor word count ``n`` or explicit ``words``, and ``hybrid`` (non-frame words stay stock).
   ``inherited_groups``/``run_groups`` split the body and Run frames into entropy groups;
   ``frame_edits`` sets host script words (file offset) to donor frames.
+* ``commands`` (optional): move program name -> the Sub-Zero power whose command record the
+  move's MKT command takes over (its action, condition and transfer selector; ``null``: no
+  action yet), and ``remove_commands``: Sub-Zero command records dropped although no move
+  takes them (``fighter_import.commands``; milestone 4 step 2).
 * ``legacy``: frozen Sektor-era modules this fighter still uses (plan rule 4).
 """
 
@@ -32,7 +52,8 @@ from __future__ import annotations
 
 import itertools
 import json
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from importlib import resources
 from typing import Any
 
@@ -91,6 +112,9 @@ class Body:
     colour: Colour
     common_animations: tuple[str, ...]
     layout: Layout | None = None
+    sources: dict[int, tuple[int, int]] = field(default_factory=dict)  # host slot -> (table, index)
+    phase_slots: dict[int, str] = field(default_factory=dict)  # host slot -> "phases" | "shift:N"
+    secondary_slots: dict[int, tuple[int, int]] = field(default_factory=dict)  # host S slot -> (table, index)
 
 
 @dataclass(frozen=True)
@@ -102,6 +126,8 @@ class FighterDescription:
     donor_name: str
     body: Body
     legacy: tuple[str, ...]
+    commands: dict[str, str | None] = field(default_factory=dict)
+    remove_commands: tuple[str, ...] = ()
 
 
 def _int(value: Any, where: str, errors: list[str]) -> int | None:
@@ -198,23 +224,86 @@ def validate(data: Any) -> FighterDescription:
             palette = None
 
     layout = _layout(body_d.get("layout"), slots, errors) if "layout" in body_d else None
+    sources: dict[int, tuple[int, int]] = {}
+    raw_sources = body_d.get("slot_sources", {}) if isinstance(body_d, dict) else {}
+    if not isinstance(raw_sources, dict):
+        errors.append("body.slot_sources: expected an object")
+        raw_sources = {}
+    for key, value in raw_sources.items():
+        slot = _int(key, f"body.slot_sources key {key!r}", errors)
+        table, _, index = str(value).partition(":")
+        idx = _int(index, f"body.slot_sources[{key}]", errors) if index else None
+        if slot is not None and slot not in slots:
+            errors.append(f"body.slot_sources[{key}]: not in body.slots")
+        if table not in ("table0", "table1") or idx is None or not 0 <= idx < 0x80:
+            errors.append(f"body.slot_sources[{key}]: expected 'table0:0xNN' or 'table1:0xNN'")
+        elif slot is not None:
+            sources[slot] = (int(table[-1]), idx)
+    phase_slots: dict[int, str] = {}
+    raw_phase = body_d.get("phase_slots", {}) if isinstance(body_d, dict) else {}
+    if not isinstance(raw_phase, dict):
+        errors.append("body.phase_slots: expected an object (slot -> 'phases' or 'shift:N')")
+        raw_phase = {}
+    for key, mode in raw_phase.items():
+        slot = _int(key, f"body.phase_slots key {key!r}", errors)
+        if slot is not None and (slot in slots or not 0 <= slot <= 0x40):
+            errors.append(f"body.phase_slots[{key}]: 0x{slot:02X} is a body slot or out of range")
+        elif not (mode == "phases" or (isinstance(mode, str) and re.fullmatch(r"shift:[+-]?\d{1,2}", mode))):
+            errors.append(f"body.phase_slots[{key}]: mode 'phases' or 'shift:N'")
+        elif slot is not None:
+            phase_slots[slot] = mode
+    secondary: dict[int, tuple[int, int]] = {}
+    raw_sec = body_d.get("secondary_slots", {}) if isinstance(body_d, dict) else {}
+    if not isinstance(raw_sec, dict):
+        errors.append("body.secondary_slots: expected an object")
+        raw_sec = {}
+    for key, value in raw_sec.items():
+        slot = _int(key, f"body.secondary_slots key {key!r}", errors)
+        table, _, index = str(value).partition(":")
+        idx = _int(index, f"body.secondary_slots[{key}]", errors) if index else None
+        if slot is not None and not 0 <= slot < 0x2B:
+            errors.append(f"body.secondary_slots[{key}]: host secondary slot 0x00..0x2A")
+        elif table not in ("table0", "table1") or idx is None or not 0 <= idx < 0x80:
+            errors.append(f"body.secondary_slots[{key}]: expected 'table0:0xNN' or 'table1:0xNN'")
+        elif slot is not None:
+            secondary[slot] = (int(table[-1]), idx)
+    if sources and "layout" in body_d:
+        errors.append("body.slot_sources: only with the computed layout")
     anims = _get(body_d, "common_animations", list, "body", errors) or []
     for a in anims:
         if a not in COMMON_ANIMATIONS:
             errors.append(f"body.common_animations: unknown {a!r} (known: {', '.join(COMMON_ANIMATIONS)})")
+    if "slide" in anims and 0x02 in secondary:
+        errors.append("body.secondary_slots: secondary 0x02 replaces the generic 'slide' recipe; drop one")
     legacy = data.get("legacy", [])
     if not isinstance(legacy, list) or any(x not in LEGACY_MODULES for x in legacy):
         errors.append(f"legacy: a list of {', '.join(LEGACY_MODULES)}")
         legacy = []
-    unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes"}
+    from .commands import HOST_POWERS
+
+    commands = data.get("commands", {})
+    if not isinstance(commands, dict) or any(
+        not isinstance(k, str) or (v is not None and v not in HOST_POWERS) for k, v in commands.items()
+    ):
+        errors.append(f"commands: move name -> one of {', '.join(HOST_POWERS)} or null")
+        commands = {}
+    remove = data.get("remove_commands", [])
+    if not isinstance(remove, list) or any(r not in HOST_POWERS for r in remove):
+        errors.append(f"remove_commands: a list of {', '.join(HOST_POWERS)}")
+        remove = []
+    called = [v for v in commands.values() if v]
+    if len(called) != len(set(called)) or set(called) & set(remove):
+        errors.append("commands: each host power is taken by one move and not removed")
+    unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes",
+                           "commands", "remove_commands"}  # fmt: skip
     if unknown:
         errors.append(f"unknown keys: {', '.join(sorted(unknown))}")
     if errors:
         raise DescriptionError("; ".join(errors))
     return FighterDescription(
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
-        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout),
-        legacy=tuple(legacy),
+        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary),
+        legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove),
     )  # fmt: skip
 
 
