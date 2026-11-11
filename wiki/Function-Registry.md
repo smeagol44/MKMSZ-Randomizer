@@ -215,7 +215,8 @@ Static-confirmed from clean MKMSZ USA Rev. 0; readings and use on [Fighter recom
 | `0x80072644` | Eye timer process | Static-confirmed | Started by the Inventory (`0x80073BE8`, class `0x100`); sleeps 1200 ticks, then undoes `0x80072584` (colour back to 128) |
 | `0x80005D74` | Enemy AI: player not seen | Static-confirmed | Taken by enemy AI routines while player `+0x6BC & 0x1000`: idle for a random 47..110 ticks |
 | `0x800498A8` | Quan Chi projectile action | Static-confirmed | Type `0x1B` AI action: secondary slot 2 in four steps, child `0x80049668`, sleep 40 |
-| `0x80049668` | Quan Chi projectile process | Static-confirmed | Sound `0x12`; `0x80047160(type, 3, …)`; speed 6.0 px/tick; `0x8004CF3C` selector `0x11` each tick; on contact it bounces back (`vx = -vx/4`, `vy = -4.0`, gravity `0xA000`); sound 2 every 8 ticks; ends when `0x80035088(actor, 200)` |
+| `0x80049668` | Quan Chi projectile process | Static-confirmed | Class-`0x800` child. Sound `0x12`; `0x80047160(type, 3, …)`; speed 6.0 px/tick; `0x8004CF3C` selector `0x11` each tick until the first contact. On a blocked contact (`0x802ECD88 == 1`) the ball deflects (`vx = -vx/4`, `vy = -4.0`, gravity `0xA000`); otherwise it flies on. Sound 2 every 8 ticks; ends when `0x80035088(actor, 200)` |
+| `0x8002BADC` (`0x8002BB40`) | Collision core attacker-class gate | Static-confirmed | Attacking controller class `1` or `0x700` → enemy-victim scan `0x8002CAE4`; any other class → player-target path. Blocked paths set `0x802ECD88 = 1` |
 
 ### Static lifecycle owners (2026-10-01)
 
