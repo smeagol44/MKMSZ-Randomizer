@@ -274,10 +274,14 @@ def place_art(
     if helper is not None:
         if helper_slot is None or throw_rate <= 0:
             raise ValueError("a helper needs its table-1 slot and the throw's frame rate")
-        # ``helper_lead`` body poses earlier than MKT's script; shown until the throw's last pose.
-        start = max(0, helper.start - helper_lead)
+        # ``helper_lead`` body poses earlier than MKT's script (frames that would fall before the
+        # throw are dropped); shown until the throw's last pose. The helper's own process starts
+        # a tick or two after the body and needs a frame to build (specials proof v06: a pose late).
+        start = helper.start - helper_lead
+        frames_shown = helper.frames[max(0, -start) :]
+        start = max(0, start)
         pace = phase_end_ticks(throw_rate)
-        helper_words = [shape[r] for r in helper.frames for _ in range(pace)]
+        helper_words = [shape[r] for r in frames_shown for _ in range(pace)]
         helper_ticks = (helper.start + len(helper.frames) - start) * pace
         helper_at = cursor
         script(helper_words + [1, helper_at + 4 * (helper_ticks - 1)])  # hold the last frame
