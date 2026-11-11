@@ -149,10 +149,10 @@ The native path, without patching the Ice root:
 
 - **Condition:** `emit_gate_condition` is the logic of Sektor's runtime-accepted missile conditions, made generic. It requires:
   - ground only, not grabbed, not busy;
-  - no live class-`0x700` projectile and no special lock;
+  - no live class-`0x700` projectile and no special lock. With `alive=(labels)`, only the projectiles that set those words block it (`emit_process(alive=label)` sets its word while it lives). Reptile's fast and slow forceballs may then coexist (specials proof v11, Pending);
   - the replaced power's Ice cost;
   - the replaced power's tier, read at run time from its stock gate instruction (`GATES`), so the power-order shuffle still applies.
-- **Action:** `emit_action` is entered through the Ice-root selector table (`0x8004AA4C`, selectors 3+). It runs the steps `begin`, `animate` (a donor animation copied into a host secondary slot by `body.secondary_scripts`), `projectile`, `sleep`, `finish` and `end`. `stamp` (MKT cooldown) is not lowered yet.
+- **Action:** `emit_action` is entered through the Ice-root selector table (`0x8004AA4C`, selectors 3+). It runs the steps `begin` (`face=False`: the stock special start `0x80049F90` without its `face_opponent` call, specials proof v11), `animate` (a donor animation copied into a host secondary slot by `body.secondary_scripts`), `projectile`, `sleep`, `finish` and `end`. `stamp` (MKT cooldown) is not lowered yet.
 - **Command:** `commands.lower(..., overrides)` points the command record at the new condition and the action thunk.
 - **Projectile:** backend v1. `place_art(at=...)` can now write the art into the fighter file's free body tail, so the file keeps its stock size and place (Sektor proof v47's heap-neutral rule). `emit_process(prefix=...)` lets several projectiles share one payload.
 
@@ -160,11 +160,11 @@ First use: Reptile specials proofs v01–v03 (forceballs).
 
 - **Acid Spit (specials proof v10):**
   - **Close-range checks:** extra strike records with the donor boxes, checked after each of the first frames before flight (`emit_process`).
-  - **Impact at the opponent:** move to the opponent, flip, offset by the donor `adjust`.
+  - **Impact at the opponent:** move to the opponent, flip, offset by the donor `adjust`. The flip mirrored Reptile's splash on the host (v10), so `Lowered.impact_flip` can drop it (v11).
   - **Stumble reactions:** lifted at their place in the payload (`lift_stumble`).
   - **Virtual art entries:** the host has only four empty table-1 slots. Scripts are reached by cursor offset, and `projectile_actor_build` takes an index whose `0x104 + 4·index` word sits in the art (`fighter_select_animation` truncates the index to 16 bits, so it is not used there).
   - **Virtual body scripts:** `body.secondary_scripts` keys `0x40–0x7F`.
-- **Throw helper:** MKT's token 11 creates a helper object from a frame, and tokens 12/14 step it, one helper frame per body frame. The frame after a helper step is the helper's, not a body pose. `lower_projectile.donor_helper` reads it, and `place_art(helper=...)` adds its frames and script. `emit_helper` is the process `emit_action(helper=...)` starts with the throw. It follows the owner's body (cursor in the throw script) rather than a clock; clocked versions drifted (specials proofs v03–v07). It goes at the launch through a handover (`emit_helper_handover`), because two type-4 projectile objects must not coexist (v04 crashed). Reptile's forceball (the ball forming in his hands) is the first use, Pending (specials proof v08).
+- **Throw helper:** MKT's token 11 creates a helper object from a frame, and tokens 12/14 step it, one helper frame per body frame. The frame after a helper step is the helper's, not a body pose. `lower_projectile.donor_helper` reads it, and `place_art(helper=...)` adds its frames and script. `emit_helper` is the process `emit_action(helper=...)` starts with the throw. It follows the owner's body (cursor in the throw script) rather than a clock; clocked versions drifted (specials proofs v03–v07). It goes at the launch through a handover (`emit_helper_handover`), because of the v04 crash: the forming ball and the flying ball were on screen together. The hypothesis was that two type-4 projectile objects must not coexist. Two stock projectiles coexist in Sektor's Double Missile (v46, Runtime-confirmed), so the cause is still open. Specials proof v11 lets two forceballs coexist (Pending). Reptile's forceball (the ball forming in his hands) is the first use, Pending (specials proof v08).
 
 ### Eye item
 

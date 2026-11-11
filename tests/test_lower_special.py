@@ -52,3 +52,39 @@ def test_forceball_action_follows_the_move_program() -> None:
     assert len(calls) >= 5  # special begin, select, phase end, spawn, sleeps, phase end, exit
     with pytest.raises(ValueError):
         ls.emit_action(Assembler(BASE), "x", fast.steps, cost=0, animations={}, child="ball")
+
+
+def test_per_move_limit_checks_only_its_own_words() -> None:
+    a = Assembler(BASE, cached_calls=True)
+    ls.emit_gate_condition(a, "cond", ls.GATES["ice_clone"], ls.COSTS["ice_clone"], alive=("mine", "acid"))
+    a.label("mine")
+    a.raw(0)
+    a.label("acid")
+    a.raw(0)
+    code = a.link()
+    text = _text(code)
+    words = {a.labels["mine"], a.labels["acid"]}
+    stores = [t for t in text if t.startswith("sw zero, 0(t0)")]
+    assert len(stores) == 2  # stale words cleared when no projectile process is left
+    loads = [i for i, t in enumerate(text) if t.startswith("lui t0") and text[i + 1].startswith("ori t0")]
+    pointed = {(int(text[i].split(", ")[1], 0) << 16) | int(text[i + 1].split(", ")[2], 0) for i in loads}
+    assert words <= pointed
+    free = a.labels["cond_free"]
+    find = next(i for i, t in enumerate(text) if t.startswith("addiu a0, zero, 1792"))
+    assert BASE + 4 * find < free  # the class scan runs only when a word is set
+
+
+def test_begin_without_turning() -> None:
+    moves, _ = components.load_programs("reptile")
+    acid = next(m for m in moves if m.name == "acid_spit")
+    texts = {}
+    for face in (True, False):
+        a = Assembler(BASE, cached_calls=False)
+        ls.emit_action(a, "root", acid.steps, cost=0x20, animations={(1, 6): ("at", 0x100)},
+                       child="ball", sounds={8: 1}, face=face)  # fmt: skip
+        a.label("ball")
+        a.label("play")
+        texts[face] = " ".join(_text(a.link()))
+    on, off = texts[True].lower(), texts[False].lower()  # jal targets print in the KSEG1 segment
+    assert "0049f90" in on and "0049f90" not in off  # stock special begin (it faces)
+    assert "002b74c" in off and "002b05c" in off and "0031ef0" not in off  # its steps, no face

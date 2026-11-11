@@ -125,6 +125,7 @@ class DonorPart:
     frames: tuple[int, ...]  # frame records (heap-relative), in script order
     palette: int | None  # palette bound by token 13 (the next frame record's palette word)
     loops: bool
+    loop_from: int = 0  # frame index the loop jumps back to (MKT acid: past the spit frames)
 
 
 def donor_part(donor: Donor, anim: dict[str, Any]) -> DonorPart:
@@ -142,13 +143,16 @@ def donor_part(donor: Donor, anim: dict[str, Any]) -> DonorPart:
             if MKT.is_token(v):
                 p += 4 * len(MKT.operands[v])
     frames: list[int] = []
-    palette, bind_next, loops = None, False, False
+    at: list[int] = []
+    palette, bind_next, loops, loop_from = None, False, False, 0
     while True:
         v = donor.m32(p)
         if v == 0:
             break
         if v == 1:
             loops = True
+            target = donor.m32(p + 4)
+            loop_from = at.index(target) if target in at else 0
             break
         if MKT.is_token(v):
             if v == 13:
@@ -160,8 +164,9 @@ def donor_part(donor: Donor, anim: dict[str, Any]) -> DonorPart:
         if bind_next:
             palette, bind_next = donor.m32(v + 0x14), False
         frames.append(v)
+        at.append(p)
         p += 4
-    return DonorPart(tuple(frames), palette, loops)
+    return DonorPart(tuple(frames), palette, loops, loop_from)
 
 
 @dataclass(frozen=True)
@@ -306,9 +311,15 @@ def place_art(
         return put(b"".join(w.to_bytes(4, "big") for w in words))
 
     rate = _int(step["rate"])
-    flight_words = [shape[r] for r in flight.frames for _ in range(rate)]
+    # Frames shown by the close-range check steps appear once each (one advance per step);
+    # the rest at ``rate``; the loop goes back to the donor's loop frame (MKT acid: 0x31B0).
+    early = len(step.get("checks", []))
+    flight_words = [shape[r] for r in flight.frames[:early]]
+    flight_words += [shape[r] for r in flight.frames[early:] for _ in range(rate)]
+    loop_word = (flight.loop_from if flight.loop_from < early
+                 else early + (flight.loop_from - early) * rate)  # fmt: skip
     flight_at = cursor
-    script(flight_words + [1, flight_at])  # loop
+    script(flight_words + [1, flight_at + 4 * loop_word])  # loop
     impact_ticks = 0
     entries = [(slots[0] if slots else 0, flight_at)]
     if impact is not None:
@@ -423,6 +434,7 @@ class Lowered:
     checks: tuple[bytes, ...] = ()  # close-range strike records, one per early frame
     impact_at_opponent: bool = False
     impact_dx: int = 0  # world units, after facing the attacker (MKT multi_adjust_xy)
+    impact_flip: bool = True  # MKT flip_single (Acid Spit v10: mirrored on the host)
 
 
 def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
@@ -490,7 +502,7 @@ def emit_spawn(a: Assembler, child: str = "projectile", after: str = "after_spaw
 
 
 def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: str = "play",
-                 prefix: str = "", data: str = "") -> None:  # fmt: skip
+                 prefix: str = "", data: str = "", alive: str | None = None) -> None:  # fmt: skip
     """The projectile process. Needs :func:`host.emit_sound_player` (label ``player``) and
     :func:`emit_data` (labels ``data + "record"``, ``data + "reaction"``, checks) in the same
     assembly. ``prefix`` names its internal labels, so several processes can share one
@@ -531,6 +543,10 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
 
     a.label(child)
     a.addiu("sp", "sp", -0x40)
+    if alive is not None:  # this move's projectile is live (lower_special: per-move limit)
+        a.la("t0", alive)
+        a.li("t1", 1)
+        a.sw("t1", 0, "t0")
     host.load_controller(a)
     a.lhu("a0", 0x78, "s1")  # owner type (4)
     a.li("a1", p.art.flight_slot)
@@ -600,10 +616,11 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
             a.sw("t1", host.ACTOR_X, "s1")
             a.lw("t1", host.ACTOR_Y, "t0")
             a.sw("t1", host.ACTOR_Y, "s1")
-            a.lhu("t1", ACTOR_FLAGS, "s1")
-            a.li("t2", FACING_BIT)
-            a.xor("t1", "t1", "t2")
-            a.sh("t1", ACTOR_FLAGS, "s1")
+            if p.impact_flip:
+                a.lhu("t1", ACTOR_FLAGS, "s1")
+                a.li("t2", FACING_BIT)
+                a.xor("t1", "t1", "t2")
+                a.sh("t1", ACTOR_FLAGS, "s1")
             a.move("a0", "s1")
             a.li("a1", p.impact_dx)
             a.move("a2", "zero")
@@ -632,6 +649,9 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.jal(F_ACTOR_REMOVE)
     a.lw("a0", 0x20, "sp")
     a.jal(F_TEX_RELEASE)
+    if alive is not None:
+        a.la("t0", alive)
+        a.sw("zero", 0, "t0")
     a.jal(F_EXIT)
     a.label(prefix + "child_hang")
     a.beq("zero", "zero", prefix + "child_hang")

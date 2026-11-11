@@ -27,6 +27,9 @@ SOUND_PARAMS = 0x802C1188  # parameter block used by 0x80064C18
 # Functions
 F_SPECIAL_BEGIN = 0x80049F90  # stop, face, busy input map (uncancellable)
 F_STOP = 0x8002B1C0
+F_BEGIN_BUSY = 0x8002B74C  # (actor), the step after face_opponent in 0x80049F90
+F_INPUT_MAP = 0x8002B05C  # (actor, input map)
+BUSY_INPUT_MAP = 0x8009F988
 F_FIND_NEAREST = 0x80031D00
 F_FACE = 0x80031EF0
 F_ANIM_ADVANCE = 0x800304C0
@@ -122,11 +125,29 @@ def set_action_id(a: Assembler, action_id: int) -> None:
     a.sh("t0", CTRL_ACTION_ID, "s0")
 
 
-def special_begin(a: Assembler) -> None:
-    """Native special begin: busy input map, so the action cannot be cancelled."""
+def special_begin(a: Assembler, face: bool = True) -> None:
+    """Native special begin: busy input map, so the action cannot be cancelled. ``face``
+    False: the same steps without turning to the nearest opponent (``0x80049F90`` minus its
+    ``face_opponent`` call; Acid Spit, owner: specials must not turn the player around)."""
 
+    if face:
+        a.move("a0", "s1")
+        a.jal(F_SPECIAL_BEGIN)
+        return
     a.move("a0", "s1")
-    a.jal(F_SPECIAL_BEGIN)
+    a.jal(F_STOP)
+    a.lw("t0", 0x64, "s1")
+    a.ori("t0", "t0", 0x4)
+    a.sw("t0", 0x64, "s1")
+    a.move("a0", "s1")
+    a.jal(F_BEGIN_BUSY)
+    load_controller(a)
+    a.lhu("t0", CTRL_STATE_FLAGS, "s0")
+    a.ori("t0", "t0", 0x10)
+    a.sh("t0", CTRL_STATE_FLAGS, "s0")
+    a.move("a0", "s1")
+    a.li("a1", BUSY_INPUT_MAP)
+    a.jal(F_INPUT_MAP)
 
 
 def set_cursor(a: Assembler, script_offset: int) -> None:

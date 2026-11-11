@@ -127,3 +127,31 @@ def test_virtual_art_entries() -> None:
     assert art.virtual and art.impact_slot is not None
     for index, at in ((art.flight_slot, art.flight_at), (art.impact_slot, art.impact_at)):
         assert int.from_bytes(file87[0x104 + 4 * index : 0x108 + 4 * index], "big") == at
+
+
+def test_process_alive_word_and_unmirrored_impact() -> None:
+    import dataclasses
+
+    from mkmszr.fighter_import import host
+    from mkmszr.fighter_import.mipsdis import decode
+
+    art = lp.ArtLayout(0x459E0, 0x0D, 0x12, 21, 100, 88)
+    p = lp.Lowered(art, 0x77776, -60, -72, bytes(16), (0,) * 4, None, 3, None,
+                   impact_at_opponent=True)  # fmt: skip
+    texts = {}
+    for flip in (True, False):
+        a = Assembler(0xA01AF420)
+        lp.emit_spawn(a)
+        lp.emit_process(a, dataclasses.replace(p, impact_flip=flip), alive="alive")
+        host.emit_sound_player(a)
+        lp.emit_data(a, p, 0xA01AF420)
+        a.label("alive")
+        a.raw(0)
+        code = a.link()
+        texts[flip] = [decode(int.from_bytes(code[i : i + 4], "big"), 0xA01AF420 + i).text
+                       for i in range(0, len(code), 4)]  # fmt: skip
+    assert any(t.startswith("xor t1, t1, t2") for t in texts[True])
+    assert not any(t.startswith("xor t1, t1, t2") for t in texts[False])
+    sets = [t for t in texts[False] if t.startswith("sw t1, 0(t0)")]
+    clears = [t for t in texts[False] if t.startswith("sw zero, 0(t0)")]
+    assert sets and clears  # set while alive, cleared before the process exits
