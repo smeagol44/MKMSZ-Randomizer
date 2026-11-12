@@ -247,6 +247,31 @@ def heap_descriptor_frame(heap: bytes, descriptor: int, dictionary: bytes) -> Ef
     return frame
 
 
+def mkt_animation_art(mkt: bytes, animation: int, dictionary: int) -> EffectArt:
+    """A shared MKT effect animation (``create_fx``) as host art: ``animation`` is the
+    zero-terminated list of one-part shapes ``{descriptor, 0}``, each descriptor
+    ``{image, h << 16 | w, anchor x, anchor y}``; the first descriptor's fifth word is the
+    palette record (MKT token-13 style); ``dictionary`` is the 0x100-byte pair dictionary of
+    its codec-14/19/22/24 images. Reptile's invisibility fire (``create_fx(30)``, routine
+    ``0x8002E050``: animation ``0x800CC924..`` through ``0x800CC77C``, dictionary
+    ``0x800CCA88``) is the first use."""
+
+    frames = []
+    palette_va = None
+    va = animation
+    while (shape := _mkt_u32(mkt, va)) != 0:
+        if _mkt_u32(mkt, shape + 4) != 0:
+            raise ValueError(f"MKT effect shape {shape:#x} is not one-part")
+        descriptor = _mkt_u32(mkt, shape)
+        if palette_va is None:
+            palette_va = _mkt_u32(mkt, descriptor + 12)
+        frames.append(mkt_frame(mkt, descriptor, mkt[dictionary - 0x80000000 : dictionary - 0x80000000 + 0x100]))
+        va += 4
+    if palette_va is None or not 0x80000000 <= palette_va < 0x80400000:
+        raise ValueError("MKT effect animation has no palette")
+    return EffectArt(tuple(frames), mkt_palette(mkt, palette_va), compressed=True)
+
+
 def mkt_palette(mkt: bytes, va: int) -> tuple[int, ...]:
     count = _mkt_u32(mkt, va)
     base = va - 0x80000000 + 4

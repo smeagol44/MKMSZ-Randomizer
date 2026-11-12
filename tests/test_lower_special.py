@@ -144,3 +144,47 @@ def test_footsteps_follow_the_donor_run() -> None:
     calls = " ".join(_text(hold.link()))
     assert "addiu t9, t9, 1220" not in calls  # no stock hit effect 0x800504C4 (v17)
     assert "addiu t9, t9, 22180" in calls  # 0x800556A4 stays
+
+
+def test_invisibility_stealth_and_timer() -> None:
+    moves, _ = components.load_programs("reptile")
+    inv = next(m for m in moves if m.name == "invisibility")
+    a = Assembler(BASE, cached_calls=True)
+    ls.emit_gate_condition(a, "cond", ls.GATES["freeze_on_contact"], ls.COSTS["freeze_on_contact"],
+                           refuse_if=(ls.CTRL_STEALTH, ls.STEALTH_BIT))  # fmt: skip
+    ls.emit_action(a, "root", inv.steps, cost=0x80, animations={(1, 1): ("at", 0x100)}, face=False,
+                   donor_ticks=2, sounds={9: 175}, stealth="timer", skip=frozenset({"effect"}))  # fmt: skip
+    a.label("play")
+    ls.emit_stealth_timer(a, "timer", 3, 1)
+    code = a.link()
+    text = " ".join(_text(code))
+    assert "andi t4, t4, 0x1000" in text  # refused while already stealthed
+    assert "addiu a0, zero, 175" in text
+    assert "lhu t0, 1622(a0)" in text and "slti t1, t0, 1" in text  # Ice drained each period
+    assert "addiu t9, t9, 9604" in text  # 0x80072584, the Eye's effect
+    assert "andi t1, t1, 0xFFFE" in text  # the Inventory's timer request is cleared
+    # The generation word follows jr ra and its delay slot, so it is never executed.
+    gen = a.labels["timer_gen"] - BASE
+    assert code[gen - 8 : gen] == bytes.fromhex("03e0000800000000")
+    with pytest.raises(ValueError, match="not ported"):
+        ls.emit_action(Assembler(BASE), "x", inv.steps, cost=0, animations={(1, 1): ("at", 0)},
+                       sounds={9: 175}, stealth="timer")  # fmt: skip
+
+
+@pytest.mark.skipif(not os.environ.get("MKMSZR_MKT_ROM"), reason="needs MKMSZR_MKT_ROM")
+def test_invisibility_fire_effect() -> None:
+    from mkmszr.fighter_import import effects
+
+    mkt = Path(os.environ["MKMSZR_MKT_ROM"]).read_bytes()
+    fire = effects.mkt_animation_art(mkt, 0x800CC77C, 0x800CCA88)
+    assert len(fire.frames) == 9 and fire.slot_size == (100, 137) and len(fire.palette) == 32
+    moves, _ = components.load_programs("reptile")
+    inv = next(m for m in moves if m.name == "invisibility")
+    a = Assembler(BASE, cached_calls=True)
+    ls.emit_action(a, "root", inv.steps, cost=0x40, animations={(1, 1): ("at", 0x100)}, face=False,
+                   donor_ticks=2, sounds={9: 175}, stealth="timer", effects={30: ("fx_fire", 0)})  # fmt: skip
+    for name in ("play", "timer", "timer_gen", "timer_undo", "fx_fire", "fx_spawn_xy"):
+        a.label(name)
+    text = " ".join(_text(a.link()))
+    assert "ori a3, a3, 0xFFFF" in text  # drawn in front (sub-layer 0xFFFF)
+    assert "addiu t1, t1, -64" in text  # Ice 0x40 (owner: half of Freeze on Contact's)
