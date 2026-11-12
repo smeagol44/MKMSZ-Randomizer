@@ -82,6 +82,91 @@
     "elbow_dash": "ice_shatter",
     "invisibility": "freeze_on_contact"
   },
+  "costs": {
+    "forceball_fast": "0x30",
+    "forceball_slow": "0x30",
+    "invisibility": "0x40"
+  },
+  "help": {
+    "ice-blast": [
+      [
+        "ACID SPIT"
+      ],
+      [
+        "FORWARD, FORWARD,",
+        "HIGH PUNCH."
+      ],
+      [
+        "SPITS ACID THAT",
+        "STAGGERS ENEMIES."
+      ]
+    ],
+    "slide": "stock",
+    "directional-ice": [
+      [
+        "FAST FORCEBALL"
+      ],
+      [
+        "FORWARD, FORWARD,",
+        "HIGH PUNCH AND",
+        "LOW PUNCH."
+      ],
+      [
+        "A FAST BALL OF",
+        "ENERGY THAT",
+        "KNOCKS ENEMIES",
+        "BACK."
+      ]
+    ],
+    "air-ice-blast": "empty",
+    "ice-clone": [
+      [
+        "SLOW FORCEBALL"
+      ],
+      [
+        "BACK, BACK,",
+        "HIGH PUNCH AND",
+        "LOW PUNCH."
+      ],
+      [
+        "A SLOW BALL OF",
+        "ENERGY. A FAST AND",
+        "A SLOW ONE CAN",
+        "FLY AT ONCE."
+      ]
+    ],
+    "ice-shatter": [
+      [
+        "REVERSE ELBOW"
+      ],
+      [
+        "BACK, FORWARD,",
+        "LOW KICK."
+      ],
+      [
+        "DASHES THROUGH AN",
+        "ENEMY AND ELBOWS",
+        "IT FROM BEHIND."
+      ]
+    ],
+    "super-slide": "stock",
+    "freeze-on-contact": [
+      [
+        "INVISIBILITY"
+      ],
+      [
+        "UP, DOWN,",
+        "HIGH KICK."
+      ],
+      [
+        "ENEMIES LOSE",
+        "TRACK OF REPTILE.",
+        "DRAINS ICE WHILE",
+        "ACTIVE."
+      ]
+    ],
+    "polar-blast": "stock"
+  },
   "icons": {
     "palette": "0x800BE864",
     "background": [
