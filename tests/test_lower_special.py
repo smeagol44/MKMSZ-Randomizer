@@ -88,3 +88,31 @@ def test_begin_without_turning() -> None:
     on, off = texts[True].lower(), texts[False].lower()  # jal targets print in the KSEG1 segment
     assert "0049f90" in on and "0049f90" not in off  # stock special begin (it faces)
     assert "002b74c" in off and "002b05c" in off and "0031ef0" not in off  # its steps, no face
+
+
+def test_elbow_dash_lowering() -> None:
+    from mkmszr.fighter_import import lower_projectile as lp
+    from mkmszr.fighter_import import physics
+
+    moves, _ = components.load_programs("reptile")
+    elbow = next(m for m in moves if m.name == "elbow_dash")
+    a = Assembler(BASE, cached_calls=True)
+    records = ls.emit_action(
+        a, "root", elbow.steps, cost=0, animations={(0, 0x4A): ("at", 0xEE8), (1, 0x0B): ("at", 0x5000)},
+        face=False, donor_ticks=2, reactions={"elbow_hold": 0x4C},
+        speed=lambda v: physics.fold_donor_speeds(v, v, lambda d: d, lp.UNITS_PER_PX)[0],
+    )
+    ls.emit_hold_reaction(a, "hold", 2)
+    ls.emit_strike_data(a, records, BASE)
+    text = " ".join(_text(a.link()))
+    # Two strikes: the hold (reaction 0x4C, no damage) and the return hit (uppercut 0x08, 13/3).
+    assert [r[8:12].hex() for _, r in records] == ["4c050000", "08050d03"]
+    assert all(a.labels[name] % 16 == BASE % 16 for name, _ in records)
+    assert "lui a1, 0xD" in text and "ori a1, a1, 0xDDDD" in text  # MKT 0xA6666 -> host 0xDDDDD
+    assert "addiu s3, zero, 8" in text and "addiu s3, zero, 10" in text  # windows: MKT 16 and 20
+    assert "addiu s4, zero, 7" in text  # pass-through dash: MKT 14 ticks
+    assert "0049f90" not in text.lower()  # no turning at the start
+    assert "addiu s2, zero, 10" in text  # the hold: MKT 20 ticks
+    with pytest.raises(ValueError, match="reaction"):
+        ls.emit_action(Assembler(BASE), "x", elbow.steps, cost=0,
+                       animations={(0, 0x4A): ("at", 0), (1, 0x0B): ("at", 0)}, speed=lambda v: v)  # fmt: skip

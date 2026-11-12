@@ -61,6 +61,9 @@ HOST_POWERS = {
     "directional_ice_down": 0x800B0F68,
     "directional_ice_up": 0x800B0F98,
 }
+# Sub-Zero powers with no command record (Ice Shatter is contextual, after two Ice Blasts). A
+# move may take one only with its own special (``lower(overrides=...)``): its record is new.
+COMMANDLESS_POWERS = ("ice_shatter",)
 
 
 class CommandError(ValueError):
@@ -97,8 +100,11 @@ class Lowered:
 
 
 def _host_record(clean: bytes, cmd: Command, cond: int, override: tuple[int, int, int] | None) -> bytes:
-    stock = record_at(clean, HOST_POWERS[cmd.calls], VA_TO_ROM)  # type: ignore[index]
-    selector, action = (_u32(stock, 4), _u32(stock, 12)) if override is None else (override[0], override[2])
+    if override is None:
+        stock = record_at(clean, HOST_POWERS[cmd.calls], VA_TO_ROM)  # type: ignore[index]
+        selector, action = _u32(stock, 4), _u32(stock, 12)
+    else:
+        selector, action = override[0], override[2]
     rec = bytearray(cmd.record)
     rec[4:16] = selector.to_bytes(4, "big") + cond.to_bytes(4, "big") + action.to_bytes(4, "big")
     return bytes(rec)
@@ -115,8 +121,11 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
     unwired = [c.name for c in commands if c.calls is None]
     used = {c.calls for c in commands if c.calls}
     for name in used | remove:
-        if name not in HOST_POWERS:
+        if name not in HOST_POWERS and name not in COMMANDLESS_POWERS:
             raise CommandError(f"unknown host power {name!r}")
+    for cmd in commands:
+        if cmd.calls in COMMANDLESS_POWERS and cmd.name not in overrides:
+            raise CommandError(f"{cmd.name}: {cmd.calls} has no command record; the move needs its own special")
     kept = {p for p in HOST_POWERS if p not in used and p not in remove}
     tables: dict[str, list[tuple[str, Command | None, int]]] = {}
     for table in HOST_TABLES:
@@ -153,9 +162,10 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
                 continue
             assert cmd is not None and cmd.calls is not None
             override = overrides.get(cmd.name)
-            stock_cond = _u32(record_at(clean, HOST_POWERS[cmd.calls], VA_TO_ROM), 8)
             if override is not None:
                 stock_cond = override[1]
+            else:
+                stock_cond = _u32(record_at(clean, HOST_POWERS[cmd.calls], VA_TO_ROM), 8)
             cond = stock_cond
             if cmd.held:
                 label = f"held_{table.button}_{k}"

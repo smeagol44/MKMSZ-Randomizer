@@ -48,8 +48,9 @@ Body fields:
   ``frame_edits`` sets host script words (file offset) to donor frames.
 * ``commands`` (optional): move program name -> the Sub-Zero power whose command record the
   move's MKT command takes over (its action, condition and transfer selector; ``null``: no
-  action yet), and ``remove_commands``: Sub-Zero command records dropped although no move
-  takes them (``fighter_import.commands``; milestone 4 step 2).
+  action yet). A power with no record (``commands.COMMANDLESS_POWERS``, e.g. Ice Shatter) may be
+  taken only by a move with its own special. ``remove_commands``: Sub-Zero command records
+  dropped although no move takes them (``fighter_import.commands``; milestone 4 step 2).
 * ``legacy``: frozen Sektor-era modules this fighter still uses (plan rule 4).
 """
 
@@ -297,13 +298,14 @@ def validate(data: Any) -> FighterDescription:
     if not isinstance(legacy, list) or any(x not in LEGACY_MODULES for x in legacy):
         errors.append(f"legacy: a list of {', '.join(LEGACY_MODULES)}")
         legacy = []
-    from .commands import HOST_POWERS
+    from .commands import COMMANDLESS_POWERS, HOST_POWERS
 
+    takeable = (*HOST_POWERS, *COMMANDLESS_POWERS)
     commands = data.get("commands", {})
     if not isinstance(commands, dict) or any(
-        not isinstance(k, str) or (v is not None and v not in HOST_POWERS) for k, v in commands.items()
+        not isinstance(k, str) or (v is not None and v not in takeable) for k, v in commands.items()
     ):
-        errors.append(f"commands: move name -> one of {', '.join(HOST_POWERS)} or null")
+        errors.append(f"commands: move name -> one of {', '.join(takeable)} or null")
         commands = {}
     remove = data.get("remove_commands", [])
     if not isinstance(remove, list) or any(r not in HOST_POWERS for r in remove):

@@ -23,7 +23,8 @@ def _reptile():
     d = fd.load("reptile")
     moves, _ = components.load_programs("reptile")
     commands = cmds.donor_commands(mkt, moves, d.commands)
-    return clean, commands, cmds.lower(clean, commands, set(d.remove_commands), ARENA, ARENA + 0x100)
+    own = {"elbow_dash": (5, 0xA01B0000, 0xA01B0010)}  # Ice Shatter has no record: own special
+    return clean, commands, cmds.lower(clean, commands, set(d.remove_commands), ARENA, ARENA + 0x100, own)
 
 
 @needs_roms
@@ -44,11 +45,14 @@ def test_reptile_tables() -> None:
     _, commands, low = _reptile()
     by_name = {c.name: c for c in commands}
     assert by_name["forceball_fast"].held == by_name["forceball_slow"].held == 0x90
-    assert by_name["elbow_dash"].calls is None
+    assert by_name["elbow_dash"].calls == "ice_shatter"
     assert list(low.moved) == ["HP"] and low.moved["HP"] == ARENA
     acts = {b: [int.from_bytes(r[12:16], "big") for r in recs] for b, recs in low.tables.items()}
     assert acts["HP"] == [0x80049CB0, 0x80049C34, 0x8003CF8C, 0x80049BE8, 0x8004BD28]  # ff, acid, fs, spine, polar
-    assert acts["LP"] == [0x80049CB0, 0x8003CF8C] and acts["HK"] == [0x8005A7B4] and acts["LK"] == []
+    assert acts["LP"] == [0x80049CB0, 0x8003CF8C] and acts["HK"] == [0x8005A7B4]
+    assert acts["LK"] == [0xA01B0010]  # Reverse Elbow (B,F + LK), its own special
+    lk = low.tables["LK"][0]
+    assert lk[4:12] == bytes.fromhex("00000005a01b0000") and lk[0x12:0x16] == bytes.fromhex("00090008")
     hp = low.tables["HP"]
     assert hp[1][0x12:0x16] == bytes.fromhex("00090009")  # Acid Spit: F,F (newest first)
     assert low.tables["HK"][0][0x12:0x16] == bytes.fromhex("00070006")  # Invisibility: U,D
@@ -66,10 +70,20 @@ def test_install_writes_tables_and_repoints_hp(tmp_path: Path) -> None:
     clean, _, low = _reptile()
     rom = bytearray(clean) + bytearray(b"\xff" * 0x1000)
     cmds.install(rom, clean, low, len(clean), ARENA)
-    assert rom[0xB1B68:0xB1B6A] == b"\0\0"  # LK table empty
+    assert rom[0xB1B68 + cmds.RECORD : 0xB1B6A + cmds.RECORD] == b"\0\0"  # LK: the elbow, then the sentinel
     hp_lui = 0x8003C88C - cmds.VA_TO_ROM
     assert rom[hp_lui + 2 : hp_lui + 4] == b"\xa0\x1b" and rom[hp_lui + 6 : hp_lui + 8] == b"\xf4\x20"
     assert rom[len(clean) : len(clean) + cmds.RECORD] == low.tables["HP"][0]
+
+
+@needs_roms
+def test_commandless_power_needs_its_own_special() -> None:
+    mkt, clean = Path(MKT).read_bytes(), Path(CLEAN).read_bytes()
+    d = fd.load("reptile")
+    moves, _ = components.load_programs("reptile")
+    commands = cmds.donor_commands(mkt, moves, d.commands)
+    with pytest.raises(cmds.CommandError, match="own special"):
+        cmds.lower(clean, commands, set(d.remove_commands), ARENA, ARENA + 0x100)
 
 
 def test_description_rejects_bad_commands() -> None:
