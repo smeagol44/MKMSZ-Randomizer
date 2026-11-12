@@ -435,6 +435,9 @@ class Lowered:
     impact_at_opponent: bool = False
     impact_dx: int = 0  # world units, after facing the attacker (MKT multi_adjust_xy)
     impact_flip: bool = True  # MKT flip_single (Acid Spit v10: mirrored on the host)
+    # Keep the projectile's own y at the opponent: MKT's objects share the fighters' ground y, but
+    # the host projectile is raised by its offset (Acid Spit v13: splash 36 px below the hit).
+    impact_keep_y: bool = False
 
 
 def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
@@ -614,8 +617,9 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
             a.beqz("t0", prefix + "no_opponent")
             a.lw("t1", host.ACTOR_X, "t0")
             a.sw("t1", host.ACTOR_X, "s1")
-            a.lw("t1", host.ACTOR_Y, "t0")
-            a.sw("t1", host.ACTOR_Y, "s1")
+            if not p.impact_keep_y:
+                a.lw("t1", host.ACTOR_Y, "t0")
+                a.sw("t1", host.ACTOR_Y, "s1")
             if p.impact_flip:
                 a.lhu("t1", ACTOR_FLAGS, "s1")
                 a.li("t2", FACING_BIT)

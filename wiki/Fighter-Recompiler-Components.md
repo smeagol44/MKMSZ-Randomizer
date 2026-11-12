@@ -160,7 +160,7 @@ First use: Reptile specials proofs v01–v03 (forceballs).
 
 - **Acid Spit (specials proof v10):**
   - **Close-range checks:** extra strike records with the donor boxes, checked after each of the first frames before flight (`emit_process`).
-  - **Impact at the opponent:** move to the opponent, flip, offset by the donor `adjust`. The flip mirrored Reptile's splash on the host (v10), so `Lowered.impact_flip` can drop it (v11).
+  - **Impact at the opponent:** move to the opponent, flip, offset by the donor `adjust`. The flip mirrored Reptile's splash on the host (v10), so `Lowered.impact_flip` can drop it (v11). MKT's objects share the fighters' ground y, but a host projectile is raised by its offset, so the splash keeps the projectile's own y (`impact_keep_y`, v14). Taking the opponent's y drew it about 36 px below the hit.
   - **Stumble reactions:** lifted at their place in the payload (`lift_stumble`).
   - **Virtual art entries:** the host has only four empty table-1 slots. Scripts are reached by cursor offset, and `projectile_actor_build` takes an index whose `0x104 + 4·index` word sits in the art (`fighter_select_animation` truncates the index to 16 bits, so it is not used there).
   - **Virtual body scripts:** `body.secondary_scripts` keys `0x40–0x7F`.

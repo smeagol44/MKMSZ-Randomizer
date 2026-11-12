@@ -157,6 +157,26 @@ def test_process_alive_word_and_unmirrored_impact() -> None:
     assert sets and clears  # set while alive, cleared before the process exits
 
 
+def test_impact_keeps_the_projectile_height() -> None:
+    from mkmszr.fighter_import import host
+    from mkmszr.fighter_import.mipsdis import decode
+
+    art = lp.ArtLayout(0x459E0, 0x0D, 0x12, 21, 100, 88)
+    stores = {}
+    for keep in (False, True):
+        p = lp.Lowered(art, 0x77776, -60, -72, bytes(16), (0,) * 4, None, 3, None,
+                       impact_at_opponent=True, impact_keep_y=keep)  # fmt: skip
+        a = Assembler(0xA01AF420)
+        lp.emit_spawn(a)
+        lp.emit_process(a, p)
+        host.emit_sound_player(a)
+        lp.emit_data(a, p, 0xA01AF420)
+        code = a.link()
+        text = [decode(int.from_bytes(code[i : i + 4], "big"), 0).text for i in range(0, len(code), 4)]
+        stores[keep] = sum(t == f"sw t1, {host.ACTOR_Y}(s1)" for t in text)
+    assert stores[False] == stores[True] + 1  # only the opponent's y copy goes
+
+
 @needs_mkt
 def test_acid_box_is_centred_on_the_drawn_spit() -> None:
     mkt = Path(os.environ["MKMSZR_MKT_ROM"]).read_bytes()

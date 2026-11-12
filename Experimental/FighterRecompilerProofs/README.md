@@ -31,3 +31,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_reptile-specials_proof_v11.py` | `MKMSZR_reptile-specials_common_proof_v11.z64` | v10 with the Acid Spit fixes (no turning, 15-tick recovery, arc frames once, taller box, splash not mirrored) and one fast plus one slow forceball at once (per-move alive words) |
 | `MKMSZR_build_reptile-specials_proof_v12.py` | `MKMSZR_reptile-specials_common_proof_v12a.z64`, `…v12b.z64` (`--band a` / `b`) | v11 with a shorter acid strike band: y 21..61 (a) or 21..45 (b) |
 | `MKMSZR_build_reptile-specials_proof_v13.py` | `MKMSZR_reptile-specials_common_proof_v13.z64` | v11 with the acid strike box and checks centred on the drawn spit (`centre_on_art`: y 88..100) |
+| `MKMSZR_build_reptile-specials_proof_v14.py` | `MKMSZR_reptile-specials_common_proof_v14.z64` | v13 with the acid splash at the height of the hit (`impact_keep_y`) |
