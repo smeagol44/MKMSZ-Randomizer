@@ -104,6 +104,18 @@ Boot string pointer instructions live at ROM `0x7A22C`, `0x7A250`, `0x7A274`, `0
 
 The selector movement helper itself occupies production-owned ROM `[0x0000E27C,0x0000E2B0)`; continuous ownership is canonical in the Memory Map. Production intentionally has **no confirmation-SFX edit**: v02's A-edge `0x1FD` experiment is Rejected / failed and the Start-owned commit path remains stock apart from the established compact-index mapper/save-bypass behavior.
 
+### Described-fighter Fighter option (Reptile, 2026-11-12, Pending)
+
+`patches/fighter_swap._apply_described` writes every word that `fighter_build.production` changes in the first 16 MiB. Every one must hold its clean value in the randomizer ROM, or the build fails. The set is generated, not listed. It covers:
+
+- the combo, command and sound records;
+- the voice and transfer tables;
+- the reaction entries and the type-4 file pointer;
+- the 15 file-`0x87` load calls (to the fixed loader);
+- the file-`0x87` entry.
+
+It also changes one guarded instruction pair that is new with described fighters. The HP handler's table load at ROM `0x3D48C` / `0x3D490` (VA `0x8003C88C`), stock `lui a0, 0x800B; addiu a0, a0, 0x1028`, becomes `lui a0, hi(ptr); lw a0, lo(ptr)(a0)`. Here `ptr` is the fixed loader's first word, refreshed with the moved table's address after every fighter-file load.
+
 ## Allocation-backed generated writes
 
 The following production writers target continuous owned regions. Their **exact interval bounds, aliases, lifecycle, containment, and conflict status are deliberately not duplicated here**; use the named Memory Map region as the canonical allocation record.

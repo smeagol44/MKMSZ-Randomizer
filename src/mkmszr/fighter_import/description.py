@@ -54,6 +54,9 @@ Body fields:
 * ``icons`` (optional): the Power Ups icon recipe, one entry per power slot
   (``fighter_import.fighter_icons``; milestone 4 step 4).
 * ``help`` (optional): the Power Ups help text per power slot (``fighter_import.fighter_help``).
+* ``specials`` (optional): move name -> lowering tuning for ``fighter_import.fighter_build``
+  (owner calibrations such as offsets, facing, recovery, the per-move projectile limit,
+  stealth drain, effects), in the order the moves are built.
 * ``costs`` (optional): move name -> Ice cost, where it differs from the replaced Sub-Zero
   power's (``lower_special.COSTS``); owner decisions, e.g. Reptile's halved forceballs.
 * ``legacy``: frozen Sektor-era modules this fighter still uses (plan rule 4).
@@ -142,6 +145,7 @@ class FighterDescription:
     icons: dict = field(default_factory=dict)  # Power Ups icon recipe (fighter_icons)
     help: dict = field(default_factory=dict)  # Power Ups help text (fighter_help)
     costs: dict[str, int] = field(default_factory=dict)  # move -> Ice cost (else the replaced power's)
+    specials: dict = field(default_factory=dict)  # move -> lowering tuning (fighter_build), in build order
     remove_commands: tuple[str, ...] = ()
 
 
@@ -348,6 +352,10 @@ def validate(data: Any) -> FighterDescription:
                 errors.append(f"costs.{move}: 0..0xA6 (a full Ice meter)")
             elif cost is not None:
                 costs[move] = cost
+    specials = data.get("specials", {})
+    if not isinstance(specials, dict) or any(m not in commands or not isinstance(v, dict) for m, v in specials.items()):
+        errors.append("specials: move name (with a command) -> its lowering tuning")
+        specials = {}
     help_text = data.get("help", {})
     if help_text:
         from ..patches.power_order import POWER_NAMES
@@ -363,7 +371,7 @@ def validate(data: Any) -> FighterDescription:
                 if not lines or any(not isinstance(t, str) or len(t) > MAX_LINE or not set(t) <= CHARSET for t in lines):
                     errors.append(f"help.{name}: 'stock', 'empty' or groups of uppercase lines (<= {MAX_LINE})")
     unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes",
-                           "commands", "remove_commands", "icons", "help", "costs"}  # fmt: skip
+                           "commands", "remove_commands", "icons", "help", "costs", "specials"}  # fmt: skip
     if unknown:
         errors.append(f"unknown keys: {', '.join(sorted(unknown))}")
     if errors:
@@ -372,7 +380,7 @@ def validate(data: Any) -> FighterDescription:
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
         body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts),
         legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove),
-        icons=icons, help=help_text, costs=costs,
+        icons=icons, help=help_text, costs=costs, specials=specials,
     )  # fmt: skip
 
 

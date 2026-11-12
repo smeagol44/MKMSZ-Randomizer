@@ -367,6 +367,12 @@ def place_art(
 
 
 # ---- sounds, strike and reaction --------------------------------------------------------------
+def projectile_sounds(step: dict[str, Any]) -> list[str]:
+    """The sounds a projectile step hosts (``install_sounds`` takes one chain each)."""
+
+    return [name for name in ("hum", "impact") if step.get(name, {}).get("sound")]
+
+
 def install_sounds(
     rom: bytearray, clean: bytes, mkt: bytes, donor_id: int, step: dict[str, Any],
     chains: tuple[sound.HostChain, ...], sample_rom: int,

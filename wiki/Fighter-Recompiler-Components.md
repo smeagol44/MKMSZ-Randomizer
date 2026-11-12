@@ -160,6 +160,7 @@ The native path, without patching the Ice root:
   - `end` stops a move that set a speed before it exits.
   - Records are placed by `emit_strike_data`. Reactions come from `STOCK_REACTIONS`, or from the builder for spare entries.
 - **Footsteps (specials proof v17):** a manually advanced animation can carry the donor's footstep callback (MKT token 6, callback 8). `donor_footsteps` reads the frames it precedes, and `emit_action(footsteps=...)` plays host events there, alternating, while `next_frame` steps run.
+- **Generic build (milestone 5, 2026-11-12):** `fighter_import.fighter_build` lowers every special of a described fighter from its move programs and the description's `specials` tuning, allocating selectors, reaction entries and sound chains from pools. `production` adds the relocatable-blob placement. Reptile's accepted specials come out byte-identical.
 - **Timing:** MKT's logic runs at 60 ticks a second and the host's at 30 (`physics`). `emit_action(donor_ticks=2)` halves donor sleeps, windows, repeat counts and animation rates, and advances per-tick frames twice. The accepted forceballs keep `donor_ticks=1`. The owner halved Acid Spit's recovery by hand (v11), which agrees with the 2:1 ratio.
 - **Projectile:** backend v1. `place_art(at=...)` can now write the art into the fighter file's free body tail, so the file keeps its stock size and place (Sektor proof v47's heap-neutral rule). `emit_process(prefix=...)` lets several projectiles share one payload.
 

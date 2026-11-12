@@ -40,3 +40,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_reptile-specials_proof_v20.py` | `MKMSZR_reptile-specials_common_proof_v20.z64` | v19 with the fire at his feet (MKT's `0x71` px offset) and stealth twice as long (1 Ice every 6 ticks) |
 | `MKMSZR_build_reptile-specials_proof_v21.py` | `MKMSZR_reptile-specials_common_proof_v21.z64` | v20 plus Reptile's Power Ups icons from his description's `icons` recipe (`fighter_icons`) |
 | `MKMSZR_build_reptile-specials_proof_v22.py` | `MKMSZR_reptile-specials_common_proof_v22.z64` | v21 with his Power Ups help text and Ice costs from his description (`help`, `costs`) |
+| `MKMSZR_build_reptile-production_composition_v01.py` | `MKMSZR_reptile-production_composition_proof_v01.z64` (and `--all-powers`) | Milestone 4 step 5: a CLI randomizer ROM with Reptile put in by the production Fighter option's generic path (`fighter_build.production`, `fighter_swap._apply_described`) |

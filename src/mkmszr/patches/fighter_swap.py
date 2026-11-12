@@ -38,6 +38,9 @@ from .base import PatchContext
 from .rainbow_palette import LOAD_JAL_SITES
 
 FIGHTERS = ("sub-zero", "sektor")
+# Fighters built from their description (fighter_import.fighter_build, milestone 5): every word
+# the build changes is the fighter's, so no list is kept here.
+DESCRIBED = ("reptile",)
 OUTPUT_SIZE = 0x02000000
 CLEAN_SIZE = 0x01000000
 FIXED_VA = 0xA01B30F0  # production pool tail after the Inventory legend (ends 0x801B30E6)
@@ -112,6 +115,8 @@ class FighterSwapPatch:
     name: str = "fighter-swap"
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
+        if self.fighter in DESCRIBED:
+            return _apply_described(self.fighter, self.mkt, rom)
         if self.fighter != "sektor":
             raise PatchError(f"fighter {self.fighter!r} cannot be imported")
         from ..fighter_import.sektor_build import build
@@ -194,3 +199,73 @@ class FighterSwapPatch:
             ),
             f"Power Ups icons: file 0x5D 0x{icon_span[0]:X}-0x{icon_span[1]:X}",
         )
+
+
+def _apply_described(fighter: str, mkt: bytes, rom: RomImage) -> tuple[str, ...]:
+    """A described fighter (milestone 5): its production build (``fighter_build.production``)
+    on the clean ROM; every word that build changes in the 16 MiB part is the fighter's and must
+    still hold its clean value here (an owner conflict fails the build). Then the tail, the
+    fixed loader in shared file 0x1A, and the Power Ups icons and help from the description."""
+
+    from ..fighter_import import description, fighter_build, fighter_help, fighter_icons
+
+    if len(rom.data) != OUTPUT_SIZE:
+        raise PatchError("fighter swap needs the 32 MiB generated output")
+    clean = rom._original
+    made = fighter_build.production(clean, mkt, fighter, fixed_va=FIXED_VA)
+    image, man = made.rom, made.manifest
+    data = rom.data
+    if tuple(man["tail"]) != TAIL:
+        raise PatchError("fighter build uses another tail region")
+
+    moved, conflicts = 0, []
+    for off in _changed_words(image, clean, CLEAN_SIZE):
+        if off in (0x10, 0x14):  # checksum, recomputed by the pipeline
+            continue
+        if data[off : off + 4] != clean[off : off + 4]:
+            conflicts.append(f"0x{off:X}")
+            continue
+        data[off : off + 4] = image[off : off + 4]
+        moved += 1
+    if conflicts:
+        raise PatchError(f"fighter swap: owner conflicts {conflicts[:8]}")
+    if set(data[TAIL[0] : TAIL[1]]) != {0xFF}:
+        raise PatchError("fighter tail region is not free in the randomizer ROM")
+    data[TAIL[0] : TAIL[1]] = image[TAIL[0] : TAIL[1]]
+
+    d = description.load(fighter)
+    for off, blob in fighter_help.edits(bytes(data), clean, d.help).items():
+        if off != fighter_help.power_help.HELP_TABLE_ROM:
+            rom.expect_bytes(off, clean[off : off + len(blob)])
+        rom.write_bytes(off, blob)
+    icon_span = fighter_icons.apply(data, mkt, d.donor_fighter_id, d.icons)
+
+    f1a_end, at = _place_fixed(rom, made.fixed)
+    return (
+        f"fighter: {fighter} (built from its description and the MKT donor)",
+        f"transplanted {moved} words; tail 0x{TAIL[0]:08X}-0x{TAIL[1]:08X}",
+        (
+            f"fixed loader 0x{FIXED_VA & ~0x20000000:08X}-0x{(FIXED_VA & ~0x20000000) + len(made.fixed):08X}; "
+            f"file 0x1A end 0x{f1a_end:X} -> 0x{at + len(made.fixed):X}"
+        ),
+        f"payload blob 0x{man['blob_end'] - man['blob_off']:X} bytes in the fighter file, {man['relocs']} relocations",
+        f"Power Ups icons: file 0x5D 0x{icon_span[0]:X}-0x{icon_span[1]:X}",
+    )
+
+
+def _place_fixed(rom: RomImage, fixed: bytes) -> tuple[int, int]:
+    """The fixed loader into shared file 0x1A at :data:`FIXED_VA` (as Sektor's step 3)."""
+
+    data = rom.data
+    e1a = FILE_TABLE + FILE_1A * 12
+    f1a_start, f1a_end = _be32(data, e1a), _be32(data, e1a + 4)
+    fixed_k0 = FIXED_VA & ~0x20000000
+    if POOL_BASE + (f1a_end - f1a_start) > fixed_k0:
+        raise PatchError("file 0x1A already reaches the fighter's fixed loader")
+    at = f1a_start + (fixed_k0 - POOL_BASE)
+    if fixed_k0 + len(fixed) > POOL_END or set(data[f1a_end : at + len(fixed)]) != {0xFF}:
+        raise PatchError("fighter fixed loader: pool tail not free")
+    data[f1a_end:at] = bytes(at - f1a_end)  # padding inside the loaded file
+    data[at : at + len(fixed)] = fixed
+    rom.write_u32(e1a + 4, at + len(fixed))
+    return f1a_end, at
