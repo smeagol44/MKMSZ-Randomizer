@@ -195,7 +195,9 @@ def test_reptile_body_builds_and_fits() -> None:
     r = body.report
     assert r["appended_items"] == 0 and r["file_end"] == bb.FILE87_SIZE  # stock-size file
     assert r["chain_free"] >= 0x10000  # room left for his moves
-    assert (r["frames"], r["run"]) == (185, 9)  # 155 + combo 12 + throw 8 + slide 2 + forceball 5 + acid 3
+    # 155 + combo 12 + throw 8 + slide 2 + forceball 5 + acid 3 + invisibility 3 (the elbow's
+    # frames were already in the body)
+    assert (r["frames"], r["run"]) == (188, 9)
     out = cm.apply(bytes(body.file), stock=body.clean_file, flipped=body.flipped, slide=False)
     # Reptile's own MKT slide (table-1 slot 2) on host secondary 2 (body.secondary_slots).
     assert cm.frames(out, cm.SLIDE) == [body.shape_map[r] for r in (0x1E54, 0x2F94, 0x2FA8)]

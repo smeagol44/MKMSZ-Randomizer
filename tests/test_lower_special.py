@@ -144,3 +144,27 @@ def test_footsteps_follow_the_donor_run() -> None:
     calls = " ".join(_text(hold.link()))
     assert "addiu t9, t9, 1220" not in calls  # no stock hit effect 0x800504C4 (v17)
     assert "addiu t9, t9, 22180" in calls  # 0x800556A4 stays
+
+
+def test_invisibility_stealth_and_timer() -> None:
+    moves, _ = components.load_programs("reptile")
+    inv = next(m for m in moves if m.name == "invisibility")
+    a = Assembler(BASE, cached_calls=True)
+    ls.emit_gate_condition(a, "cond", ls.GATES["freeze_on_contact"], ls.COSTS["freeze_on_contact"],
+                           refuse_if=(ls.CTRL_STEALTH, ls.STEALTH_BIT))  # fmt: skip
+    ls.emit_action(a, "root", inv.steps, cost=0x80, animations={(1, 1): ("at", 0x100)}, face=False,
+                   donor_ticks=2, sounds={9: 175}, stealth="timer", skip=frozenset({"effect"}))  # fmt: skip
+    a.label("play")
+    ls.emit_stealth_timer(a, "timer", 1200)
+    code = a.link()
+    text = " ".join(_text(code))
+    assert "andi t4, t4, 0x1000" in text  # refused while already stealthed
+    assert "addiu a0, zero, 175" in text and "addiu a0, zero, 1200" in text
+    assert "addiu t9, t9, 9604" in text  # 0x80072584, the Eye's effect
+    assert "andi t1, t1, 0xFFFE" in text  # the Inventory's timer request is cleared
+    # The generation word follows jr ra and its delay slot, so it is never executed.
+    gen = a.labels["timer_gen"] - BASE
+    assert code[gen - 8 : gen] == bytes.fromhex("03e0000800000000")
+    with pytest.raises(ValueError, match="effect"):
+        ls.emit_action(Assembler(BASE), "x", inv.steps, cost=0, animations={(1, 1): ("at", 0)},
+                       sounds={9: 175}, stealth="timer")  # fmt: skip

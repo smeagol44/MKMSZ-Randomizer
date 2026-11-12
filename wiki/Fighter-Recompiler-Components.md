@@ -57,7 +57,7 @@ A move program is data (`src/mkmszr/fighters/moves/<fighter>.json`, format 1):
 | `effect` | Start a shared effect | `effect`, `at?` | at once | *existing*: MKT-art effect process |
 | `strike` | Body hit check over a window | `strike`, `ticks`, `skip?`, `every_tick?`, `only_if?` (`opponent_settled` / `rising`), `on_hit`, `on_block?` | after `ticks`, or on contact | *existing*: KSEG0 strike record + `0x8002BA04` (`host.strike`); reaction by meaning (below) |
 | `projectile` | Spawn a projectile (the move continues) | `art`, `offset`, `speed`, `rate`, `strike`, `accel?`, `cap?`, `hum?`, `trail?`, `checks?`, `homing?`, `impact` | the move: at once; the projectile: on contact or offscreen | **planned generic projectile** ([below](#generic-projectile-lowering-planned)) |
-| `stealth` | Enemies lose track of the fighter | `ticks` | after the time | native Eye effect ([below](#eye-item)) |
+| `stealth` | Enemies lose track of the fighter | `ticks` | after the time | native Eye effect ([below](#eye-item)): `lower_special.emit_stealth_start` / `emit_stealth_timer` (Reptile specials proof v18, Pending) |
 | `stamp` | Record "used now" for a cooldown | `key` | at once | *new*: a per-player tick word (allocation needed) |
 
 **Victim reactions** (strike `reaction` / `blocked_reaction` are meanings; the backend maps each to a host reaction):
@@ -196,6 +196,8 @@ The Eye (item `0x03`) uses `0x80072584` (item-use table `0x800A6268`). The Inven
   - after 1200 ticks the timer restores everything (colour back to 128);
   - stage start clears the bits;
   - the routine at `0x80053528` also clears the effect.
+
+**Lowering (Reptile specials proof v18):** `emit_stealth_start` calls `0x80072584`, clears the request bit `0x802ECCC6` that the Inventory would turn into its own timer (`0x80073BD0..0x80073C04`), bumps a generation word and starts the timer process from `emit_stealth_timer`. That process sleeps the given ticks, then undoes the effect as the stock timer `0x80072644` does, only if the generation is still its own. If no process is free, the effect is undone at once rather than left without an end. Any victim reaction runs `0x80053520`, which ends the player's stealth (`0x80053594..0x800535F8`); this is stock Eye behaviour.
 
 **Fit with Reptile.** MKT invisibility sets object flag `0x20`, and what that flag does is Pending. The MKMSZ equivalent is **stealth from enemy AI plus a dark tint**, not full invisibility. Lowering `stealth` = call `0x80072584` and start `0x80072644` exactly as the Inventory does. The duration is then the Eye's 1200 ticks; a different duration needs a copied timer.
 

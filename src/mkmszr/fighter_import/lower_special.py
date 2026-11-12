@@ -42,6 +42,9 @@ PLAYER_CTRL = 0x802C1AC0
 SPECIAL_FLAG = 0x802E7DE8  # stock conditions refuse while it is set
 F_FIND_CLASS = 0x80028510
 F_TIER = 0x80074FBC  # tier count 0..9 from current XP
+F_SLEEP = 0x80028794
+F_PROCESS_CREATE = 0x8002830C  # (id, entry) -> controller or 0
+F_PROCESS_EXIT = 0x80028564
 F_TO_PHASE_END = 0x80031070  # (ticks per frame): animate to the end of the phase
 CURRENT_XP = 0x8011200C
 FALL_SPEED_LIMIT = 0xB4782  # stock LP condition: refuse while actor +0x18 exceeds it
@@ -86,13 +89,16 @@ SOLID_BIT = 0x1000  # actor +0x8C: Freeze on Contact clears it while it runs (0x
 
 
 def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
-                        default: int | None = None, alive: tuple[str, ...] = ()) -> None:  # fmt: skip
+                        default: int | None = None, alive: tuple[str, ...] = (),
+                        refuse_if: tuple[int, int] | None = None) -> None:  # fmt: skip
     """``label() -> 0x8000 / 0x4000`` (see the module notes). With ``default``, the gate word
     is used only when it is ``slti t0, v0, N`` (Ice Blast's rewritten tail), else ``default``.
     With ``alive`` (labels of words that projectiles set while they live,
     ``lower_projectile.emit_process``), only those projectiles block it instead of any live one
     (Reptile: one fast and one slow forceball may coexist, owner 2026-11-11). Set words with no
-    live projectile process are stale (a process ended by something else) and are cleared."""
+    live projectile process are stale (a process ended by something else) and are cleared.
+    ``refuse_if`` (controller offset, mask): refuse while that halfword of the player's
+    controller has a bit of the mask set (Invisibility: already stealthed)."""
 
     a.label(label)
     a.addiu("sp", "sp", -0x20)
@@ -110,6 +116,10 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     a.lw("t5", 0x6E0, "t3")
     a.lw("t4", 0xDC, "t5")
     a.bnez("t4", label + "_no")
+    if refuse_if is not None:
+        a.lhu("t4", refuse_if[0], "t3")
+        a.andi("t4", "t4", refuse_if[1])
+        a.bnez("t4", label + "_no")
     a.lhu("t4", CTRL_ICE, "t3")
     a.slti("t4", "t4", cost)  # meter is a small positive halfword
     a.bnez("t4", label + "_no")
@@ -186,7 +196,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 face: bool | None = None, donor_ticks: int = 1,
                 reactions: dict[str, int] | None = None,
                 speed: Callable[[int], int] | None = None,
-                footsteps: dict[tuple[int, int], Footsteps] | None = None) -> list[tuple[str, bytes]]:  # fmt: skip
+                footsteps: dict[tuple[int, int], Footsteps] | None = None,
+                stealth: str | None = None,
+                skip: frozenset[str] = frozenset()) -> list[tuple[str, bytes]]:  # fmt: skip
     """The action root for a move program (never returns). ``animations``: donor animation
     (table, slot) -> host secondary slot holding it, or ``("at", offset)`` for a body script
     without a table entry (selected by setting the cursor); ``child``: the projectile process
@@ -197,7 +209,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     ``donor_ticks``: donor ticks per host tick (module notes); ``reactions``: strike meaning ->
     host reaction index (else :data:`STOCK_REACTIONS`); ``speed``: donor x speed -> host speed;
     ``footsteps``: a manually advanced animation -> its donor footstep frames
-    (:func:`donor_footsteps`) and the host events to alternate (needs ``host.emit_sound_player``).
+    (:func:`donor_footsteps`) and the host events to alternate (needs ``host.emit_sound_player``);
+    ``stealth``: the label of the timer process (:func:`emit_stealth_timer`) for ``stealth``
+    steps; ``skip``: step ops left out on purpose (e.g. ``effect`` before an effect is ported).
 
     Returns the strike records ``(label, 16 bytes)`` to place with :func:`emit_strike_data`.
 
@@ -281,6 +295,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     def emit(steps: list[dict[str, Any]], after: str | None) -> None:
         for step in steps:
             op = step["op"]
+            if op in skip:
+                continue
             if op == "stamp":
                 continue  # MKT cooldown key: not lowered yet (host one-projectile rule instead)
             elif op == "begin":
@@ -333,10 +349,10 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 a.li("a1", speed(lp._int(step["x"])))
                 a.lhu("t0", lp.ACTOR_FLAGS, "s1")
                 a.andi("t0", "t0", FACING_BIT)
-                skip = fresh("ahead")
-                a.beqz("t0", skip)
+                ahead = fresh("ahead")
+                a.beqz("t0", ahead)
                 a.subu("a1", "zero", "a1")  # facing left: negative x
-                a.label(skip)
+                a.label(ahead)
                 a.move("s5", "a1")  # pass_through re-applies it
                 a.move("a0", "s1")
                 a.jal(F_SET_XVEL)
@@ -387,6 +403,11 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             elif op == "finish":
                 a.li("a0", _scale(int(step["rate"]), donor_ticks))
                 a.jal(F_TO_PHASE_END)
+                host.load_controller(a)
+            elif op == "stealth":
+                if stealth is None:
+                    raise ValueError(f"{label}: stealth step without a timer process")
+                emit_stealth_start(a, stealth, fresh("stealth"))
                 host.load_controller(a)
             elif op == "end":
                 if passes:
@@ -547,3 +568,93 @@ def emit_hold_reaction(a: Assembler, label: str, donor_ticks: int = 1, pose: boo
     a.lw("ra", 0x28, "sp")
     a.jr_ra()
     a.addiu("sp", "sp", 0x30)
+
+
+# Stealth (Reptile's Invisibility): the Eye item's effect (Wiki Fighter-Recompiler-Components,
+# "Eye item"). 0x80072584 sets it on the player: controller +0x6BC |= 0x1000 (enemy AI
+# idles), actor +0x8C |= 0x4000, +0x64 |= 0x2000, colour +0xFC/+0xFE/+0x100 = 32 (also on the
+# attached actor +0x650), 0x800A5FA0 |= 1, and the request bit 0x802ECCC6 |= 1, which the
+# Inventory turns into its 1200-tick timer 0x80072644 when it closes (0x80073BD0..0x80073C04).
+# A special clears the request itself (or the next Inventory visit would start a stray timer)
+# and runs its own timer, which undoes the effect only if no newer stealth started since: a hit
+# ends stealth early (0x80053594..0x800535F8), so a recast must not be cut short by an older
+# timer.
+F_EYE_USE = 0x80072584
+EYE_REQUEST = 0x802ECCC6  # halfword, bit 0
+EYE_EFFECT = 0x800A5FA0  # halfword, bit 0
+STEALTH_BIT = 0x1000  # player controller +0x6BC
+CTRL_STEALTH = 0x6BC
+STEALTH_ACTOR_FLAG = 0x4000  # actor +0x8C
+STEALTH_ACTOR_64 = 0x2000  # actor +0x64
+NORMAL_COLOUR = 0x80
+CTRL_ARG = 0x6F4  # a new process's argument word (written after creation, as effects do)
+TIMER_PROCESS_ID = 0x100  # as the Eye timer
+
+
+def emit_stealth_start(a: Assembler, timer: str, tag: str) -> None:
+    """Start stealth and its timer process ``timer`` (generation in ``timer_gen``)."""
+
+    a.jal(F_EYE_USE)
+    a.lui("t0", hi(EYE_REQUEST))
+    a.lhu("t1", lo(EYE_REQUEST), "t0")
+    a.andi("t1", "t1", 0xFFFE)
+    a.sh("t1", lo(EYE_REQUEST), "t0")
+    a.la("t0", timer + "_gen")
+    a.lw("t1", 0, "t0")
+    a.addiu("t1", "t1", 1)
+    a.sw("t1", 0, "t0")
+    a.li("a0", TIMER_PROCESS_ID)
+    a.la("a1", timer)
+    a.jal(F_PROCESS_CREATE)
+    a.bnez("v0", tag + "_timed")
+    a.jal_label(timer + "_undo")  # no process left: no stealth rather than endless stealth
+    a.beq("zero", "zero", tag + "_done")
+    a.label(tag + "_timed")
+    a.la("t0", timer + "_gen")
+    a.lw("t1", 0, "t0")
+    a.sw("t1", CTRL_ARG, "v0")
+    a.label(tag + "_done")
+
+
+def emit_stealth_timer(a: Assembler, label: str, ticks: int) -> None:
+    """The timer process (entered with its own controller current), its undo subroutine (the
+    stock timer's tail, ``0x80072654..0x800726BC``) and its generation word."""
+
+    a.label(label)
+    host.load_controller(a)
+    a.lw("s2", CTRL_ARG, "s0")  # the generation it was started for
+    a.li("a0", ticks)
+    a.jal(F_SLEEP)
+    a.la("t0", label + "_gen")
+    a.lw("t1", 0, "t0")
+    a.bne("t1", "s2", label + "_exit")
+    a.jal_label(label + "_undo")
+    a.label(label + "_exit")
+    a.jal(F_PROCESS_EXIT)
+    a.label(label + "_hang")
+    a.beq("zero", "zero", label + "_hang")
+    a.label(label + "_undo")
+    a.lui("a0", hi(PLAYER_CTRL))
+    a.lw("a0", lo(PLAYER_CTRL), "a0")
+    a.lhu("t0", CTRL_STEALTH, "a0")
+    a.andi("t0", "t0", 0xFFFF ^ STEALTH_BIT)
+    a.sh("t0", CTRL_STEALTH, "a0")
+    a.lw("t1", host.CTRL_ACTOR, "a0")
+    a.lhu("t0", lp.ACTOR_FLAGS, "t1")
+    a.andi("t0", "t0", 0xFFFF ^ STEALTH_ACTOR_FLAG)
+    a.sh("t0", lp.ACTOR_FLAGS, "t1")
+    a.lw("t0", 0x64, "t1")
+    a.li("t2", ~STEALTH_ACTOR_64 & 0xFFFFFFFF)
+    a.and_("t0", "t0", "t2")
+    a.sw("t0", 0x64, "t1")
+    a.li("t0", NORMAL_COLOUR)
+    for off in (0xFC, 0xFE, 0x100):
+        a.sh("t0", off, "t1")
+    a.lui("t0", hi(EYE_EFFECT))
+    a.lhu("t2", lo(EYE_EFFECT), "t0")
+    a.andi("t2", "t2", 0xFFFE)
+    a.sh("t2", lo(EYE_EFFECT), "t0")
+    a.jr_ra()
+    a.nop()
+    a.label(label + "_gen")
+    a.raw(0)
