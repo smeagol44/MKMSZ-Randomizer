@@ -225,7 +225,12 @@ Clean-ROM-based disposable artifacts (`Experimental/FighterRecompilerProofs/`, [
 | Data `0x800A1190[0x2B]` (ROM `0xA1E3C`) | Dummy reaction slot (stock `0x8004E0C0`) → lifted reaction in the payload (v04+) | Runtime-confirmed bounded |
 | File `0x87` table-1 `0x0D`, `0x12` | Empty stock slots → forceball flight and impact scripts | Runtime-confirmed bounded |
 
-Reptile specials proof v01 (2026-11-11, Pending) enlarges the same v6 arena to 4 KiB: ROM `[0x00F10000,0x00F11000)` → RDRAM `[0x801AF420,0x801B0420)`, heap floor `0x801B0420`. Specials proof v05 makes it 6 KiB: ROM `[0x00F10000,0x00F11800)`, heap floor `0x801B0C20`. Specials proof v10 (Acid Spit) makes it 8 KiB, `[0x00F10000,0x00F12000)`, heap floor `0x801B1420`. It also uses:
+Reptile specials proof v01 (2026-11-11, Pending) enlarges the same v6 arena to 4 KiB: ROM `[0x00F10000,0x00F11000)` → RDRAM `[0x801AF420,0x801B0420)`, heap floor `0x801B0420`. Specials proof v05 makes it 6 KiB: ROM `[0x00F10000,0x00F11800)`, heap floor `0x801B0C20`. Specials proof v10 (Acid Spit) makes it 8 KiB, `[0x00F10000,0x00F12000)`, heap floor `0x801B1420`. Specials proof v15 (Reverse Elbow) makes it 12 KiB, `[0x00F10000,0x00F13000)`, heap floor `0x801B2420` (Pending). v15 also uses:
+
+- selector 6, with the bound at `0x4B654` set to 7 and transfer entry 6 at `0x800A1068`. That word is zero in the clean ROM, and no code reads or writes it (static census: no full-address reference; the only `0x1068` stores are offsets on the wall-box pointer `0x802E729C`);
+- reaction byte `0x4C`. The reaction table `0x800A1190` has 64 entries, and the blocked table `0x800A1290` follows it, so byte `0x4C` reads blocked entry `0x0C`, a stock `0x8004E0C0` endless sleep. The collision core indexes without a bound check (`0x8002CAA0`, `0x8002DF0C`). No strike record uses blocked index `0x0C` or reaction `0x4C`, and no code loads `0x800A12C0` directly (`0x800A12B4` and `0x800A12C4` are loaded directly, so avoid them). Reaction `0x0D` looked free but is used by a type-6 record (`0x800B0608`).
+
+v10 also uses:
 
 - selectors 3–5, with the bound at `0x4B654` set to 6 and transfer entry 5 at `0x800A1064`;
 - reaction slot `0x23` (stock dummy) for the acid stagger;

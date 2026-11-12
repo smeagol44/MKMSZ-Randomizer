@@ -51,7 +51,7 @@ A move program is data (`src/mkmszr/fighters/moves/<fighter>.json`, format 1):
 | `stop` | Zero motion | — | at once | *existing*: `0x8002B1C0` |
 | `jump` | Ballistic motion | `x`, `y`, `gravity`, `until`: `landing` / `below_screen` / `surface` | per `until` | *existing* (teleport): adapter-integrated arc |
 | `shake` | Jitter in place | `dx`, `dy`, `count`, `ticks` | after `count` | *existing*: `0x80031208` offsets |
-| `pass_through` | No fighter repulsion | `ticks` | after the time | **gap**: host equivalent of MKT `sans_repell_3` not located |
+| `pass_through` | No fighter repulsion | `ticks` | after the time | **gap**: host equivalent of MKT `sans_repell_3` not located. In specials proof v15 (skipped) the dash stopped at the victim. v16: clear actor `+0x8C` bit `0x1000` (as stock Freeze on Contact, `0x80034740` / `0x80034658`) and re-apply the speed each tick; `end` sets the bit again. Hypothesis |
 | `relocate` | Reappear by the opponent | `to`: `behind_opponent`, `dx`, `dy?` | at once | *existing* (teleport): copy target position + `0x80031208` + face |
 | `sound` | Play a sound | `sound` | at once | *existing*: isolated host chain |
 | `effect` | Start a shared effect | `effect`, `at?` | at once | *existing*: MKT-art effect process |
@@ -64,8 +64,8 @@ A move program is data (`src/mkmszr/fighters/moves/<fighter>.json`, format 1):
 
 | Meaning | Donor | Host |
 |---|---|---|
-| `elbow_hold` | MKT `0x74`: grounded victim held about 20 ticks, airborne rejected | Pending |
-| `launch` | MKT `0x24`: damaging launch, flight and landing | Pending |
+| `elbow_hold` | MKT `0x74`: grounded victim held about 20 ticks, airborne rejected | `lower_special.emit_hold_reaction`: the stock hit reaction `0x80054B20`'s preamble (with its airborne handler), stop, the first hit pose (slot `0x1C`), still for 20 donor ticks, exit; no voices. From v16 it keeps the victim's current frame, as MKT does; v15's hit pose read as a hit. From v17 it skips the stock hit effect `0x800504C4` (blood). Supplied in a spare reaction entry (byte `0x4C`, specials proof v15). Pending |
+| `launch` | MKT `0x24`: damaging launch, flight and landing | The stock roundhouse's reaction `0x0C` (owner after v15, where the uppercut `0x08` was used). Pending (v16) |
 | `knockback_arc` | MKT `0x71` (forceball): victim action `0x625`, launched on an arc **toward the attacker** (`do_jump(-0x2CCCC, -0x6CCCC, 0x5199)` through `0x8006EBB0`; direction from the owner's comparison of proofs v02/v03, not from the static sign reading) | Lifted copy of host `0x25` (`0x80057C14`) with the converted MKT arc `0x800321D0(-0x3B73B, -0x90623, 0x5A3C)` and without its stock hit sound (Runtime-confirmed bounded, proof v06) |
 | `acid_stagger` | MKT `0x72` (acid): victim action `0x626`, staggers back. Host (2026-11-11): the lifted Fire spiked-rod trap stumble that Sektor's rocket was accepted with (`0x80051280`), without its 8-tick pause, push `0x56666 × 0x26666 / 0x33333 = 0x40CCC` (`lower_projectile`, kind `stumble`) | Pending (specials proof v10) |
 | `rocket_stumble` | MKT rocket reaction → `zap_stumble` | *existing* (Sektor rocket) |
@@ -153,7 +153,14 @@ The native path, without patching the Ice root:
   - the replaced power's Ice cost;
   - the replaced power's tier, read at run time from its stock gate instruction (`GATES`), so the power-order shuffle still applies.
 - **Action:** `emit_action` is entered through the Ice-root selector table (`0x8004AA4C`, selectors 3+). It runs the steps `begin` (`face=False`: the stock special start `0x80049F90` without its `face_opponent` call, specials proof v11), `animate` (a donor animation copied into a host secondary slot by `body.secondary_scripts`), `projectile`, `sleep`, `finish` and `end`. `stamp` (MKT cooldown) is not lowered yet.
-- **Command:** `commands.lower(..., overrides)` points the command record at the new condition and the action thunk.
+- **Command:** `commands.lower(..., overrides)` points the command record at the new condition and the action thunk. A power with no command record (Ice Shatter, `commands.COMMANDLESS_POWERS`) can be taken only with such an override.
+- **Body moves (specials proof v15, Reverse Elbow):**
+  - New steps: `velocity` (donor speed converted, signed by the facing bit, `0x8002B1EC`), `stop`, `face`, `pose`, `next_frame`, `animate` with `until: manual`, `repeat` and `shake`.
+  - `strike` is a hit window. Each tick it runs the step's `every_tick` steps, then the collision core with a KSEG0 strike record. A contact with the blocked flag `0x802ECD88` set takes `on_block`, any other contact takes `on_hit`. After the window it continues.
+  - `end` stops a move that set a speed before it exits.
+  - Records are placed by `emit_strike_data`. Reactions come from `STOCK_REACTIONS`, or from the builder for spare entries.
+- **Footsteps (specials proof v17):** a manually advanced animation can carry the donor's footstep callback (MKT token 6, callback 8). `donor_footsteps` reads the frames it precedes, and `emit_action(footsteps=...)` plays host events there, alternating, while `next_frame` steps run.
+- **Timing:** MKT's logic runs at 60 ticks a second and the host's at 30 (`physics`). `emit_action(donor_ticks=2)` halves donor sleeps, windows, repeat counts and animation rates, and advances per-tick frames twice. The accepted forceballs keep `donor_ticks=1`. The owner halved Acid Spit's recovery by hand (v11), which agrees with the 2:1 ratio.
 - **Projectile:** backend v1. `place_art(at=...)` can now write the art into the fighter file's free body tail, so the file keeps its stock size and place (Sektor proof v47's heap-neutral rule). `emit_process(prefix=...)` lets several projectiles share one payload.
 
 First use: Reptile specials proofs v01–v03 (forceballs).

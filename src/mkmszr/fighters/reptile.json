@@ -50,7 +50,8 @@
     },
     "secondary_scripts": {
       "0x25": "table1:0x05:2",
-      "0x40": "table1:0x06:2"
+      "0x40": "table1:0x06:2",
+      "0x41": "table1:0x0B:2"
     },
     "secondary_slots": {
       "0x02": "table1:0x02"
@@ -77,7 +78,7 @@
     "acid_spit": "ice_blast",
     "forceball_fast": "directional_ice_down",
     "forceball_slow": "ice_clone",
-    "elbow_dash": null,
+    "elbow_dash": "ice_shatter",
     "invisibility": "freeze_on_contact"
   },
   "remove_commands": [

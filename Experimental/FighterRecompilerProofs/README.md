@@ -32,3 +32,6 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_reptile-specials_proof_v12.py` | `MKMSZR_reptile-specials_common_proof_v12a.z64`, `…v12b.z64` (`--band a` / `b`) | v11 with a shorter acid strike band: y 21..61 (a) or 21..45 (b) |
 | `MKMSZR_build_reptile-specials_proof_v13.py` | `MKMSZR_reptile-specials_common_proof_v13.z64` | v11 with the acid strike box and checks centred on the drawn spit (`centre_on_art`: y 88..100) |
 | `MKMSZR_build_reptile-specials_proof_v14.py` | `MKMSZR_reptile-specials_common_proof_v14.z64` | v13 with the acid splash at the height of the hit (`impact_keep_y`) |
+| `MKMSZR_build_reptile-specials_proof_v15.py` | `MKMSZR_reptile-specials_common_proof_v15.z64` | Milestone 4 step 3.3: v14 plus Reverse Elbow in Ice Shatter's slot (dash, hold, return hit with the uppercut launch; MKT timing halved); 12 KiB arena |
+| `MKMSZR_build_reptile-specials_proof_v16.py` | `MKMSZR_reptile-specials_common_proof_v16.z64` | v15 with pass-through (Freeze on Contact's actor bit `0x1000`, speed re-applied), a still hold, and the roundhouse launch `0x0C` |
+| `MKMSZR_build_reptile-specials_proof_v17.py` | `MKMSZR_reptile-specials_common_proof_v17.z64` | v16 without the hit (blood) effect on the hold, and with MKT footsteps during the dash (isolated chains 14–15) |
