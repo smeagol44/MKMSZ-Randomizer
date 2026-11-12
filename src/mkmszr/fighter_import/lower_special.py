@@ -47,6 +47,10 @@ GATES = {
     "freeze_on_contact": 0x8005A9DC,
     "polar_blast": 0x8004A6B4,
 }
+# Ground Ice Blast's tier is a bgtz tail (tier >= 1) at ROM 0x4B018; the product's power-order
+# shuffle rewrites it to ``slti t0, v0, N`` (patches/power_order.build_ice_ground_tail).
+ICE_BLAST_GATE, ICE_BLAST_STOCK_TIER = 0x8004A418, 1
+SLTI_T0_V0 = 0x2848
 COSTS = {
     "ice_blast": 0x20,
     "directional_ice_up": 0x20,
@@ -57,8 +61,14 @@ COSTS = {
 }
 
 
-def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int) -> None:
-    """``label() -> 0x8000 / 0x4000`` (see the module notes)."""
+def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
+                        default: int | None = None, alive: tuple[str, ...] = ()) -> None:  # fmt: skip
+    """``label() -> 0x8000 / 0x4000`` (see the module notes). With ``default``, the gate word
+    is used only when it is ``slti t0, v0, N`` (Ice Blast's rewritten tail), else ``default``.
+    With ``alive`` (labels of words that projectiles set while they live,
+    ``lower_projectile.emit_process``), only those projectiles block it instead of any live one
+    (Reptile: one fast and one slow forceball may coexist, owner 2026-11-11). Set words with no
+    live projectile process are stale (a process ended by something else) and are cleared."""
 
     a.label(label)
     a.addiu("sp", "sp", -0x20)
@@ -88,18 +98,38 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int) -> No
     a.lhu("t7", 0x6AA, "t6")
     a.li("t8", BUSY_ACTION)
     a.beq("t7", "t8", label + "_no")
+    if alive:
+        a.move("t1", "zero")
+        for word in alive:
+            a.la("t0", word)
+            a.lw("t2", 0, "t0")
+            a.or_("t1", "t1", "t2")
+        a.beqz("t1", label + "_free")
     a.li("a0", lp.PROJECTILE_CLASS)
     a.li("a1", 0xFFFF)
     a.jal(F_FIND_CLASS)
     a.bnez("v0", label + "_no")
+    if alive:
+        for word in alive:  # stale: no projectile process left
+            a.la("t0", word)
+            a.sw("zero", 0, "t0")
+        a.label(label + "_free")
     a.lui("t0", hi(SPECIAL_FLAG))
     a.lh("t0", lo(SPECIAL_FLAG), "t0")
     a.bnez("t0", label + "_no")
     a.lui("a0", hi(CURRENT_XP))
     a.lw("a0", lo(CURRENT_XP), "a0")
     a.jal(F_TIER)
+    if default is not None:
+        a.lui("t1", hi(gate_va))
+        a.lhu("t1", lo(gate_va), "t1")
+        a.li("t2", SLTI_T0_V0)
+        a.li("t0", default)
+        a.bne("t1", "t2", label + "_gate")
     a.lui("t0", hi(gate_va + 2))
     a.lh("t0", lo(gate_va + 2), "t0")  # the slot's threshold N
+    if default is not None:
+        a.label(label + "_gate")
     a.slt("t1", "v0", "t0")
     a.bnez("t1", label + "_no")
     a.li("v0", 0x8000)
@@ -123,12 +153,16 @@ def emit_charge(a: Assembler, amount: int) -> None:
 
 
 def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: int,
-                animations: dict[tuple[int, int], int], child: str,
-                helper: str | None = None) -> None:  # fmt: skip
+                animations: dict[tuple[int, int], int | tuple[str, int]], child: str,
+                helper: str | None = None, sounds: dict[int, int] | None = None,
+                face: bool | None = None) -> None:  # fmt: skip
     """The action root for a move program (never returns). ``animations``: donor animation
     (table, slot) -> host secondary slot holding it; ``child``: the projectile process label;
     ``helper``: the throw helper's process label (``lower_projectile.emit_helper``), started
-    with the throw animation."""
+    with the throw animation. An animation given as ``("at", offset)`` (a body script without
+    a table entry) is selected by setting the cursor; ``sounds``: donor fighter sound -> host
+    event, for ``sound`` steps (needs ``host.emit_sound_player``); ``face``: overrides the
+    program's ``begin.face`` (MKT turns to its one opponent; the host may not want that)."""
 
     a.label(label)
     host.enter_action(a, host.Frame(size=0x40, strike_offset=0x30), ())
@@ -140,7 +174,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
         elif op == "begin":
             host.set_special_lock(a)
             host.set_action_id(a, ICE_ACTION_ID)
-            host.special_begin(a)  # stop, face, busy input map
+            turn = step.get("face", True) if face is None else face
+            host.special_begin(a, face=turn)  # stop, (face), busy input map
             host.load_controller(a)
             emit_charge(a, cost)
         elif op == "animate":
@@ -150,11 +185,22 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 raise ValueError(f"{label}: animation {key} has no host slot / unsupported end")
             if helper is not None:
                 lp.emit_spawn(a, helper, after=f"{label}_helper{k}")
-            a.li("a0", 1)
-            a.li("a1", animations[key])
-            a.jal(lp.F_SELECT)
+            where = animations[key]
+            if isinstance(where, tuple):
+                host.load_controller(a)
+                host.set_cursor(a, where[1])
+            else:
+                a.li("a0", 1)
+                a.li("a1", where)
+                a.jal(lp.F_SELECT)
             a.li("a0", int(step["rate"]))
             a.jal(F_TO_PHASE_END)
+            host.load_controller(a)
+        elif op == "sound":
+            fighter = int(step["sound"]["fighter"])
+            if not sounds or fighter not in sounds:
+                raise ValueError(f"{label}: fighter sound {fighter} has no host event")
+            host.play_sound(a, sounds[fighter])
             host.load_controller(a)
         elif op == "projectile":
             if helper is not None:  # the helper goes first: one type-4 object at a time

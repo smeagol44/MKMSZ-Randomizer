@@ -31,6 +31,8 @@ Body fields:
 * ``body.secondary_scripts`` (optional): empty host secondary slot -> ``"table1:0xNN:P"``
   (or ``table0``): a new script with the frames of the donor script's first P phases (tokens
   dropped), for animations a host-only special plays (Reptile's forceball and acid throws).
+  Keys 0x40-0x7F get no table-1 entry (the host has only four empty ones); the build reports
+  their file offsets and the special sets the animation cursor by offset.
 * ``body.run``: the MKT slot with the Run poses (``0x4A`` for every MKT fighter) and the host
   Run rate.
 * ``body.colour``: colour depth and method. ``explicit`` gives the 32→16 index map and the
@@ -276,8 +278,9 @@ def validate(data: Any) -> FighterDescription:
     for key, value in (raw_new if isinstance(raw_new, dict) else {}).items():
         slot = _int(key, f"body.secondary_scripts key {key!r}", errors)
         m = re.fullmatch(r"table([01]):(0x[0-9A-Fa-f]{1,2}):([1-9])", str(value))
-        if slot is None or not 0 <= slot < 0x2B or slot in secondary or not m:
-            errors.append(f"body.secondary_scripts[{key}]: empty host secondary slot -> 'table1:0xNN:P'")
+        if slot is None or not (0 <= slot < 0x2B or 0x40 <= slot < 0x80) or slot in secondary or not m:
+            errors.append(f"body.secondary_scripts[{key}]: empty host secondary slot (or 0x40-0x7F, "
+                          "no table entry) -> 'table1:0xNN:P'")  # fmt: skip
         else:
             new_scripts[slot] = (int(m.group(1)), int(m.group(2), 16), int(m.group(3)))
     if not isinstance(raw_new, dict):

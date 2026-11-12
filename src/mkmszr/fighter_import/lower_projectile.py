@@ -53,6 +53,7 @@ ACTOR_D8 = 0x46  # projectile actor +0xD8, as Quan Chi's
 UNITS_PER_PX = 2
 MKT_TABLE1 = 0x168  # MKT get_char_ani table 1 (heap-relative)
 KSEG1_TO_KSEG0 = 0x20000000
+ACTOR_FLAGS, FACING_BIT = 0x8C, 0x10  # actor facing (0x800344F4, 0x8002B6F4)
 
 # Victim reactions by meaning -> host. "base": a stock host reaction (leaf, no branches) copied
 # into the payload with the donor arc converted; "host": a stock reaction used as is.
@@ -71,7 +72,47 @@ REACTION_LOWERING: dict[str, dict[str, Any]] = {
         "drop_sound": (8, 0x0C019342),  # jal 0x80064D08: stock hit sound 0x185
     },
 }
+# Stumble-kind reactions: a lifted copy of the host Fire spiked-rod trap stumble, the reaction
+# Sektor's rocket was accepted with (robo_zap, proof v35), without its 8-tick hit pause, its
+# push rescaled by the donor push over MKT's rocket push (zap_stumble 0x33333, host 0x56666).
+REACTION_LOWERING["acid_stagger"] = {
+    "kind": "stumble",
+    "base": 0x80051280,
+    "end": 0x800513AC,
+    "pause": 0x80051318,  # jal 0x80028794 (sleep 8)
+    "push": (0x80051338, 0x80051340, 0x80051344, 0x80051348),  # lui/ori +push, lui/ori -push
+    "stock_push": 0x56666,
+    "donor_push": 0x26666,  # MKT reaction 0x72 (0x800547C8): +0x420 = 0x26666, then 0x80057F94
+    "donor_ref": 0x33333,  # MKT zap_stumble (r_rocket), the host's accepted 0x56666
+}
 BLOCKED_LOWERING = {"blocked": 0x05}
+
+
+def stumble_push(meaning: str) -> int:
+    spec = REACTION_LOWERING[meaning]
+    return round(spec["stock_push"] * spec["donor_push"] / spec["donor_ref"])
+
+
+def lift_stumble(clean: bytes, meaning: str, dst_va: int) -> bytes:
+    """A stumble-kind reaction lifted to run at ``dst_va`` (``fighter_import.lifter``)."""
+
+    from . import lifter
+
+    spec = REACTION_LOWERING[meaning]
+    base, end = spec["base"], spec["end"]
+    code = clean[base - 0x7FFFF400 : end - 0x7FFFF400]
+    push = stumble_push(meaning)
+    neg = -push & 0xFFFFFFFF
+    up, uo, dn, do = spec["push"]
+    stock = {up: 0x3C020005, uo: 0x34426666, dn: 0x3C02FFFA, do: 0x3442999A, spec["pause"]: 0x0C00A1E5}
+    for va, word in stock.items():
+        if int.from_bytes(code[va - base : va - base + 4], "big") != word:
+            raise ValueError(f"stumble word at 0x{va:08X} is not stock")
+    patches = {spec["pause"]: 0, up: 0x3C020000 | push >> 16, uo: 0x34420000 | push & 0xFFFF,
+               dn: 0x3C020000 | neg >> 16, do: 0x34420000 | neg & 0xFFFF}  # fmt: skip
+    result = lifter.lift(code, base, dst_va, patches=patches, cached_calls=True)
+    lifter.verify(code, result)
+    return result.code
 
 
 def _int(v: Any) -> int:
@@ -84,6 +125,7 @@ class DonorPart:
     frames: tuple[int, ...]  # frame records (heap-relative), in script order
     palette: int | None  # palette bound by token 13 (the next frame record's palette word)
     loops: bool
+    loop_from: int = 0  # frame index the loop jumps back to (MKT acid: past the spit frames)
 
 
 def donor_part(donor: Donor, anim: dict[str, Any]) -> DonorPart:
@@ -101,13 +143,16 @@ def donor_part(donor: Donor, anim: dict[str, Any]) -> DonorPart:
             if MKT.is_token(v):
                 p += 4 * len(MKT.operands[v])
     frames: list[int] = []
-    palette, bind_next, loops = None, False, False
+    at: list[int] = []
+    palette, bind_next, loops, loop_from = None, False, False, 0
     while True:
         v = donor.m32(p)
         if v == 0:
             break
         if v == 1:
             loops = True
+            target = donor.m32(p + 4)
+            loop_from = at.index(target) if target in at else 0
             break
         if MKT.is_token(v):
             if v == 13:
@@ -119,8 +164,9 @@ def donor_part(donor: Donor, anim: dict[str, Any]) -> DonorPart:
         if bind_next:
             palette, bind_next = donor.m32(v + 0x14), False
         frames.append(v)
+        at.append(p)
         p += 4
-    return DonorPart(tuple(frames), palette, loops)
+    return DonorPart(tuple(frames), palette, loops, loop_from)
 
 
 @dataclass(frozen=True)
@@ -185,6 +231,14 @@ class ArtLayout:
     helper_slot: int | None = None
     helper_start: int = 0  # body pose (0-based) the helper first shows with
     helper_frames: int = 0  # helper frames, one per body pose from helper_start
+    # Virtual entries (no free table-1 slot): the *_slot fields are indices whose
+    # ``0x104 + 4 * index`` word, inside the art, holds the script offset; projectile_actor_build
+    # takes any index, fighter_select_animation only 16-bit ones, so the code sets cursors by
+    # offset instead (``*_at``).
+    virtual: bool = False
+    flight_at: int = 0
+    impact_at: int = 0
+    helper_at: int = 0
 
 
 def place_art(
@@ -192,7 +246,7 @@ def place_art(
     mkt: bytes,
     donor_id: int,
     step: dict[str, Any],
-    slots: tuple[int, int],
+    slots: tuple[int, int] | None,
     budget: int,
     at: int | None = None,
     helper: Helper | None = None,
@@ -257,39 +311,59 @@ def place_art(
         return put(b"".join(w.to_bytes(4, "big") for w in words))
 
     rate = _int(step["rate"])
-    flight_words = [shape[r] for r in flight.frames for _ in range(rate)]
+    # Frames shown by the close-range check steps appear once each (one advance per step);
+    # the rest at ``rate``; the loop goes back to the donor's loop frame (MKT acid: 0x31B0).
+    early = len(step.get("checks", []))
+    flight_words = [shape[r] for r in flight.frames[:early]]
+    flight_words += [shape[r] for r in flight.frames[early:] for _ in range(rate)]
+    loop_word = (flight.loop_from if flight.loop_from < early
+                 else early + (flight.loop_from - early) * rate)  # fmt: skip
     flight_at = cursor
-    script(flight_words + [1, flight_at])  # loop
+    script(flight_words + [1, flight_at + 4 * loop_word])  # loop
     impact_ticks = 0
-    entries = [(slots[0], flight_at)]
+    entries = [(slots[0] if slots else 0, flight_at)]
     if impact is not None:
         impact_rate = _int(impact_step["rate"])
         impact_words = [shape[r] for r in impact.frames for _ in range(impact_rate)]
         impact_ticks = len(impact_words)
         impact_at = cursor
         script(impact_words + [1, impact_at + 4 * (impact_ticks - 1)])  # hold the last frame
-        entries.append((slots[1], impact_at))
+        entries.append((slots[1] if slots else 0, impact_at))
+    helper_at = 0
     if helper is not None:
-        if helper_slot is None or throw_rate <= 0:
+        if (helper_slot is None and slots is not None) or throw_rate <= 0:
             raise ValueError("a helper needs its table-1 slot and the throw's frame rate")
         # One word per helper frame: the helper process points its cursor at the frame for the
         # owner's current body pose (:func:`emit_helper`), so it cannot drift from the body.
         helper_at = cursor
         n = len(helper.frames)
         script([shape[r] for r in helper.frames] + [1, helper_at + 4 * (n - 1)])
-        entries.append((helper_slot, helper_at))
+        if slots is not None:
+            entries.append((helper_slot, helper_at))
+    virtual = slots is None
+    if virtual:  # entry words in the art; their indices stand in for table-1 slots
+        index = {}
+        for name, where in (("flight", flight_at), ("impact", impact_at if impact else 0),
+                            ("helper", helper_at)):  # fmt: skip
+            if where:
+                index[name] = (put(where.to_bytes(4, "big")) - 0x104) // 4
+        flight_slot, impact_slot = index["flight"], index.get("impact")
+        helper_slot = index.get("helper")
+    else:
+        flight_slot, impact_slot = slots[0], slots[1] if impact else None
     if cursor > budget:
         raise ValueError(f"projectile art ends at 0x{cursor:X}, past the budget 0x{budget:X}")
-    for slot, where in entries:
+    for slot, where in entries if not virtual else ():
         off = 0x104 + 4 * slot
         if file87[off : off + 4] != bytes(4):
             raise ValueError(f"table-1 slot 0x{slot:X} is not empty")
         file87[off : off + 4] = where.to_bytes(4, "big")
     w, h = art.slot_size
-    if helper is None:
-        return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h)
-    return ArtLayout(placed.offset, slots[0], slots[1] if impact else None, impact_ticks, w, h,
-                     helper_slot, helper.start, len(helper.frames))  # fmt: skip
+    if helper is None and not virtual:
+        return ArtLayout(placed.offset, flight_slot, impact_slot, impact_ticks, w, h)
+    return ArtLayout(placed.offset, flight_slot, impact_slot, impact_ticks, w, h,
+                     helper_slot, helper.start if helper else 0, len(helper.frames) if helper else 0,
+                     virtual, flight_at, impact_at if impact else 0, helper_at)  # fmt: skip
 
 
 # ---- sounds, strike and reaction --------------------------------------------------------------
@@ -356,6 +430,14 @@ class Lowered:
     hum_event: int | None
     hum_every: int
     impact_event: int | None
+    reaction_meaning: str = "knockback_arc"
+    checks: tuple[bytes, ...] = ()  # close-range strike records, one per early frame
+    impact_at_opponent: bool = False
+    impact_dx: int = 0  # world units, after facing the attacker (MKT multi_adjust_xy)
+    impact_flip: bool = True  # MKT flip_single (Acid Spit v10: mirrored on the host)
+    # Keep the projectile's own y at the opponent: MKT's objects share the fighters' ground y, but
+    # the host projectile is raised by its offset (Acid Spit v13: splash 36 px below the hit).
+    impact_keep_y: bool = False
 
 
 def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
@@ -389,9 +471,19 @@ def lower(
         _int(step["speed"]), _int(step["speed"]), lambda d: d, UNITS_PER_PX
     )[0]
     dx, dy = (_int(v) * UNITS_PER_PX for v in step["offset"])
+    meaning = strike["reaction"]
+    kind = REACTION_LOWERING[meaning].get("kind", "arc")
+    words = tuple(lifted_reaction(clean, meaning)) if kind == "arc" else ()
+    checks = tuple(
+        b"".join((_int(v) & 0xFFFF).to_bytes(2, "big") for v in c["box"]) + record[8:]
+        for c in step.get("checks", [])
+    )
+    impact = step.get("impact", {})
     return Lowered(
-        art, speed, dx, dy, record, tuple(lifted_reaction(clean, strike["reaction"])),
+        art, speed, dx, dy, record, words,
         events.get("hum"), _int(step.get("hum", {}).get("every", 0)), events.get("impact"),
+        meaning, checks, impact.get("at") == "opponent",
+        _int(impact.get("adjust", [0, 0])[0]) * UNITS_PER_PX,
     )  # fmt: skip
 
 
@@ -413,13 +505,51 @@ def emit_spawn(a: Assembler, child: str = "projectile", after: str = "after_spaw
 
 
 def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: str = "play",
-                 prefix: str = "") -> None:  # fmt: skip
+                 prefix: str = "", data: str = "", alive: str | None = None) -> None:  # fmt: skip
     """The projectile process. Needs :func:`host.emit_sound_player` (label ``player``) and
-    :func:`emit_data` (labels ``record`` and ``reaction``) in the same assembly. ``prefix``
-    names its internal labels, so several processes can share one assembly."""
+    :func:`emit_data` (labels ``data + "record"``, ``data + "reaction"``, checks) in the same
+    assembly. ``prefix`` names its internal labels, so several processes can share one
+    assembly. Options (Acid Spit, milestone 4 step 3): virtual art entries (cursor by offset),
+    close-range checks on the first frames before flight (MKT ``acid_arc_step``: next frame,
+    sleep 2, box check), and the impact at the opponent (MKT ``match_me_to_opponent``,
+    ``flip_single``, ``multi_adjust_xy``)."""
+
+    def select(slot: int | None, at: int) -> None:
+        if p.art.virtual:
+            host.set_cursor(a, at)
+        else:
+            a.li("a0", 1)
+            a.li("a1", slot)
+            a.jal(F_SELECT)
+
+    def velocity() -> None:
+        host.load_controller(a)
+        a.li("t0", p.speed)
+        a.lw("t1", 0x700, "s0")
+        a.li("t2", 0x10)
+        a.bne("t1", "t2", prefix + "set_vel")
+        a.subu("t0", "zero", "t0")
+        a.label(prefix + "set_vel")
+        a.sw("t0", 0x14, "s1")
+
+    def collide(record: str, hit: str) -> None:
+        host.load_controller(a)
+        a.la("a0", record)
+        a.lui("t0", KSEG1_TO_KSEG0 >> 16)
+        a.subu("a0", "a0", "t0")  # KSEG0 alias: the collision core rejects other records
+        a.sw("a0", 0x638, "s0")
+        a.move("a1", "zero")
+        a.jal(F_COLLIDE)
+        a.andi("v0", "v0", 0xFFFF)
+        a.li("t0", 0x8000)
+        a.beq("v0", "t0", hit)
 
     a.label(child)
     a.addiu("sp", "sp", -0x40)
+    if alive is not None:  # this move's projectile is live (lower_special: per-move limit)
+        a.la("t0", alive)
+        a.li("t1", 1)
+        a.sw("t1", 0, "t0")
     host.load_controller(a)
     a.lhu("a0", 0x78, "s1")  # owner type (4)
     a.li("a1", p.art.flight_slot)
@@ -439,17 +569,20 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.li("a1", p.dx)
     a.li("a2", p.dy)
     a.jal(F_OFFSET)
-    host.load_controller(a)
-    a.li("t0", p.speed)
-    a.lw("t1", 0x700, "s0")
-    a.li("t2", 0x10)
-    a.bne("t1", "t2", prefix + "set_vel")
-    a.subu("t0", "zero", "t0")
-    a.label(prefix + "set_vel")
-    a.sw("t0", 0x14, "s1")
-    a.li("a0", 1)
-    a.li("a1", p.art.flight_slot)
-    a.jal(F_SELECT)
+    if p.checks:  # MKT: the first frames stay put and check close-range boxes, then flight
+        host.load_controller(a)
+        select(p.art.flight_slot, p.art.flight_at)
+        for k in range(len(p.checks)):
+            host.load_controller(a)
+            a.move("a0", "s1")
+            a.jal(F_ADVANCE)
+            a.li("a0", 2)
+            a.jal(F_SLEEP)
+            collide(f"{data}check{k}", prefix + "on_contact")
+        velocity()
+    else:
+        velocity()
+        select(p.art.flight_slot, p.art.flight_at)
     a.li("s3", 0)
     a.label(prefix + "fly")
     if p.hum_event is not None:
@@ -459,16 +592,7 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         a.addiu("s3", "s3", -p.hum_every)
         host.play_sound(a, p.hum_event, player)
         a.label(prefix + "no_hum")
-    host.load_controller(a)
-    a.la("a0", "record")
-    a.lui("t0", KSEG1_TO_KSEG0 >> 16)
-    a.subu("a0", "a0", "t0")  # KSEG0 alias: the collision core rejects other records
-    a.sw("a0", 0x638, "s0")
-    a.move("a1", "zero")
-    a.jal(F_COLLIDE)
-    a.andi("v0", "v0", 0xFFFF)
-    a.li("t0", 0x8000)
-    a.beq("v0", "t0", prefix + "on_contact")
+    collide(data + "record", prefix + "on_contact")
     host.load_controller(a)
     a.move("a0", "s1")
     a.jal(F_ADVANCE)
@@ -486,9 +610,33 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     if p.art.impact_slot is not None:
         host.load_controller(a)
         a.sw("zero", 0x14, "s1")
-        a.li("a0", 1)
-        a.li("a1", p.art.impact_slot)
-        a.jal(F_SELECT)
+        if p.impact_at_opponent:  # on the opponent, facing the attacker, MKT's adjust
+            a.lw("t0", host.CTRL_OPPONENT, "s0")
+            a.beqz("t0", prefix + "no_opponent")
+            a.lw("t0", host.CTRL_ACTOR, "t0")
+            a.beqz("t0", prefix + "no_opponent")
+            a.lw("t1", host.ACTOR_X, "t0")
+            a.sw("t1", host.ACTOR_X, "s1")
+            if not p.impact_keep_y:
+                a.lw("t1", host.ACTOR_Y, "t0")
+                a.sw("t1", host.ACTOR_Y, "s1")
+            if p.impact_flip:
+                a.lhu("t1", ACTOR_FLAGS, "s1")
+                a.li("t2", FACING_BIT)
+                a.xor("t1", "t1", "t2")
+                a.sh("t1", ACTOR_FLAGS, "s1")
+            a.move("a0", "s1")
+            a.li("a1", p.impact_dx)
+            a.move("a2", "zero")
+            a.jal(F_OFFSET)
+            host.load_controller(a)
+            a.label(prefix + "no_opponent")
+        if p.art.virtual:
+            select(None, p.art.impact_at)
+        else:
+            a.li("a0", 1)
+            a.li("a1", p.art.impact_slot)
+            a.jal(F_SELECT)
         a.li("s2", p.art.impact_ticks)
         a.label(prefix + "impact_loop")
         host.load_controller(a)
@@ -505,12 +653,57 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.jal(F_ACTOR_REMOVE)
     a.lw("a0", 0x20, "sp")
     a.jal(F_TEX_RELEASE)
+    if alive is not None:
+        a.la("t0", alive)
+        a.sw("zero", 0, "t0")
     a.jal(F_EXIT)
     a.label(prefix + "child_hang")
     a.beq("zero", "zero", prefix + "child_hang")
 
 
 HELPER_IDLE, HELPER_SHOWN, HELPER_LAUNCH = 0, 1, 2
+
+# Where the host collision core puts a strike box (Static-confirmed, victim scan
+# 0x8002CE24..0x8002D0E0): box values are scaled by 0.9 and doubled into world units, from the
+# attacker actor's position with y - 0xD8 (box y grows downward). The facing bit mirrors x.
+BOX_ORIGIN_UNITS = 0xD8
+BOX_UNIT = 1.8  # world units per box unit (x 0.9, then << 1)
+
+
+def drawn_band(donor: Donor, anim: dict[str, Any]) -> tuple[float, float]:
+    """Box-space y span (top, bottom) of the visible rows of an art part's looping frames
+    (from ``loop_from``), as the host draws them: frame rows from the anchor's y, ``UNITS_PER_PX``
+    world units per pixel, from the projectile actor's position."""
+
+    part = donor_part(donor, anim)
+    top, bottom = float("inf"), float("-inf")
+    for rel in part.frames[part.loop_from :]:
+        f = donor.frame(rel)
+        w, stride, pixels = f["w"], (f["w"] + 3) & ~3, f["padded"]
+        rows = [y for y in range(f["eh"]) if any(pixels[y * stride : y * stride + w])]
+        if rows:
+            top = min(top, f["y"] + rows[0])
+            bottom = max(bottom, f["y"] + rows[-1])
+    if top == float("inf"):
+        raise ValueError("art part has no visible pixels")
+    to_box = lambda px: (BOX_ORIGIN_UNITS + UNITS_PER_PX * px) / BOX_UNIT
+    return to_box(top), to_box(bottom)
+
+
+def centre_on_art(donor: Donor, step: dict[str, Any]) -> dict[str, Any]:
+    """``step`` with its strike box and close-range checks moved down by one shift that centres
+    the strike box on the drawn flight art (Hypothesis; Reptile's acid, specials proof v13). MKT's
+    boxes assume MKT's own box origin, so a thin donor box can miss the art on the host."""
+
+    top, bottom = drawn_band(donor, step["art"])
+    box = [_int(v) for v in step["strike"]["box"]]
+    shift = round((top + bottom) / 2 - (box[1] + box[3] / 2))
+    out = dict(step, strike=dict(step["strike"], box=[box[0], box[1] + shift, box[2], box[3]]))
+    if "checks" in step:
+        out["checks"] = [dict(c, box=[_int(c["box"][0]), _int(c["box"][1]) + shift,
+                                      _int(c["box"][2]), _int(c["box"][3])])
+                         for c in step["checks"]]  # fmt: skip
+    return out
 
 
 def phase_end_ticks(rate: int) -> int:
@@ -523,7 +716,8 @@ def phase_end_ticks(rate: int) -> int:
 HELPER_MAX_TICKS = 120  # safety cap: the helper never outlives this
 
 
-def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body_slot: int) -> None:
+def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body_slot: int | None,
+                body_at: int | None = None) -> None:  # fmt: skip
     """The throw helper's process (spawned with :func:`emit_spawn` at the start of the throw).
 
     It follows the owner's body: each tick it reads the player's animation cursor in the throw
@@ -549,7 +743,10 @@ def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body
     a.lw("t1", host.CTRL_SCRIPT_CURSOR, "t0")
     a.lw("t2", host.CTRL_ACTOR, "t0")
     a.lw("t2", host.ACTOR_FILE_BASE, "t2")
-    a.lw("t3", 0x104 + 4 * body_slot, "t2")
+    if body_at is None:  # the throw script's table-1 entry
+        a.lw("t3", 0x104 + 4 * body_slot, "t2")
+    else:  # a script without a table entry (body.secondary_scripts, virtual)
+        a.li("t3", body_at)
     a.addu("t3", "t2", "t3")
     a.subu("t1", "t1", "t3")
     a.sra("t1", "t1", 2)
@@ -585,7 +782,10 @@ def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body
     a.label(label + "_show")
     host.load_controller(a)
     a.lw("t2", host.ACTOR_FILE_BASE, "s1")
-    a.lw("t3", 0x104 + 4 * art.helper_slot, "t2")
+    if art.virtual:
+        a.li("t3", art.helper_at)
+    else:
+        a.lw("t3", 0x104 + 4 * art.helper_slot, "t2")
     a.addu("t3", "t2", "t3")
     a.addiu("t1", "s2", -art.helper_start)
     a.sll("t1", "t1", 2)
@@ -643,14 +843,27 @@ def emit_helper_data(a: Assembler, label: str) -> None:
     a.raw(HELPER_IDLE)
 
 
-def emit_data(a: Assembler, p: Lowered, base: int) -> None:
-    """Strike record (16-aligned, read through its KSEG0 alias) and the lifted reaction."""
+def emit_data(a: Assembler, p: Lowered, base: int, clean: bytes | None = None, data: str = "") -> None:
+    """Strike record (16-aligned, read through its KSEG0 alias), the close-range check records
+    and the reaction: the lifted arc words, or (stumble kind) the stumble lifted here, which
+    needs ``clean``."""
 
     while (a.pc() - base) % 16:
         a.nop()
-    a.label("record")
+    a.label(data + "record")
     for i in range(0, 16, 4):
         a.raw(int.from_bytes(p.record[i : i + 4], "big"))
-    a.label("reaction")
-    for word in p.reaction_words:
-        a.raw(word)
+    for k, rec in enumerate(p.checks):
+        a.label(f"{data}check{k}")
+        for i in range(0, 16, 4):
+            a.raw(int.from_bytes(rec[i : i + 4], "big"))
+    a.label(data + "reaction")
+    if REACTION_LOWERING[p.reaction_meaning].get("kind", "arc") == "stumble":
+        if clean is None:
+            raise ValueError("a stumble reaction is lifted from the clean ROM")
+        code = lift_stumble(clean, p.reaction_meaning, a.pc())
+        for i in range(0, len(code), 4):
+            a.raw(int.from_bytes(code[i : i + 4], "big"))
+    else:
+        for word in p.reaction_words:
+            a.raw(word)

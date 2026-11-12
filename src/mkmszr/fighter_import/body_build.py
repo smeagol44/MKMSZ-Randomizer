@@ -666,6 +666,7 @@ class Body:
     encoded: Encoded
     log: list
     report: dict = field(default_factory=dict)
+    script_offsets: dict = field(default_factory=dict)  # body.secondary_scripts key -> file offset
 
     def f32(self, off):
         return be32(self.clean_file, off)
@@ -768,6 +769,7 @@ def lying_landing(words: list) -> list:
 
 
 KNOCKDOWN_SLOT = 0x1E
+VIRTUAL_SCRIPT = 0x40  # body.secondary_scripts keys from here: no table-1 entry (offset only)
 
 
 def phase_slot_frames(donor: Donor, slots, sources: dict | None = None) -> dict[int, list[list[int]]]:
@@ -1263,7 +1265,7 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
     item_sizes = {k: 32 + len(enc.streams[k]) for k in all_keys}
     script_items = [("script", s) for s, c in sorted(slot_cfg.items()) if c["mode"] == "packed"]
     for s, phases in sorted(new_scripts.items()):
-        if be32(clean_file, 0x104 + 4 * s):
+        if s < VIRTUAL_SCRIPT and be32(clean_file, 0x104 + 4 * s):
             raise LayoutError(f"secondary slot 0x{s:02X} is not empty in the host file")
         script_items.append(("secondary", s))
         item_sizes[("secondary", s)] = 4 * sum(len(p) + 1 for p in phases)
@@ -1367,14 +1369,18 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
             put32(file87, pos, shape_map[rel])
             owned.add(pos)
         log.append(f"SECONDARY slot 0x{slot:02X}: host script kept, donor frames by phase")
+    script_offsets: dict[int, int] = {}
     for s, phases in new_scripts.items():
         at = item_offsets[("secondary", s)]
         words = [w for p in phases for w in [*(shape_map[r] for r in p), 0]]
         for i, w in enumerate(words):
             put32(file87, at + 4 * i, w)
             owned.add(at + 4 * i)
-        put32(file87, 0x104 + 4 * s, at)
+        if s < VIRTUAL_SCRIPT:
+            put32(file87, 0x104 + 4 * s, at)
+        script_offsets[s] = at
         log.append(f"NEW SCRIPT secondary 0x{s:02X} at 0x{at:X}: {len(phases)} donor phases")
+    body_script_offsets = script_offsets
     tails, tail_log = stock_tails(clean_file, slot_cfg, translated, stock_shape_set, set(shape_map.values()))
     for pos, word in tails.items():
         put32(file87, pos, word)
@@ -1421,6 +1427,7 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         fallback_positions.append(pos)
     body.fallback, body.fallback_positions = fallback, fallback_positions
 
+    body.script_offsets = dict(body_script_offsets)
     body.report = {
         "frames": len(all_keys), "inherited": len(old_shapes), "run": len(run_rels),
         "table_bytes": len(enc.table), "stream_bytes": enc.stream_bytes,

@@ -49,7 +49,8 @@
       "0x23": "shift:+1"
     },
     "secondary_scripts": {
-      "0x25": "table1:0x05:2"
+      "0x25": "table1:0x05:2",
+      "0x40": "table1:0x06:2"
     },
     "secondary_slots": {
       "0x02": "table1:0x02"
