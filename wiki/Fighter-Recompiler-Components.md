@@ -51,7 +51,7 @@ A move program is data (`src/mkmszr/fighters/moves/<fighter>.json`, format 1):
 | `stop` | Zero motion | — | at once | *existing*: `0x8002B1C0` |
 | `jump` | Ballistic motion | `x`, `y`, `gravity`, `until`: `landing` / `below_screen` / `surface` | per `until` | *existing* (teleport): adapter-integrated arc |
 | `shake` | Jitter in place | `dx`, `dy`, `count`, `ticks` | after `count` | *existing*: `0x80031208` offsets |
-| `pass_through` | No fighter repulsion | `ticks` | after the time | **gap**: host equivalent of MKT `sans_repell_3` not located. `lower_special` skips it; Reptile specials proof v15 tests whether the host lets the elbow dash through |
+| `pass_through` | No fighter repulsion | `ticks` | after the time | **gap**: host equivalent of MKT `sans_repell_3` not located. In specials proof v15 (skipped) the dash stopped at the victim. v16: clear actor `+0x8C` bit `0x1000` (as stock Freeze on Contact, `0x80034740` / `0x80034658`) and re-apply the speed each tick; `end` sets the bit again. Hypothesis |
 | `relocate` | Reappear by the opponent | `to`: `behind_opponent`, `dx`, `dy?` | at once | *existing* (teleport): copy target position + `0x80031208` + face |
 | `sound` | Play a sound | `sound` | at once | *existing*: isolated host chain |
 | `effect` | Start a shared effect | `effect`, `at?` | at once | *existing*: MKT-art effect process |
@@ -64,8 +64,8 @@ A move program is data (`src/mkmszr/fighters/moves/<fighter>.json`, format 1):
 
 | Meaning | Donor | Host |
 |---|---|---|
-| `elbow_hold` | MKT `0x74`: grounded victim held about 20 ticks, airborne rejected | `lower_special.emit_hold_reaction`: the stock hit reaction `0x80054B20`'s preamble (with its airborne handler), stop, the first hit pose (slot `0x1C`), still for 20 donor ticks, exit; no voices. Supplied in a spare reaction entry (byte `0x4C`, specials proof v15). Pending |
-| `launch` | MKT `0x24`: damaging launch, flight and landing | Host uppercut `0x08` (`0x800507D0`, Runtime-confirmed in the teleport). Pending for the elbow (v15) |
+| `elbow_hold` | MKT `0x74`: grounded victim held about 20 ticks, airborne rejected | `lower_special.emit_hold_reaction`: the stock hit reaction `0x80054B20`'s preamble (with its airborne handler), stop, the first hit pose (slot `0x1C`), still for 20 donor ticks, exit; no voices. From v16 it keeps the victim's current frame, as MKT does; v15's hit pose read as a hit. Supplied in a spare reaction entry (byte `0x4C`, specials proof v15). Pending |
+| `launch` | MKT `0x24`: damaging launch, flight and landing | The stock roundhouse's reaction `0x0C` (owner after v15, where the uppercut `0x08` was used). Pending (v16) |
 | `knockback_arc` | MKT `0x71` (forceball): victim action `0x625`, launched on an arc **toward the attacker** (`do_jump(-0x2CCCC, -0x6CCCC, 0x5199)` through `0x8006EBB0`; direction from the owner's comparison of proofs v02/v03, not from the static sign reading) | Lifted copy of host `0x25` (`0x80057C14`) with the converted MKT arc `0x800321D0(-0x3B73B, -0x90623, 0x5A3C)` and without its stock hit sound (Runtime-confirmed bounded, proof v06) |
 | `acid_stagger` | MKT `0x72` (acid): victim action `0x626`, staggers back. Host (2026-11-11): the lifted Fire spiked-rod trap stumble that Sektor's rocket was accepted with (`0x80051280`), without its 8-tick pause, push `0x56666 × 0x26666 / 0x33333 = 0x40CCC` (`lower_projectile`, kind `stumble`) | Pending (specials proof v10) |
 | `rocket_stumble` | MKT rocket reaction → `zap_stumble` | *existing* (Sektor rocket) |

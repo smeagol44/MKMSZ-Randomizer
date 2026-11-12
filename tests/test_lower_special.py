@@ -105,14 +105,16 @@ def test_elbow_dash_lowering() -> None:
     ls.emit_hold_reaction(a, "hold", 2)
     ls.emit_strike_data(a, records, BASE)
     text = " ".join(_text(a.link()))
-    # Two strikes: the hold (reaction 0x4C, no damage) and the return hit (uppercut 0x08, 13/3).
-    assert [r[8:12].hex() for _, r in records] == ["4c050000", "08050d03"]
+    # Two strikes: the hold (reaction 0x4C, no damage) and the return hit (roundhouse 0x0C, 13/3).
+    assert [r[8:12].hex() for _, r in records] == ["4c050000", "0c050d03"]  # launch: roundhouse 0x0C
     assert all(a.labels[name] % 16 == BASE % 16 for name, _ in records)
     assert "lui a1, 0xD" in text and "ori a1, a1, 0xDDDD" in text  # MKT 0xA6666 -> host 0xDDDDD
     assert "addiu s3, zero, 8" in text and "addiu s3, zero, 10" in text  # windows: MKT 16 and 20
     assert "addiu s4, zero, 7" in text  # pass-through dash: MKT 14 ticks
     assert "0049f90" not in text.lower()  # no turning at the start
     assert "addiu s2, zero, 10" in text  # the hold: MKT 20 ticks
+    assert "andi t0, t0, 0xEFFF" in text and "ori t0, t0, 0x1000" in text  # pass-through bit
+    assert "addiu a1, zero, 28" not in text  # the hold keeps the victim's frame (no hit pose)
     with pytest.raises(ValueError, match="reaction"):
         ls.emit_action(Assembler(BASE), "x", elbow.steps, cost=0,
                        animations={(0, 0x4A): ("at", 0), (1, 0x0B): ("at", 0)}, speed=lambda v: v)  # fmt: skip

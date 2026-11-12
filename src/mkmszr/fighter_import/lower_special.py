@@ -15,7 +15,7 @@ Supported steps: ``stamp`` (MKT cooldown key; not lowered yet), ``begin``, ``ani
 animation the description copied into a host secondary slot, ``body.secondary_scripts``;
 ``until`` ``phase_end`` or ``manual``), ``pose``, ``next_frame``, ``velocity``, ``stop``,
 ``face``, ``shake``, ``repeat``, ``strike`` (a hit window with ``on_hit`` / ``on_block`` branches),
-``pass_through`` (not lowered: see :func:`emit_action`), ``projectile`` (a child built by
+``pass_through`` (see :func:`emit_action`), ``projectile`` (a child built by
 ``lower_projectile``), ``sleep``, ``finish`` and ``end``.
 
 **Timing.** MKT runs its game logic at 60 ticks a second, the host at 30
@@ -77,7 +77,11 @@ F_SET_XVEL = 0x8002B1EC  # (actor, x speed): actor +0x14 and +0x58
 FACING_BIT = 0x10
 # Host victim reactions by strike meaning: a stock entry, or None for one the builder supplies
 # in a spare reaction-table entry (``reactions`` argument of emit_action).
-STOCK_REACTIONS = {"launch": 0x08, "uppercut": 0x08}  # 0x800507D0, Runtime-confirmed (teleport)
+# ``launch``: the stock roundhouse's reaction (player strike index 0x0D, record 0x800AF5E4; owner,
+# specials proof v15: "the roundhouse kick one, not the uppercut"). ``uppercut``: 0x800507D0,
+# Runtime-confirmed (Sektor teleport).
+STOCK_REACTIONS = {"launch": 0x0C, "uppercut": 0x08}
+SOLID_BIT = 0x1000  # actor +0x8C: Freeze on Contact clears it while it runs (0x80034740 / 0x80034658)
 
 
 def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
@@ -193,9 +197,11 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
 
     Returns the strike records ``(label, 16 bytes)`` to place with :func:`emit_strike_data`.
 
-    ``pass_through`` (MKT ``sans_repell_3``, no fighter repulsion) is not lowered: the host's
-    fighter-separation code is not located yet, so a move that passes through the opponent
-    relies on the host not separating them (specials proof v15 tests this)."""
+    ``pass_through`` (MKT ``sans_repell_3``, no fighter repulsion; the host's fighter
+    separation is not located). Specials proof v15 stopped at the victim. From v16 each
+    pass-through tick clears actor ``+0x8C`` bit ``0x1000`` as stock Freeze on Contact does while
+    Sub-Zero runs through enemies, and re-applies the move's last speed (kept in ``s5``); ``end``
+    sets the bit again (Hypothesis until runtime-tested)."""
 
     records: list[tuple[str, bytes]] = []
     counter = [0]
@@ -208,7 +214,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 found |= ops(s.get(key, []))
         return found
 
-    moves = "velocity" in ops(steps)
+    used = ops(steps)
+    moves = "velocity" in used
+    passes = "pass_through" in used
 
     def fresh(tag: str) -> str:
         counter[0] += 1
@@ -272,8 +280,16 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 advance()
             elif op == "next_frame":
                 advance(donor_ticks)
-            elif op == "pass_through":
-                continue  # see the docstring
+            elif op == "pass_through":  # see the docstring
+                host.load_controller(a)
+                a.lhu("t0", lp.ACTOR_FLAGS, "s1")
+                a.andi("t0", "t0", 0xFFFF ^ SOLID_BIT)
+                a.sh("t0", lp.ACTOR_FLAGS, "s1")
+                if moves:
+                    a.move("a0", "s1")
+                    a.move("a1", "s5")
+                    a.jal(F_SET_XVEL)
+                    host.load_controller(a)
             elif op == "velocity":
                 if speed is None:
                     raise ValueError(f"{label}: velocity needs a speed conversion")
@@ -285,6 +301,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 a.beqz("t0", skip)
                 a.subu("a1", "zero", "a1")  # facing left: negative x
                 a.label(skip)
+                a.move("s5", "a1")  # pass_through re-applies it
                 a.move("a0", "s1")
                 a.jal(F_SET_XVEL)
                 host.load_controller(a)
@@ -336,6 +353,11 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 a.jal(F_TO_PHASE_END)
                 host.load_controller(a)
             elif op == "end":
+                if passes:
+                    host.load_controller(a)
+                    a.lhu("t0", lp.ACTOR_FLAGS, "s1")
+                    a.ori("t0", "t0", SOLID_BIT)
+                    a.sh("t0", lp.ACTOR_FLAGS, "s1")
                 if moves:  # MKT's reaction_exit leaves no motion behind
                     host.load_controller(a)
                     host.stop(a)
@@ -407,16 +429,17 @@ def emit_strike_data(a: Assembler, records: list[tuple[str, bytes]], base: int) 
 
 
 # MKT reaction 0x74 (``r_reptile_dash``): a grounded victim stands still for 20 donor ticks,
-# then exits. Host: the stock hit reaction 0x10 (``0x80054B20``) without its two hit voices and
-# without the rest of its flinch: preamble (with its airborne handler), stop, the first hit pose,
-# a still hold, exit.
+# then exits; it selects no animation. Host: the stock hit reaction 0x10 (``0x80054B20``) without
+# its two hit voices and its flinch: preamble (with its airborne handler), stop, a still hold in
+# the victim's current frame, exit. Specials proof v15 also showed the first hit pose (slot
+# 0x1C); the owner saw a hit, not a hold.
 HOLD_DONOR_TICKS = 20
 F_REACT_A, F_REACT_B = 0x800504C4, 0x800556A4  # stock reaction 0x10 preamble calls
 F_REACT_PREAMBLE, AIRBORNE_HANDLER = 0x80053028, 0x800532F8
 HIT_SLOT = 0x1C  # victim primary slot of the stock hit flinch
 
 
-def emit_hold_reaction(a: Assembler, label: str, donor_ticks: int = 1) -> None:
+def emit_hold_reaction(a: Assembler, label: str, donor_ticks: int = 1, pose: bool = False) -> None:
     """Victim reaction ``elbow_hold`` (installed by the collision core as the victim's callback)."""
 
     a.label(label)
@@ -437,11 +460,12 @@ def emit_hold_reaction(a: Assembler, label: str, donor_ticks: int = 1) -> None:
     a.lw("t0", 0x64, "s1")
     a.ori("t0", "t0", 4)
     a.sw("t0", 0x64, "s1")
-    a.move("a0", "zero")
-    a.li("a1", HIT_SLOT)
-    a.jal(lp.F_SELECT)
-    host.load_controller(a)
-    host.advance_animation(a)
+    if pose:  # specials proof v15
+        a.move("a0", "zero")
+        a.li("a1", HIT_SLOT)
+        a.jal(lp.F_SELECT)
+        host.load_controller(a)
+        host.advance_animation(a)
     host.sleep_ticks(a, _scale(HOLD_DONOR_TICKS, donor_ticks), label + "_hold")
     host.load_controller(a)
     a.move("a0", "s1")
