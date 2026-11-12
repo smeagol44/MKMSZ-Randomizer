@@ -198,6 +198,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 speed: Callable[[int], int] | None = None,
                 footsteps: dict[tuple[int, int], Footsteps] | None = None,
                 stealth: str | None = None,
+                effects: dict[int, tuple[str, int]] | None = None,
                 skip: frozenset[str] = frozenset()) -> list[tuple[str, bytes]]:  # fmt: skip
     """The action root for a move program (never returns). ``animations``: donor animation
     (table, slot) -> host secondary slot holding it, or ``("at", offset)`` for a body script
@@ -211,7 +212,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     ``footsteps``: a manually advanced animation -> its donor footstep frames
     (:func:`donor_footsteps`) and the host events to alternate (needs ``host.emit_sound_player``);
     ``stealth``: the label of the timer process (:func:`emit_stealth_timer`) for ``stealth``
-    steps; ``skip``: step ops left out on purpose (e.g. ``effect`` before an effect is ported).
+    steps; ``effects``: MKT effect index -> (``effects.emit_descriptor`` label, dy in whole units)
+    for ``effect`` steps, started at the fighter in front of him through ``fx_spawn_xy``
+    (``effects.emit_spawn``); ``skip``: step ops left out on purpose.
 
     Returns the strike records ``(label, 16 bytes)`` to place with :func:`emit_strike_data`.
 
@@ -404,6 +407,18 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 a.li("a0", _scale(int(step["rate"]), donor_ticks))
                 a.jal(F_TO_PHASE_END)
                 host.load_controller(a)
+            elif op == "effect":
+                fx = int(step["effect"]["mkt_fx"])
+                if not effects or fx not in effects:
+                    raise ValueError(f"{label}: MKT effect {fx} is not ported")
+                descriptor, dy = effects[fx]
+                host.load_controller(a)
+                a.move("a0", "s1")
+                a.la("a1", descriptor)
+                a.li("a2", (dy & 0xFFFF) << 16)
+                a.li("a3", FRONT_SUBLAYER)
+                a.jal_label("fx_spawn_xy")
+                host.load_controller(a)
             elif op == "stealth":
                 if stealth is None:
                     raise ValueError(f"{label}: stealth step without a timer process")
@@ -588,6 +603,7 @@ STEALTH_ACTOR_FLAG = 0x4000  # actor +0x8C
 STEALTH_ACTOR_64 = 0x2000  # actor +0x64
 NORMAL_COLOUR = 0x80
 CTRL_ARG = 0x6F4  # a new process's argument word (written after creation, as effects do)
+FRONT_SUBLAYER = 0xFFFF  # effects drawn in front (stock Ice helper value)
 TIMER_PROCESS_ID = 0x100  # as the Eye timer
 
 
@@ -616,18 +632,36 @@ def emit_stealth_start(a: Assembler, timer: str, tag: str) -> None:
     a.label(tag + "_done")
 
 
-def emit_stealth_timer(a: Assembler, label: str, ticks: int) -> None:
-    """The timer process (entered with its own controller current), its undo subroutine (the
-    stock timer's tail, ``0x80072654..0x800726BC``) and its generation word."""
+def emit_stealth_timer(a: Assembler, label: str, period: int, drain: int) -> None:
+    """The stealth process (entered with its own controller current), its undo subroutine (the
+    stock timer's tail, ``0x80072654..0x800726BC``) and its generation word.
+
+    Owner (specials proof v18): stealth lasts while it is paid for, not a fixed time. Every
+    ``period`` ticks it takes ``drain`` Ice (controller ``+0x656``; the meter refills 1 every 5
+    ticks up to ``0xA6``, ``0x8005C3A4..0x8005C3D4``); when the meter cannot pay, stealth ends.
+    It stops without undoing when a hit (``0x80053594``) or a newer stealth already ended it."""
 
     a.label(label)
     host.load_controller(a)
     a.lw("s2", CTRL_ARG, "s0")  # the generation it was started for
-    a.li("a0", ticks)
+    a.label(label + "_tick")
+    a.li("a0", period)
     a.jal(F_SLEEP)
     a.la("t0", label + "_gen")
     a.lw("t1", 0, "t0")
-    a.bne("t1", "s2", label + "_exit")
+    a.bne("t1", "s2", label + "_exit")  # a newer stealth owns the effect
+    a.lui("a0", hi(PLAYER_CTRL))
+    a.lw("a0", lo(PLAYER_CTRL), "a0")
+    a.lhu("t0", CTRL_STEALTH, "a0")
+    a.andi("t0", "t0", STEALTH_BIT)
+    a.beqz("t0", label + "_exit")  # already ended (a hit)
+    a.lhu("t0", CTRL_ICE, "a0")
+    a.slti("t1", "t0", drain)
+    a.bnez("t1", label + "_end")
+    a.addiu("t0", "t0", -drain)
+    a.sh("t0", CTRL_ICE, "a0")
+    a.beq("zero", "zero", label + "_tick")
+    a.label(label + "_end")
     a.jal_label(label + "_undo")
     a.label(label + "_exit")
     a.jal(F_PROCESS_EXIT)
