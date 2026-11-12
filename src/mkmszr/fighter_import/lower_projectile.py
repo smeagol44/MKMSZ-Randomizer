@@ -659,6 +659,48 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
 
 HELPER_IDLE, HELPER_SHOWN, HELPER_LAUNCH = 0, 1, 2
 
+# Where the host collision core puts a strike box (Static-confirmed, victim scan
+# 0x8002CE24..0x8002D0E0): box values are scaled by 0.9 and doubled into world units, from the
+# attacker actor's position with y - 0xD8 (box y grows downward). The facing bit mirrors x.
+BOX_ORIGIN_UNITS = 0xD8
+BOX_UNIT = 1.8  # world units per box unit (x 0.9, then << 1)
+
+
+def drawn_band(donor: Donor, anim: dict[str, Any]) -> tuple[float, float]:
+    """Box-space y span (top, bottom) of the visible rows of an art part's looping frames
+    (from ``loop_from``), as the host draws them: frame rows from the anchor's y, ``UNITS_PER_PX``
+    world units per pixel, from the projectile actor's position."""
+
+    part = donor_part(donor, anim)
+    top, bottom = float("inf"), float("-inf")
+    for rel in part.frames[part.loop_from :]:
+        f = donor.frame(rel)
+        w, stride, pixels = f["w"], (f["w"] + 3) & ~3, f["padded"]
+        rows = [y for y in range(f["eh"]) if any(pixels[y * stride : y * stride + w])]
+        if rows:
+            top = min(top, f["y"] + rows[0])
+            bottom = max(bottom, f["y"] + rows[-1])
+    if top == float("inf"):
+        raise ValueError("art part has no visible pixels")
+    to_box = lambda px: (BOX_ORIGIN_UNITS + UNITS_PER_PX * px) / BOX_UNIT
+    return to_box(top), to_box(bottom)
+
+
+def centre_on_art(donor: Donor, step: dict[str, Any]) -> dict[str, Any]:
+    """``step`` with its strike box and close-range checks moved down by one shift that centres
+    the strike box on the drawn flight art (Hypothesis; Reptile's acid, specials proof v13). MKT's
+    boxes assume MKT's own box origin, so a thin donor box can miss the art on the host."""
+
+    top, bottom = drawn_band(donor, step["art"])
+    box = [_int(v) for v in step["strike"]["box"]]
+    shift = round((top + bottom) / 2 - (box[1] + box[3] / 2))
+    out = dict(step, strike=dict(step["strike"], box=[box[0], box[1] + shift, box[2], box[3]]))
+    if "checks" in step:
+        out["checks"] = [dict(c, box=[_int(c["box"][0]), _int(c["box"][1]) + shift,
+                                      _int(c["box"][2]), _int(c["box"][3])])
+                         for c in step["checks"]]  # fmt: skip
+    return out
+
 
 def phase_end_ticks(rate: int) -> int:
     """Ticks per frame of the host's ``animate_to_phase_end`` (``0x80031070``) at ``rate``: an odd

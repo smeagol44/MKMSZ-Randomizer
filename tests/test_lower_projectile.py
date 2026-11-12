@@ -155,3 +155,17 @@ def test_process_alive_word_and_unmirrored_impact() -> None:
     sets = [t for t in texts[False] if t.startswith("sw t1, 0(t0)")]
     clears = [t for t in texts[False] if t.startswith("sw zero, 0(t0)")]
     assert sets and clears  # set while alive, cleared before the process exits
+
+
+@needs_mkt
+def test_acid_box_is_centred_on_the_drawn_spit() -> None:
+    mkt = Path(os.environ["MKMSZR_MKT_ROM"]).read_bytes()
+    moves, _ = components.load_programs("reptile")
+    acid = next(s for s in next(m for m in moves if m.name == "acid_spit").steps if s["op"] == "projectile")
+    donor = Donor(mkt, 19)
+    top, bottom = lp.drawn_band(donor, acid["art"])
+    assert (round(top), round(bottom)) == (92, 97)  # flight rows -25..-21 px
+    out = lp.centre_on_art(donor, acid)
+    assert out["strike"]["box"] == [193, 88, 64, 12]  # MKT's 27 moved by +61
+    assert [c["box"][1] for c in out["checks"]] == [84, 84]
+    assert acid["strike"]["box"][1] == 27  # the move program is unchanged
