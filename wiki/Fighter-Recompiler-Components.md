@@ -169,6 +169,11 @@ First use: Reptile specials proofs v01–v03 (forceballs).
     - MKT's boxes assume MKT's own origin. Acid Spit's 12-unit box (y 27..39) sat above the drawn spit (92..97) and missed (v10, v12a/b).
     - `drawn_band` maps a part's looping frames to box space (anchor y + row, 2 world units per pixel). `centre_on_art` moves the strike box and the checks by one shift that centres the box on that band.
     - The forceball's accepted box overlaps its band and is not moved.
+    - **Victim side (Static-confirmed, `0x8002CC88..0x8002CD2C`):**
+      - The enemy's vertical extent is its current frame's rectangle, read from actor `+0x7C`: top = y − frame `+0xE`, bottom = top + frame `+0x6`, then + `0x6C` − actor `+0xD8` (`0x8003147C`, `0x800314AC`). Its x extent comes from frame `+0xC` (`0x800314F0`, `0x80031520`).
+      - Any transparent rows inside that rectangle count, so an enemy can be hit above its visible head.
+      - With strike-record `+0xC` bit 0 set (the stock records and ours), `0x8002E2C0` widens the victim's range by about 3/16 of its size on each side, and twice that when its actor `+0x78` is 0. The depth rule needs no change.
+      - Owner, v13: an enemy on a lower floor was hit while the spit was drawn above his head. Pending: compare with a stock projectile at the same spot.
 - **Throw helper:** MKT's token 11 creates a helper object from a frame, and tokens 12/14 step it, one helper frame per body frame. The frame after a helper step is the helper's, not a body pose. `lower_projectile.donor_helper` reads it, and `place_art(helper=...)` adds its frames and script. `emit_helper` is the process `emit_action(helper=...)` starts with the throw. It follows the owner's body (cursor in the throw script) rather than a clock; clocked versions drifted (specials proofs v03–v07). It goes at the launch through a handover (`emit_helper_handover`), because of the v04 crash: the forming ball and the flying ball were on screen together. The hypothesis was that two type-4 projectile objects must not coexist. Two stock projectiles coexist in Sektor's Double Missile (v46, Runtime-confirmed), so the cause is still open. Specials proof v11 lets two forceballs coexist (Pending). Reptile's forceball (the ball forming in his hands) is the first use, Pending (specials proof v08).
 
 ### Eye item
