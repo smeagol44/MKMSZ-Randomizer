@@ -118,3 +118,29 @@ def test_elbow_dash_lowering() -> None:
     with pytest.raises(ValueError, match="reaction"):
         ls.emit_action(Assembler(BASE), "x", elbow.steps, cost=0,
                        animations={(0, 0x4A): ("at", 0), (1, 0x0B): ("at", 0)}, speed=lambda v: v)  # fmt: skip
+
+
+@pytest.mark.skipif(not os.environ.get("MKMSZR_MKT_ROM"), reason="needs MKMSZR_MKT_ROM")
+def test_footsteps_follow_the_donor_run() -> None:
+    from mkmszr.fighter_import.body_build import Donor
+
+    mkt = Path(os.environ["MKMSZR_MKT_ROM"]).read_bytes()
+    assert ls.donor_footsteps(Donor(mkt, 19), 0x4A) == (9, (3, 7))  # callback 8 before frames 3, 7
+    moves, _ = components.load_programs("reptile")
+    elbow = next(m for m in moves if m.name == "elbow_dash")
+    a = Assembler(BASE, cached_calls=True)
+    records = ls.emit_action(
+        a, "root", elbow.steps, cost=0, animations={(0, 0x4A): ("at", 0xEE8), (1, 0x0B): ("at", 0)},
+        donor_ticks=2, reactions={"elbow_hold": 0x4C}, speed=lambda v: v,
+        footsteps={(0, 0x4A): ls.Footsteps(9, (3, 7), (459, 478))},
+    )
+    a.label("play")
+    ls.emit_strike_data(a, records, BASE)
+    text = " ".join(_text(a.link()))
+    assert "addiu a0, zero, 459" in text and "addiu a0, zero, 478" in text
+    assert "slti t0, s6, 9" in text
+    hold = Assembler(BASE, cached_calls=True)
+    ls.emit_hold_reaction(hold, "hold", 2)
+    calls = " ".join(_text(hold.link()))
+    assert "addiu t9, t9, 1220" not in calls  # no stock hit effect 0x800504C4 (v17)
+    assert "addiu t9, t9, 22180" in calls  # 0x800556A4 stays

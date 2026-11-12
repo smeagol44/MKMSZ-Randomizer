@@ -29,6 +29,7 @@ forceballs keep donor counts (``donor_ticks=1``); the owner halved Acid Spit's r
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from . import host
@@ -184,7 +185,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 helper: str | None = None, sounds: dict[int, int] | None = None,
                 face: bool | None = None, donor_ticks: int = 1,
                 reactions: dict[str, int] | None = None,
-                speed: Callable[[int], int] | None = None) -> list[tuple[str, bytes]]:  # fmt: skip
+                speed: Callable[[int], int] | None = None,
+                footsteps: dict[tuple[int, int], Footsteps] | None = None) -> list[tuple[str, bytes]]:  # fmt: skip
     """The action root for a move program (never returns). ``animations``: donor animation
     (table, slot) -> host secondary slot holding it, or ``("at", offset)`` for a body script
     without a table entry (selected by setting the cursor); ``child``: the projectile process
@@ -193,7 +195,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     ``sound`` steps (needs ``host.emit_sound_player``); ``face``: overrides the program's
     ``begin.face`` (MKT turns to its one opponent; the host may not want that);
     ``donor_ticks``: donor ticks per host tick (module notes); ``reactions``: strike meaning ->
-    host reaction index (else :data:`STOCK_REACTIONS`); ``speed``: donor x speed -> host speed.
+    host reaction index (else :data:`STOCK_REACTIONS`); ``speed``: donor x speed -> host speed;
+    ``footsteps``: a manually advanced animation -> its donor footstep frames
+    (:func:`donor_footsteps`) and the host events to alternate (needs ``host.emit_sound_player``).
 
     Returns the strike records ``(label, 16 bytes)`` to place with :func:`emit_strike_data`.
 
@@ -239,10 +243,35 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             a.li("a1", where)
             a.jal(lp.F_SELECT)
 
+    stepping: list[Footsteps | None] = [None]  # the manual animation's footsteps, if any
+
     def advance(times: int = 1) -> None:
         for _ in range(times):
             host.load_controller(a)
             host.advance_animation(a)
+            steps_now = stepping[0]
+            if steps_now is not None:  # s6: frame index in the cycle, s7: which step sound
+                a.addiu("s6", "s6", 1)
+                wrap = fresh("cycle")
+                a.slti("t0", "s6", steps_now.cycle)
+                a.bnez("t0", wrap)
+                a.move("s6", "zero")
+                a.label(wrap)
+                for frame in steps_now.frames:
+                    skip = fresh("nostep")
+                    a.li("t0", frame)
+                    a.bne("s6", "t0", skip)
+                    other = fresh("step")
+                    done = fresh("stepped")
+                    a.bnez("s7", other)
+                    host.play_sound(a, steps_now.events[0])
+                    a.beq("zero", "zero", done)
+                    a.label(other)
+                    host.play_sound(a, steps_now.events[-1])
+                    a.label(done)
+                    a.li("t0", 1)
+                    a.xor("s7", "s7", "t0")
+                    a.label(skip)
         host.load_controller(a)
 
     def sleep(ticks: int) -> None:
@@ -268,13 +297,20 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                     raise ValueError(f"{label}: animation end {until!r} is not lowered yet")
                 if helper is not None and until == "phase_end":
                     lp.emit_spawn(a, helper, after=fresh("helper"))
+                key = (int(step["anim"]["table"]), int(step["anim"]["slot"]))
+                stepping[0] = (footsteps or {}).get(key) if until == "manual" else None
+                if stepping[0] is not None:
+                    a.move("s6", "zero")
+                    a.move("s7", "zero")
                 select(where)
                 if until == "phase_end":
                     a.li("a0", _scale(int(step["rate"]), donor_ticks))
                     a.jal(F_TO_PHASE_END)
                     host.load_controller(a)
-                else:
-                    advance()  # show the first frame; next_frame steps advance it
+                else:  # show the first frame (index 0); next_frame steps advance it
+                    held, stepping[0] = stepping[0], None
+                    advance()
+                    stepping[0] = held
             elif op == "pose":
                 select(anim_at(step["anim"]), int(step["anim"].get("offset", 0)))
                 advance()
@@ -417,6 +453,39 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     return records
 
 
+@dataclass(frozen=True)
+class Footsteps:
+    cycle: int  # frames in the looping animation
+    frames: tuple[int, ...]  # frame indices reached right after a donor footstep callback
+    events: tuple[int, ...]  # host sound events, alternated
+
+
+MKT_FOOTSTEP_CALLBACK = 8  # token 6 operand: 0x8000518C, random of group 0x800A1A3C (Wiki)
+MKT_FOOTSTEP_GROUP = 0x800A1A3C  # four u16 MKT sound events
+MKT_TOKEN_CALLBACK = 6
+
+
+def donor_footsteps(donor: Any, slot: int) -> tuple[int, tuple[int, ...]]:
+    """(frame count, frames reached right after each footstep callback) of a looping MKT
+    table-0 animation (e.g. the Run, slot 0x4A: callback 8 before frames 3 and 7 of 9)."""
+
+    p, frames, steps = donor.m32(4 * slot), 0, []
+    while True:
+        v = donor.m32(p)
+        if v in (0, 1):
+            break
+        if v == MKT_TOKEN_CALLBACK:
+            if donor.m32(p + 4) == MKT_FOOTSTEP_CALLBACK:
+                steps.append(frames)
+            p += 8
+            continue
+        if v < 0x20:
+            raise ValueError(f"MKT token {v} in a footstep animation is not supported")
+        frames += 1
+        p += 4
+    return frames, tuple(s % frames for s in steps)
+
+
 def emit_strike_data(a: Assembler, records: list[tuple[str, bytes]], base: int) -> None:
     """The strike records, 16-aligned (read through their KSEG0 alias)."""
 
@@ -432,14 +501,16 @@ def emit_strike_data(a: Assembler, records: list[tuple[str, bytes]], base: int) 
 # then exits; it selects no animation. Host: the stock hit reaction 0x10 (``0x80054B20``) without
 # its two hit voices and its flinch: preamble (with its airborne handler), stop, a still hold in
 # the victim's current frame, exit. Specials proof v15 also showed the first hit pose (slot
-# 0x1C); the owner saw a hit, not a hold.
+# 0x1C); the owner saw a hit, not a hold. ``0x800504C4`` starts the hit (blood) effect at the
+# victim: dropped from v17 (owner: "a blood effect ... shouldn't be there").
 HOLD_DONOR_TICKS = 20
-F_REACT_A, F_REACT_B = 0x800504C4, 0x800556A4  # stock reaction 0x10 preamble calls
+F_REACT_A, F_REACT_B = 0x800504C4, 0x800556A4  # stock reaction 0x10 preamble: hit effect, 0x103
 F_REACT_PREAMBLE, AIRBORNE_HANDLER = 0x80053028, 0x800532F8
 HIT_SLOT = 0x1C  # victim primary slot of the stock hit flinch
 
 
-def emit_hold_reaction(a: Assembler, label: str, donor_ticks: int = 1, pose: bool = False) -> None:
+def emit_hold_reaction(a: Assembler, label: str, donor_ticks: int = 1, pose: bool = False,
+                       blood: bool = False) -> None:  # fmt: skip
     """Victim reaction ``elbow_hold`` (installed by the collision core as the victim's callback)."""
 
     a.label(label)
@@ -447,7 +518,8 @@ def emit_hold_reaction(a: Assembler, label: str, donor_ticks: int = 1, pose: boo
     a.sw("ra", 0x28, "sp")
     for k, reg in enumerate(("s0", "s1", "s2")):
         a.sw(reg, 0x18 + 4 * k, "sp")
-    a.jal(F_REACT_A)
+    if blood:  # specials proofs v15-v16
+        a.jal(F_REACT_A)
     a.jal(F_REACT_B)
     a.move("a0", "zero")
     a.li("a1", AIRBORNE_HANDLER)
