@@ -51,6 +51,8 @@ Body fields:
   action yet). A power with no record (``commands.COMMANDLESS_POWERS``, e.g. Ice Shatter) may be
   taken only by a move with its own special. ``remove_commands``: Sub-Zero command records
   dropped although no move takes them (``fighter_import.commands``; milestone 4 step 2).
+* ``icons`` (optional): the Power Ups icon recipe, one entry per power slot
+  (``fighter_import.fighter_icons``; milestone 4 step 4).
 * ``legacy``: frozen Sektor-era modules this fighter still uses (plan rule 4).
 """
 
@@ -134,6 +136,7 @@ class FighterDescription:
     body: Body
     legacy: tuple[str, ...]
     commands: dict[str, str | None] = field(default_factory=dict)
+    icons: dict = field(default_factory=dict)  # Power Ups icon recipe (fighter_icons)
     remove_commands: tuple[str, ...] = ()
 
 
@@ -314,8 +317,21 @@ def validate(data: Any) -> FighterDescription:
     called = [v for v in commands.values() if v]
     if len(called) != len(set(called)) or set(called) & set(remove):
         errors.append("commands: each host power is taken by one move and not removed")
+    icons = data.get("icons", {})
+    if icons:
+        from ..patches.power_order import POWER_NAMES
+
+        recipes = icons.get("slots") if isinstance(icons, dict) else None
+        if not isinstance(recipes, dict) or set(recipes) != set(POWER_NAMES) or "palette" not in icons:
+            errors.append(f"icons: {{palette, slots: one recipe per power ({', '.join(POWER_NAMES)})}}")
+        else:
+            for name, spec in recipes.items():
+                if spec in ("stock", "empty"):
+                    continue
+                if not isinstance(spec, dict) or not isinstance(spec.get("layers"), list) or len(spec.get("crop", [])) != 3:
+                    errors.append(f"icons.slots.{name}: 'stock', 'empty' or {{layers, crop: [x0, y0, size]}}")
     unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes",
-                           "commands", "remove_commands"}  # fmt: skip
+                           "commands", "remove_commands", "icons"}  # fmt: skip
     if unknown:
         errors.append(f"unknown keys: {', '.join(sorted(unknown))}")
     if errors:
@@ -324,6 +340,7 @@ def validate(data: Any) -> FighterDescription:
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
         body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts),
         legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove),
+        icons=icons,
     )  # fmt: skip
 
 

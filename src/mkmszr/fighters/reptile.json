@@ -82,6 +82,184 @@
     "elbow_dash": "ice_shatter",
     "invisibility": "freeze_on_contact"
   },
+  "icons": {
+    "palette": "0x800BE864",
+    "background": [
+      "0xA0D2A0",
+      "0x101E14"
+    ],
+    "slots": {
+      "ice-blast": {
+        "layers": [
+          {
+            "anim": {
+              "table": 1,
+              "slot": 6,
+              "phase": 1,
+              "frame": 3
+            }
+          },
+          {
+            "anim": {
+              "table": 1,
+              "slot": 6,
+              "part": 3,
+              "frame": 1
+            },
+            "palette": "0x800BEC14"
+          }
+        ],
+        "crop": [
+          -16,
+          -6,
+          138
+        ]
+      },
+      "slide": {
+        "layers": [
+          {
+            "anim": {
+              "table": 1,
+              "slot": 2,
+              "phase": 1,
+              "frame": 2
+            }
+          }
+        ],
+        "crop": [
+          -46,
+          34,
+          88
+        ]
+      },
+      "directional-ice": {
+        "layers": [
+          {
+            "anim": {
+              "table": 1,
+              "slot": 5,
+              "phase": 1,
+              "frame": 3
+            }
+          },
+          {
+            "anim": {
+              "table": 1,
+              "slot": 5,
+              "part": 3,
+              "frame": 0
+            },
+            "palette": "0x800BECE4",
+            "ghosts": {
+              "count": 2,
+              "dx": -10
+            }
+          }
+        ],
+        "crop": [
+          -28,
+          6,
+          112
+        ]
+      },
+      "air-ice-blast": "empty",
+      "ice-clone": {
+        "layers": [
+          {
+            "anim": {
+              "table": 1,
+              "slot": 5,
+              "phase": 1,
+              "frame": 3
+            }
+          },
+          {
+            "anim": {
+              "table": 1,
+              "slot": 5,
+              "part": 3,
+              "frame": 0
+            },
+            "palette": "0x800BECE4"
+          }
+        ],
+        "crop": [
+          -28,
+          6,
+          112
+        ]
+      },
+      "ice-shatter": {
+        "layers": [
+          {
+            "anim": {
+              "table": 1,
+              "slot": 11,
+              "phase": 1,
+              "frame": 2
+            },
+            "ghosts": {
+              "count": 2,
+              "dx": -14
+            }
+          }
+        ],
+        "crop": [
+          -55,
+          4,
+          112
+        ]
+      },
+      "super-slide": {
+        "layers": [
+          {
+            "anim": {
+              "table": 1,
+              "slot": 2,
+              "phase": 1,
+              "frame": 2
+            },
+            "ghosts": {
+              "count": 2,
+              "dx": -14
+            }
+          }
+        ],
+        "crop": [
+          -70,
+          22,
+          116
+        ]
+      },
+      "freeze-on-contact": {
+        "layers": [
+          {
+            "fx": {
+              "animation": "0x800CC77C",
+              "dictionary": "0x800CCA88",
+              "frame": 3
+            },
+            "dy": 113
+          },
+          {
+            "anim": {
+              "table": 0,
+              "slot": 0,
+              "phase": 1,
+              "frame": 0
+            },
+            "shade": 0.35
+          }
+        ],
+        "crop": [
+          -50,
+          -14,
+          132
+        ]
+      },
+      "polar-blast": "stock"
+    }
+  },
   "remove_commands": [
     "directional_ice_up"
   ],
