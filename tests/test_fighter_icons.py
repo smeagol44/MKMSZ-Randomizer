@@ -9,7 +9,7 @@ import pytest
 
 from mkmszr.fighter_import import description as fd
 from mkmszr.fighter_import import fighter_icons as fi
-from mkmszr.patches.power_order import POWER_ICONS
+from mkmszr.patches.power_order import POWER_ICONS, POWER_NAMES
 
 CLEAN, MKT = os.environ.get("MKMSZR_CLEAN_ROM"), os.environ.get("MKMSZR_MKT_ROM")
 needs_roms = pytest.mark.skipif(not (CLEAN and MKT), reason="needs MKMSZR_CLEAN_ROM and MKMSZR_MKT_ROM")
@@ -72,4 +72,39 @@ def test_description_rejects_a_bad_icon_recipe() -> None:
     data = copy.deepcopy(raw)
     del data["icons"]["slots"]["slide"]
     with pytest.raises(fd.DescriptionError, match="icons"):
+        fd.validate(data)
+
+
+@needs_roms
+def test_reptile_help_text() -> None:
+    from mkmszr.fighter_import import fighter_help, power_help
+
+    clean = Path(CLEAN).read_bytes()
+    rom = bytearray(clean)
+    for off, blob in fighter_help.edits(bytes(rom), clean, fd.load("reptile").help).items():
+        rom[off : off + len(blob)] = blob
+    shown = dict(zip(POWER_NAMES, power_help.read_help(bytes(rom)), strict=True))
+    stock = dict(zip(POWER_NAMES, power_help.read_help(clean), strict=True))
+    assert shown["ice-blast"][0] == ("ACID SPIT",) and shown["ice-shatter"][0] == ("REVERSE ELBOW",)
+    assert shown["freeze-on-contact"][1] == ("UP, DOWN,", "HIGH KICK.")
+    assert shown["air-ice-blast"] == power_help.EMPTY
+    for name in ("slide", "super-slide", "polar-blast"):
+        assert shown[name] == stock[name]
+
+
+def test_reptile_costs_come_from_his_description() -> None:
+    import copy
+    import json
+    from importlib import resources
+
+    assert fd.load("reptile").costs == {"forceball_fast": 0x30, "forceball_slow": 0x30, "invisibility": 0x40}
+    raw = json.loads(resources.files("mkmszr.fighters").joinpath("reptile.json").read_text())
+    for change in ({"forceball_fast": "0xA7"}, {"no_such_move": 1}):
+        data = copy.deepcopy(raw)
+        data["costs"] = change
+        with pytest.raises(fd.DescriptionError, match="costs"):
+            fd.validate(data)
+    data = copy.deepcopy(raw)
+    data["help"]["slide"] = [["far too long a title line"]]
+    with pytest.raises(fd.DescriptionError, match="help"):
         fd.validate(data)

@@ -39,3 +39,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_reptile-specials_proof_v19.py` | `MKMSZR_reptile-specials_common_proof_v19.z64` | v18 with MKT's vanishing fire (`create_fx(30)`), stealth paid in Ice (1 every 3 ticks) and halved forceball/Invisibility costs; 16 KiB arena |
 | `MKMSZR_build_reptile-specials_proof_v20.py` | `MKMSZR_reptile-specials_common_proof_v20.z64` | v19 with the fire at his feet (MKT's `0x71` px offset) and stealth twice as long (1 Ice every 6 ticks) |
 | `MKMSZR_build_reptile-specials_proof_v21.py` | `MKMSZR_reptile-specials_common_proof_v21.z64` | v20 plus Reptile's Power Ups icons from his description's `icons` recipe (`fighter_icons`) |
+| `MKMSZR_build_reptile-specials_proof_v22.py` | `MKMSZR_reptile-specials_common_proof_v22.z64` | v21 with his Power Ups help text and Ice costs from his description (`help`, `costs`) |

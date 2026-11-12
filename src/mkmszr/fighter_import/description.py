@@ -53,6 +53,9 @@ Body fields:
   dropped although no move takes them (``fighter_import.commands``; milestone 4 step 2).
 * ``icons`` (optional): the Power Ups icon recipe, one entry per power slot
   (``fighter_import.fighter_icons``; milestone 4 step 4).
+* ``help`` (optional): the Power Ups help text per power slot (``fighter_import.fighter_help``).
+* ``costs`` (optional): move name -> Ice cost, where it differs from the replaced Sub-Zero
+  power's (``lower_special.COSTS``); owner decisions, e.g. Reptile's halved forceballs.
 * ``legacy``: frozen Sektor-era modules this fighter still uses (plan rule 4).
 """
 
@@ -137,6 +140,8 @@ class FighterDescription:
     legacy: tuple[str, ...]
     commands: dict[str, str | None] = field(default_factory=dict)
     icons: dict = field(default_factory=dict)  # Power Ups icon recipe (fighter_icons)
+    help: dict = field(default_factory=dict)  # Power Ups help text (fighter_help)
+    costs: dict[str, int] = field(default_factory=dict)  # move -> Ice cost (else the replaced power's)
     remove_commands: tuple[str, ...] = ()
 
 
@@ -330,8 +335,35 @@ def validate(data: Any) -> FighterDescription:
                     continue
                 if not isinstance(spec, dict) or not isinstance(spec.get("layers"), list) or len(spec.get("crop", [])) != 3:
                     errors.append(f"icons.slots.{name}: 'stock', 'empty' or {{layers, crop: [x0, y0, size]}}")
+    raw_costs = data.get("costs", {})
+    costs: dict[str, int] = {}
+    if not isinstance(raw_costs, dict):
+        errors.append("costs: move name -> Ice cost")
+    else:
+        for move, value in raw_costs.items():
+            cost = _int(value, f"costs.{move}", errors)
+            if move not in commands:
+                errors.append(f"costs.{move}: not a move with a command")
+            elif cost is not None and not 0 <= cost <= 0xA6:
+                errors.append(f"costs.{move}: 0..0xA6 (a full Ice meter)")
+            elif cost is not None:
+                costs[move] = cost
+    help_text = data.get("help", {})
+    if help_text:
+        from ..patches.power_order import POWER_NAMES
+        from .power_help import CHARSET, MAX_LINE
+
+        if not isinstance(help_text, dict) or set(help_text) != set(POWER_NAMES):
+            errors.append(f"help: one entry per power ({', '.join(POWER_NAMES)})")
+        else:
+            for name, spec in help_text.items():
+                if spec in ("stock", "empty"):
+                    continue
+                lines = [line for group in spec for line in group] if isinstance(spec, list) else [None]
+                if not lines or any(not isinstance(t, str) or len(t) > MAX_LINE or not set(t) <= CHARSET for t in lines):
+                    errors.append(f"help.{name}: 'stock', 'empty' or groups of uppercase lines (<= {MAX_LINE})")
     unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes",
-                           "commands", "remove_commands", "icons"}  # fmt: skip
+                           "commands", "remove_commands", "icons", "help", "costs"}  # fmt: skip
     if unknown:
         errors.append(f"unknown keys: {', '.join(sorted(unknown))}")
     if errors:
@@ -340,7 +372,7 @@ def validate(data: Any) -> FighterDescription:
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
         body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts),
         legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove),
-        icons=icons,
+        icons=icons, help=help_text, costs=costs,
     )  # fmt: skip
 
 
