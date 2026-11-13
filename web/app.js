@@ -63,10 +63,12 @@ const fighterCanvas = document.querySelector("#fighterCanvas");
 const fighterStageStatus = document.querySelector("#fighterStageStatus");
 const fighterHover = document.querySelector("#fighterHover");
 
-const FIGHTER_LABELS = { "sub-zero": "Sub-Zero", sektor: "Sektor" };
+const FIGHTER_LABELS = { "sub-zero": "Sub-Zero", sektor: "Sektor", reptile: "Reptile" };
+// Fighters with an outfit recolour; the others keep their own colours (outfit locked to Vanilla).
+const OUTFIT_FIGHTERS = ["sub-zero", "sektor"];
 // Title character default per fighter; the field follows the fighter unless the user typed
 // their own name (still editable either way).
-const FIGHTER_TITLES = { "sub-zero": "SUB-ZERO", sektor: "SEKTOR" };
+const FIGHTER_TITLES = { "sub-zero": "SUB-ZERO", sektor: "SEKTOR", reptile: "REPTILE" };
 const FIGHTER_HINT_DEFAULT =
   "Validate the MKT donor ROM to import a fighter from Mortal Kombat Trilogy.";
 
@@ -167,6 +169,7 @@ const targetValidation = { token: 0, state: "idle" };
 const donorValidation = { token: 0, state: "idle" };
 // Fighter swap: the select screen is decoded from the donor in the worker once per donor.
 let selectedFighter = "sub-zero";
+let outfitBeforeLock = null; // the user's outfit while a fighter without a recolour is chosen
 const selectScreen = { token: 0, state: "idle", data: null, image: null, hover: -1 };
 
 function setLog(message, error = false) {
@@ -546,6 +549,16 @@ function setFighter(fighter) {
   fighterName.textContent = FIGHTER_LABELS[selectedFighter] +
     (imported ? " (imported from MKT)" : "");
   outfitLabel.textContent = FIGHTER_LABELS[selectedFighter] + " outfit";
+  const outfitLocked = !OUTFIT_FIGHTERS.includes(selectedFighter);
+  if (outfitLocked && outfitBeforeLock === null) {
+    outfitBeforeLock = outfitMode.value;
+    outfitMode.value = "vanilla";
+  } else if (!outfitLocked && outfitBeforeLock !== null) {
+    outfitMode.value = outfitBeforeLock;
+    outfitBeforeLock = null;
+  }
+  outfitMode.disabled = outfitLocked;
+  updateModeUi();
   updateFighterUi();
   updateGameSettingsUi();
 }
@@ -555,6 +568,9 @@ function updateFighterUi() {
   swapFighterButton.disabled = !donorValid || !runtimeReady || isBuilding;
   if (!donorValid) {
     fighterHint.textContent = FIGHTER_HINT_DEFAULT;
+  } else if (!OUTFIT_FIGHTERS.includes(selectedFighter)) {
+    fighterHint.textContent = FIGHTER_LABELS[selectedFighter] +
+      " needs SPECIALS: CLASSIC and keeps his own colours; Specials Modern and the outfit are locked.";
   } else if (selectedFighter !== "sub-zero") {
     fighterHint.textContent =
       FIGHTER_LABELS[selectedFighter] + " needs SPECIALS: CLASSIC; Specials Modern is locked off.";

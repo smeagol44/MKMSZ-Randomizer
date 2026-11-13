@@ -37,7 +37,7 @@ from ..rom import RomImage
 from .base import PatchContext
 from .rainbow_palette import LOAD_JAL_SITES
 
-FIGHTERS = ("sub-zero", "sektor")
+FIGHTERS = ("sub-zero", "sektor", "reptile")
 # Fighters built from their description (fighter_import.fighter_build, milestone 5): every word
 # the build changes is the fighter's, so no list is kept here.
 DESCRIBED = ("reptile",)

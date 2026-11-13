@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from mkmszr.cli import _build_parser, main
-from mkmszr.config import GameSettingsConfig, RandomizerConfig
+from mkmszr.config import GameSettingsConfig, OutfitConfig, RandomizerConfig
 from mkmszr.errors import PatchError, RomValidationError
 from mkmszr.patcher import build_pipeline
 from mkmszr.patches import fighter_swap as fs
@@ -34,6 +34,10 @@ SEKTOR_CLI_SHA256 = "0c739f81669f2f02b11fe99f290ebe9b6353ac5f491b623be48fd12ee17
 def test_config_accepts_the_fighters_and_requires_classic_specials() -> None:
     assert RandomizerConfig().fighter == "sub-zero"
     assert RandomizerConfig(fighter="sektor").fighter == "sektor"
+    assert RandomizerConfig(fighter="reptile").fighter == "reptile"
+    with pytest.raises(ValueError, match="outfit"):
+        RandomizerConfig(fighter="reptile", outfit=OutfitConfig(mode="red"))
+    assert RandomizerConfig(fighter="sektor", outfit=OutfitConfig(mode="red")).fighter == "sektor"
     with pytest.raises(ValueError):
         RandomizerConfig(fighter="scorpion")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="CLASSIC"):
@@ -46,6 +50,9 @@ def test_cli_fighter_option() -> None:
     parser = _build_parser()
     assert parser.parse_args(["in.z64", "out.z64"]).fighter == "sub-zero"
     assert parser.parse_args(["in.z64", "out.z64", "--fighter", "sektor"]).fighter == "sektor"
+    assert parser.parse_args(["in.z64", "out.z64", "--fighter", "reptile"]).fighter == "reptile"
+    with pytest.raises(SystemExit):
+        main(["in.z64", "out.z64", "--fighter", "reptile", "--mkt-rom", "m.z64", "--outfit", "red"])
     with pytest.raises(SystemExit):
         parser.parse_args(["in.z64", "out.z64", "--fighter", "kano"])
     with pytest.raises(SystemExit):
@@ -113,3 +120,17 @@ def test_cli_sektor_build_is_pinned(tmp_path: Path) -> None:
     assert main(["--mkt-rom", DONOR, "--seed", "SEKTOR-PROD-1", "--debug-all-keys",
                  "--fighter", "sektor", CLEAN, str(out)]) == 0  # fmt: skip
     assert hashlib.sha256(out.read_bytes()).hexdigest() == SEKTOR_CLI_SHA256
+
+
+# Reptile through the product option: the CLI output equals the owner-validated composition
+# proof v03 byte for byte (Runtime-confirmed bounded, owner 2026-11-13: the forceball no longer
+# hangs on the Temple monk).
+REPTILE_CLI_SHA256 = "31c22f522fe98cbc3230793b405a64b65ff7ec5f9310b301242d1761db23d93c"
+
+
+@needs_roms
+def test_cli_reptile_build_is_the_validated_composition(tmp_path: Path) -> None:
+    out = tmp_path / "reptile.z64"
+    assert main(["--mkt-rom", DONOR, "--seed", "REPTILE-PROD-1", "--fighter", "reptile",
+                 CLEAN, str(out)]) == 0  # fmt: skip
+    assert hashlib.sha256(out.read_bytes()).hexdigest() == REPTILE_CLI_SHA256

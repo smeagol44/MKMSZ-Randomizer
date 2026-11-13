@@ -6,7 +6,10 @@ from typing import Literal
 DifficultyMode = Literal["very_easy", "easy", "medium", "hard", "very_hard"]
 GlobalCompletionMode = Literal["all_85", "game_beatable"]
 CompletionMode = Literal["all_checks", "beatable"]
-Fighter = Literal["sub-zero", "sektor"]
+Fighter = Literal["sub-zero", "sektor", "reptile"]
+# Imported fighters with an outfit recolour (fighter_import.outfit); the others keep their own
+# colours, so their outfit option must stay vanilla.
+OUTFIT_FIGHTERS = ("sub-zero", "sektor")
 
 
 @dataclass(frozen=True)
@@ -53,10 +56,12 @@ class RandomizerConfig:
     fighter: Fighter = "sub-zero"
 
     def __post_init__(self) -> None:
-        if self.fighter not in ("sub-zero", "sektor"):
-            raise ValueError("fighter must be sub-zero or sektor")
+        if self.fighter not in ("sub-zero", "sektor", "reptile"):
+            raise ValueError("fighter must be sub-zero, sektor or reptile")
         if self.fighter != "sub-zero" and self.game_settings.specials_modern:
             raise ValueError("an imported fighter requires SPECIALS: CLASSIC")
+        if self.fighter not in OUTFIT_FIGHTERS and self.outfit.mode.lower() != "vanilla":
+            raise ValueError(f"{self.fighter} has no outfit recolour; use the vanilla outfit")
         if self.difficulty not in ("very_easy", "easy", "medium", "hard", "very_hard"):
             raise ValueError("difficulty must be very_easy, easy, medium, hard, or very_hard")
         if type(self.lives) is not int or not 1 <= self.lives <= 10:

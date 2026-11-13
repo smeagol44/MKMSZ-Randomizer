@@ -18,7 +18,9 @@ from mkmszr.errors import RomValidationError
 # Static evidence for these digests: the colour render matches the framebuffer of a user
 # save state at MKT's select screen pixel for pixel, except the live overlays (selection
 # box, P1 marker, preview, text) and the RDP dither on the two hidden cells.
-RENDER_SHA256 = "5fe3d772359dc9e440f85a4f125f8ec91768e5a16983fd11bf6e571d3e6def17"
+# Sektor and Reptile selectable; the Sektor-only render (before Reptile) is SEKTOR_ONLY_SHA256.
+RENDER_SHA256 = "180ac626a5dc90880b02bfb6a16ccc8dad5b147bb5a58dcdbb1777444c6e2231"
+SEKTOR_ONLY_SHA256 = "5fe3d772359dc9e440f85a4f125f8ec91768e5a16983fd11bf6e571d3e6def17"
 ALL_COLOUR_SHA256 = "29cdb34b4694ecc15470aa938c2634b246152431f7f11bec7162debd67f0b3d1"
 
 
@@ -39,7 +41,7 @@ def test_rgba5551_and_gray() -> None:
 
 
 def test_importable_ids_must_name_their_fighter() -> None:
-    assert css.IMPORTABLE == {7: "sektor"}
+    assert css.IMPORTABLE == {7: "sektor", 19: "reptile"}
 
 
 def test_render_requires_the_supported_donor() -> None:
@@ -62,7 +64,7 @@ def test_grid_layout_and_selectable_cells() -> None:
     } | {(c, 4) for c in range(1, 5)}
     selectable = [c for c in cells if c["fighter"]]
     assert [(c["name"], c["column"], c["row"], c["x"], c["y"]) for c in selectable] == [
-        ("SEKTOR", 0, 2, 59, 104)
+        ("REPTILE", 4, 1, 195, 59), ("SEKTOR", 0, 2, 59, 104)
     ]
     # Names follow MKT's fighter ids (table 0x800A6000 starts with KANO); the top row
     # was checked against the user's view of the window.
@@ -71,6 +73,8 @@ def test_grid_layout_and_selectable_cells() -> None:
     ]
     assert next(c["name"] for c in cells if (c["column"], c["row"]) == (1, 3)) == "SINDEL"
     assert hashlib.sha256(out["rgba"]).hexdigest() == RENDER_SHA256
+    sektor_only = css.render(Path(MKT).read_bytes(), {7: "sektor"})
+    assert hashlib.sha256(sektor_only["rgba"]).hexdigest() == SEKTOR_ONLY_SHA256
 
 
 @needs_mkt
