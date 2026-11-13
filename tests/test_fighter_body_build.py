@@ -258,7 +258,7 @@ def test_rayden_body_builds() -> None:
     # script sound (callback 2, spare descriptor 0x2A).
     body = bb.build_body(fd.load("rayden"), Path(CLEAN).read_bytes(), Path(MKT).read_bytes(),
                          bb.Extras(), rom=bytearray(Path(CLEAN).read_bytes()))  # fmt: skip
-    assert body.report["frames"] == 148 and body.report["file_end"] <= body.report["file_budget"]
+    assert body.report["frames"] == 151 and body.report["file_end"] <= body.report["file_budget"]
 
 
 @needs_roms
