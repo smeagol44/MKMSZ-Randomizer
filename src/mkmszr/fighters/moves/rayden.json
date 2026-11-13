@@ -1,0 +1,39 @@
+{
+  "format": 1,
+  "fighter": "rayden",
+  "donor": {"fighter_id": 24, "name": "RAYDEN"},
+  "moves": [
+    {
+      "name": "lightning",
+      "command": {"buttons": "0x80", "tokens": [9, 7], "window": 16, "src": "MKT 0x800ABA54",
+                  "note": "grid event 1 (LP) only; the record's masks are 0xFC"},
+      "steps": [
+        {"op": "begin", "action_mkt": "0x2B", "face": true, "stop": true,
+         "src": {"action_mkt": "MKT 0x80077E4C", "face": "MKT 0x80050440", "stop": "MKT 0x80050428"}},
+        {"op": "sound", "sound": {"fighter": 2}, "src": {"sound": "MKT 0x80077EB0"}},
+        {"op": "animate", "anim": {"table": 0, "slot": 36}, "rate": 3, "until": "phase_end",
+         "src": {"anim": "MKT 0x80077EBC", "rate": "MKT 0x80077EC8", "until": "MKT 0x8000DC24"}},
+        {"op": "projectile",
+         "art": {"table": 0, "slot": 67, "part": 3},
+         "offset": [0, 0],
+         "speed": "0x80000",
+         "rate": 3,
+         "strike": {"box": [133, 36, 60, 16], "damage": 22, "block_damage": 4,
+                    "reaction": "launch", "blocked_reaction": "blocked"},
+         "palette": "0x800B9B04",
+         "impact": {"anim": {"table": 0, "slot": 67, "part": 4}, "rate": 4,
+                    "at": "opponent", "adjust": [-115, 0], "end": "animation"},
+         "src": {"art": "MKT 0x80077F6C", "offset": "MKT 0x8007F9E8", "speed": "MKT 0x80077FE8",
+                 "rate": "MKT 0x80077FF0", "strike": "MKT 0x800B0164", "palette": "MKT 0x800B9B04",
+                 "impact": "MKT 0x80078124", "reaction": "host stand-in (owner to judge): MKT victim reaction 0x80 not read yet"}},
+        {"op": "sleep", "ticks": 36, "src": {"ticks": "MKT 0x80077F08"}},
+        {"op": "end"}
+      ]
+    }
+  ],
+  "gaps": [
+    {"move": "lightning", "what": "MKT victim reaction 0x80 (the lightning hit) is not read; the host roundhouse launch stands in"},
+    {"move": "lightning", "what": "the forming sparks (slot 0x43 parts 1-2) and the bolt's growth routine 0x80078230 are not lowered yet"},
+    {"move": "lightning", "what": "MKT plays the hit or blocked sound by 0x800058B0(4 or 3, 0x18): layered events 0x204 / 0x203 (2-3 tracks of 0x2C bytes, one patch each), which the sound component cannot host yet; the impact is silent"}
+  ]
+}

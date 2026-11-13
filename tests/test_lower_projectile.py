@@ -209,3 +209,9 @@ def test_knockback_reaction_morphs_the_victim_first() -> None:
     # the same sequence as the stock launch reaction 0x0C (0x80052898)
     launch = clean[0x534E4 : 0x534E4 + 20]
     assert launch.hex() == "3c02802f8c42ce208c4406e00c015cb100000000"
+
+
+def test_host_kind_reaction_uses_the_stock_entry() -> None:
+    # Rayden's lightning stand-in: the stock roundhouse launch, no payload reaction code.
+    assert lp.host_reaction("launch") == 0x0C
+    assert lp.host_reaction("knockback_arc") is None

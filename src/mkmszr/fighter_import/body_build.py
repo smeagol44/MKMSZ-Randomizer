@@ -790,7 +790,14 @@ def lying_landing(words: list) -> list:
     frames = [w for w in words[a:b] if isinstance(w, tuple) and w[0] == "frame"]
     if len(frames) < 2 or len(frames) != b - a:
         return words
-    return [*words[:a], frames[-1], *words[b:]]
+    # A later phase made only of landing frames (Rayden: legs up and lying, alternating) also
+    # shows the lying frame: host routes that stop there must end flat (Rayden inputs v01,
+    # owner: the frame "laying flat against the floor", as Reptile's).
+    landing, lying = set(frames), frames[-1]
+    tail = [lying if (isinstance(w, tuple) and w in landing) else w for w in words[b:]]
+    if any(isinstance(w, tuple) and w[0] == "frame" and w not in landing for w in words[b:]):
+        tail = list(words[b:])
+    return [*words[:a], lying, *tail]
 
 
 KNOCKDOWN_SLOT = 0x1E

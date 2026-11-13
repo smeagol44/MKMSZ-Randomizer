@@ -268,3 +268,17 @@ def test_palette_ramps_either_direction() -> None:
     assert [len(r) for r in rayden] == [11, 2, 3, 2, 13]  # black up to cyan, ..., greys up to white
     reptile = bb.palette_ramps(bb.Donor(mkt, 19).palette())
     assert [len(r) for r in reptile] == [8, 8, 15]  # light-to-dark ramps split as before
+
+
+@needs_roms
+def test_later_landing_phases_show_the_lying_frame() -> None:
+    # Rayden's knockdown has a third phase alternating legs-up 0x1BE0 and flat 0x1BF4; host
+    # routes that stop there must end flat (owner, inputs v01). Reptile's has no such phase.
+    from mkmszr.fighter_import.mkt_fighter import MktRom
+
+    mkt = Path(MKT).read_bytes()
+    donor = bb.Donor(mkt, 24)
+    starts = set(donor.table0) | set(MktRom(mkt).table1(24))
+    words = bb.lying_landing(bb.linearise(donor, 0x1E, starts))
+    frames = [w[1] for w in words if isinstance(w, tuple)]
+    assert frames == [0x1B90, 0x1BA4, 0x1BB8, 0x1BCC] + [0x1BF4] * 5

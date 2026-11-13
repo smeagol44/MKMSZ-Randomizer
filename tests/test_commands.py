@@ -102,3 +102,17 @@ def test_description_rejects_bad_commands() -> None:
         change(data)
         with pytest.raises(fd.DescriptionError, match=message):
             fd.validate(data)
+
+
+@needs_roms
+def test_rayden_lightning_goes_to_its_event_button() -> None:
+    # The MKT record has masks 0xFC but sits only in the LP event (grid event 1): the move
+    # program's buttons place it, and the host record carries them.
+    clean, mkt = Path(CLEAN).read_bytes(), Path(MKT).read_bytes()  # type: ignore[arg-type]
+    moves, _ = components.load_programs("rayden")
+    found = cmds.donor_commands(mkt, moves, fd.load("rayden").commands)
+    assert [(c.name, c.calls, c.buttons) for c in found] == [("lightning", "ice_blast", 0x80)]
+    low = cmds.lower(clean, found, set(), 0xA01AF420, 0xA01AF520)
+    lp = low.tables["LP"]
+    assert len(lp) == 2 and lp[0][:4] == bytes.fromhex("00800080")
+    assert all(len(low.tables[b]) == n for b, n in (("HP", 3), ("LK", 1), ("HK", 1)))
