@@ -668,6 +668,7 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
 
 
 HELPER_IDLE, HELPER_SHOWN, HELPER_LAUNCH = 0, 1, 2
+HIT_REACTION_BIT = 0x04  # controller +0x6BE while in a hit reaction (host.CTRL_STATE_FLAGS)
 
 # Where the host collision core puts a strike box (Static-confirmed, victim scan
 # 0x8002CE24..0x8002D0E0): box values are scaled by 0.9 and doubled into world units, from the
@@ -731,7 +732,12 @@ def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body
     helper frame of that pose (MKT's script order: one helper step per body pose), its last
     frame held. It is built when its first pose comes up and goes when the action asks for the
     launch (:func:`emit_helper_handover`); no collision. Specials proofs v03-v07 timed it on
-    its own clock and drifted a pose or more (owner). ``dx``/``dy``: offset from the owner."""
+    its own clock and drifted a pose or more (owner). ``dx``/``dy``: offset from the owner.
+
+    It also goes as soon as the owner leaves the throw: in a hit reaction (controller
+    ``+0x6BE`` bit ``0x04``) or in another action than at its start (``+0x6AA``). Without that it
+    stayed up to ``HELPER_MAX_TICKS`` after a hit interrupted the throw (owner, Reptile
+    production composition v01)."""
 
     state = label + "_state"
     a.label(label)
@@ -739,6 +745,9 @@ def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body
     a.li("s2", -1)  # last body pose shown
     a.li("s3", 0)  # built
     a.li("s4", HELPER_MAX_TICKS)
+    a.lui("t0", host.hi(host.PLAYER_CTRL))
+    a.lw("t0", host.lo(host.PLAYER_CTRL), "t0")
+    a.lhu("s5", host.CTRL_ACTION_ID, "t0")  # the throw's action
     a.label(label + "_loop")
     a.la("t0", state)
     a.lw("t1", 0, "t0")
@@ -746,6 +755,11 @@ def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body
     a.beq("t1", "t2", label + "_end")
     a.lui("t0", host.hi(host.PLAYER_CTRL))
     a.lw("t0", host.lo(host.PLAYER_CTRL), "t0")
+    a.lhu("t1", host.CTRL_STATE_FLAGS, "t0")
+    a.andi("t1", "t1", HIT_REACTION_BIT)
+    a.bnez("t1", label + "_end")  # hit: the throw is over
+    a.lhu("t1", host.CTRL_ACTION_ID, "t0")
+    a.bne("t1", "s5", label + "_end")  # another action took over
     a.lw("t1", host.CTRL_SCRIPT_CURSOR, "t0")
     a.lw("t2", host.CTRL_ACTOR, "t0")
     a.lw("t2", host.ACTOR_FILE_BASE, "t2")

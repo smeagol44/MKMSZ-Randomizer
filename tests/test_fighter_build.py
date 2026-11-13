@@ -12,9 +12,12 @@ from mkmszr.fighter_import import fighter_build as fb
 
 CLEAN, MKT = os.environ.get("MKMSZR_CLEAN_ROM"), os.environ.get("MKMSZR_MKT_ROM")
 needs_roms = pytest.mark.skipif(not (CLEAN and MKT), reason="needs MKMSZR_CLEAN_ROM and MKMSZR_MKT_ROM")
-# The owner-accepted Reptile specials proof v22 (v21 + help text): its payload (linked at
-# fb.LINK_VA) and its fighter file. The generic builder must reproduce both byte for byte.
-V22_PAYLOAD_SHA256 = "deb21523c9bf69800bcdb03f793bedda0e95655b78696954e809b031df8b34c8"
+# The owner-accepted Reptile specials proof v22 (v21 + help text): its fighter file, and its
+# payload (linked at fb.LINK_VA) plus one fix since: the throw helper ends when a hit
+# interrupts the throw (composition v01 report; v22's payload was
+# deb21523c9bf69800bcdb03f793bedda0e95655b78696954e809b031df8b34c8, reproduced byte for byte
+# before the fix).
+V22_PAYLOAD_SHA256 = "bdff766ee9a94fd7d2c869029f9167ca89066db0497d81727a395a2737a12a2b"
 V22_FILE87_SHA256 = "71bf66f35be7a6fe4c65cfddd318e30a83b892693cfe6dd0bb806ef8733a32be"
 
 
