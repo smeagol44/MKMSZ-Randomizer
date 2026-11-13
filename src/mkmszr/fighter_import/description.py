@@ -28,6 +28,11 @@ Body fields:
   phase, scaled by position. Used where the donor has the animation a host-only state plays,
   e.g. the MKT ninjas' slide (Reptile table-1 slot 2) for host secondary 2 (Slide, Super Slide),
   instead of the generic ``slide`` recipe.
+* ``body.script_sounds`` (optional, computed layout only): host primary slot -> donor fighter
+  sound index (MKT ``ft_sound``). The slot's script starts with host callback 2 on the spare
+  descriptor ``voices.SCRIPT_SOUND_DESCRIPTOR``, which plays that donor sound: Rayden's getup
+  and sweep getup start with his teleport-appear sound 7 (MKT ``0x80053AE8``). One donor sound
+  per fighter (one spare descriptor).
 * ``body.secondary_scripts`` (optional): empty host secondary slot -> ``"table1:0xNN:P"``
   (or ``table0``): a new script with the frames of the donor script's first P phases (tokens
   dropped), for animations a host-only special plays (Reptile's forceball and acid throws).
@@ -130,6 +135,7 @@ class Body:
     phase_slots: dict[int, str] = field(default_factory=dict)  # host slot -> "phases" | "shift:N"
     secondary_slots: dict[int, tuple[int, int]] = field(default_factory=dict)  # host S slot -> (table, index)
     secondary_scripts: dict[int, tuple[int, int, int]] = field(default_factory=dict)  # -> (table, index, phases)
+    script_sounds: dict[int, int] = field(default_factory=dict)  # host primary slot -> donor ft_sound index
 
 
 @dataclass(frozen=True)
@@ -299,6 +305,23 @@ def validate(data: Any) -> FighterDescription:
             new_scripts[slot] = (int(m.group(1)), int(m.group(2), 16), int(m.group(3)))
     if not isinstance(raw_new, dict):
         errors.append("body.secondary_scripts: expected an object")
+    script_sounds: dict[int, int] = {}
+    raw_snd = body_d.get("script_sounds", {}) if isinstance(body_d, dict) else {}
+    for key, value in (raw_snd if isinstance(raw_snd, dict) else {}).items():
+        slot = _int(key, f"body.script_sounds key {key!r}", errors)
+        index = _int(value, f"body.script_sounds[{key}]", errors)
+        if slot is not None and slot not in slots:
+            errors.append(f"body.script_sounds[{key}]: not one of body.slots")
+        elif index is not None and not 0 <= index < 0x40:
+            errors.append(f"body.script_sounds[{key}]: donor fighter sound index 0..0x3F")
+        elif slot is not None and index is not None:
+            script_sounds[slot] = index
+    if not isinstance(raw_snd, dict):
+        errors.append("body.script_sounds: expected an object")
+    elif len(set(script_sounds.values())) > 1:
+        errors.append("body.script_sounds: one donor sound for every slot (one spare descriptor)")
+    if script_sounds and "layout" in body_d:
+        errors.append("body.script_sounds: only with the computed layout")
     if sources and "layout" in body_d:
         errors.append("body.slot_sources: only with the computed layout")
     anims = _get(body_d, "common_animations", list, "body", errors) or []
@@ -390,7 +413,7 @@ def validate(data: Any) -> FighterDescription:
         raise DescriptionError("; ".join(errors))
     return FighterDescription(
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
-        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts),
+        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts, script_sounds),
         legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove),
         icons=icons, help=help_text, costs=costs, specials=specials, outfit=outfit,
     )  # fmt: skip

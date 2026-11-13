@@ -76,6 +76,7 @@ def test_layout_rejects_bad_places_and_overlaps() -> None:
         (lambda d: d["body"].update(secondary_slots={"0x02": "table1:0x02"}), "slide"),
         (lambda d: d["body"].update(secondary_slots={"0x40": "table1:0x02"}), "secondary slot"),
         (lambda d: d.update(outfit={"entries": ["0x10"], "own": "red"}), "outfit"),
+        (lambda d: d["body"].update(script_sounds={"0x50": 7}), "script_sounds"),
         (lambda d: d.update(outfit={"entries": ["0x03"], "own": "blue"}), "outfit"),
     ],
 )
@@ -129,3 +130,12 @@ def test_reptile_outfit_is_his_greens() -> None:
     d = fd.load("reptile")
     assert d.outfit == {"entries": (10, 11, 12, 13, 14), "own": "green"}
     assert fd.load("sektor").outfit == {}  # Sektor's red entries stay in fighter_import.outfit
+
+
+def test_rayden_script_sounds() -> None:
+    d = fd.load("rayden")
+    assert d.body.script_sounds == {0x21: 7, 0x22: 7} and d.body.phase_slots == {0x23: "shift:+1"}
+    raw = copy.deepcopy(_raw("rayden"))
+    raw["body"]["script_sounds"] = {"0x21": 7, "0x22": 8}
+    with pytest.raises(fd.DescriptionError, match="one donor sound"):
+        fd.validate(raw)

@@ -253,10 +253,12 @@ def test_palette_table_is_indexed_by_fighter_id() -> None:
 def test_rayden_body_builds() -> None:
     # Rayden's sweep getup (slot 0x22) jumps into his getup script (copied inline), frame
     # 0x15DC holds one more row than its descriptor shows (cropped, as MKT draws it), his
-    # palette ramps rise, and his codec-15 silhouettes use their own palette 0x800B9AF0.
+    # palette ramps rise, and his codec-15 silhouettes use their own palette 0x800B9AF0; his
+    # throw (phase_slots) skips draw-order callback 37, and his getup scripts start with the
+    # script sound (callback 2, spare descriptor 0x2A).
     body = bb.build_body(fd.load("rayden"), Path(CLEAN).read_bytes(), Path(MKT).read_bytes(),
                          bb.Extras(), rom=bytearray(Path(CLEAN).read_bytes()))  # fmt: skip
-    assert body.report["frames"] == 142 and body.report["file_end"] <= body.report["file_budget"]
+    assert body.report["frames"] == 148 and body.report["file_end"] <= body.report["file_budget"]
 
 
 @needs_roms

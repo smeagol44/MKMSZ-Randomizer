@@ -172,6 +172,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     chains = _Pool(tuple(EXTRA_CHAINS) + tuple(VOICE_CHAINS[used_voices:]), "isolated sound chains")
     voice_chains = list(VOICE_CHAINS[:used_voices])
     bank = sound.MktSoundBank(mkt)
+    if d.body.script_sounds:  # body.script_sounds: the spare descriptor's event plays it
+        (sfx,) = set(d.body.script_sounds.values())
+        samples_end = voices.install_script_sound(rom, clean, mkt, donor_id, sfx, chains.take(),
+                                                  (samples_end + 0xF) & ~0xF, vs)  # fmt: skip
 
     def install(donor_sound: sound.DonorSound) -> int:
         nonlocal samples_end
