@@ -160,3 +160,4 @@ Append-only. Add one line per new page related to this plan (inventory, componen
 - [Fighter recompiler inventory](Fighter-Recompiler-Inventory) — milestone 1 inventory of Sektor-specific items (2026-11-10).
 - [Fighter recompiler MKT move readings](Fighter-Recompiler-MKT-Moves) — milestone 3 reading aid, MKT routine registry and the readings of Reptile's and Sektor's specials (2026-11-10).
 - [Fighter recompiler components](Fighter-Recompiler-Components) — milestone 2 component catalogue, move-program format and host references (Quan Chi projectile, Eye) (2026-11-11).
+- [Fighter recompiler amendment 1](Fighter-Recompiler-Amendment-1) — milestone 6 decisions: Rayden next, his power slots (2026-11-13).

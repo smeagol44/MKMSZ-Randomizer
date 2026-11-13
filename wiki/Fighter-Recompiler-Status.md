@@ -4,7 +4,32 @@
 
 ## Current milestone
 
-**Milestone 4 — Reptile**: in progress (started 2026-11-11).
+**Milestone 6 — next fighters: Rayden** (MKT fighter 24), started 2026-11-13 ([amendment 1](Fighter-Recompiler-Amendment-1): decisions and his power slots). Milestone 4 (Reptile) shipped as a product Fighter option (PRs #209, #210); its record follows below.
+
+### Rayden — progress
+
+Steps as for Reptile: body, inputs, specials, icons and description, product option.
+
+**His MKT commands** (reading aid, `--fighter 24`; Static-confirmed):
+
+| Command | Action → body | Move |
+|---|---|---|
+| press 1, tokens D,F | `0x8004FA44` → special `0x2E` → `0x80077DF8(0)` | Lightning: `proj_process(0x80077F2C)`, then sleeps `0x30` and `0x24` |
+| press 1, tokens D,B | `0x8004FA64` → special `0x36` → `0x80077DF8(1)` | the same bolt with `flip_single` (thrown the other way) |
+| press 6, tokens D,U; `ticks_since(0x8012C668) ≥ 0x40` | `0x8004F3F8` → propell `0x1D` → `0x80045624` | Teleport: `stamp_tick`, sound 6, table-0 slots `0x21` (appear) and `0x22`, `match_ani_points`, `face_opponent` |
+| press 8/9, tokens B,B,F | `0x8004F3A0` → propell `0x1E` → `0x800450D4` | Torpedo: `towards_x_vel(…, 0x80000)`, table-1 slot 0, strike, then `do_jump(0, 0xD999, 0x6CCC)` back |
+| release HP; held ≥ `0x38` ticks (`0x80257738`) | `0x8004EBA0` → quick `0x1D` → `0x80073228` | Shocker: sounds `0xC` and 5, table-1 slot 2, an opponent hold; details Pending |
+
+**Body proof v01** (`MKMSZR_build_rayden-body_proof_v01.py`; his description `fighters/rayden.json`, body only):
+
+| Test ROM | SHA-256 | Contents | State |
+|---|---|---|---|
+| `MKMSZR_rayden-body_common_proof_v01.z64` | `48a618623ff39d514bb44368e7d98909e286fb89a581519279472873930a0e4b` | Sub-Zero's body replaced by Rayden's (142 frames, auto colour, the generic common animations, his MKT voice set); Sub-Zero's specials. Four generic body-builder changes came with him (below). Previews of every slot were shown to the owner before the build. | **Pending** owner test |
+
+- **Cross-script jump** (Static-confirmed): his sweep getup (slot `0x22`) shows one frame, then jumps into his getup (slot `0x21`) at its second frame. `body_build.linearise` now copies a jump into a script it has not reached inline.
+- **Taller images** (Static-confirmed): frame `0x15DC` (codec 22) decodes 125 rows for a 124-row descriptor. MKT draws the descriptor's rows from the top; frames with extra whole rows are cropped.
+- **Rising ramps** (Static-confirmed): his palette (`0x800A3660[24]` = `0x800B9AAC`) runs from dark to light (black up to cyan, greys up to white); `palette_ramps` took only light-to-dark runs, so every entry became its own ramp and the reduction fell back to median cut (speckled whites). Ramps are now found in either direction. Across the roster only fighters 3, 11 and 24 split differently; Reptile and Sektor are unchanged (test).
+- **Silhouettes** (Static-confirmed; owner video and screenshot): seven codec-15 frames (`0x1CF8..0x1D88`) are his white teleport. MKT uses them for the teleport and also as the first part of his getup and of a hit animation (owner: "the getup and the teleport use the same white animation"). Their descriptors name their own 8-colour palette `0x800B9AF0` (white to light cyan). The builder leaves such frames out of the body reduction and maps each of their colours to the nearest body colour. Only codec-15 frames are treated so: his first stance frame names `0x800BB7EC`, but its pixels only fit the table palette (rendered both ways), which settles the Pending note on fighter 24's palette layout above.
 
 ### Milestone 4 — agreed tasks (owner, 2026-11-11)
 
@@ -52,7 +77,7 @@ v01 causes and the generic fixes in v02 (`fighter_import.body_build`; Sektor's e
 - **Dead pose** (Static-confirmed cause). Host routes show only the first frame of the knockdown's second phase (`0x8005AC00`: `select_primary_phase2(0x1E)` and one `animation_advance`), and secondary 9 (lying) points at that phase. Stock Sub-Zero's phase is the single lying pose. Reptile's MKT landing is a bounce frame (`0x27C8`, legs up) and then lying (`0x27DC`). The computed layout now keeps only the landing's last frame there, so death and lying end flat. The bounce frame is dropped, and the knockdown now fits in place.
 - **HP↔LP switch** (Static-confirmed cause). Stock primaries `0x0E`/`0x0F` carry host-only phases after their loop: retract, a single pose, and switch phases that go through one frame of each punch and jump into the other punch's script (`0x58C`, `0x57C`, `0x51C`, `0x50C`). MKT scripts end at the loop, so the computed layout left those phases empty. When the imported script has the stock shape up to the loop, it now keeps the stock tail (tokens, operands, jumps) and translates each stock frame to the imported frame in the same place. This gives the same roles as Sektor's hand layout.
 - **Pit fall** (unchanged): the held pose is the knockdown's last fall frame (`0x27B4`), as for Sektor.
-- **Palette, v03** (Static-confirmed cause). v01 and v02 read Reptile's palette from `0x800A1738[19]`. That table is not indexed by fighter id past 16: entry `17 + k` is the alternate palette of fighter `k`, so v01/v02 used another fighter's alternate (11 greys, 7 dark greens, 13 browns). The per-fighter table is `0x800A3660`. Its entry equals the palette that the fighter's first frame binds for every fighter with its own art (14 fighters, including 5 where `0x800A1738` differs). For fighters that share art (ninjas, robots) it holds the costume recolour in the shared layout. Reptile `0x800BE864`: entries 1–8 skin, 9–16 greys and black (16, the suit, is the most used), 17–31 green, which matches MKT's character select. Fighter 24 binds `0x800BB7EC`, but its entry `0x800B9AAC` has another layout (Pending; not an import target). Generic projectile proofs v01–v03 showed the same wrong palette for the forceball; v04 onwards bind the forceball's own palette and are unaffected.
+- **Palette, v03** (Static-confirmed cause). v01 and v02 read Reptile's palette from `0x800A1738[19]`. That table is not indexed by fighter id past 16: entry `17 + k` is the alternate palette of fighter `k`, so v01/v02 used another fighter's alternate (11 greys, 7 dark greens, 13 browns). The per-fighter table is `0x800A3660`. Its entry equals the palette that the fighter's first frame binds for every fighter with its own art (14 fighters, including 5 where `0x800A1738` differs). For fighters that share art (ninjas, robots) it holds the costume recolour in the shared layout. Reptile `0x800BE864`: entries 1–8 skin, 9–16 greys and black (16, the suit, is the most used), 17–31 green, which matches MKT's character select. Fighter 24 binds `0x800BB7EC`, but its entry `0x800B9AAC` has another layout. **Resolved (2026-11-13, Rayden body):** his frames' pixels fit `0x800B9AAC`; `0x800BB7EC` speckles them (Static-confirmed by rendering). Generic projectile proofs v01–v03 showed the same wrong palette for the forceball; v04 onwards bind the forceball's own palette and are unaffected.
 
 **Step 2a, combos and throw.**
 
@@ -271,7 +296,7 @@ PRs: 1 inventory and description format; 2 generic builder; 3 codec 23, roster d
 | 3 Reading aid for MKT moves | **Done** (2026-11-11) | See above | #200 reading aid, registry, readings |
 | 4 Reptile | In progress | See above | — |
 | 5 Generic product integration | Not started | — | — |
-| 6 Review and next fighters | Not started | — | — |
+| 6 Review and next fighters | **In progress** (2026-11-13): Rayden | [Amendment 1](Fighter-Recompiler-Amendment-1) | Rayden body proof v01 |
 
 ## Debt
 
