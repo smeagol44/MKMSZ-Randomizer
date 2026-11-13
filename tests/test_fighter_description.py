@@ -73,6 +73,8 @@ def test_layout_rejects_bad_places_and_overlaps() -> None:
         (lambda d: d["body"].update(phase_slots={"0x23": "late"}), "shift:N"),
         (lambda d: d["body"].update(secondary_slots={"0x02": "table1:0x02"}), "slide"),
         (lambda d: d["body"].update(secondary_slots={"0x40": "table1:0x02"}), "secondary slot"),
+        (lambda d: d.update(outfit={"entries": ["0x10"], "own": "red"}), "outfit"),
+        (lambda d: d.update(outfit={"entries": ["0x03"], "own": "blue"}), "outfit"),
     ],
 )
 def test_validator_rejects(change, message) -> None:
@@ -119,3 +121,9 @@ def test_reptile_sources_and_phase_slots() -> None:
     data["body"]["slot_sources"] = {"0x10": "table2:0x00"}
     with pytest.raises(fd.DescriptionError, match="table0"):
         fd.validate(data)
+
+
+def test_reptile_outfit_is_his_greens() -> None:
+    d = fd.load("reptile")
+    assert d.outfit == {"entries": (10, 11, 12, 13, 14), "own": "green"}
+    assert fd.load("sektor").outfit == {}  # Sektor's red entries stay in fighter_import.outfit

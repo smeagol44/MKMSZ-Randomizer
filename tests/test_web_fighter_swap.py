@@ -23,8 +23,8 @@ def test_fighter_swap_is_wired() -> None:
     assert "from mkmszr.donors.mkt_select_screen import render" in worker
     # The title character follows the fighter unless the user typed their own.
     assert 'const FIGHTER_TITLES = { "sub-zero": "SUB-ZERO", sektor: "SEKTOR", reptile: "REPTILE" };' in app
-    # Reptile has no outfit recolour: the outfit is locked to Vanilla while he is chosen.
-    assert 'const OUTFIT_FIGHTERS = ["sub-zero", "sektor"];' in app
+    # Every fighter offered has an outfit recolour; one without would lock it to Vanilla.
+    assert 'const OUTFIT_FIGHTERS = ["sub-zero", "sektor", "reptile"];' in app
     assert "outfitMode.disabled = outfitLocked" in app
     # Imported fighters lock SPECIALS to CLASSIC.
     assert "specialsModern.disabled = imported" in app

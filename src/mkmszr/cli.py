@@ -42,7 +42,7 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=("sub-zero", "sektor", "reptile"),
         default="sub-zero",
         help="player fighter; sektor and reptile are imported from the MKT donor (requires "
-        "--mkt-rom); reptile keeps his own colours (--outfit vanilla)",
+        "--mkt-rom)",
     )
     parser.add_argument("--outfit", choices=modes, default="vanilla")
     parser.add_argument("--hue", type=float, help="hue in degrees for --outfit hue")

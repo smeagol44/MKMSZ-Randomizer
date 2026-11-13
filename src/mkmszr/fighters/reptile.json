@@ -3,6 +3,10 @@
   "id": "reptile",
   "display_name": "Reptile",
   "title": "REPTILE",
+  "outfit": {
+    "entries": ["0x0A", "0x0B", "0x0C", "0x0D", "0x0E"],
+    "own": "green"
+  },
   "donor": {
     "game": "MKT-N64-USA-Rev2",
     "fighter_id": 19,

@@ -35,8 +35,7 @@ def test_config_accepts_the_fighters_and_requires_classic_specials() -> None:
     assert RandomizerConfig().fighter == "sub-zero"
     assert RandomizerConfig(fighter="sektor").fighter == "sektor"
     assert RandomizerConfig(fighter="reptile").fighter == "reptile"
-    with pytest.raises(ValueError, match="outfit"):
-        RandomizerConfig(fighter="reptile", outfit=OutfitConfig(mode="red"))
+    assert RandomizerConfig(fighter="reptile", outfit=OutfitConfig(mode="red")).fighter == "reptile"
     assert RandomizerConfig(fighter="sektor", outfit=OutfitConfig(mode="red")).fighter == "sektor"
     with pytest.raises(ValueError):
         RandomizerConfig(fighter="scorpion")  # type: ignore[arg-type]
@@ -51,8 +50,6 @@ def test_cli_fighter_option() -> None:
     assert parser.parse_args(["in.z64", "out.z64"]).fighter == "sub-zero"
     assert parser.parse_args(["in.z64", "out.z64", "--fighter", "sektor"]).fighter == "sektor"
     assert parser.parse_args(["in.z64", "out.z64", "--fighter", "reptile"]).fighter == "reptile"
-    with pytest.raises(SystemExit):
-        main(["in.z64", "out.z64", "--fighter", "reptile", "--mkt-rom", "m.z64", "--outfit", "red"])
     with pytest.raises(SystemExit):
         parser.parse_args(["in.z64", "out.z64", "--fighter", "kano"])
     with pytest.raises(SystemExit):
@@ -134,3 +131,21 @@ def test_cli_reptile_build_is_the_validated_composition(tmp_path: Path) -> None:
     assert main(["--mkt-rom", DONOR, "--seed", "REPTILE-PROD-1", "--fighter", "reptile",
                  CLEAN, str(out)]) == 0  # fmt: skip
     assert hashlib.sha256(out.read_bytes()).hexdigest() == REPTILE_CLI_SHA256
+
+
+@needs_roms
+def test_cli_reptile_outfit_recolours_only_his_greens(tmp_path: Path) -> None:
+    from mkmszr.fighter_import.outfit import PALETTE_OFFSET
+
+    def fighter_file(outfit: str) -> bytes:
+        out = tmp_path / f"reptile-{outfit}.z64"
+        assert main(["--mkt-rom", DONOR, "--seed", "REPTILE-PROD-1", "--fighter", "reptile",
+                     "--outfit", outfit, CLEAN, str(out)]) == 0  # fmt: skip
+        rom = out.read_bytes()
+        entry = 0x000A5010 + 0x87 * 12
+        start, end = (int.from_bytes(rom[entry + k : entry + k + 4], "big") for k in (0, 4))
+        return rom[start:end]
+
+    vanilla, purple = fighter_file("vanilla"), fighter_file("purple")
+    changed = {(i - PALETTE_OFFSET) // 2 for i in range(len(vanilla)) if vanilla[i] != purple[i]}
+    assert changed == {10, 11, 12, 13, 14}  # his greens; skin, greys and black stay

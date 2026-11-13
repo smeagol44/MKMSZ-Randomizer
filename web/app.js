@@ -65,7 +65,7 @@ const fighterHover = document.querySelector("#fighterHover");
 
 const FIGHTER_LABELS = { "sub-zero": "Sub-Zero", sektor: "Sektor", reptile: "Reptile" };
 // Fighters with an outfit recolour; the others keep their own colours (outfit locked to Vanilla).
-const OUTFIT_FIGHTERS = ["sub-zero", "sektor"];
+const OUTFIT_FIGHTERS = ["sub-zero", "sektor", "reptile"];
 // Title character default per fighter; the field follows the fighter unless the user typed
 // their own name (still editable either way).
 const FIGHTER_TITLES = { "sub-zero": "SUB-ZERO", sektor: "SEKTOR", reptile: "REPTILE" };

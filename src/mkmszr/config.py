@@ -9,7 +9,7 @@ CompletionMode = Literal["all_checks", "beatable"]
 Fighter = Literal["sub-zero", "sektor", "reptile"]
 # Imported fighters with an outfit recolour (fighter_import.outfit); the others keep their own
 # colours, so their outfit option must stay vanilla.
-OUTFIT_FIGHTERS = ("sub-zero", "sektor")
+OUTFIT_FIGHTERS = ("sub-zero", "sektor", "reptile")
 
 
 @dataclass(frozen=True)
