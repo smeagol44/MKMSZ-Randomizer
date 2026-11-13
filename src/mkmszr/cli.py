@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from .config import OutfitConfig, RandomizerConfig
+from .config import OUTFIT_FIGHTERS, OutfitConfig, RandomizerConfig
 from .donors import extract_temple_intro_audio_assets, extract_toasty_assets
 from .errors import MKMSZRError
 from .patcher import patch_file
@@ -39,9 +39,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--fighter",
-        choices=("sub-zero", "sektor"),
+        choices=("sub-zero", "sektor", "reptile"),
         default="sub-zero",
-        help="player fighter; sektor is imported from the MKT donor (requires --mkt-rom)",
+        help="player fighter; sektor and reptile are imported from the MKT donor (requires "
+        "--mkt-rom)",
     )
     parser.add_argument("--outfit", choices=modes, default="vanilla")
     parser.add_argument("--hue", type=float, help="hue in degrees for --outfit hue")
@@ -138,6 +139,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--custom-required-powers must be from 0 to 9")
     if args.fighter != "sub-zero" and args.mkt_rom is None:
         parser.error(f"--fighter {args.fighter} requires --mkt-rom")
+    if args.fighter not in OUTFIT_FIGHTERS and args.outfit != "vanilla":
+        parser.error(f"--fighter {args.fighter} has no outfit recolour; use --outfit vanilla")
     if not 1 <= args.lives <= 10:
         parser.error("--lives must be from 1 to 10")
     if not 0 <= args.continues <= 5:

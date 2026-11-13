@@ -4,6 +4,15 @@
 
 ## From Project status
 
+### PS-35 (2026-11-13)
+
+**2026-11-13 Reptile through the product Fighter option. Implementation/CI-confirmed; composition v03 Runtime-confirmed bounded.**
+
+- **Production path:** the generic builder for described fighters and Sektor's "option C" layout made generic (`fighter_import.fighter_build`, `patches/fighter_swap._apply_described`).
+- **Composition proofs:** v01 (the forming arc lingered after a hit: fixed in v02), v02 (a forceball crashed the game on a Temple MONK3: the knockback reaction lacked the stock victim morphs; fixed in v03), v03 validated by the owner.
+- **Product:** `reptile` in `RandomizerConfig`, the CLI and the web select screen; the outfit option recolours his greens (owner request, same day; at first it was locked to Vanilla). The CLI output with seed `REPTILE-PROD-1` equals composition v03 byte for byte.
+- **Open:** slide inputs once stopped working on Temple's lower floor in the all-powers v02 test (special lock `0x800BF308` set; cause Pending). Details in [Fighter recompiler status](Fighter-Recompiler-Status).
+
 ### PS-34 (2026-11-11)
 
 **2026-11-11 Fighter recompiler milestone 2 task 8: generic projectile on the native enemy-projectile path, Runtime-confirmed bounded (proof v06).**

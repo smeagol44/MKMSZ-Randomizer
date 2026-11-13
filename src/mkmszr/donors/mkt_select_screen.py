@@ -72,7 +72,7 @@ BG_DRAW = (
 )  # fmt: skip
 BG_PLATES = ((0x803F6378, 0, 219, 205), (0x803F6358, 0, 10, 204))  # drawn over the portraits
 # MKT fighter ids the importer can bring into MKMSZ -> RandomizerConfig.fighter.
-IMPORTABLE = {7: "sektor"}
+IMPORTABLE = {7: "sektor", 19: "reptile"}
 
 
 class SelectScreenError(ValueError):

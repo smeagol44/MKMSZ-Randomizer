@@ -146,6 +146,7 @@ class FighterDescription:
     help: dict = field(default_factory=dict)  # Power Ups help text (fighter_help)
     costs: dict[str, int] = field(default_factory=dict)  # move -> Ice cost (else the replaced power's)
     specials: dict = field(default_factory=dict)  # move -> lowering tuning (fighter_build), in build order
+    outfit: dict = field(default_factory=dict)  # outfit recolour: {entries (body palette), own colour}
     remove_commands: tuple[str, ...] = ()
 
 
@@ -370,8 +371,19 @@ def validate(data: Any) -> FighterDescription:
                 lines = [line for group in spec for line in group] if isinstance(spec, list) else [None]
                 if not lines or any(not isinstance(t, str) or len(t) > MAX_LINE or not set(t) <= CHARSET for t in lines):
                     errors.append(f"help.{name}: 'stock', 'empty' or groups of uppercase lines (<= {MAX_LINE})")
+    raw_outfit = data.get("outfit", {})
+    outfit: dict = {}
+    if raw_outfit:
+        entries = raw_outfit.get("entries") if isinstance(raw_outfit, dict) else None
+        own = raw_outfit.get("own") if isinstance(raw_outfit, dict) else None
+        values = [_int(e, "outfit.entries", errors) for e in entries] if isinstance(entries, list) else []
+        if not values or any(v is None or not 1 <= v <= 15 for v in values) or own not in ("red", "green"):
+            errors.append("outfit: {entries: body palette indices 1..15, own: 'red' or 'green'}")
+        else:
+            outfit = {"entries": tuple(values), "own": own}  # type: ignore[misc]
     unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes",
-                           "commands", "remove_commands", "icons", "help", "costs", "specials"}  # fmt: skip
+                           "commands", "remove_commands", "icons", "help", "costs", "specials",
+                           "outfit"}  # fmt: skip
     if unknown:
         errors.append(f"unknown keys: {', '.join(sorted(unknown))}")
     if errors:
@@ -380,7 +392,7 @@ def validate(data: Any) -> FighterDescription:
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
         body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts),
         legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove),
-        icons=icons, help=help_text, costs=costs, specials=specials,
+        icons=icons, help=help_text, costs=costs, specials=specials, outfit=outfit,
     )  # fmt: skip
 
 

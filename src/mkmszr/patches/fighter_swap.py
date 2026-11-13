@@ -37,7 +37,7 @@ from ..rom import RomImage
 from .base import PatchContext
 from .rainbow_palette import LOAD_JAL_SITES
 
-FIGHTERS = ("sub-zero", "sektor")
+FIGHTERS = ("sub-zero", "sektor", "reptile")
 # Fighters built from their description (fighter_import.fighter_build, milestone 5): every word
 # the build changes is the fighter's, so no list is kept here.
 DESCRIBED = ("reptile",)
@@ -116,7 +116,7 @@ class FighterSwapPatch:
 
     def apply(self, rom: RomImage, context: PatchContext) -> tuple[str, ...]:
         if self.fighter in DESCRIBED:
-            return _apply_described(self.fighter, self.mkt, rom)
+            return _apply_described(self.fighter, self.mkt, rom, self.outfit, context.seed)
         if self.fighter != "sektor":
             raise PatchError(f"fighter {self.fighter!r} cannot be imported")
         from ..fighter_import.sektor_build import build
@@ -201,11 +201,13 @@ class FighterSwapPatch:
         )
 
 
-def _apply_described(fighter: str, mkt: bytes, rom: RomImage) -> tuple[str, ...]:
+def _apply_described(fighter: str, mkt: bytes, rom: RomImage, outfit_config: OutfitConfig | None = None,
+                     seed: str | None = None) -> tuple[str, ...]:  # fmt: skip
     """A described fighter (milestone 5): its production build (``fighter_build.production``)
     on the clean ROM; every word that build changes in the 16 MiB part is the fighter's and must
     still hold its clean value here (an owner conflict fails the build). Then the tail, the
-    fixed loader in shared file 0x1A, and the Power Ups icons and help from the description."""
+    fixed loader in shared file 0x1A, and the Power Ups icons, help and outfit recolour from the
+    description (``outfit``: his body palette entries and own colour, as Sektor's)."""
 
     from ..fighter_import import description, fighter_build, fighter_help, fighter_icons
 
@@ -239,6 +241,15 @@ def _apply_described(fighter: str, mkt: bytes, rom: RomImage) -> tuple[str, ...]
             rom.expect_bytes(off, clean[off : off + len(blob)])
         rom.write_bytes(off, blob)
     icon_span = fighter_icons.apply(data, mkt, d.donor_fighter_id, d.icons)
+    mode = (outfit_config or OutfitConfig()).mode.lower()
+    if mode != "vanilla":
+        if not d.outfit:
+            raise PatchError(f"fighter {fighter} has no outfit recolour; use the vanilla outfit")
+        f87 = (man["file87_rom"], man["file87_rom"] + man["file87_size"])
+        data[f87[0] : f87[1]] = outfit.recolor(
+            data[f87[0] : f87[1]], mode, entries=d.outfit["entries"], own=d.outfit["own"],
+            hue=outfit_config.hue_degrees, rgb=outfit_config.rgb, seed=seed,  # type: ignore[union-attr]
+        )  # fmt: skip
 
     f1a_end, at = _place_fixed(rom, made.fixed)
     return (
