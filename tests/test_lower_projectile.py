@@ -70,7 +70,11 @@ def test_donor_parts_of_the_forceball() -> None:
 
 
 @needs_roms
-def test_backend_reproduces_the_runtime_confirmed_proof() -> None:
+def test_backend_reproduces_the_runtime_confirmed_proof(monkeypatch: pytest.MonkeyPatch) -> None:
+    # v06 predates the knockback reaction's victim morphs (composition v03); without them the
+    # backend still reproduces it byte for byte.
+    spec_v06 = {k: v for k, v in lp.REACTION_LOWERING["knockback_arc"].items() if k != "morph"}
+    monkeypatch.setitem(lp.REACTION_LOWERING, "knockback_arc", spec_v06)
     spec = importlib.util.spec_from_file_location(
         "v07", PROOFS / "MKMSZR_build_generic-projectile_proof_v07.py"
     )
@@ -189,3 +193,19 @@ def test_acid_box_is_centred_on_the_drawn_spit() -> None:
     assert out["strike"]["box"] == [193, 88, 64, 12]  # MKT's 27 moved by +61
     assert [c["box"][1] for c in out["checks"]] == [84, 84]
     assert acid["strike"]["box"][1] == 27  # the move program is unchanged
+
+
+@pytest.mark.skipif(not CLEAN, reason="needs MKMSZR_CLEAN_ROM")
+def test_knockback_reaction_morphs_the_victim_first() -> None:
+    # Composition v02 crash: host reaction 0x25 plays shared root 0x1E without the stock
+    # morphs, so a Temple MONK3 (type 2, sparse file) read an unfilled root and crashed.
+    clean = Path(CLEAN).read_bytes()  # type: ignore[arg-type]
+    words = lp.lifted_reaction(clean, "knockback_arc")
+    stock = [int.from_bytes(clean[0x58814 + 4 * i : 0x58818 + 4 * i], "big") for i in range(0x110 // 4)]
+    assert words[:2] == stock[:2]
+    assert words[2:12] == [0x3C02802F, 0x8C42CE20, 0x8C4406E0, 0x0C015CB1, 0,
+                           0x3C02802F, 0x8C42CE20, 0x8C4406E0, 0x0C015D1E, 0]  # fmt: skip
+    assert len(words) == len(stock) + 10
+    # the same sequence as the stock launch reaction 0x0C (0x80052898)
+    launch = clean[0x534E4 : 0x534E4 + 20]
+    assert launch.hex() == "3c02802f8c42ce208c4406e00c015cb100000000"

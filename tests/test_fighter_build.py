@@ -18,6 +18,10 @@ needs_roms = pytest.mark.skipif(not (CLEAN and MKT), reason="needs MKMSZR_CLEAN_
 # deb21523c9bf69800bcdb03f793bedda0e95655b78696954e809b031df8b34c8, reproduced byte for byte
 # before the fix).
 V22_PAYLOAD_SHA256 = "bdff766ee9a94fd7d2c869029f9167ca89066db0497d81727a395a2737a12a2b"
+# Second fix since: the forceballs' knockback reaction morphs the victim first, as the stock
+# launch reaction does (composition v02 crash on a Temple MONK3). Without the morph the build
+# still reproduces V22_PAYLOAD_SHA256.
+PAYLOAD_SHA256 = "9b8f6f00e04dd1889dd41550b4edf8a6801d5c8442fbdf17f1e5d89b3b51f1d6"
 V22_FILE87_SHA256 = "71bf66f35be7a6fe4c65cfddd318e30a83b892693cfe6dd0bb806ef8733a32be"
 
 
@@ -29,7 +33,7 @@ def roms() -> tuple[bytes, bytes]:
 @needs_roms
 def test_generic_build_reproduces_the_accepted_reptile(roms: tuple[bytes, bytes]) -> None:
     built = fb.build(*roms, "reptile")
-    assert hashlib.sha256(built.payload).hexdigest() == V22_PAYLOAD_SHA256
+    assert hashlib.sha256(built.payload).hexdigest() == PAYLOAD_SHA256
     assert hashlib.sha256(built.file87).hexdigest() == V22_FILE87_SHA256
     assert built.selectors == {"forceball_fast": 3, "forceball_slow": 4, "acid_spit": 5, "elbow_dash": 6,
                                "invisibility": 7}  # fmt: skip
@@ -51,3 +55,13 @@ def test_reptile_production_placement(roms: tuple[bytes, bytes]) -> None:
     assert made.rom[fb.SCRATCH_ROM : fb.SCRATCH_ROM + fb.PAYLOAD_LIMIT] == clean[fb.SCRATCH_ROM : fb.SCRATCH_ROM + fb.PAYLOAD_LIMIT]
     hp_lui, hp_low = (int.from_bytes(made.rom[o : o + 4], "big") for o in (0x3D48C, 0x3D490))
     assert (hp_lui & 0xFFFF, hp_low) == (0xA01B, 0x8C8430F0)  # the HP table through the pointer word
+
+
+@needs_roms
+def test_without_the_morph_the_build_is_the_accepted_one(roms: tuple[bytes, bytes],
+                                                         monkeypatch: pytest.MonkeyPatch) -> None:  # fmt: skip
+    from mkmszr.fighter_import import lower_projectile as lp
+
+    spec = {k: v for k, v in lp.REACTION_LOWERING["knockback_arc"].items() if k != "morph"}
+    monkeypatch.setitem(lp.REACTION_LOWERING, "knockback_arc", spec)
+    assert hashlib.sha256(fb.build(*roms, "reptile").payload).hexdigest() == V22_PAYLOAD_SHA256

@@ -70,6 +70,14 @@ REACTION_LOWERING: dict[str, dict[str, Any]] = {
             0x3D: 0x34078EE1,
         },
         "drop_sound": (8, 0x0C019342),  # jal 0x80064D08: stock hit sound 0x185
+        # Victim morphs, run first as the stock launch reaction 0x0C (0x80052898) does: the
+        # two-file enemies rebind to their full fighter file before a shared root is played
+        # (0x800572C4: Temple MONK3 type 2 -> MONK2 file 0x89, type 1; 0x80057478: types
+        # 0x15..0x17 and the other two-file families). Host 0x25 has no morph, so on a MONK3
+        # its root 0x1E read the unfilled word 0xFFFFFFFF and the sprite setup crashed
+        # (composition v02 save state, TLB store miss at 0x8001BF04).
+        "morph": (0x800572C4, 0x80057478),
+        "morph_at": 2,  # after the frame and the saved ra
     },
 }
 # Stumble-kind reactions: a lifted copy of the host Fire spiked-rod trap stumble, the reaction
@@ -422,7 +430,12 @@ def lifted_reaction(clean: bytes, meaning: str) -> list[int]:
     if words[index] != stock:
         raise ValueError("base reaction sound call is not stock")
     words[index] = 0
-    return words
+    morph: list[int] = []
+    for target in spec.get("morph", ()):
+        # lui v0, 0x802F; lw v0, CURRENT_CTRL(v0); lw a0, actor(v0); jal target; nop
+        morph += [0x3C02802F, 0x8C42CE20, 0x8C4406E0, 0x0C000000 | ((target >> 2) & 0x3FFFFFF), 0]
+    at = spec.get("morph_at", 0)
+    return words[:at] + morph + words[at:]
 
 
 @dataclass(frozen=True)
