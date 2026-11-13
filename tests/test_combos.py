@@ -70,3 +70,14 @@ def test_install_raises_the_knockback_damage() -> None:
     graph = cb.donor_graph(Path(MKT).read_bytes(), 19)
     cb.install(rom, cb.lower(graph, 0x00, set(range(0x23))))
     assert rom[rec + 10] == 10 and rom[rec : rec + 10] == cb.KNOCKBACK_STOCK[:10]
+
+
+@needs_mkt
+def test_rayden_shared_tail_and_action_finisher() -> None:
+    # Two of Rayden's strings share a list's tail (a pointer into the middle of a list), and one
+    # option after HP, HP ends in his torpedo routine: left out, the list starts at the next one.
+    graph = cb.donor_graph(Path(MKT).read_bytes(), 24)  # type: ignore[arg-type]
+    assert cb.strings(graph) == ["HP, HP, LP, LP", "HK, HK, LK, B+HK", "HK, LK, B+HK"]
+    assert graph.dropped == ((0x800AEFF8, 0x8004F3C0),)
+    low = cb.lower(graph, None, set(range(0x23)))
+    assert len(low.records) == 6 * 16 and low.strikes == {0: 0, 1: 1, 2: 4, 9: 9}

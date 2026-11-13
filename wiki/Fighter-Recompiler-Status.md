@@ -24,7 +24,33 @@ Steps as for Reptile: body, inputs, specials, icons and description, product opt
 
 | Test ROM | SHA-256 | Contents | State |
 |---|---|---|---|
-| `MKMSZR_rayden-body_common_proof_v01.z64` | `48a618623ff39d514bb44368e7d98909e286fb89a581519279472873930a0e4b` | Sub-Zero's body replaced by Rayden's (142 frames, auto colour, the generic common animations, his MKT voice set); Sub-Zero's specials. Four generic body-builder changes came with him (below). Previews of every slot were shown to the owner before the build. | **Pending** owner test |
+| `MKMSZR_rayden-body_common_proof_v01.z64` | `48a618623ff39d514bb44368e7d98909e286fb89a581519279472873930a0e4b` | Sub-Zero's body replaced by Rayden's (142 frames, auto colour, the generic common animations, his MKT voice set); Sub-Zero's specials. Four generic body-builder changes came with him (below). Previews of every slot were shown to the owner before the build. | **Runtime-confirmed (bounded)** (owner, 2026-11-13): "The sprites look very good." Missing: the getup sound, "the same as the teleport" (inputs proof v01). |
+
+**Inputs proof v01** (`MKMSZR_build_rayden-inputs_proof_v01.py`; owner: the getup sound "along with the inputs"):
+
+| Test ROM | SHA-256 | Contents | State |
+|---|---|---|---|
+| `MKMSZR_rayden-inputs_common_proof_v01.z64` | `e3d44e5d8c7e65d2d8509dd2eced6b40781869caa6c3ae841be03ed33e7cbbd8` | Body v01 plus his getup sound, combos and throw (below). His special commands stay Sub-Zero's. | **Runtime-confirmed (bounded)** (owner, 2026-11-13): "Everything looks good", except the frame lying flat against the floor after a fatal fall (as Reptile once needed): fixed in specials proof v01. |
+
+- **Getup sound** (Static-confirmed source): MKT's Rayden-only helper `0x80053AE8` (fighter id `0x18`) selects table-0 slot `0x21`, binds palette `0x800B9B04` (a slightly more cyan variant of the descriptors' `0x800B9AF0`) and plays his fighter sound 7. The getup (`0x80060DB0`), the teleport (`0x8004571C`) and two more paths (`0x80058928`, `0x8005BFA0`) call it. Host: the new description option `body.script_sounds` starts his getup and sweep-getup scripts with host callback 2 (`0x80028C18`, a gameplay SFX descriptor) on descriptor `0x2A`. That descriptor is the player voice category 10, which the voice rule leaves silent for MKT donors; it alone plays event 41, and no stock call uses it (scan). Event 41's track takes his sound 7 from an isolated chain (`voices.install_script_sound`; also in `fighter_build`). One donor sound per fighter.
+- **Combos** (`fighter_import.combos`, Static-confirmed reading): `HP, HP, LP, LP`, `HK, HK, LK, B+HK` and `HK, LK, B+HK`. Two of his strings share a list's tail (a next pointer into the middle of a list), now accepted. One option after `HP, HP` (record `0x800AEFF8`) ends in his torpedo routine `0x8004F3C0`, a combo into a special that the host graph cannot call: left out until the torpedo exists. His last LP uses strike selector 9: reaction `0x17`, damage 7 in both games (identity; Pending). The combo labels for button indices 2 and 4 were swapped (block, LK); labels only.
+- **Throw:** his MKT throw poses in the host throw script with Reptile's accepted rule (`body.phase_slots` `shift:+1`); to be judged. MKT callback 37 (`0x8003E1A0`, the thrower's and victim's draw order) is dropped from copied scripts.
+- **Not yet: his special commands.** Lightning (D,F + LP) is Ice Blast's own input. The teleport (MKT event 6, Up, tokens D,U) and the torpedo (events 8/9, the stick, tokens B,B,F) have no button, and the shocker is a High Punch *release* (held at least `0x38` ticks). The host's command tables are per button press (`0x8003C870` HP, `0x8003C9B4` LP, `0x8003C848` HK, `0x8003C94C` LK, reached from handler blocks at `0x800A0478 + 0x78·i`). Stick and release commands need a new host input hook (next).
+
+**Specials proof v01** (`MKMSZR_build_rayden-specials_proof_v01.py`: the generic `fighter_build.build` of his description plus Reptile v22's proof harness, checked word for word against v22):
+
+| Test ROM | SHA-256 | Contents | State |
+|---|---|---|---|
+| `MKMSZR_rayden-specials_common_proof_v01.z64` | `dfed9c1b8bcd3ad6cfb40ad640b1a9b53125151aefb2a416a374f30e53294afd` | Inputs v01 plus the lying fix and his Lightning (below). | **Pending** owner test |
+
+- **Lying flat** (Static-confirmed cause): his MKT knockdown has a third phase that alternates legs-up `0x1BE0` and flat `0x1BF4`; host routes that stop there showed legs up. `lying_landing` now also turns a later phase made only of landing frames into the lying frame (Reptile's and Sektor's knockdowns are unchanged).
+- **Lightning** (D,F + LP, MKT record `0x800ABA54` → special `0x2E` → `0x80077DF8(0)`), in Ice Blast's slot, as data on the generic projectile (`fighters/moves/rayden.json`):
+  - begin with action `0x2B`, his sound 2, his throw pose (table-0 slot `0x24`, phase 1, rate 3; host secondary script `0x25`);
+  - the bolt: table-0 slot `0x43` part 3 (looping), speed `0x80000`, rate 3, palette `0x800B9B04` (bound by the bolt's first frame; white to cyan); strike 17 (`0x800B0164`: box 133,36,60,16; damage 22, chip 4); then 36 ticks;
+  - impact: part 4 (the burst), rate 4, at the opponent.
+  - Slot `0x43`'s parts: 1 sparks forming, 2 the bolt starting, 3 the flying bolt, 4 the impact burst, 5 his recovery poses (rendered).
+  - **Stand-ins and gaps** (owner to judge): the stock roundhouse launch `0x0C` (new host-kind projectile reaction `launch`) for MKT's victim reaction `0x80`, which is not read yet; no forming sparks; a silent impact, because his hit and blocked sounds (MKT `0x800058B0(4 or 3, 0x18)` = his fighter sounds 4/3) are layered events (2–3 tracks of `0x2C` bytes, one patch each) that the sound component cannot host yet; a first spawn offset (Reptile's).
+  - **Command placement:** the MKT record has masks `0xFC` but sits only in the LP event; `commands` now places a command by its move program's `buttons` and writes them into the host record (Reptile's are equal).
 
 - **Cross-script jump** (Static-confirmed): his sweep getup (slot `0x22`) shows one frame, then jumps into his getup (slot `0x21`) at its second frame. `body_build.linearise` now copies a jump into a script it has not reached inline.
 - **Taller images** (Static-confirmed): frame `0x15DC` (codec 22) decodes 125 rows for a 124-row descriptor. MKT draws the descriptor's rows from the top; frames with extra whole rows are cropped.

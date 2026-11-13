@@ -89,6 +89,7 @@ class Command:
     record: bytes  # the donor record (MKT)
     calls: str | None  # host power whose action it calls; None: no action yet
     held: int  # buttons the donor condition requires held (0: none)
+    buttons: int = 0  # the move program's buttons (the MKT event's); 0: the record's masks
 
 
 @dataclass(frozen=True)
@@ -106,6 +107,8 @@ def _host_record(clean: bytes, cmd: Command, cond: int, override: tuple[int, int
     else:
         selector, action = override[0], override[2]
     rec = bytearray(cmd.record)
+    if cmd.buttons:  # the MKT event's button (Rayden's lightning record has masks 0xFC)
+        rec[0:4] = cmd.buttons.to_bytes(2, "big") * 2
     rec[4:16] = selector.to_bytes(4, "big") + cond.to_bytes(4, "big") + action.to_bytes(4, "big")
     return bytes(rec)
 
@@ -132,7 +135,7 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
         mask = BUTTONS[table.button]
         rows: list[tuple[str, Command | None, int]] = []
         for cmd in sorted((c for c in commands if c.calls), key=lambda c: c.donor_va):
-            if (_u16(cmd.record, 0) | _u16(cmd.record, 2)) & mask:
+            if (cmd.buttons or _u16(cmd.record, 0) | _u16(cmd.record, 2)) & mask:
                 rows.append(("donor", cmd, 0))
         for name, va in HOST_POWERS.items():
             if name in kept and table.va <= va < table.va + RECORD * table.capacity:
@@ -257,7 +260,8 @@ def donor_commands(mkt: bytes, moves: list, spec: dict[str, str | None]) -> list
         for cond in move.command.get("conditions", []):
             if cond.get("kind") == "buttons_held":
                 held |= int(cond["mask"], 16)
-        out.append(Command(move.name, va, record_at(mkt, va, 0x80000000), spec[move.name], held))
+        buttons = int(move.command["buttons"], 16) if "buttons" in move.command else 0
+        out.append(Command(move.name, va, record_at(mkt, va, 0x80000000), spec[move.name], held, buttons))
     missing = set(spec) - {c.name for c in out}
     if missing:
         raise CommandError(f"no move program for {', '.join(sorted(missing))}")

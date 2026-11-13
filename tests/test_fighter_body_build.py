@@ -253,10 +253,12 @@ def test_palette_table_is_indexed_by_fighter_id() -> None:
 def test_rayden_body_builds() -> None:
     # Rayden's sweep getup (slot 0x22) jumps into his getup script (copied inline), frame
     # 0x15DC holds one more row than its descriptor shows (cropped, as MKT draws it), his
-    # palette ramps rise, and his codec-15 silhouettes use their own palette 0x800B9AF0.
+    # palette ramps rise, and his codec-15 silhouettes use their own palette 0x800B9AF0; his
+    # throw (phase_slots) skips draw-order callback 37, and his getup scripts start with the
+    # script sound (callback 2, spare descriptor 0x2A).
     body = bb.build_body(fd.load("rayden"), Path(CLEAN).read_bytes(), Path(MKT).read_bytes(),
                          bb.Extras(), rom=bytearray(Path(CLEAN).read_bytes()))  # fmt: skip
-    assert body.report["frames"] == 142 and body.report["file_end"] <= body.report["file_budget"]
+    assert body.report["frames"] == 151 and body.report["file_end"] <= body.report["file_budget"]
 
 
 @needs_roms
@@ -266,3 +268,17 @@ def test_palette_ramps_either_direction() -> None:
     assert [len(r) for r in rayden] == [11, 2, 3, 2, 13]  # black up to cyan, ..., greys up to white
     reptile = bb.palette_ramps(bb.Donor(mkt, 19).palette())
     assert [len(r) for r in reptile] == [8, 8, 15]  # light-to-dark ramps split as before
+
+
+@needs_roms
+def test_later_landing_phases_show_the_lying_frame() -> None:
+    # Rayden's knockdown has a third phase alternating legs-up 0x1BE0 and flat 0x1BF4; host
+    # routes that stop there must end flat (owner, inputs v01). Reptile's has no such phase.
+    from mkmszr.fighter_import.mkt_fighter import MktRom
+
+    mkt = Path(MKT).read_bytes()
+    donor = bb.Donor(mkt, 24)
+    starts = set(donor.table0) | set(MktRom(mkt).table1(24))
+    words = bb.lying_landing(bb.linearise(donor, 0x1E, starts))
+    frames = [w[1] for w in words if isinstance(w, tuple)]
+    assert frames == [0x1B90, 0x1BA4, 0x1BB8, 0x1BCC] + [0x1BF4] * 5

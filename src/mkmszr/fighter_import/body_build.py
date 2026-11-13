@@ -689,6 +689,10 @@ class Body:
 # them); fighter-ID branches (8) are folded for the donor; partner/helper tokens need adapters.
 KEPT_TOKENS = {1, 2, 3, 4, 5, 9, 12, 14}
 KEPT_CALLBACKS = {1, 18, 19}
+# Donor callbacks with no host meaning and no extra words, dropped: 37 (0x8003E1A0) sets the
+# thrower's and the victim's draw order (+0x1C = 0x4F / 0x50) in Rayden's throw; the host
+# throw keeps its own script.
+DROPPED_CALLBACKS = {37}
 DROPPED_TOKENS = {7, 13, 15}
 MAX_SCRIPT_WORDS = 64
 
@@ -741,6 +745,9 @@ def linearise(donor: Donor, slot: int, starts: set[int], root: int | None = None
         if v in DROPPED_TOKENS:
             pos += 4 * (1 + len(ops))
             continue
+        if v == 6 and ops[0] in DROPPED_CALLBACKS:
+            pos += 8
+            continue
         if v == 6 and ops[0] not in KEPT_CALLBACKS:
             raise LayoutError(f"slot 0x{slot:02X}: callback {ops[0]} at 0x{pos:X} has no rule")
         if v not in KEPT_TOKENS and v != 6:
@@ -783,7 +790,14 @@ def lying_landing(words: list) -> list:
     frames = [w for w in words[a:b] if isinstance(w, tuple) and w[0] == "frame"]
     if len(frames) < 2 or len(frames) != b - a:
         return words
-    return [*words[:a], frames[-1], *words[b:]]
+    # A later phase made only of landing frames (Rayden: legs up and lying, alternating) also
+    # shows the lying frame: host routes that stop there must end flat (Rayden inputs v01,
+    # owner: the frame "laying flat against the floor", as Reptile's).
+    landing, lying = set(frames), frames[-1]
+    tail = [lying if (isinstance(w, tuple) and w in landing) else w for w in words[b:]]
+    if any(isinstance(w, tuple) and w[0] == "frame" and w not in landing for w in words[b:]):
+        tail = list(words[b:])
+    return [*words[:a], lying, *tail]
 
 
 KNOCKDOWN_SLOT = 0x1E
@@ -991,6 +1005,13 @@ def _computed_cfg(description, donor: Donor, clean_file: bytes) -> dict:
         words = linearise(donor, slot, starts, source)
         if slot == KNOCKDOWN_SLOT:
             words = lying_landing(words)
+        if slot in description.body.script_sounds:  # host callback 2: play the spare descriptor
+            from .voices import SCRIPT_SOUND_DESCRIPTOR
+
+            shift = 3
+            words = [6, 2, SCRIPT_SOUND_DESCRIPTOR] + [
+                ("jump", w[1] + shift) if isinstance(w, tuple) and w[0] == "jump" else w for w in words
+            ]
         root = be32(clean_file, 4 * slot)
         end = next((r for r in primary if r > root), TYPE_START)
         capacity = (end - root) // 4

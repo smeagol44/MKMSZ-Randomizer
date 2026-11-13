@@ -172,6 +172,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     chains = _Pool(tuple(EXTRA_CHAINS) + tuple(VOICE_CHAINS[used_voices:]), "isolated sound chains")
     voice_chains = list(VOICE_CHAINS[:used_voices])
     bank = sound.MktSoundBank(mkt)
+    if d.body.script_sounds:  # body.script_sounds: the spare descriptor's event plays it
+        (sfx,) = set(d.body.script_sounds.values())
+        samples_end = voices.install_script_sound(rom, clean, mkt, donor_id, sfx, chains.take(),
+                                                  (samples_end + 0xF) & ~0xF, vs)  # fmt: skip
 
     def install(donor_sound: sound.DonorSound) -> int:
         nonlocal samples_end
@@ -226,7 +230,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                     rom, clean, mkt, donor_id, proj, tuple(chains.take() for _ in range(needed)),
                     (samples_end + 0xF) & ~0xF,
                 )  # fmt: skip
-                groups[gkey] = _Group(gkey, [move], art, events, reactions.take(),
+                stock = lp.host_reaction(proj["strike"]["reaction"])
+                groups[gkey] = _Group(gkey, [move], art, events, stock if stock is not None else reactions.take(),
                                       f"{move}_helper" if helper is not None else None)  # fmt: skip
         for s in steps:
             if s["op"] == "sound":
@@ -367,6 +372,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         _guarded(rom, host.TRANSFER_TABLE - VA_TO_ROM + 4 * selectors[m], 0, a.labels[f"{m}_root"])
     for g in groups.values():
         reaction_label = f"g{_gid(g)}_reaction"
+        if reaction_label not in a.labels:  # a stock (host-kind) reaction
+            continue
         _guarded(rom, lp.REACTION_TABLE - VA_TO_ROM + 4 * g.reaction_slot, lp.DUMMY_REACTION,
                  a.labels[reaction_label])  # fmt: skip
     for meaning, slot in custom_reactions.items():
