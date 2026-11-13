@@ -204,9 +204,14 @@ def _emit_held(a: Assembler, label: str, mask: int, stock_cond: int, next_record
     a.j(PARSER)
 
 
-def install(rom: bytearray, clean: bytes, low: Lowered, storage_rom: int, storage_va: int) -> None:
+def install(rom: bytearray, clean: bytes, low: Lowered, storage_rom: int, storage_va: int,
+            indirect: dict[str, int] | None = None) -> None:  # fmt: skip
     """Write the tables: in place (guarded, sentinel after the last record) or at
-    ``storage_rom`` (mirroring ``storage_va``) with the table's load pair repointed."""
+    ``storage_rom`` (mirroring ``storage_va``) with the table's load pair repointed.
+
+    ``indirect`` (button -> VA of a pointer word): the load pair reads the table's address from
+    that word instead (``lui a0, hi; lw a0, lo(a0)``), for a table that moves at run time (a
+    relocated payload; the word is refreshed by its loader)."""
 
     for table in HOST_TABLES:
         recs = low.tables[table.button]
@@ -223,6 +228,13 @@ def install(rom: bytearray, clean: bytes, low: Lowered, storage_rom: int, storag
             old_lui, old_addiu = _u32(rom, lui), _u32(rom, addiu)
             if (old_lui & 0xFFFF) != ((table.va + 0x8000) >> 16) or (old_addiu & 0xFFFF) != (table.va & 0xFFFF):
                 raise CommandError(f"{table.button} table load is not stock")
+            if indirect and table.button in indirect:
+                slot = indirect[table.button]
+                if old_addiu >> 16 != 0x2484:  # addiu a0, a0, lo
+                    raise CommandError(f"{table.button} table load is not addiu a0, a0")
+                rom[lui : lui + 4] = ((old_lui & 0xFFFF0000) | ((slot + 0x8000) >> 16 & 0xFFFF)).to_bytes(4, "big")
+                rom[addiu : addiu + 4] = (0x8C840000 | (slot & 0xFFFF)).to_bytes(4, "big")  # lw a0, lo(a0)
+                continue
             rom[lui : lui + 4] = ((old_lui & 0xFFFF0000) | ((va + 0x8000) >> 16 & 0xFFFF)).to_bytes(4, "big")
             rom[addiu : addiu + 4] = ((old_addiu & 0xFFFF0000) | (va & 0xFFFF)).to_bytes(4, "big")
         else:

@@ -70,6 +70,14 @@ REACTION_LOWERING: dict[str, dict[str, Any]] = {
             0x3D: 0x34078EE1,
         },
         "drop_sound": (8, 0x0C019342),  # jal 0x80064D08: stock hit sound 0x185
+        # Victim morphs, run first as the stock launch reaction 0x0C (0x80052898) does: the
+        # two-file enemies rebind to their full fighter file before a shared root is played
+        # (0x800572C4: Temple MONK3 type 2 -> MONK2 file 0x89, type 1; 0x80057478: types
+        # 0x15..0x17 and the other two-file families). Host 0x25 has no morph, so on a MONK3
+        # its root 0x1E read the unfilled word 0xFFFFFFFF and the sprite setup crashed
+        # (composition v02 save state, TLB store miss at 0x8001BF04).
+        "morph": (0x800572C4, 0x80057478),
+        "morph_at": 2,  # after the frame and the saved ra
     },
 }
 # Stumble-kind reactions: a lifted copy of the host Fire spiked-rod trap stumble, the reaction
@@ -367,6 +375,12 @@ def place_art(
 
 
 # ---- sounds, strike and reaction --------------------------------------------------------------
+def projectile_sounds(step: dict[str, Any]) -> list[str]:
+    """The sounds a projectile step hosts (``install_sounds`` takes one chain each)."""
+
+    return [name for name in ("hum", "impact") if step.get(name, {}).get("sound")]
+
+
 def install_sounds(
     rom: bytearray, clean: bytes, mkt: bytes, donor_id: int, step: dict[str, Any],
     chains: tuple[sound.HostChain, ...], sample_rom: int,
@@ -416,7 +430,12 @@ def lifted_reaction(clean: bytes, meaning: str) -> list[int]:
     if words[index] != stock:
         raise ValueError("base reaction sound call is not stock")
     words[index] = 0
-    return words
+    morph: list[int] = []
+    for target in spec.get("morph", ()):
+        # lui v0, 0x802F; lw v0, CURRENT_CTRL(v0); lw a0, actor(v0); jal target; nop
+        morph += [0x3C02802F, 0x8C42CE20, 0x8C4406E0, 0x0C000000 | ((target >> 2) & 0x3FFFFFF), 0]
+    at = spec.get("morph_at", 0)
+    return words[:at] + morph + words[at:]
 
 
 @dataclass(frozen=True)
@@ -662,6 +681,7 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
 
 
 HELPER_IDLE, HELPER_SHOWN, HELPER_LAUNCH = 0, 1, 2
+HIT_REACTION_BIT = 0x04  # controller +0x6BE while in a hit reaction (host.CTRL_STATE_FLAGS)
 
 # Where the host collision core puts a strike box (Static-confirmed, victim scan
 # 0x8002CE24..0x8002D0E0): box values are scaled by 0.9 and doubled into world units, from the
@@ -725,7 +745,12 @@ def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body
     helper frame of that pose (MKT's script order: one helper step per body pose), its last
     frame held. It is built when its first pose comes up and goes when the action asks for the
     launch (:func:`emit_helper_handover`); no collision. Specials proofs v03-v07 timed it on
-    its own clock and drifted a pose or more (owner). ``dx``/``dy``: offset from the owner."""
+    its own clock and drifted a pose or more (owner). ``dx``/``dy``: offset from the owner.
+
+    It also goes as soon as the owner leaves the throw: in a hit reaction (controller
+    ``+0x6BE`` bit ``0x04``) or in another action than at its start (``+0x6AA``). Without that it
+    stayed up to ``HELPER_MAX_TICKS`` after a hit interrupted the throw (owner, Reptile
+    production composition v01)."""
 
     state = label + "_state"
     a.label(label)
@@ -733,6 +758,9 @@ def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body
     a.li("s2", -1)  # last body pose shown
     a.li("s3", 0)  # built
     a.li("s4", HELPER_MAX_TICKS)
+    a.lui("t0", host.hi(host.PLAYER_CTRL))
+    a.lw("t0", host.lo(host.PLAYER_CTRL), "t0")
+    a.lhu("s5", host.CTRL_ACTION_ID, "t0")  # the throw's action
     a.label(label + "_loop")
     a.la("t0", state)
     a.lw("t1", 0, "t0")
@@ -740,6 +768,11 @@ def emit_helper(a: Assembler, art: ArtLayout, dx: int, dy: int, label: str, body
     a.beq("t1", "t2", label + "_end")
     a.lui("t0", host.hi(host.PLAYER_CTRL))
     a.lw("t0", host.lo(host.PLAYER_CTRL), "t0")
+    a.lhu("t1", host.CTRL_STATE_FLAGS, "t0")
+    a.andi("t1", "t1", HIT_REACTION_BIT)
+    a.bnez("t1", label + "_end")  # hit: the throw is over
+    a.lhu("t1", host.CTRL_ACTION_ID, "t0")
+    a.bne("t1", "s5", label + "_end")  # another action took over
     a.lw("t1", host.CTRL_SCRIPT_CURSOR, "t0")
     a.lw("t2", host.CTRL_ACTOR, "t0")
     a.lw("t2", host.ACTOR_FILE_BASE, "t2")

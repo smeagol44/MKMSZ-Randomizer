@@ -82,6 +82,66 @@
     "elbow_dash": "ice_shatter",
     "invisibility": "freeze_on_contact"
   },
+  "specials": {
+    "forceball_fast": {
+      "limit": "per_move",
+      "projectile": {
+        "art_slots": [
+          "0x0D",
+          "0x12"
+        ],
+        "helper_slot": "0x26"
+      }
+    },
+    "forceball_slow": {
+      "limit": "per_move",
+      "projectile": {
+        "art_slots": [
+          "0x0D",
+          "0x12"
+        ],
+        "helper_slot": "0x26"
+      }
+    },
+    "acid_spit": {
+      "face": false,
+      "sleep_ticks": 15,
+      "projectile": {
+        "offset_px": [
+          -30,
+          -36
+        ],
+        "box": "centre_on_art",
+        "impact_flip": false,
+        "impact_keep_y": true
+      }
+    },
+    "elbow_dash": {
+      "face": false,
+      "donor_ticks": 2,
+      "footsteps": [
+        "0x90",
+        "0x91"
+      ]
+    },
+    "invisibility": {
+      "face": false,
+      "donor_ticks": 2,
+      "stealth": {
+        "period": 6,
+        "drain": 1
+      },
+      "effects": {
+        "30": {
+          "animation": "0x800CC77C",
+          "dictionary": "0x800CCA88",
+          "dy_px": "0x71",
+          "ticks_per_frame": 2,
+          "reserve": 4
+        }
+      }
+    }
+  },
   "costs": {
     "forceball_fast": "0x30",
     "forceball_slow": "0x30",
