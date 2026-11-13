@@ -251,8 +251,18 @@ def test_palette_table_is_indexed_by_fighter_id() -> None:
 
 @needs_roms
 def test_rayden_body_builds() -> None:
-    # Rayden's sweep getup (slot 0x22) jumps into his getup script (copied inline), and frame
-    # 0x15DC holds one more row than its descriptor shows (cropped, as MKT draws it).
+    # Rayden's sweep getup (slot 0x22) jumps into his getup script (copied inline), frame
+    # 0x15DC holds one more row than its descriptor shows (cropped, as MKT draws it), his
+    # palette ramps rise, and his codec-15 silhouettes use their own palette 0x800B9AF0.
     body = bb.build_body(fd.load("rayden"), Path(CLEAN).read_bytes(), Path(MKT).read_bytes(),
                          bb.Extras(), rom=bytearray(Path(CLEAN).read_bytes()))  # fmt: skip
     assert body.report["frames"] == 142 and body.report["file_end"] <= body.report["file_budget"]
+
+
+@needs_roms
+def test_palette_ramps_either_direction() -> None:
+    mkt = Path(MKT).read_bytes()
+    rayden = bb.palette_ramps(bb.Donor(mkt, 24).palette())
+    assert [len(r) for r in rayden] == [11, 2, 3, 2, 13]  # black up to cyan, ..., greys up to white
+    reptile = bb.palette_ramps(bb.Donor(mkt, 19).palette())
+    assert [len(r) for r in reptile] == [8, 8, 15]  # light-to-dark ramps split as before

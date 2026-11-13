@@ -345,8 +345,15 @@ class Donor:
         assert len(raw) == h * stride, (hex(rel), typ, w, h, len(raw))
         if eh > h:
             raw += bytes(stride * (eh - h))
+        # A codec-15 (3-bit) image is drawn with its own small palette, named after the anchor:
+        # Rayden's teleport/getup silhouettes (0x800B9AF0, white to light cyan; Sektor's arm
+        # uses MECARM_P). Other descriptors may name a palette there too (Rayden's first stance
+        # frame names 0x800BB7EC), but their pixels follow the fighter's table palette.
+        own = be32(self.mkt, self.base + sub + 12)
+        own_palette = own if typ == 15 and 0x80000000 <= own < 0x80400000 else None
         return {"w": w, "h": h, "x": x, "y": y, "stride": stride, "eh": eh, "padded": raw,
-                "blocks": make_blocks(raw, stride, eh), "codec": typ, "donor": rel}  # fmt: skip
+                "blocks": make_blocks(raw, stride, eh), "codec": typ, "donor": rel,
+                "own_palette": own_palette}  # fmt: skip
 
     def frame(self, rel):
         """Decode frame record ``rel``; a multi-part record is flattened onto its first part."""
@@ -1027,29 +1034,50 @@ def _rgb(w: int) -> tuple[int, int, int]:
     return ((w >> 11) & 31, (w >> 6) & 31, (w >> 1) & 31)
 
 
+def _nearest(colour: tuple[int, int, int], palette: list[tuple[int, int, int]]) -> int:
+    """The entry 1..15 of ``palette`` nearest to ``colour`` (squared RGB distance)."""
+
+    return min(range(1, 16), key=lambda k: (sum((a - b) ** 2 for a, b in zip(colour, palette[k], strict=True)), k))
+
+
 def palette_ramps(donor_palette: list[int]) -> list[list[int]]:
-    """Donor palette indices 1.. split into ramps: runs that go from light to dark in one hue.
+    """Donor palette indices 1.. split into ramps: runs that go one way in brightness (light to
+    dark, or dark to light) in one hue.
 
     MKT fighter palettes are laid out as ramps (Reptile: 11 greys down to black, 7 greens, 13
-    browns). A ramp ends where brightness rises or where two coloured entries change hue."""
+    browns; Rayden: black up to cyan, greys up to white). A ramp ends where brightness turns
+    back or where two coloured entries change hue. A ramp's direction is set by its first step;
+    for a light-to-dark palette this splits exactly as the light-to-dark rule did."""
 
     ramps: list[list[int]] = []
     cur: list[int] = []
     prev = None
+    way = 0  # -1 darker, +1 lighter, 0 not set yet
     for i in range(1, len(donor_palette)):
         c = _rgb(donor_palette[i])
         if prev is not None:
-            rise = sum(c) > sum(prev) + 1
+            step = 1 if sum(c) > sum(prev) + 1 else -1 if sum(c) < sum(prev) - 1 else 0
+            turn = step != 0 and (step == -way if way else step > 0 and not _rising(donor_palette, i))
             hue = (max(c) - min(c) >= 3 and max(prev) - min(prev) >= 3
                    and c.index(max(c)) != prev.index(max(prev)))  # fmt: skip
-            if rise or hue:
+            if turn or hue:
                 ramps.append(cur)
-                cur = []
+                cur, way = [], 0
+            elif step and not way:
+                way = step
         cur.append(i)
         prev = c
     if cur:
         ramps.append(cur)
     return ramps
+
+
+def _rising(donor_palette: list[int], i: int) -> bool:
+    """Whether the run from ``i - 1`` keeps rising for at least two more entries (a dark-to-light
+    ramp), not a single brighter entry that starts the next light-to-dark ramp."""
+
+    vals = [sum(_rgb(donor_palette[k])) for k in range(i - 1, min(i + 2, len(donor_palette)))]
+    return len(vals) == 3 and vals[0] + 1 < vals[1] and vals[1] + 1 < vals[2]
 
 
 def _ramp_reduction(donor_palette: list[int], usage: Counter, budget: int):
@@ -1221,16 +1249,30 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
     if colour.method == "auto":
         usage = Counter()
         for fr in frame_cache.values():
-            usage.update(fr["padded"])
+            if not fr.get("own_palette"):  # drawn with its own palette, mapped below
+                usage.update(fr["padded"])
         donor_palette = donor.palette()
         index_map, words16 = reduce_palette(donor_palette, usage)
         if max(usage) >= len(index_map):
             raise ValueError(f"frames use palette index {max(usage)} beyond the donor palette")
         palette = b"".join(w.to_bytes(2, "big") for w in words16) + clean_file[PALETTE_OFF + 32 : PALETTE_OFF + 64]
         log.append(f"COLOUR auto: {sum(1 for c in usage if c)} donor indices used -> 15 colours")
+    own_maps: dict[int, list[int]] = {}
+    if colour.method == "auto":
+        from .effects import mkt_palette
+        from .power_icons import bgr555_to_rgb
+
+        body_rgb = [bgr555_to_rgb(int.from_bytes(palette[2 * i : 2 * i + 2], "big")) for i in range(16)]
+        for fr in frame_cache.values():
+            va = fr.get("own_palette")
+            if va and va not in own_maps:  # each colour to the nearest body colour (1..15)
+                own_maps[va] = [0] + [_nearest(bgr555_to_rgb(c), body_rgb) for c in mkt_palette(donor.mkt, va)[1:]]
+        if own_maps:
+            log.append(f"COLOUR own palettes mapped to body colours: {', '.join(f'0x{v:08X}' for v in own_maps)}")
     for k in list(frame_cache):
         fr = dict(frame_cache[k])
-        fr["padded"] = bytes(index_map[p] for p in fr["padded"])
+        own = own_maps.get(fr.get("own_palette") or 0)
+        fr["padded"] = bytes((own or index_map)[p] for p in fr["padded"])
         fr["blocks"] = make_blocks(fr["padded"], fr["stride"], fr["eh"])
         frame_cache[k] = fr
         assert max(fr["padded"]) < 16
