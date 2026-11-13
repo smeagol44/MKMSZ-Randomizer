@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from mkmszr.fighter_import import body_build as bb
+from mkmszr.fighter_import import description as fd
 
 GENERIC = Path("src/mkmszr/fighter_import/body_build.py").read_text(encoding="utf-8")
 
@@ -246,3 +247,12 @@ def test_palette_table_is_indexed_by_fighter_id() -> None:
     reptile = bb.Donor(mkt, 19).palette()
     assert len(reptile) == 32
     assert all(((w >> 6) & 31) > ((w >> 11) & 31) for w in reptile[17:30])  # green ramp
+
+
+@needs_roms
+def test_rayden_body_builds() -> None:
+    # Rayden's sweep getup (slot 0x22) jumps into his getup script (copied inline), and frame
+    # 0x15DC holds one more row than its descriptor shows (cropped, as MKT draws it).
+    body = bb.build_body(fd.load("rayden"), Path(CLEAN).read_bytes(), Path(MKT).read_bytes(),
+                         bb.Extras(), rom=bytearray(Path(CLEAN).read_bytes()))  # fmt: skip
+    assert body.report["frames"] == 142 and body.report["file_end"] <= body.report["file_budget"]

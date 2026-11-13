@@ -20,7 +20,9 @@ def _raw(fighter: str) -> dict:
 
 
 def test_packaged_descriptions_load() -> None:
-    assert fd.available() == ["reptile", "sektor"]
+    assert fd.available() == ["rayden", "reptile", "sektor"]
+    rayden = fd.load("rayden")  # milestone 6: body only so far
+    assert (rayden.donor_fighter_id, rayden.title, rayden.commands) == (24, "RAYDEN", {})
     sektor, reptile = fd.load("sektor"), fd.load("reptile")
     assert (sektor.donor_fighter_id, sektor.donor_name, sektor.title) == (7, "SEKTOR", "SEKTOR")
     assert (reptile.donor_fighter_id, reptile.donor_name, reptile.legacy) == (19, "REPTILE", ())

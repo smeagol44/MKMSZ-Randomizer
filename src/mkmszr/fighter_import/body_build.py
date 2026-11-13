@@ -338,6 +338,10 @@ class Donor:
         # Some images store the even (padded) height: stride * align2(h) bytes.
         if len(raw) == eh * stride and eh > h:
             raw = raw[: h * stride]
+        # Some images hold more whole rows than their descriptor shows (Rayden 0x15DC: 125 rows
+        # for a 124-row descriptor); MKT draws the descriptor's rows from the top.
+        if len(raw) > h * stride and len(raw) % stride == 0:
+            raw = raw[: h * stride]
         assert len(raw) == h * stride, (hex(rel), typ, w, h, len(raw))
         if eh > h:
             raw += bytes(stride * (eh - h))
@@ -688,7 +692,11 @@ class LayoutError(ValueError):
 
 def linearise(donor: Donor, slot: int, starts: set[int], root: int | None = None) -> list:
     """MKT table 0 ``slot``'s script (or the script at ``root``) as host words: ints,
-    ``("frame", rel)`` and ``("jump", index)``."""
+    ``("frame", rel)`` and ``("jump", index)``.
+
+    A jump into another script that this copy has not reached yet is followed inline (the host
+    script carries its own copy): Rayden's sweep getup (slot ``0x22``) shows one frame, then
+    continues his getup (slot ``0x21``) from its second frame (Rayden body, milestone 6)."""
 
     out: list = []
     at: dict[int, int] = {}
@@ -713,6 +721,9 @@ def linearise(donor: Donor, slot: int, starts: set[int], root: int | None = None
             continue
         ops = [donor.m32(pos + 4 + 4 * k) for k in range(len(MKT.operands[v]))]
         if v == 1:
+            if ops[0] not in at:  # not copied yet (another script): copy it inline
+                pos = ops[0]
+                continue
             out.append(1)
             jumps.append(len(out))
             out.append(ops[0])
