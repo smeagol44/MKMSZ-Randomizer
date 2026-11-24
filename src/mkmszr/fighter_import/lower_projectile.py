@@ -80,6 +80,13 @@ REACTION_LOWERING: dict[str, dict[str, Any]] = {
         "morph_at": 2,  # after the frame and the saved ra
     },
 }
+# The throw at the end of Rayden's torpedo carry (``lower_special.emit_carry_reaction``): the same
+# lifted knockback with MKT's release arc (0x8004558C: do_jump(0x33333, -0x6CCCD, 0x5199), the
+# victim bouncing back off the wall toward the attacker).
+REACTION_LOWERING["torpedo_carry_release"] = {
+    **REACTION_LOWERING["knockback_arc"],
+    "donor_arc": (0x33333, -0x6CCCD, 0x5199),
+}
 # Stumble-kind reactions: a lifted copy of the host Fire spiked-rod trap stumble, the reaction
 # Sektor's rocket was accepted with (robo_zap, proof v35), without its 8-tick hit pause, its
 # push rescaled by the donor push over MKT's rocket push (zap_stumble 0x33333, host 0x56666).
@@ -93,7 +100,17 @@ REACTION_LOWERING["acid_stagger"] = {
     "donor_push": 0x26666,  # MKT reaction 0x72 (0x800547C8): +0x420 = 0x26666, then 0x80057F94
     "donor_ref": 0x33333,  # MKT zap_stumble (r_rocket), the host's accepted 0x56666
 }
+# Host-kind reactions: a stock reaction-table entry used as is (no payload code). The roundhouse
+# launch 0x0C knocks the victim away and runs the victim morphs (Rayden's lightning stand-in).
+REACTION_LOWERING["launch"] = {"kind": "host", "slot": 0x0C}
 BLOCKED_LOWERING = {"blocked": 0x05}
+
+
+def host_reaction(meaning: str) -> int | None:
+    """The stock reaction-table entry of a host-kind meaning, else None."""
+
+    spec = REACTION_LOWERING[meaning]
+    return spec["slot"] if spec.get("kind") == "host" else None
 
 
 def stumble_push(meaning: str) -> int:
@@ -890,6 +907,8 @@ def emit_data(a: Assembler, p: Lowered, base: int, clean: bytes | None = None, d
         a.label(f"{data}check{k}")
         for i in range(0, 16, 4):
             a.raw(int.from_bytes(rec[i : i + 4], "big"))
+    if host_reaction(p.reaction_meaning) is not None:
+        return  # a stock reaction: nothing in the payload
     a.label(data + "reaction")
     if REACTION_LOWERING[p.reaction_meaning].get("kind", "arc") == "stumble":
         if clean is None:

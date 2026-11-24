@@ -32,7 +32,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from . import host
+from . import host, physics
 from . import lower_projectile as lp
 from .host import hi, lo
 from .mips import Assembler
@@ -76,6 +76,7 @@ COSTS = {
     "polar_blast": 0xA6,
     "ice_shatter": 0,  # contextual, no Ice cost
 }
+MOVEMENT_COST = 0  # movement abilities cost no Ice (owner rule, 2026-11-24; move program "movement")
 BLOCKED_FLAG = 0x802ECD88  # halfword: the collision core sets it on a blocked contact
 F_SET_XVEL = 0x8002B1EC  # (actor, x speed): actor +0x14 and +0x58
 FACING_BIT = 0x10
@@ -90,7 +91,7 @@ SOLID_BIT = 0x1000  # actor +0x8C: Freeze on Contact clears it while it runs (0x
 
 def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
                         default: int | None = None, alive: tuple[str, ...] = (),
-                        refuse_if: tuple[int, int] | None = None) -> None:  # fmt: skip
+                        refuse_if: tuple[int, int] | None = None, airborne: bool = False) -> None:  # fmt: skip
     """``label() -> 0x8000 / 0x4000`` (see the module notes). With ``default``, the gate word
     is used only when it is ``slti t0, v0, N`` (Ice Blast's rewritten tail), else ``default``.
     With ``alive`` (labels of words that projectiles set while they live,
@@ -98,17 +99,19 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     (Reptile: one fast and one slow forceball may coexist, owner 2026-11-11). Set words with no
     live projectile process are stale (a process ended by something else) and are cleared.
     ``refuse_if`` (controller offset, mask): refuse while that halfword of the player's
-    controller has a bit of the mask set (Invisibility: already stealthed)."""
+    controller has a bit of the mask set (Invisibility: already stealthed). ``airborne``: also
+    accept in the air (no fall-speed or floor check; Rayden's torpedo, owner 2026-11-24)."""
 
     a.label(label)
     a.addiu("sp", "sp", -0x20)
     a.sw("ra", 0x1C, "sp")
     a.lui("t0", hi(PLAYER_ACTOR))
     a.lw("t0", lo(PLAYER_ACTOR), "t0")
-    a.lw("t1", 0x18, "t0")
-    a.li("t2", FALL_SPEED_LIMIT)
-    a.slt("t2", "t2", "t1")
-    a.bnez("t2", label + "_no")
+    if not airborne:
+        a.lw("t1", 0x18, "t0")
+        a.li("t2", FALL_SPEED_LIMIT)
+        a.slt("t2", "t2", "t1")
+        a.bnez("t2", label + "_no")
     a.lui("t3", hi(PLAYER_CTRL))
     a.lw("t3", lo(PLAYER_CTRL), "t3")
     a.lh("t4", 0x6B0, "t3")
@@ -123,10 +126,11 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     a.lhu("t4", CTRL_ICE, "t3")
     a.slti("t4", "t4", cost)  # meter is a small positive halfword
     a.bnez("t4", label + "_no")
-    a.lw("t4", 0x30, "t5")
-    a.lw("t6", 0x6B4, "t3")
-    a.slt("t4", "t4", "t6")
-    a.bnez("t4", label + "_no")  # airborne
+    if not airborne:
+        a.lw("t4", 0x30, "t5")
+        a.lw("t6", 0x6B4, "t3")
+        a.slt("t4", "t4", "t6")
+        a.bnez("t4", label + "_no")  # airborne
     a.lui("t6", hi(host.CURRENT_CTRL))
     a.lw("t6", lo(host.CURRENT_CTRL), "t6")
     a.lhu("t7", 0x6AA, "t6")
@@ -186,6 +190,25 @@ def emit_charge(a: Assembler, amount: int) -> None:
     a.sh("t1", CTRL_ICE, "t0")
 
 
+# The stock jump (Wiki Player-Actions-and-Special-Moves, "Integrator and gravity", "Airborne
+# counter"): 0x800321D0(actor, x vel, y vel, gravity, [sp+0x10] rate, [sp+0x14] root). 13 keeps a
+# velocity or the rate, a negative root keeps the animation. It counts the airborne ticks in
+# controller +0x6B2, sleeps until the actor lands and clears the counter.
+F_JUMP, JUMP_KEEP = 0x800321D0, 13
+# Controller +0x70C: the stock jump copies it to +0x68C at entry and calls it every air tick when
+# non-zero. Every stock caller clears it first (0x8004F40C, 0x80057CEC, ...); the field is shared
+# with other uses, and a stale value is called as code (Rayden specials proof v02 save state: TLB
+# miss at 0x801125A0 called from 0x80032448 after a torpedo hit up close).
+CTRL_JUMP_CALLBACK = 0x70C
+# Air control in the stock jump: each air tick 0x800321D0 adds +-0x8000 to the player's x speed
+# from the held Left/Right (pad +0x638 bits 0x8000/0x2000, clamped), unless the player's input map
+# 0x802E7DFC is the busy map 0x8009F988 (0x8003237C..0x80032400), which an uncancellable special
+# holds. ``air_control`` installs the stock straight-air map first (0x8002B05C); the special lock
+# 0x800BF308 stays set, so the input dispatcher 0x800157E0 still starts no air attack (owner,
+# Rayden specials proof v07: "I have no air control ... unlike when you jump").
+AIR_MAP = 0x8009FA00
+
+
 def _scale(n: int, donor_ticks: int) -> int:
     return max(1, -(-n // donor_ticks))
 
@@ -199,7 +222,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 footsteps: dict[tuple[int, int], Footsteps] | None = None,
                 stealth: str | None = None,
                 effects: dict[int, tuple[str, int]] | None = None,
-                skip: frozenset[str] = frozenset()) -> list[tuple[str, bytes]]:  # fmt: skip
+                skip: frozenset[str] = frozenset(),
+                carry: str | None = None, air_control: bool = False) -> list[tuple[str, bytes]]:  # fmt: skip
     """The action root for a move program (never returns). ``animations``: donor animation
     (table, slot) -> host secondary slot holding it, or ``("at", offset)`` for a body script
     without a table entry (selected by setting the cursor); ``child``: the projectile process
@@ -214,7 +238,10 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     ``stealth``: the label of the timer process (:func:`emit_stealth_timer`) for ``stealth``
     steps; ``effects``: MKT effect index -> (``effects.emit_descriptor`` label, dy in whole units)
     for ``effect`` steps, started at the fighter in front of him through ``fx_spawn_xy``
-    (``effects.emit_spawn``); ``skip``: step ops left out on purpose.
+    (``effects.emit_spawn``); ``skip``: step ops left out on purpose; ``carry``: the label of
+    the word a ``carry`` step shares with the victim's ``torpedo_carry`` reaction
+    (:func:`emit_carry_reaction`); ``air_control``: ``jump`` steps let the player steer (see
+    :data:`AIR_MAP`).
 
     Returns the strike records ``(label, 16 bytes)`` to place with :func:`emit_strike_data`.
 
@@ -363,6 +390,58 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             elif op == "stop":
                 host.load_controller(a)
                 host.stop(a)
+                host.load_controller(a)
+            elif op == "hover":  # level flight: no gravity, no y motion, airborne counter kept
+                # The counter counts every tick, also at floor height: with it at zero the
+                # per-tick floor check 0x80024BA8 installs the stock fall where no floor region
+                # matches (a ground torpedo over a ledge). It also keeps him from landing (only
+                # by crossing); the closing ``jump`` clears it.
+                host.load_controller(a)
+                a.sw("zero", host.ACTOR_GRAVITY, "s1")
+                a.sw("zero", host.ACTOR_YVEL, "s1")
+                a.lhu("t0", host.CTRL_AIRBORNE, "s0")
+                a.addiu("t0", "t0", 1)
+                a.sh("t0", host.CTRL_AIRBORNE, "s0")
+            elif op == "carry":  # see emit_carry_reaction
+                if carry is None:
+                    raise ValueError(f"{label}: carry step without a carry word")
+                loop, out = fresh("carry"), fresh("carried")
+                a.la("t0", carry)
+                a.li("t1", 1)
+                a.sw("t1", 0, "t0")
+                a.li("s3", _scale(int(step["ticks"]), donor_ticks))
+                a.label(loop)
+                emit(step.get("every_tick", []), None)
+                a.la("t0", carry)
+                a.lw("t1", 0, "t0")
+                a.beqz("t1", out)  # the victim reached a wall
+                host.load_controller(a)
+                host.sleep_tick(a)
+                host.load_controller(a)
+                a.addiu("s3", "s3", -1)
+                a.bnez("s3", loop)
+                a.label(out)
+                a.la("t0", carry)
+                a.sw("zero", 0, "t0")  # release
+                host.load_controller(a)
+            elif op == "jump":  # the stock jump/fall to the floor (returns on landing)
+                host.load_controller(a)
+                if air_control:
+                    a.move("a0", "s1")
+                    a.li("a1", AIR_MAP)
+                    a.jal(host.F_INPUT_MAP)
+                    host.load_controller(a)
+                x, y, g = (lp._int(step.get(k, 0)) for k in ("x", "y", "gravity"))
+                a.move("a0", "s1")
+                a.li("a1", physics.convert_velocity(x))
+                a.li("a2", physics.convert_velocity(y))
+                a.li("a3", physics.convert_acceleration(g))
+                a.li("t0", JUMP_KEEP)
+                a.sw("t0", 0x10, "sp")  # rate: keep
+                a.li("t0", -1)
+                a.sw("t0", 0x14, "sp")  # root: keep the current animation
+                a.sw("zero", CTRL_JUMP_CALLBACK, "s0")  # no per-tick callback (see above)
+                a.jal(F_JUMP)
                 host.load_controller(a)
             elif op == "face":
                 host.load_controller(a)
@@ -583,6 +662,118 @@ def emit_hold_reaction(a: Assembler, label: str, donor_ticks: int = 1, pose: boo
     a.lw("ra", 0x28, "sp")
     a.jr_ra()
     a.addiu("sp", "sp", 0x30)
+
+
+# MKT torpedo carry (Rayden, 0x800452C4): on a hit the torpedo takes the victim along. Rayden keeps
+# flying for up to 0x20 donor ticks (both objects share one velocity) unless a wall stops them; then
+# the screen shakes, his sound 13 plays and the victim's process restarts at 0x8004558C: his
+# table-0 slot 0x1A pose, do_jump(0x33333, -0x6CCCD, 0x5199), landing. Host (specials proof v03):
+# the victim reaction below holds the victim at a grab point in front of the player each tick, in
+# the first frame of root 0x1E, while the attacker's ``carry`` step keeps the shared word set; it
+# clears the word itself when the victim's room to the wall ahead runs out, then
+# tail-calls the lifted knockback ``torpedo_carry_release`` (``lower_projectile``), which plays
+# the throw from its own start. The victim morphs first, as the stock launch does, because root
+# 0x1E is a shared root (Wiki Fighter-Recompiler-Components, "knockback morph").
+CARRY_ROOT = 0x1E
+CARRY_WALL_MARGIN = 40  # whole units (20 px) of room left ahead of the victim
+CARRY_TIMEOUT_TICKS = 24  # host ticks: past the attacker's 16 (0x20 donor ticks at 2 per tick)
+# The grab point (specials proof v04; owner on v03: Rayden's hands should hold the victim's waist,
+# and an airborne torpedo must not carry the victim along the ground or off a ledge). x: in front
+# of the player's anchor, toward his facing; y: from the player's y (actor y grows downward). The
+# flat frame 0x2100 reaches 66 px in front of his anchor (136 px wide, anchor at 70); a ground
+# carry at the same y looked right (owner, v03).
+CARRY_DX_PX, CARRY_DY_PX = 72, 0
+ACTOR_PREV_Y = 0x3C  # floor landing is by crossing from the previous y (0x80025ED4)
+
+
+def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
+                        morphs: tuple[int, ...], dx_px: int = CARRY_DX_PX,
+                        dy_px: int = CARRY_DY_PX) -> None:  # fmt: skip
+    """Victim reaction ``torpedo_carry`` (see the notes above); ``word``: the attacker's carry
+    word, ``release``: the lifted knockback's label, ``morphs``: the victim morph routines;
+    ``dx_px``, ``dy_px``: the grab point. While held the victim has no gravity or vertical speed
+    and its airborne counter counts (as ``hover``), so it neither falls nor lands on a floor or
+    a ledge before the throw."""
+
+    frame = 0x30
+    a.label(label)
+    a.addiu("sp", "sp", -frame)
+    a.sw("ra", 0x28, "sp")
+    for k, reg in enumerate(("s0", "s1", "s2", "s3")):
+        a.sw(reg, 0x18 + 4 * k, "sp")
+    for target in morphs:
+        host.load_controller(a)
+        a.move("a0", "s1")
+        a.jal(target)
+    host.load_controller(a)
+    host.stop(a)
+    a.move("a0", "zero")
+    a.li("a1", CARRY_ROOT)
+    a.jal(lp.F_SELECT)
+    host.load_controller(a)
+    host.advance_animation(a)
+
+    def player_actor(reg: str) -> None:
+        a.lui(reg, hi(host.PLAYER_CTRL))
+        a.lw(reg, lo(host.PLAYER_CTRL), reg)
+        a.lw(reg, host.CTRL_ACTOR, reg)
+
+    a.li("s2", dx_px * lp.UNITS_PER_PX << 8)  # actor x is whole units << 8
+    a.li("s3", CARRY_TIMEOUT_TICKS)
+    a.label(label + "_loop")
+    a.la("t0", word)
+    a.lw("t1", 0, "t0")
+    a.beqz("t1", label + "_out")  # the attacker let go
+    host.load_controller(a)
+    a.move("a0", "s1")
+    a.addiu("a1", "sp", 0x10)
+    a.addiu("a2", "sp", 0x14)
+    a.jal(host.F_WALL_DISTANCE)
+    player_actor("t0")
+    a.lhu("t1", lp.ACTOR_FLAGS, "t0")
+    a.andi("t1", "t1", lp.FACING_BIT)
+    a.lw("t2", 0x14, "sp")  # carried right: the room on the right
+    a.beqz("t1", label + "_room")
+    a.lw("t2", 0x10, "sp")  # facing left: the room on the left
+    a.label(label + "_room")
+    a.slti("t3", "t2", CARRY_WALL_MARGIN)
+    a.bnez("t3", label + "_wall")
+    host.load_controller(a)
+    player_actor("t0")
+    a.move("t2", "s2")
+    a.lhu("t1", lp.ACTOR_FLAGS, "t0")
+    a.andi("t1", "t1", lp.FACING_BIT)
+    a.beqz("t1", label + "_ahead")
+    a.subu("t2", "zero", "s2")  # he faces left: the grab point is to his left
+    a.label(label + "_ahead")
+    a.lw("t1", host.ACTOR_X, "t0")
+    a.addu("t1", "t1", "t2")
+    a.sw("t1", host.ACTOR_X, "s1")
+    a.lw("t1", host.ACTOR_Y, "t0")
+    a.li("t2", dy_px * lp.UNITS_PER_PX << 8)
+    a.addu("t1", "t1", "t2")
+    a.sw("t1", host.ACTOR_Y, "s1")
+    a.sw("t1", ACTOR_PREV_Y, "s1")  # moved, not falling: no landing by crossing
+    a.sw("zero", host.ACTOR_GRAVITY, "s1")
+    a.sw("zero", host.ACTOR_YVEL, "s1")
+    # Every tick, also at floor height: the per-tick floor check 0x80024BA8 also runs for
+    # enemies (classes 2-3) and installs the stock fall when no floor region matches and +0x6B0
+    # is zero, i.e. at a ledge during a ground carry (v04: counted only above the floor).
+    a.lhu("t1", host.CTRL_AIRBORNE, "s0")
+    a.addiu("t1", "t1", 1)
+    a.sh("t1", host.CTRL_AIRBORNE, "s0")
+    host.sleep_tick(a)
+    a.addiu("s3", "s3", -1)
+    a.bnez("s3", label + "_loop")
+    a.label(label + "_wall")
+    a.la("t0", word)
+    a.sw("zero", 0, "t0")
+    a.label(label + "_out")
+    for k, reg in enumerate(("s0", "s1", "s2", "s3")):
+        a.lw(reg, 0x18 + 4 * k, "sp")
+    a.lw("ra", 0x28, "sp")
+    a.addiu("sp", "sp", frame)
+    a.j_label(release)  # the throw, as the reaction itself (same sp and ra)
 
 
 # Stealth (Reptile's Invisibility): the Eye item's effect (Wiki Fighter-Recompiler-Components,

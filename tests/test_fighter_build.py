@@ -65,3 +65,47 @@ def test_without_the_morph_the_build_is_the_accepted_one(roms: tuple[bytes, byte
     spec = {k: v for k, v in lp.REACTION_LOWERING["knockback_arc"].items() if k != "morph"}
     monkeypatch.setitem(lp.REACTION_LOWERING, "knockback_arc", spec)
     assert hashlib.sha256(fb.build(*roms, "reptile").payload).hexdigest() == V22_PAYLOAD_SHA256
+
+
+@needs_roms
+def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> None:
+    """Specials proof v03: the torpedo plays slot 0's two phases and holds the flat frame (MKT
+    0x2100); its strike selects the carry reaction, whose table entry is the payload routine."""
+
+    from mkmszr.fighter_import import lower_projectile as lp
+
+    clean, _ = roms
+    built = fb.build(*roms, "rayden")
+    body = fb.body_build.build_body(fb.fd.load("rayden"), clean, roms[1], fb.body_build.Extras())
+    at, n = body.script_offsets[0x40], body.script_words[0x40]
+    words = [int.from_bytes(built.file87[at + 4 * i : at + 4 * i + 4], "big") for i in range(n)]
+    assert n == 6 and words[2] == words[5] == 0  # two phases of two frames, nothing borrowed
+    slot = built.reactions["torpedo_carry"]
+    (_, records), = built.report["strike_records"]
+    assert records[0][1][8] == slot  # the strike's reaction byte
+    entry = lp.REACTION_TABLE - 0x7FFFF400 + 4 * slot
+    target = int.from_bytes(built.rom[entry : entry + 4], "big")
+    assert built.link_va <= target < built.link_va + len(built.payload)
+    # owner calibration and rule (v05): a 40-donor-tick window (20 host ticks); no Ice cost for
+    # a movement ability (Ice Clone's slot would charge 0x60); Lightning keeps Ice Blast's 0x20
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    assert 0x24130014 in ws  # addiu s3, zero, 20
+    assert 0x2529FFA0 not in ws and 0x2529FFE0 in ws  # addiu t1, t1, -0x60 / -0x20
+
+
+@needs_roms
+def test_a_pose_past_its_script_is_refused(roms: tuple[bytes, bytes], monkeypatch: pytest.MonkeyPatch) -> None:
+    from mkmszr.fighter_import import components
+
+    real = components.load_programs
+
+    def with_bad_pose(name: str):
+        moves, gaps = real(name)
+        for m in moves:
+            if m.name == "torpedo":
+                m.steps.insert(5, {"op": "pose", "anim": {"table": 1, "slot": 0, "offset": 6}})
+        return moves, gaps
+
+    monkeypatch.setattr(components, "load_programs", with_bad_pose)
+    with pytest.raises(fb.BuildError, match="past the 6 words"):
+        fb.build(*roms, "rayden")

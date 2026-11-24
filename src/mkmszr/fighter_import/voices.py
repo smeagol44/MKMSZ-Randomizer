@@ -151,3 +151,30 @@ def install(
             raise ValueError(f"player voice event {CAT_EVENT[c]} already modified")
         rom[t : t + 0x20] = donor_track[event]
     return vs, sample_rom
+
+
+# One donor sound played from the body scripts (``body.script_sounds``): host callback 2 plays a
+# gameplay SFX descriptor. Descriptor 0x2A (event 41) is the player voice category 10, which the
+# voice rule leaves silent for MKT donors; no stock code or other descriptor plays it
+# (Static-confirmed: Wiki Sounds-and-Music; descriptor scan, 2026-11-13).
+SCRIPT_SOUND_DESCRIPTOR = CAT_DESC[10]
+SCRIPT_SOUND_EVENT = CAT_EVENT[10]
+
+
+def install_script_sound(
+    rom: bytearray, clean: bytes, mkt: bytes, fighter: int, index: int,
+    chain: sound.HostChain, sample_rom: int, voice_set: VoiceSet,
+) -> int:  # fmt: skip
+    """Host the donor fighter's ``ft_sound(index)`` in ``chain`` and point the spare descriptor's
+    event at it. Returns the next free sample address."""
+
+    if voice_set.category[10] is not None:
+        raise ValueError("voice category 10 is in use; its descriptor is not spare")
+    bank = sound.MktSoundBank(mkt)
+    sample_rom = sound.install(rom, clean, bank.event(bank.fighter_event(fighter, index)), chain, sample_rom)
+    src = _track_rom(clean, chain.event)
+    dst = _track_rom(clean, SCRIPT_SOUND_EVENT)
+    if bytes(rom[dst : dst + 0x20]) != clean[dst : dst + 0x20]:
+        raise ValueError(f"event {SCRIPT_SOUND_EVENT} already modified")
+    rom[dst : dst + 0x20] = rom[src : src + 0x20]
+    return sample_rom

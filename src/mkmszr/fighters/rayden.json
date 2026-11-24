@@ -15,8 +15,15 @@
               "0x21", "0x22"],
     "run": {"mkt_slot": "0x4A", "host_rate": 3},
     "colour": {"depth": 16, "method": "auto"},
+    "phase_slots": {"0x23": "shift:+1"},
+    "script_sounds": {"0x21": 7, "0x22": 7},
+    "secondary_scripts": {"0x25": "table0:0x24:1", "0x40": "table1:0x00:2", "0x41": "table0:0x16:1"},
     "common_animations": ["death", "long_fall", "pickup", "grabbed"]
   },
+  "commands": {"lightning": "ice_blast", "torpedo": "ice_clone"},
+  "specials": {"lightning": {"face": true, "projectile": {"offset_px": [-30, -36], "box": "centre_on_art"}},
+               "torpedo": {"face": false, "skip": ["face"], "airborne": true, "donor_ticks": 2, "strike_ticks": 40, "air_control": true,
+                           "carry": {"dx_px": 72, "dy_px": 0}}},
   "legacy": [],
   "notes": "Milestone 6 (owner, 2026-11-13): Rayden is the next fighter. Body first."
 }

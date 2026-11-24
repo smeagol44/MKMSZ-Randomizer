@@ -102,3 +102,39 @@ def test_description_rejects_bad_commands() -> None:
         change(data)
         with pytest.raises(fd.DescriptionError, match=message):
             fd.validate(data)
+
+
+@needs_roms
+def test_rayden_lightning_goes_to_its_event_button() -> None:
+    # The MKT record has masks 0xFC but sits only in the LP event (grid event 1): the move
+    # program's buttons place it, and the host record carries them.
+    clean, mkt = Path(CLEAN).read_bytes(), Path(MKT).read_bytes()  # type: ignore[arg-type]
+    moves, _ = components.load_programs("rayden")
+    found = cmds.donor_commands(mkt, moves, fd.load("rayden").commands)
+    assert [(c.name, c.calls, c.buttons, c.stick) for c in found] == [
+        ("lightning", "ice_blast", 0x80, False), ("torpedo", "ice_clone", 0, True)]
+    overrides = {"torpedo": (1, 0xA01B0000, 0xA01B0100)}
+    low = cmds.lower(clean, found, set(), 0xA01AF420, 0xA01AF520, overrides)
+    lp = low.tables["LP"]
+    assert len(lp) == 1 and lp[0][:4] == bytes.fromhex("00800080")  # Ice Clone's record taken
+    assert all(len(low.tables[b]) == n for b, n in (("HP", 3), ("LK", 1), ("HK", 1)))
+
+
+@needs_roms
+def test_rayden_torpedo_is_a_stick_command(tmp_path: Path) -> None:
+    # B,B,F with no button: a stick table run by the player's Left/Right event callbacks.
+    clean, mkt = Path(CLEAN).read_bytes(), Path(MKT).read_bytes()  # type: ignore[arg-type]
+    moves, _ = components.load_programs("rayden")
+    found = cmds.donor_commands(mkt, moves, fd.load("rayden").commands)
+    overrides = {"torpedo": (1, 0xA01B0000, 0xA01B0100)}
+    low = cmds.lower(clean, found, set(), 0xA01AF420, 0xA01AF520, overrides)
+    (rec,) = low.tables["STICK"]
+    assert rec[:16] == bytes.fromhex("a000a00000000001a01b0000a01b0100")  # masks, mode 1, cond, action
+    assert rec[16:24] == bytes.fromhex("0020000900080008")  # window, B,B,F facing right
+    assert low.moved["STICK"] == 0xA01AF420 and low.stick_checker == 0xA01AF520
+    rom = bytearray(clean)
+    cmds.install(rom, clean, low, 0xF10000, 0xA01AF420)
+    for record in cmds.STICK_EVENT_RECORDS:
+        off = record + cmds.PLAYER_TYPE_SLOT - cmds.VA_TO_ROM
+        assert int.from_bytes(rom[off : off + 4], "big") == 0xA01AF520
+    assert rom[0xF10000 : 0xF10000 + 16] == rec[:16]

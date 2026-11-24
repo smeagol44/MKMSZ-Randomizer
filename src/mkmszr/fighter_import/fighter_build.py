@@ -172,6 +172,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     chains = _Pool(tuple(EXTRA_CHAINS) + tuple(VOICE_CHAINS[used_voices:]), "isolated sound chains")
     voice_chains = list(VOICE_CHAINS[:used_voices])
     bank = sound.MktSoundBank(mkt)
+    if d.body.script_sounds:  # body.script_sounds: the spare descriptor's event plays it
+        (sfx,) = set(d.body.script_sounds.values())
+        samples_end = voices.install_script_sound(rom, clean, mkt, donor_id, sfx, chains.take(),
+                                                  (samples_end + 0xF) & ~0xF, vs)  # fmt: skip
 
     def install(donor_sound: sound.DonorSound) -> int:
         nonlocal samples_end
@@ -183,6 +187,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     for key, (t, i, _) in d.body.secondary_scripts.items():
         animations[(t, i)] = key if key < body_build.VIRTUAL_SCRIPT else ("at", body.script_offsets[key])
     animations[(0, d.body.run_slot)] = ("at", body_build.RUN_TARGET)
+    script_words = {(t, i): body.script_words[key] for key, (t, i, _) in d.body.secondary_scripts.items()
+                    if key in body.script_words}  # fmt: skip
 
     # ---- projectile groups and art (fighter-file tail) -------------------------------------
     reactions = _Pool(REACTION_POOL, "spare reaction-table entries")
@@ -199,6 +205,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         steps = list(programs[move].steps)
         if "sleep_ticks" in tune:  # owner: a different recovery (Acid Spit, specials proof v11)
             steps = [dict(s, ticks=_int(tune["sleep_ticks"])) if s["op"] == "sleep" else s for s in steps]
+        if "strike_ticks" in tune:  # owner: a longer hit window (Rayden's torpedo, specials proof v05)
+            steps = [dict(s, ticks=_int(tune["strike_ticks"])) if s["op"] == "strike" else s for s in steps]
         steps_of[move] = steps
         proj = next((s for s in steps if s["op"] == "projectile"), None)
         if proj is not None:
@@ -226,9 +234,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                     rom, clean, mkt, donor_id, proj, tuple(chains.take() for _ in range(needed)),
                     (samples_end + 0xF) & ~0xF,
                 )  # fmt: skip
-                groups[gkey] = _Group(gkey, [move], art, events, reactions.take(),
+                stock = lp.host_reaction(proj["strike"]["reaction"])
+                groups[gkey] = _Group(gkey, [move], art, events, stock if stock is not None else reactions.take(),
                                       f"{move}_helper" if helper is not None else None)  # fmt: skip
-        for s in steps:
+        for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
             if s["op"] == "sound":
                 n = _int(s["sound"]["fighter"])
                 if n not in fighter_sounds:
@@ -247,7 +256,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     rom[body_build.FILE87_ROM : body_build.FILE87_ROM + len(file87)] = file87
 
     # ---- payload ---------------------------------------------------------------------------
-    costs = {m: d.costs.get(m, lower_special.COSTS[p]) for m, p in d.commands.items() if p}
+    # Ice costs: the description's (owner decisions), else none for a movement ability (owner
+    # rule, 2026-11-24), else the replaced Sub-Zero power's.
+    movement = {mv.name for mv in moves if mv.movement}
+    costs = {m: d.costs.get(m, lower_special.MOVEMENT_COST if m in movement else lower_special.COSTS[p])
+             for m, p in d.commands.items() if p}  # fmt: skip
     if len(order) > TRANSFER_ENTRIES_FREE:
         raise BuildError("more specials than free transfer-table entries")
     selectors = {m: FIRST_SELECTOR + k for k, m in enumerate(order)}
@@ -272,7 +285,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             alive = (f"{move}_alive", *(f"{m}_alive" for m in shared_limit))
         refuse = (lower_special.CTRL_STEALTH, lower_special.STEALTH_BIT) if "stealth" in tune else None
         lower_special.emit_gate_condition(a, f"{move}_cond", gate, costs[move], default=default,
-                                          alive=alive, refuse_if=refuse)  # fmt: skip
+                                          alive=alive, refuse_if=refuse,
+                                          airborne=bool(tune.get("airborne")))  # fmt: skip
         g = group_of.get(move)
         meanings = {s["strike"]["reaction"] for s in _all_steps(steps) if s["op"] == "strike"}
         reaction_map = {}
@@ -287,6 +301,12 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             foot = {(0, slot): lower_special.Footsteps(*lower_special.donor_footsteps(donor, slot), footsteps[move])}
         fx_map = {fx: (f"fx_{fx}", _int(spec.get("dy_px", 0)) * lp.UNITS_PER_PX)
                   for fx, (_, _, spec) in effect_art.items()}  # fmt: skip
+        for s in _all_steps(steps):  # a pose offset past its script shows another script's frame
+            if s["op"] == "pose" and "offset" in s["anim"]:
+                key = (_int(s["anim"]["table"]), _int(s["anim"]["slot"]))
+                if key in script_words and _int(s["anim"]["offset"]) >= script_words[key]:
+                    raise BuildError(f"{move}: pose offset {s['anim']['offset']} is past the "
+                                     f"{script_words[key]} words of script {key}")  # fmt: skip
         records = lower_special.emit_action(
             a, f"{move}_root", steps, cost=costs[move], animations=animations,
             child=f"{move}_ball" if g else None, helper=g.helper if g else None,
@@ -295,6 +315,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             speed=lambda v: physics.fold_donor_speeds(v, v, lambda x: x, lp.UNITS_PER_PX)[0],
             footsteps=foot, stealth=f"{move}_stealth" if "stealth" in tune else None,
             effects=fx_map or None,
+            carry=f"{move}_carry_word" if "torpedo_carry" in reaction_map else None,
+            skip=frozenset(tune.get("skip", ())),  # owner: steps left out (Rayden's torpedo turns)
+            air_control=bool(tune.get("air_control")),  # owner: steer the closing drop
         )  # fmt: skip
         if g is not None:
             ptune = tune.get("projectile", {})
@@ -316,6 +339,21 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         if "elbow_hold" in reaction_map and "elbow_hold" not in reaction_labels:
             reaction_labels["elbow_hold"] = f"{move}_hold"
             lower_special.emit_hold_reaction(a, f"{move}_hold", _int(tune.get("donor_ticks", 1)))
+        if "torpedo_carry" in reaction_map and "torpedo_carry" not in reaction_labels:
+            reaction_labels["torpedo_carry"] = f"{move}_carry"
+            release = f"{move}_carry_release"
+            grab = tune.get("carry", {})  # specials.<move>.carry: the grab point, in px
+            lower_special.emit_carry_reaction(
+                a, f"{move}_carry", f"{move}_carry_word", release,
+                lp.REACTION_LOWERING["torpedo_carry_release"]["morph"],
+                dx_px=_int(grab.get("dx_px", lower_special.CARRY_DX_PX)),
+                dy_px=_int(grab.get("dy_px", lower_special.CARRY_DY_PX)),
+            )
+            a.label(release)
+            for w in lp.lifted_reaction(clean, "torpedo_carry_release"):
+                a.raw(w)
+            a.label(f"{move}_carry_word")
+            a.raw(0)
         unknown = set(reaction_map) - set(reaction_labels)
         if unknown:
             raise BuildError(f"{move}: no host routine for reactions {sorted(unknown)}")
@@ -345,7 +383,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     for _, records in report.get("strike_records", []):
         lower_special.emit_strike_data(a, records, link_va)
     main = a.link()
-    overrides = {m: (0, a.labels[f"{m}_cond"], a.labels[f"{m}_thunk"]) for m in order}
+    # Transfer mode 0 refuses an airborne start, mode 1 does not (Wiki Player-Actions "Descriptor
+    # selector and condition"): moves tuned "airborne" (Rayden's torpedo) take mode 1.
+    overrides = {m: (1 if d.specials.get(m, {}).get("airborne") else 0, a.labels[f"{m}_cond"], a.labels[f"{m}_thunk"])
+                 for m in order}  # fmt: skip
     cmds = commands.donor_commands(mkt, moves, d.commands)
     stub_base = (link_va + TABLE_RESERVE + len(main) + 0xF) & ~0xF
     low_cmd = commands.lower(clean, cmds, set(d.remove_commands), link_va, stub_base, overrides)
@@ -367,6 +408,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         _guarded(rom, host.TRANSFER_TABLE - VA_TO_ROM + 4 * selectors[m], 0, a.labels[f"{m}_root"])
     for g in groups.values():
         reaction_label = f"g{_gid(g)}_reaction"
+        if reaction_label not in a.labels:  # a stock (host-kind) reaction
+            continue
         _guarded(rom, lp.REACTION_TABLE - VA_TO_ROM + 4 * g.reaction_slot, lp.DUMMY_REACTION,
                  a.labels[reaction_label])  # fmt: skip
     for meaning, slot in custom_reactions.items():

@@ -354,6 +354,13 @@ v62 changed only the three affected reaction-selector bytes from `0x02` to the M
 
 The already-working `0x0504` uppercut entry remained unchanged. That is a positive **bounded coincidence**, not evidence that all selector values are cross-game compatible.
 
+### Rayden's graph (2026-11-13, Static-confirmed)
+
+- **Shared tails.** A next pointer may name the middle of an option list (Rayden's `HK` strings share a tail). The host parser reads a list from any record to its last, so the tail stays inside its list.
+- **Combo into a special.** A record's next field may be a routine instead of a list or a small recovery wait: Rayden's option `0x800AEFF8` ends in `0x8004F3C0` (his torpedo, `do_body_propell(0x1E)`). The host graph cannot call actions; `fighter_import.combos` leaves such options out and lists them (`Graph.dropped`).
+- **Button index** is the input-event order of both games: 0 HP, 1 LP, 2 block, 3 HK, 4 LK (host handler blocks at `0x800A0478 + 0x78·i`; MKT grid events 0, 1, 3, 4). Rayden's kick strings use index 4.
+- **Selector 9** is reaction `0x17`, damage 7 in both strike tables (identity, Pending at runtime).
+
 ### Compatibility rule
 
 For every donor combo edge:

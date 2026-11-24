@@ -188,3 +188,104 @@ def test_invisibility_fire_effect() -> None:
     text = " ".join(_text(a.link()))
     assert "ori a3, a3, 0xFFFF" in text  # drawn in front (sub-layer 0xFFFF)
     assert "addiu t1, t1, -64" in text  # Ice 0x40 (owner: half of Freeze on Contact's)
+
+
+def test_airborne_gate_skips_the_floor_checks() -> None:
+    # Rayden's torpedo (owner): it may start in the air.
+    from mkmszr.fighter_import.mips import Assembler
+
+    def words(airborne: bool) -> list[int]:
+        a = Assembler(0xA01AF420)
+        ls.emit_gate_condition(a, "g", ls.GATES["ice_clone"], 0x60, airborne=airborne)
+        return a.link()
+
+    grounded, air = words(False), words(True)
+    assert len(air) < len(grounded)
+    ground_check = 0x8D6E06B4  # lw t6, 0x6B4(t3): the floor read
+    assert ground_check in [int.from_bytes(grounded[i:i + 4], "big") for i in range(0, len(grounded), 4)]
+    assert ground_check not in [int.from_bytes(air[i:i + 4], "big") for i in range(0, len(air), 4)]
+
+
+def test_hover_and_jump_ops_lower() -> None:
+    from mkmszr.fighter_import.mips import Assembler
+
+    a = Assembler(0xA01AF420, cached_calls=True)
+    steps = [{"op": "hover"}, {"op": "jump", "x": "0", "y": "0xD999", "gravity": "0x6CCC", "until": "landing"},
+             {"op": "end"}]  # fmt: skip
+    ls.emit_action(a, "t", steps, cost=0, animations={})
+    code = a.link()
+    ws = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
+    assert 0x3C198003 in ws and 0x273921D0 in ws  # lui/addiu t9 -> 0x800321D0
+    # sw zero, 0x70C(s0) before the call: the stock jump calls a non-zero +0x70C every air tick
+    # (Rayden specials proof v02 hang); every stock caller clears it.
+    call = ws.index(0x273921D0)
+    assert ws.index(0xAE00070C) < call
+
+
+def test_air_control_installs_the_air_map_before_the_jump() -> None:
+    from mkmszr.fighter_import.mips import Assembler
+
+    steps = [{"op": "jump", "x": "0", "y": "0xD999", "gravity": "0x6CCC", "until": "landing"}, {"op": "end"}]
+    words = {}
+    for flag in (False, True):
+        a = Assembler(0xA01AF420, cached_calls=True)
+        ls.emit_action(a, "t", steps, cost=0, animations={}, air_control=flag)
+        code = a.link()
+        words[flag] = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
+    input_map = 0x2739B05C  # addiu t9, t9, lo(0x8002B05C)
+    jump = 0x273921D0
+    assert input_map not in words[False]
+    w = words[True]
+    assert input_map in w and w.index(input_map) < w.index(jump)
+    assert 0x3405FA00 in w or 0x34A5FA00 in w  # ori a1, lo(0x8009FA00): the straight-air map
+
+
+def test_carry_op_and_reaction_share_the_word() -> None:
+    from mkmszr.fighter_import.mips import Assembler
+
+    a = Assembler(0xA01AF420, cached_calls=True)
+    steps = [{"op": "carry", "ticks": 32, "every_tick": [{"op": "hover"}]}, {"op": "end"}]
+    ls.emit_action(a, "t", steps, cost=0, animations={}, donor_ticks=2, carry="word")
+    ls.emit_carry_reaction(a, "carry", "word", "release", (0x800572C4, 0x80057478))
+    a.label("release")
+    a.jr_ra()
+    a.nop()
+    a.label("word")
+    a.raw(0)
+    code = a.link()
+    ws = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
+    word = a.labels["word"]
+    la = [i for i, w in enumerate(ws) if w == (0x3C080000 | word >> 16)
+          and ws[i + 1] == (0x35080000 | word & 0xFFFF)]  # fmt: skip
+    assert len(la) >= 5  # set, test and clear (attacker); test and clear (victim)
+    assert 0x24130010 in ws  # 32 donor ticks at 2 per host tick
+    reaction = (a.labels["carry"] - a.base) // 4
+    assert 0x24050000 | ls.CARRY_ROOT in ws[reaction:]  # root 0x1E selected for the pose
+    j = 0x08000000 | (a.labels["release"] >> 2) & 0x03FFFFFF
+    assert j in ws[reaction:]  # tail call into the throw
+    # held at the grab point (72 px = 144 units << 8) at the player's y, with no gravity or y
+    # speed and the previous y moved too (owner, v03: no ground carry, no ledge drop)
+    held = ws[reaction:]
+    assert 0x34129000 in held or 0x36529000 in held  # ori s2, 0x9000
+    for sw in (0xAE290030, 0xAE29003C, 0xAE200010, 0xAE200018):  # y, previous y, gravity, y speed
+        assert sw in held
+    assert 0xA6090000 | 0x6B2 in held  # sh t1, +0x6B2(s0): the airborne counter
+    # counted every tick, not only above the floor (v04: a ground carry fell at a ledge)
+    assert 0x8E0906B4 not in held  # lw t1, +0x6B4(s0): no floor comparison
+
+
+def test_movement_moves_are_marked() -> None:
+    moves = {m.name: m for m in components.load_programs("rayden")[0]}
+    assert moves["torpedo"].movement and not moves["lightning"].movement
+    assert {m.name for m in components.load_programs("reptile")[0] if m.movement} == {"elbow_dash"}
+    with pytest.raises(components.ProgramError, match="movement"):
+        components.validate_programs({"format": 1, "moves": [
+            {"name": "x", "movement": "yes", "command": {"buttons": 0, "tokens": [], "window": 1,
+             "src": "owner"}, "steps": [{"op": "end"}]}]})  # fmt: skip
+
+
+def test_carry_step_needs_its_word() -> None:
+    from mkmszr.fighter_import.mips import Assembler
+
+    with pytest.raises(ValueError, match="carry word"):
+        ls.emit_action(Assembler(0xA01AF420), "t", [{"op": "carry", "ticks": 4}], cost=0, animations={})

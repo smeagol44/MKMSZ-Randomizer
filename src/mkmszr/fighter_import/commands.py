@@ -51,6 +51,18 @@ HOST_TABLES = (
     HostTable("LK", 0x800B0F68, 1, (0x8003C95C, 0x8003C960)),
     HostTable("HK", 0x800B0F98, 1, (0x8003C850, 0x8003C854)),
 )
+# Stick commands (no button; Rayden's torpedo B,B,F): the host raises input events 6 Up, 7 Down,
+# 8 Left, 9 Right (semantic bits 0x1000/0x4000/0x8000/0x2000, handler table 0x8009AB38..). Each
+# event has a per-actor-type record of 30 callbacks (press table 0x800A09C4); the dispatcher
+# 0x800157E0 calls the player's (type 4, +0x10) unless frozen, special-locked or dead. Events
+# 7-9 have no callback for any type, so the player's Left/Right callbacks run a stick table
+# through the parser, as the stock (unreferenced) F,F / B,B tables 0x800B0FC8 / 0x800B0FF8
+# would. Records carry direction-bit masks: the mask check 0x8003CCF8 refuses a record while a
+# button outside it is held, and a zero mask would end the table.
+STICK_EVENT_RECORDS = (0x800A07E4, 0x800A085C)  # events 8 Left, 9 Right (press table)
+PLAYER_TYPE_SLOT = 4 * 4  # actor type 4 (player) in a 30-callback record
+STICK_MASK = 0xA000  # Left | Right: no button bits
+
 # Sub-Zero's command records (Wiki Player-Actions-and-Special-Moves, stock reconciliation).
 HOST_POWERS = {
     "spine_rip": 0x800B1028,
@@ -89,6 +101,8 @@ class Command:
     record: bytes  # the donor record (MKT)
     calls: str | None  # host power whose action it calls; None: no action yet
     held: int  # buttons the donor condition requires held (0: none)
+    buttons: int = 0  # the move program's buttons (the MKT event's); 0: the record's masks
+    stick: bool = False  # a stick-only command (program buttons "stick")
 
 
 @dataclass(frozen=True)
@@ -97,6 +111,7 @@ class Lowered:
     moved: dict[str, int]  # button -> new table VA (outside the stock table)
     stubs: bytes  # code at the stub base
     report: list[str]
+    stick_checker: int | None = None  # VA of the stick-table checker (event records 8 and 9)
 
 
 def _host_record(clean: bytes, cmd: Command, cond: int, override: tuple[int, int, int] | None) -> bytes:
@@ -106,6 +121,10 @@ def _host_record(clean: bytes, cmd: Command, cond: int, override: tuple[int, int
     else:
         selector, action = override[0], override[2]
     rec = bytearray(cmd.record)
+    if cmd.stick:
+        rec[0:4] = STICK_MASK.to_bytes(2, "big") * 2
+    elif cmd.buttons:  # the MKT event's button (Rayden's lightning record has masks 0xFC)
+        rec[0:4] = cmd.buttons.to_bytes(2, "big") * 2
     rec[4:16] = selector.to_bytes(4, "big") + cond.to_bytes(4, "big") + action.to_bytes(4, "big")
     return bytes(rec)
 
@@ -131,8 +150,8 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
     for table in HOST_TABLES:
         mask = BUTTONS[table.button]
         rows: list[tuple[str, Command | None, int]] = []
-        for cmd in sorted((c for c in commands if c.calls), key=lambda c: c.donor_va):
-            if (_u16(cmd.record, 0) | _u16(cmd.record, 2)) & mask:
+        for cmd in sorted((c for c in commands if c.calls and not c.stick), key=lambda c: c.donor_va):
+            if (cmd.buttons or _u16(cmd.record, 0) | _u16(cmd.record, 2)) & mask:
                 rows.append(("donor", cmd, 0))
         for name, va in HOST_POWERS.items():
             if name in kept and table.va <= va < table.va + RECORD * table.capacity:
@@ -150,6 +169,10 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
             cursor += RECORD * n + 4
         else:
             place[table.button] = table.va
+    stick = [c for c in sorted(commands, key=lambda c: c.donor_va) if c.stick and c.calls]
+    if stick:
+        moved["STICK"] = place["STICK"] = cursor
+        cursor += RECORD * len(stick) + 4
     a = Assembler(stub_base, cached_calls=True)
     out: dict[str, list[bytes]] = {}
     report: list[str] = []
@@ -175,9 +198,30 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
             target = f"own special (slot of {cmd.calls})" if override else cmd.calls
             report.append(f"{table.button}: {cmd.name} -> {target}" + (" (held check)" if cmd.held else ""))
         out[table.button] = recs
+    checker = None
+    if stick:
+        recs = []
+        for cmd in stick:
+            override = overrides.get(cmd.name)
+            stock_cond = override[1] if override else _u32(record_at(clean, HOST_POWERS[cmd.calls], VA_TO_ROM), 8)  # type: ignore[index]
+            recs.append(_host_record(clean, cmd, stock_cond, override))
+            target = f"own special (slot of {cmd.calls})" if override else cmd.calls
+            report.append(f"STICK: {cmd.name} -> {target}")
+        out["STICK"] = recs
+        checker = a.pc()  # the Left/Right event callback: the parser on the stick table
+        a.addiu("sp", "sp", -0x18)
+        a.sw("ra", 0x10, "sp")
+        table = place["STICK"]
+        a.lui("a0", ((table + 0x8000) >> 16) & 0xFFFF)
+        a.addiu("a0", "a0", ((table & 0xFFFF) ^ 0x8000) - 0x8000)
+        a.jal(PARSER)
+        a.nop()
+        a.lw("ra", 0x10, "sp")
+        a.jr("ra")
+        a.addiu("sp", "sp", 0x18)
     if unwired:
         report.append("no action yet: " + ", ".join(unwired))
-    return Lowered(out, moved, a.link(), report)
+    return Lowered(out, moved, a.link(), report, checker)
 
 
 def _name(va: int) -> str:
@@ -239,6 +283,15 @@ def install(rom: bytearray, clean: bytes, low: Lowered, storage_rom: int, storag
             rom[addiu : addiu + 4] = ((old_addiu & 0xFFFF0000) | (va & 0xFFFF)).to_bytes(4, "big")
         else:
             rom[stock_rom : stock_rom + len(data) - 2] = data[:-2]
+    if "STICK" in low.tables:
+        data = b"".join(low.tables["STICK"]) + b"\0\0\0\0"
+        off = storage_rom + (low.moved["STICK"] - storage_va)
+        rom[off : off + len(data)] = data
+        for record in STICK_EVENT_RECORDS:
+            slot = record + PLAYER_TYPE_SLOT - VA_TO_ROM
+            if _u32(rom, slot) != 0 or _u32(clean, slot) != 0:
+                raise CommandError(f"event record 0x{record:08X}: the player's callback is not free")
+            rom[slot : slot + 4] = (low.stick_checker or 0).to_bytes(4, "big")
 
 
 def donor_commands(mkt: bytes, moves: list, spec: dict[str, str | None]) -> list[Command]:
@@ -257,7 +310,10 @@ def donor_commands(mkt: bytes, moves: list, spec: dict[str, str | None]) -> list
         for cond in move.command.get("conditions", []):
             if cond.get("kind") == "buttons_held":
                 held |= int(cond["mask"], 16)
-        out.append(Command(move.name, va, record_at(mkt, va, 0x80000000), spec[move.name], held))
+        raw = move.command.get("buttons", "")
+        stick = raw == "stick"
+        buttons = int(raw, 16) if raw and not stick else 0
+        out.append(Command(move.name, va, record_at(mkt, va, 0x80000000), spec[move.name], held, buttons, stick))
     missing = set(spec) - {c.name for c in out}
     if missing:
         raise CommandError(f"no move program for {', '.join(sorted(missing))}")

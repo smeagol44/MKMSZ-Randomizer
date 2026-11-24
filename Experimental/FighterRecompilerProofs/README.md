@@ -44,3 +44,11 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_reptile-production_composition_v02.py` | `MKMSZR_reptile-production_composition_proof_v02.z64` (and `--all-powers`) | v01 with the throw helper ending when a hit interrupts the throw |
 | `MKMSZR_build_reptile-production_composition_v03.py` | `MKMSZR_reptile-production_composition_proof_v03.z64` (and `--all-powers`) | v02 with the forceballs' knockback reaction morphing the victim first (stock `0x800572C4`/`0x80057478`), fixing the Temple MONK3 crash |
 | `MKMSZR_build_rayden-body_proof_v01.py` | `MKMSZR_rayden-body_common_proof_v01.z64` | Rayden's body (milestone 6) with the generic builder; Sub-Zero's specials |
+| `MKMSZR_build_rayden-inputs_proof_v01.py` | `MKMSZR_rayden-inputs_common_proof_v01.z64` | Rayden body v01 plus his getup sound (`body.script_sounds`), combos and throw |
+| `MKMSZR_build_rayden-specials_proof_v01.py` | `MKMSZR_rayden-specials_common_proof_v01.z64` | Rayden's generic build (Lightning in Ice Blast's slot) with Reptile v22's proof harness |
+| `MKMSZR_build_rayden-specials_proof_v02.py` | `MKMSZR_rayden-specials_common_proof_v02.z64` | v01 plus the Torpedo (stick command B,B,F, airborne start, hover flight, stock-jump drop) |
+| `MKMSZR_build_rayden-specials_proof_v03.py` | `MKMSZR_rayden-specials_common_proof_v03.z64` | v02 fixes (jump callback cleared, the flat flying frame by MKT's two phases) and MKT's torpedo carry |
+| `MKMSZR_build_rayden-specials_proof_v04.py` | `MKMSZR_rayden-specials_common_proof_v04.z64` | v03 with the carried victim held at his hands' grab point and kept airborne until the throw |
+| `MKMSZR_build_rayden-specials_proof_v05.py` | `MKMSZR_rayden-specials_common_proof_v05.z64` | v04 with the ledge fix (airborne counters every tick), a 40-donor-tick flight and no Ice cost for movement abilities |
+| `MKMSZR_build_rayden-specials_proof_v06.py` | `MKMSZR_rayden-specials_common_proof_v06.z64` | v05 without the torpedo's turns to the opponent |
+| `MKMSZR_build_rayden-specials_proof_v07.py` | `MKMSZR_rayden-specials_common_proof_v07.z64` | v06 with air control on the torpedo's closing drop |
