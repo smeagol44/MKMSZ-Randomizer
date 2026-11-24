@@ -61,7 +61,8 @@ Body fields:
 * ``help`` (optional): the Power Ups help text per power slot (``fighter_import.fighter_help``).
 * ``specials`` (optional): move name -> lowering tuning for ``fighter_import.fighter_build``
   (owner calibrations such as offsets, facing, recovery, the per-move projectile limit,
-  stealth drain, effects, recovery `sleep_ticks`, hit window `strike_ticks` in donor ticks, the
+  stealth drain, effects, `face` (turn at the start), `skip` (step kinds left out), recovery
+  `sleep_ticks`, hit window `strike_ticks` in donor ticks, the
   torpedo carry's grab point `carry`: `dx_px`, `dy_px`), in the
   order the moves are built.
 * ``costs`` (optional): move name -> Ice cost, where it differs from the replaced Sub-Zero
