@@ -216,3 +216,39 @@ def test_hover_and_jump_ops_lower() -> None:
     code = a.link()
     ws = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
     assert 0x3C198003 in ws and 0x273921D0 in ws  # lui/addiu t9 -> 0x800321D0
+    # sw zero, 0x70C(s0) before the call: the stock jump calls a non-zero +0x70C every air tick
+    # (Rayden specials proof v02 hang); every stock caller clears it.
+    call = ws.index(0x273921D0)
+    assert ws.index(0xAE00070C) < call
+
+
+def test_carry_op_and_reaction_share_the_word() -> None:
+    from mkmszr.fighter_import.mips import Assembler
+
+    a = Assembler(0xA01AF420, cached_calls=True)
+    steps = [{"op": "carry", "ticks": 32, "every_tick": [{"op": "hover"}]}, {"op": "end"}]
+    ls.emit_action(a, "t", steps, cost=0, animations={}, donor_ticks=2, carry="word")
+    ls.emit_carry_reaction(a, "carry", "word", "release", (0x800572C4, 0x80057478))
+    a.label("release")
+    a.jr_ra()
+    a.nop()
+    a.label("word")
+    a.raw(0)
+    code = a.link()
+    ws = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
+    word = a.labels["word"]
+    la = [i for i, w in enumerate(ws) if w == (0x3C080000 | word >> 16)
+          and ws[i + 1] == (0x35080000 | word & 0xFFFF)]  # fmt: skip
+    assert len(la) >= 5  # set, test and clear (attacker); test and clear (victim)
+    assert 0x24130010 in ws  # 32 donor ticks at 2 per host tick
+    reaction = (a.labels["carry"] - a.base) // 4
+    assert 0x24050000 | ls.CARRY_ROOT in ws[reaction:]  # root 0x1E selected for the pose
+    j = 0x08000000 | (a.labels["release"] >> 2) & 0x03FFFFFF
+    assert j in ws[reaction:]  # tail call into the throw
+
+
+def test_carry_step_needs_its_word() -> None:
+    from mkmszr.fighter_import.mips import Assembler
+
+    with pytest.raises(ValueError, match="carry word"):
+        ls.emit_action(Assembler(0xA01AF420), "t", [{"op": "carry", "ticks": 4}], cost=0, animations={})

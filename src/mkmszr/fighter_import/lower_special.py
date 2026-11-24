@@ -194,6 +194,11 @@ def emit_charge(a: Assembler, amount: int) -> None:
 # velocity or the rate, a negative root keeps the animation. It counts the airborne ticks in
 # controller +0x6B2, sleeps until the actor lands and clears the counter.
 F_JUMP, JUMP_KEEP = 0x800321D0, 13
+# Controller +0x70C: the stock jump copies it to +0x68C at entry and calls it every air tick when
+# non-zero. Every stock caller clears it first (0x8004F40C, 0x80057CEC, ...); the field is shared
+# with other uses, and a stale value is called as code (Rayden specials proof v02 save state: TLB
+# miss at 0x801125A0 called from 0x80032448 after a torpedo hit up close).
+CTRL_JUMP_CALLBACK = 0x70C
 
 
 def _scale(n: int, donor_ticks: int) -> int:
@@ -209,7 +214,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 footsteps: dict[tuple[int, int], Footsteps] | None = None,
                 stealth: str | None = None,
                 effects: dict[int, tuple[str, int]] | None = None,
-                skip: frozenset[str] = frozenset()) -> list[tuple[str, bytes]]:  # fmt: skip
+                skip: frozenset[str] = frozenset(),
+                carry: str | None = None) -> list[tuple[str, bytes]]:  # fmt: skip
     """The action root for a move program (never returns). ``animations``: donor animation
     (table, slot) -> host secondary slot holding it, or ``("at", offset)`` for a body script
     without a table entry (selected by setting the cursor); ``child``: the projectile process
@@ -224,7 +230,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     ``stealth``: the label of the timer process (:func:`emit_stealth_timer`) for ``stealth``
     steps; ``effects``: MKT effect index -> (``effects.emit_descriptor`` label, dy in whole units)
     for ``effect`` steps, started at the fighter in front of him through ``fx_spawn_xy``
-    (``effects.emit_spawn``); ``skip``: step ops left out on purpose.
+    (``effects.emit_spawn``); ``skip``: step ops left out on purpose; ``carry``: the label of
+    the word a ``carry`` step shares with the victim's ``torpedo_carry`` reaction
+    (:func:`emit_carry_reaction`).
 
     Returns the strike records ``(label, 16 bytes)`` to place with :func:`emit_strike_data`.
 
@@ -387,6 +395,28 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 a.addiu("t0", "t0", 1)  # the per-tick floor check keeps a custom air action
                 a.sh("t0", host.CTRL_AIRBORNE, "s0")
                 a.label(grounded)
+            elif op == "carry":  # see emit_carry_reaction
+                if carry is None:
+                    raise ValueError(f"{label}: carry step without a carry word")
+                loop, out = fresh("carry"), fresh("carried")
+                a.la("t0", carry)
+                a.li("t1", 1)
+                a.sw("t1", 0, "t0")
+                a.li("s3", _scale(int(step["ticks"]), donor_ticks))
+                a.label(loop)
+                emit(step.get("every_tick", []), None)
+                a.la("t0", carry)
+                a.lw("t1", 0, "t0")
+                a.beqz("t1", out)  # the victim reached a wall
+                host.load_controller(a)
+                host.sleep_tick(a)
+                host.load_controller(a)
+                a.addiu("s3", "s3", -1)
+                a.bnez("s3", loop)
+                a.label(out)
+                a.la("t0", carry)
+                a.sw("zero", 0, "t0")  # release
+                host.load_controller(a)
             elif op == "jump":  # the stock jump/fall to the floor (returns on landing)
                 host.load_controller(a)
                 x, y, g = (lp._int(step.get(k, 0)) for k in ("x", "y", "gravity"))
@@ -398,6 +428,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 a.sw("t0", 0x10, "sp")  # rate: keep
                 a.li("t0", -1)
                 a.sw("t0", 0x14, "sp")  # root: keep the current animation
+                a.sw("zero", CTRL_JUMP_CALLBACK, "s0")  # no per-tick callback (see above)
                 a.jal(F_JUMP)
                 host.load_controller(a)
             elif op == "face":
@@ -619,6 +650,92 @@ def emit_hold_reaction(a: Assembler, label: str, donor_ticks: int = 1, pose: boo
     a.lw("ra", 0x28, "sp")
     a.jr_ra()
     a.addiu("sp", "sp", 0x30)
+
+
+# MKT torpedo carry (Rayden, 0x800452C4): on a hit the torpedo takes the victim along. Rayden keeps
+# flying for up to 0x20 donor ticks (both objects share one velocity) unless a wall stops them; then
+# the screen shakes, his sound 13 plays and the victim's process restarts at 0x8004558C: his
+# table-0 slot 0x1A pose, do_jump(0x33333, -0x6CCCD, 0x5199), landing. Host (specials proof v03):
+# the victim reaction below keeps the victim at its contact distance in front of the player each
+# tick, in the first frame of root 0x1E, while the attacker's ``carry`` step keeps the shared word
+# set; it clears the word itself when the victim's room to the wall ahead runs out, then
+# tail-calls the lifted knockback ``torpedo_carry_release`` (``lower_projectile``), which plays
+# the throw from its own start. The victim morphs first, as the stock launch does, because root
+# 0x1E is a shared root (Wiki Fighter-Recompiler-Components, "knockback morph").
+CARRY_ROOT = 0x1E
+CARRY_WALL_MARGIN = 40  # whole units (20 px) of room left ahead of the victim
+CARRY_TIMEOUT_TICKS = 24  # host ticks: past the attacker's 16 (0x20 donor ticks at 2 per tick)
+
+
+def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
+                        morphs: tuple[int, ...]) -> None:  # fmt: skip
+    """Victim reaction ``torpedo_carry`` (see the notes above); ``word``: the attacker's carry
+    word, ``release``: the lifted knockback's label, ``morphs``: the victim morph routines."""
+
+    frame = 0x30
+    a.label(label)
+    a.addiu("sp", "sp", -frame)
+    a.sw("ra", 0x28, "sp")
+    for k, reg in enumerate(("s0", "s1", "s2", "s3")):
+        a.sw(reg, 0x18 + 4 * k, "sp")
+    for target in morphs:
+        host.load_controller(a)
+        a.move("a0", "s1")
+        a.jal(target)
+    host.load_controller(a)
+    host.stop(a)
+    a.move("a0", "zero")
+    a.li("a1", CARRY_ROOT)
+    a.jal(lp.F_SELECT)
+    host.load_controller(a)
+    host.advance_animation(a)
+
+    def player_actor(reg: str) -> None:
+        a.lui(reg, hi(host.PLAYER_CTRL))
+        a.lw(reg, lo(host.PLAYER_CTRL), reg)
+        a.lw(reg, host.CTRL_ACTOR, reg)
+
+    host.load_controller(a)
+    player_actor("t0")
+    a.lw("t1", host.ACTOR_X, "t0")
+    a.lw("t2", host.ACTOR_X, "s1")
+    a.subu("s2", "t2", "t1")  # the contact distance, kept
+    a.li("s3", CARRY_TIMEOUT_TICKS)
+    a.label(label + "_loop")
+    a.la("t0", word)
+    a.lw("t1", 0, "t0")
+    a.beqz("t1", label + "_out")  # the attacker let go
+    host.load_controller(a)
+    a.move("a0", "s1")
+    a.addiu("a1", "sp", 0x10)
+    a.addiu("a2", "sp", 0x14)
+    a.jal(host.F_WALL_DISTANCE)
+    player_actor("t0")
+    a.lhu("t1", lp.ACTOR_FLAGS, "t0")
+    a.andi("t1", "t1", lp.FACING_BIT)
+    a.lw("t2", 0x14, "sp")  # carried right: the room on the right
+    a.beqz("t1", label + "_room")
+    a.lw("t2", 0x10, "sp")  # facing left: the room on the left
+    a.label(label + "_room")
+    a.slti("t3", "t2", CARRY_WALL_MARGIN)
+    a.bnez("t3", label + "_wall")
+    host.load_controller(a)
+    player_actor("t0")
+    a.lw("t1", host.ACTOR_X, "t0")
+    a.addu("t1", "t1", "s2")
+    a.sw("t1", host.ACTOR_X, "s1")
+    host.sleep_tick(a)
+    a.addiu("s3", "s3", -1)
+    a.bnez("s3", label + "_loop")
+    a.label(label + "_wall")
+    a.la("t0", word)
+    a.sw("zero", 0, "t0")
+    a.label(label + "_out")
+    for k, reg in enumerate(("s0", "s1", "s2", "s3")):
+        a.lw(reg, 0x18 + 4 * k, "sp")
+    a.lw("ra", 0x28, "sp")
+    a.addiu("sp", "sp", frame)
+    a.j_label(release)  # the throw, as the reaction itself (same sp and ra)
 
 
 # Stealth (Reptile's Invisibility): the Eye item's effect (Wiki Fighter-Recompiler-Components,

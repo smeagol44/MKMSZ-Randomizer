@@ -47,3 +47,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-inputs_proof_v01.py` | `MKMSZR_rayden-inputs_common_proof_v01.z64` | Rayden body v01 plus his getup sound (`body.script_sounds`), combos and throw |
 | `MKMSZR_build_rayden-specials_proof_v01.py` | `MKMSZR_rayden-specials_common_proof_v01.z64` | Rayden's generic build (Lightning in Ice Blast's slot) with Reptile v22's proof harness |
 | `MKMSZR_build_rayden-specials_proof_v02.py` | `MKMSZR_rayden-specials_common_proof_v02.z64` | v01 plus the Torpedo (stick command B,B,F, airborne start, hover flight, stock-jump drop) |
+| `MKMSZR_build_rayden-specials_proof_v03.py` | `MKMSZR_rayden-specials_common_proof_v03.z64` | v02 fixes (jump callback cleared, the flat flying frame by MKT's two phases) and MKT's torpedo carry |

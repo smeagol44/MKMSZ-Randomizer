@@ -187,6 +187,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     for key, (t, i, _) in d.body.secondary_scripts.items():
         animations[(t, i)] = key if key < body_build.VIRTUAL_SCRIPT else ("at", body.script_offsets[key])
     animations[(0, d.body.run_slot)] = ("at", body_build.RUN_TARGET)
+    script_words = {(t, i): body.script_words[key] for key, (t, i, _) in d.body.secondary_scripts.items()
+                    if key in body.script_words}  # fmt: skip
 
     # ---- projectile groups and art (fighter-file tail) -------------------------------------
     reactions = _Pool(REACTION_POOL, "spare reaction-table entries")
@@ -293,6 +295,12 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             foot = {(0, slot): lower_special.Footsteps(*lower_special.donor_footsteps(donor, slot), footsteps[move])}
         fx_map = {fx: (f"fx_{fx}", _int(spec.get("dy_px", 0)) * lp.UNITS_PER_PX)
                   for fx, (_, _, spec) in effect_art.items()}  # fmt: skip
+        for s in _all_steps(steps):  # a pose offset past its script shows another script's frame
+            if s["op"] == "pose" and "offset" in s["anim"]:
+                key = (_int(s["anim"]["table"]), _int(s["anim"]["slot"]))
+                if key in script_words and _int(s["anim"]["offset"]) >= script_words[key]:
+                    raise BuildError(f"{move}: pose offset {s['anim']['offset']} is past the "
+                                     f"{script_words[key]} words of script {key}")  # fmt: skip
         records = lower_special.emit_action(
             a, f"{move}_root", steps, cost=costs[move], animations=animations,
             child=f"{move}_ball" if g else None, helper=g.helper if g else None,
@@ -301,6 +309,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             speed=lambda v: physics.fold_donor_speeds(v, v, lambda x: x, lp.UNITS_PER_PX)[0],
             footsteps=foot, stealth=f"{move}_stealth" if "stealth" in tune else None,
             effects=fx_map or None,
+            carry=f"{move}_carry_word" if "torpedo_carry" in reaction_map else None,
         )  # fmt: skip
         if g is not None:
             ptune = tune.get("projectile", {})
@@ -322,6 +331,16 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         if "elbow_hold" in reaction_map and "elbow_hold" not in reaction_labels:
             reaction_labels["elbow_hold"] = f"{move}_hold"
             lower_special.emit_hold_reaction(a, f"{move}_hold", _int(tune.get("donor_ticks", 1)))
+        if "torpedo_carry" in reaction_map and "torpedo_carry" not in reaction_labels:
+            reaction_labels["torpedo_carry"] = f"{move}_carry"
+            release = f"{move}_carry_release"
+            lower_special.emit_carry_reaction(a, f"{move}_carry", f"{move}_carry_word", release,
+                                              lp.REACTION_LOWERING["torpedo_carry_release"]["morph"])  # fmt: skip
+            a.label(release)
+            for w in lp.lifted_reaction(clean, "torpedo_carry_release"):
+                a.raw(w)
+            a.label(f"{move}_carry_word")
+            a.raw(0)
         unknown = set(reaction_map) - set(reaction_labels)
         if unknown:
             raise BuildError(f"{move}: no host routine for reactions {sorted(unknown)}")

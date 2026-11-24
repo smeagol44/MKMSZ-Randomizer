@@ -56,7 +56,8 @@ Steps as for Reptile: body, inputs, specials, icons and description, product opt
 
 | Test ROM | SHA-256 | Contents | State |
 |---|---|---|---|
-| `MKMSZR_rayden-specials_common_proof_v02.z64` | `701db4568dee05b966235636347f7314f3a0b22720cd7583d57ffe0c21871141` | v01 plus the Torpedo (B,B,F, no button, also airborne) in Ice Clone's slot. | **Pending** owner test |
+| `MKMSZR_rayden-specials_common_proof_v02.z64` | `701db4568dee05b966235636347f7314f3a0b22720cd7583d57ffe0c21871141` | v01 plus the Torpedo (B,B,F, no button, also airborne) in Ice Clone's slot. | Owner (2026-11-24, save state "hang_torpedo_hit_close"): the input works. **Rejected / failed**: the flat pose showed for one frame, then a standing frame; started far away, a hit only "punches" (it should always carry); started up close, a hit hung the game. Diagnosis under v03. |
+| `MKMSZR_rayden-specials_common_proof_v03.z64` | `247c811f2b21701756ed2716b3266855697292b0d7def7cd0528912eb92a02e5` | v02 with the three fixes below and MKT's carry. Payload `0x1080` bytes. | **Pending** owner test |
 
 - **Stick commands** (Static-confirmed host path; `commands`, program buttons `"stick"`):
   - The host raises input events 6 Up, 7 Down, 8 Left and 9 Right on stick presses, the same numbering as MKT's grid (semantic bits `0x1000`/`0x4000`/`0x8000`/`0x2000`; per-bit handler table `0x8009AAD0`).
@@ -67,11 +68,26 @@ Steps as for Reptile: body, inputs, specials, icons and description, product opt
 - **The Torpedo** (MKT record `0x800AB998` → propell `0x1E` → `0x800450D4`):
   - begin (action `0x21E`, facing the opponent);
   - `hover` (new component: no gravity, no y motion, and the airborne counter `+0x6B2` kept so the per-tick floor check does not install the stock fall);
-  - his sound 9, then the take-off (table-1 slot 0, phase 1, rate 3) and his flying pose (`0x2114`);
+  - his sound 9, then the take-off (table-1 slot 0, phase 1, rate 3) and his flying pose (`0x2114`; wrong, see v03);
   - velocity `0x80000`, then a 26-tick strike window (`0x800B0194`: box 80,45,90,24; damage 30, chip 7) hovering every tick; on a hit he stops and plays sound 13;
   - the end: stop, face, his recovery pose (slot `0x16`), and MKT's slow drop to the floor through the stock jump `0x800321D0` (y `0xD999`, gravity `0x6CCC`: MKT y grows downward, so it is a drop, not a hop). The jump counts the airborne ticks and returns on landing.
   - **Stand-ins** (owner to judge): the host roundhouse launch for MKT's victim reaction `0x7F` (a carry to the wall, then a screen shake); sound 9 for MKT's random choice of 9–11.
   - **Combos:** his `HP, HP` option that ends in the torpedo (left out in inputs v01) can now come back, as a combo into a special; not done yet.
+
+**Specials proof v03** (`MKMSZR_build_rayden-specials_proof_v03.py`): the owner's v02 findings.
+
+- **The hang** (Static-confirmed from the save state). The game thread (`0x800B46F8`) was stopped on a TLB miss at `0x801125A0`, called from `0x80032448` inside the stock jump `0x800321D0`. The jump copies controller `+0x70C` to `+0x68C` at entry and calls it every air tick when it is non-zero; every stock caller clears `+0x70C` first (e.g. `0x8004F40C`, `0x80057CEC`), because the field has other uses. The `jump` step did not, so after the hit a stale value was called as code. The `jump` step now clears it.
+- **The pose** (Static-confirmed). MKT's table-1 slot 3 starts at word 6 of slot 0. The phase reader stops at another script's start, so the new script for slot 0 held two phases, and the `pose` at offset 6 read the next script's first frame (the recovery's standing frame). The reading was also wrong: word 6 (`0x2114`) is a standing frame, and MKT never shows it. MKT runs `mframew` twice (`0x80045198`, `0x800451AC`): phase 1, the take-off, then phase 2, the lean ending on the flat frame `0x2100` (136×32 px), which it holds through the flight. v03 plays phase 1 and then `finish` (rate 3), with no pose. The build now refuses a pose offset past the end of its script.
+- **The carry** (MKT `0x800452C4`, Static-confirmed reading; host lowering is a Hypothesis until tested). On a hit MKT does not stop:
+  - Rayden plays his sound 8 and takes the victim over (its object shares his velocity, its pose is from its table-0 slot `0x1E`).
+  - He flies on for up to `0x20` donor ticks, or until either object reaches a wall.
+  - Then the screen shakes (`0x8002A750(6, 6)`) and he plays sound 13.
+  - The victim's process restarts at `0x8004558C`: its slot-`0x1A` pose, then `do_jump(0x33333, -0x6CCCD, 0x5199)`, bouncing back toward him, and its landing.
+- **The carry, host lowering** (new reaction `torpedo_carry` and step `carry`, [Components](Fighter-Recompiler-Components)):
+  - The victim reaction (spare reaction-table entry `0x2B`) runs the two victim morphs and stops. It shows the first frame of root `0x1E`, then keeps the victim at its contact distance in front of the player every tick, while a shared payload word is set.
+  - It clears the word itself when its room to the wall ahead (`0x80034C8C`) drops under 20 px, or ends after 24 ticks. Then it runs the lifted knockback with MKT's release arc (`torpedo_carry_release`).
+  - The attacker's `carry` step sets the word and plays sound 8. Every tick it hovers and passes through fighters, at the torpedo's speed, until the word clears or 16 ticks pass (`0x20` donor ticks at 2 per tick). It then releases the word, stops and plays sound 13.
+  - **Gaps:** no screen shake (no host equivalent located); the carried and thrown poses are the host's root `0x1E`, not MKT's per-fighter slot-`0x1E` frame and slot `0x1A`.
 
 - **Cross-script jump** (Static-confirmed): his sweep getup (slot `0x22`) shows one frame, then jumps into his getup (slot `0x21`) at its second frame. `body_build.linearise` now copies a jump into a script it has not reached inline.
 - **Taller images** (Static-confirmed): frame `0x15DC` (codec 22) decodes 125 rows for a 124-row descriptor. MKT draws the descriptor's rows from the top; frames with extra whole rows are cropped.

@@ -678,6 +678,7 @@ class Body:
     log: list
     report: dict = field(default_factory=dict)
     script_offsets: dict = field(default_factory=dict)  # body.secondary_scripts key -> file offset
+    script_words: dict = field(default_factory=dict)  # body.secondary_scripts key -> word count
 
     def f32(self, off):
         return be32(self.clean_file, off)
@@ -1444,6 +1445,7 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
             owned.add(pos)
         log.append(f"SECONDARY slot 0x{slot:02X}: host script kept, donor frames by phase")
     script_offsets: dict[int, int] = {}
+    script_words: dict[int, int] = {}
     for s, phases in new_scripts.items():
         at = item_offsets[("secondary", s)]
         words = [w for p in phases for w in [*(shape_map[r] for r in p), 0]]
@@ -1453,6 +1455,7 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         if s < VIRTUAL_SCRIPT:
             put32(file87, 0x104 + 4 * s, at)
         script_offsets[s] = at
+        script_words[s] = len(words)
         log.append(f"NEW SCRIPT secondary 0x{s:02X} at 0x{at:X}: {len(phases)} donor phases")
     body_script_offsets = script_offsets
     tails, tail_log = stock_tails(clean_file, slot_cfg, translated, stock_shape_set, set(shape_map.values()))
@@ -1502,6 +1505,7 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
     body.fallback, body.fallback_positions = fallback, fallback_positions
 
     body.script_offsets = dict(body_script_offsets)
+    body.script_words = dict(script_words)
     body.report = {
         "frames": len(all_keys), "inherited": len(old_shapes), "run": len(run_rels),
         "table_bytes": len(enc.table), "stream_bytes": enc.stream_bytes,

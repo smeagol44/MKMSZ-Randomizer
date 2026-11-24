@@ -43,6 +43,8 @@ REACTIONS = {
     "none": "no victim reaction",
     "elbow_hold": "MKT 0x74: grounded victim held about 20 ticks; airborne victims rejected",
     "launch": "MKT 0x24: generic damaging launch, flight and landing",
+    "torpedo_carry": "MKT torpedo 0x800452C4: victim carried in front of the attacker (his `carry` step) "
+    "until a wall or the end, then thrown back (x 0x33333, y -0x6CCCD, gravity 0x5199)",
     "knockback_arc": "MKT 0x71: victim launched on an arc toward the attacker (x 0x2CCCC, y -0x6CCCC, gravity 0x5199)",
     "acid_stagger": "MKT 0x72: victim staggers back (+0x420 = 0x26666); details Pending",
     "rocket_stumble": "MKT r_rocket -> zap_stumble: stumble back",
@@ -78,6 +80,7 @@ COMPONENTS: dict[str, dict[str, str]] = {
     "velocity": {"x": "vel", "y?": "vel"},
     "stop": {},
     "hover": {},
+    "carry": {"ticks": "ticks", "every_tick?": "steps"},
     "jump": {
         "x": "vel",
         "y": "vel",

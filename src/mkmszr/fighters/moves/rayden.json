@@ -166,14 +166,10 @@
           }
         },
         {
-          "op": "pose",
-          "anim": {
-            "table": 1,
-            "slot": 0,
-            "offset": 6
-          },
+          "op": "finish",
+          "rate": 3,
           "src": {
-            "anim": "MKT 0x80045190"
+            "rate": "MKT 0x800451A4"
           }
         },
         {
@@ -194,7 +190,7 @@
             ],
             "damage": 30,
             "block_damage": 7,
-            "reaction": "launch",
+            "reaction": "torpedo_carry",
             "blocked_reaction": "blocked"
           },
           "ticks": 26,
@@ -204,6 +200,34 @@
             }
           ],
           "on_hit": [
+            {
+              "op": "sound",
+              "sound": {
+                "fighter": 8
+              },
+              "src": {
+                "sound": "MKT 0x80045360"
+              }
+            },
+            {
+              "op": "carry",
+              "ticks": 32,
+              "every_tick": [
+                {
+                  "op": "hover"
+                },
+                {
+                  "op": "pass_through",
+                  "ticks": 1,
+                  "src": {
+                    "ticks": "host"
+                  }
+                }
+              ],
+              "src": {
+                "ticks": "MKT 0x80045448"
+              }
+            },
             {
               "op": "stop"
             },
@@ -224,7 +248,8 @@
           ],
           "src": {
             "strike": "MKT 0x800B0194",
-            "ticks": "MKT 0x800451B8"
+            "ticks": "MKT 0x800451B8",
+            "reaction": "MKT 0x800452C4"
           }
         },
         {
@@ -265,10 +290,6 @@
   ],
   "gaps": [
     {
-      "move": "torpedo",
-      "what": "the command is stick-only (grid events 8/9, the forward press of B,B,F); its host record carries direction masks"
-    },
-    {
       "move": "lightning",
       "what": "MKT victim reaction 0x80 (the lightning hit) is not read; the host roundhouse launch stands in"
     },
@@ -282,15 +303,15 @@
     },
     {
       "move": "torpedo",
-      "what": "MKT's hit carries the victim along until a wall or the timer (0x800452C4, reaction 0x7F) and then shakes the screen; the host roundhouse launch stands in"
-    },
-    {
-      "move": "torpedo",
       "what": "MKT plays one of his sounds 9-11 at random at the start; the host plays 9"
     },
     {
       "move": "torpedo",
-      "what": "the reaction is a host stand-in: MKT victim reaction 0x7F (a carry) is not lowered"
+      "what": "MKT shakes the screen when the carry ends (0x8002A750(6, 6)); no host screen shake is located"
+    },
+    {
+      "move": "torpedo",
+      "what": "the carried victim shows the first frame of its root 0x1E (MKT: his table-0 slot 0x1E frame chosen per fighter, 0x800A8170) and is thrown from the lifted host knockback (MKT: his slot 0x1A pose)"
     }
   ]
 }
