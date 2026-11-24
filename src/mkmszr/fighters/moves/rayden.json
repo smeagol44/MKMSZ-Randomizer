@@ -1,39 +1,296 @@
 {
   "format": 1,
   "fighter": "rayden",
-  "donor": {"fighter_id": 24, "name": "RAYDEN"},
+  "donor": {
+    "fighter_id": 24,
+    "name": "RAYDEN"
+  },
   "moves": [
     {
       "name": "lightning",
-      "command": {"buttons": "0x80", "tokens": [9, 7], "window": 16, "src": "MKT 0x800ABA54",
-                  "note": "grid event 1 (LP) only; the record's masks are 0xFC"},
+      "command": {
+        "buttons": "0x80",
+        "tokens": [
+          9,
+          7
+        ],
+        "window": 16,
+        "src": "MKT 0x800ABA54"
+      },
       "steps": [
-        {"op": "begin", "action_mkt": "0x2B", "face": true, "stop": true,
-         "src": {"action_mkt": "MKT 0x80077E4C", "face": "MKT 0x80050440", "stop": "MKT 0x80050428"}},
-        {"op": "sound", "sound": {"fighter": 2}, "src": {"sound": "MKT 0x80077EB0"}},
-        {"op": "animate", "anim": {"table": 0, "slot": 36}, "rate": 3, "until": "phase_end",
-         "src": {"anim": "MKT 0x80077EBC", "rate": "MKT 0x80077EC8", "until": "MKT 0x8000DC24"}},
-        {"op": "projectile",
-         "art": {"table": 0, "slot": 67, "part": 3},
-         "offset": [0, 0],
-         "speed": "0x80000",
-         "rate": 3,
-         "strike": {"box": [133, 36, 60, 16], "damage": 22, "block_damage": 4,
-                    "reaction": "launch", "blocked_reaction": "blocked"},
-         "palette": "0x800B9B04",
-         "impact": {"anim": {"table": 0, "slot": 67, "part": 4}, "rate": 4,
-                    "at": "opponent", "adjust": [-115, 0], "end": "animation"},
-         "src": {"art": "MKT 0x80077F6C", "offset": "MKT 0x8007F9E8", "speed": "MKT 0x80077FE8",
-                 "rate": "MKT 0x80077FF0", "strike": "MKT 0x800B0164", "palette": "MKT 0x800B9B04",
-                 "impact": "MKT 0x80078124", "reaction": "host stand-in (owner to judge): MKT victim reaction 0x80 not read yet"}},
-        {"op": "sleep", "ticks": 36, "src": {"ticks": "MKT 0x80077F08"}},
-        {"op": "end"}
+        {
+          "op": "begin",
+          "action_mkt": "0x2B",
+          "face": true,
+          "stop": true,
+          "src": {
+            "action_mkt": "MKT 0x80077E4C",
+            "face": "MKT 0x80050440",
+            "stop": "MKT 0x80050428"
+          }
+        },
+        {
+          "op": "sound",
+          "sound": {
+            "fighter": 2
+          },
+          "src": {
+            "sound": "MKT 0x80077EB0"
+          }
+        },
+        {
+          "op": "animate",
+          "anim": {
+            "table": 0,
+            "slot": 36
+          },
+          "rate": 3,
+          "until": "phase_end",
+          "src": {
+            "anim": "MKT 0x80077EBC",
+            "rate": "MKT 0x80077EC8",
+            "until": "MKT 0x8000DC24"
+          }
+        },
+        {
+          "op": "projectile",
+          "art": {
+            "table": 0,
+            "slot": 67,
+            "part": 3
+          },
+          "offset": [
+            0,
+            0
+          ],
+          "speed": "0x80000",
+          "rate": 3,
+          "strike": {
+            "box": [
+              133,
+              36,
+              60,
+              16
+            ],
+            "damage": 22,
+            "block_damage": 4,
+            "reaction": "launch",
+            "blocked_reaction": "blocked"
+          },
+          "palette": "0x800B9B04",
+          "impact": {
+            "anim": {
+              "table": 0,
+              "slot": 67,
+              "part": 4
+            },
+            "rate": 4,
+            "at": "opponent",
+            "adjust": [
+              -115,
+              0
+            ],
+            "end": "animation"
+          },
+          "src": {
+            "art": "MKT 0x80077F6C",
+            "offset": "MKT 0x8007F9E8",
+            "speed": "MKT 0x80077FE8",
+            "rate": "MKT 0x80077FF0",
+            "strike": "MKT 0x800B0164",
+            "palette": "MKT 0x800B9B04",
+            "impact": "MKT 0x80078124",
+            "reaction": "host stand-in (owner to judge): MKT victim reaction 0x80 not read yet"
+          }
+        },
+        {
+          "op": "sleep",
+          "ticks": 36,
+          "src": {
+            "ticks": "MKT 0x80077F08"
+          }
+        },
+        {
+          "op": "end"
+        }
+      ]
+    },
+    {
+      "name": "torpedo",
+      "command": {
+        "buttons": "stick",
+        "tokens": [
+          9,
+          8,
+          8
+        ],
+        "window": 32,
+        "src": "MKT 0x800AB998"
+      },
+      "steps": [
+        {
+          "op": "begin",
+          "action_mkt": "0x21E",
+          "face": true,
+          "stop": true,
+          "src": {
+            "action_mkt": "MKT 0x8004510C",
+            "face": "MKT 0x800504A0",
+            "stop": "MKT 0x80045184"
+          }
+        },
+        {
+          "op": "hover"
+        },
+        {
+          "op": "sound",
+          "sound": {
+            "fighter": 9
+          },
+          "src": {
+            "sound": "MKT 0x80045130"
+          }
+        },
+        {
+          "op": "animate",
+          "anim": {
+            "table": 1,
+            "slot": 0
+          },
+          "rate": 3,
+          "until": "phase_end",
+          "src": {
+            "anim": "MKT 0x80045190",
+            "rate": "MKT 0x80045198",
+            "until": "MKT 0x800451AC"
+          }
+        },
+        {
+          "op": "pose",
+          "anim": {
+            "table": 1,
+            "slot": 0,
+            "offset": 6
+          },
+          "src": {
+            "anim": "MKT 0x80045190"
+          }
+        },
+        {
+          "op": "velocity",
+          "x": "0x80000",
+          "src": {
+            "x": "MKT 0x80045140"
+          }
+        },
+        {
+          "op": "strike",
+          "strike": {
+            "box": [
+              80,
+              45,
+              90,
+              24
+            ],
+            "damage": 30,
+            "block_damage": 7,
+            "reaction": "launch",
+            "blocked_reaction": "blocked"
+          },
+          "ticks": 26,
+          "every_tick": [
+            {
+              "op": "hover"
+            }
+          ],
+          "on_hit": [
+            {
+              "op": "stop"
+            },
+            {
+              "op": "sound",
+              "sound": {
+                "fighter": 13
+              },
+              "src": {
+                "sound": "MKT 0x80045510"
+              }
+            }
+          ],
+          "on_block": [
+            {
+              "op": "stop"
+            }
+          ],
+          "src": {
+            "strike": "MKT 0x800B0194",
+            "ticks": "MKT 0x800451B8"
+          }
+        },
+        {
+          "op": "stop"
+        },
+        {
+          "op": "face"
+        },
+        {
+          "op": "pose",
+          "anim": {
+            "table": 0,
+            "slot": 22,
+            "offset": 1
+          },
+          "src": {
+            "anim": "MKT 0x80045250"
+          }
+        },
+        {
+          "op": "jump",
+          "x": "0",
+          "y": "0xD999",
+          "gravity": "0x6CCC",
+          "until": "landing",
+          "src": {
+            "x": "MKT 0x8004528C",
+            "y": "MKT 0x80045290",
+            "gravity": "MKT 0x80045298",
+            "until": "MKT 0x8004529C"
+          }
+        },
+        {
+          "op": "end"
+        }
       ]
     }
   ],
   "gaps": [
-    {"move": "lightning", "what": "MKT victim reaction 0x80 (the lightning hit) is not read; the host roundhouse launch stands in"},
-    {"move": "lightning", "what": "the forming sparks (slot 0x43 parts 1-2) and the bolt's growth routine 0x80078230 are not lowered yet"},
-    {"move": "lightning", "what": "MKT plays the hit or blocked sound by 0x800058B0(4 or 3, 0x18): layered events 0x204 / 0x203 (2-3 tracks of 0x2C bytes, one patch each), which the sound component cannot host yet; the impact is silent"}
+    {
+      "move": "torpedo",
+      "what": "the command is stick-only (grid events 8/9, the forward press of B,B,F); its host record carries direction masks"
+    },
+    {
+      "move": "lightning",
+      "what": "MKT victim reaction 0x80 (the lightning hit) is not read; the host roundhouse launch stands in"
+    },
+    {
+      "move": "lightning",
+      "what": "the forming sparks (slot 0x43 parts 1-2) and the bolt's growth routine 0x80078230 are not lowered yet"
+    },
+    {
+      "move": "lightning",
+      "what": "MKT plays the hit or blocked sound by 0x800058B0(4 or 3, 0x18): layered events 0x204 / 0x203 (2-3 tracks of 0x2C bytes, one patch each), which the sound component cannot host yet; the impact is silent"
+    },
+    {
+      "move": "torpedo",
+      "what": "MKT's hit carries the victim along until a wall or the timer (0x800452C4, reaction 0x7F) and then shakes the screen; the host roundhouse launch stands in"
+    },
+    {
+      "move": "torpedo",
+      "what": "MKT plays one of his sounds 9-11 at random at the start; the host plays 9"
+    },
+    {
+      "move": "torpedo",
+      "what": "the reaction is a host stand-in: MKT victim reaction 0x7F (a carry) is not lowered"
+    }
   ]
 }

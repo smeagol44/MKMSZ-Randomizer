@@ -49,8 +49,9 @@ A move program is data (`src/mkmszr/fighters/moves/<fighter>.json`, format 1):
 | `face` / `flip` | Turn to the opponent / mirror | — | at once | *existing*: `face_opponent` `0x80031EF0`; flip *new* |
 | `velocity` | Set motion along the facing | `x`, `y?` | at once | *existing*: actor `+0x14` (`0x8002B1EC`) after calibration |
 | `stop` | Zero motion | — | at once | *existing*: `0x8002B1C0` |
-| `jump` | Ballistic motion | `x`, `y`, `gravity`, `until`: `landing` / `below_screen` / `surface` | per `until` | *existing* (teleport): adapter-integrated arc |
+| `jump` | Ballistic motion | `x`, `y`, `gravity`, `until`: `landing` / `below_screen` / `surface` | per `until` | *existing* (teleport): adapter-integrated arc. `until: landing` lowers to the stock jump `0x800321D0` (converted velocities and gravity, rate and animation kept); it counts the airborne ticks and returns on landing (Rayden's torpedo drop, specials proof v02, Pending) |
 | `shake` | Jitter in place | `dx`, `dy`, `count`, `ticks` | after `count` | *existing*: `0x80031208` offsets |
+| `hover` | Level flight: no gravity, no vertical motion | — | until the next motion step | *new* (Rayden torpedo, specials proof v02): actor gravity `+0x10` and y velocity `+0x18` set to 0; while airborne, controller `+0x6B2` counts up so the per-tick floor check `0x80024BA8` does not install the stock fall. Pending |
 | `pass_through` | No fighter repulsion | `ticks` | after the time | **gap**: host equivalent of MKT `sans_repell_3` not located. In specials proof v15 (skipped) the dash stopped at the victim. v16: clear actor `+0x8C` bit `0x1000` (as stock Freeze on Contact, `0x80034740` / `0x80034658`) and re-apply the speed each tick; `end` sets the bit again. Hypothesis |
 | `relocate` | Reappear by the opponent | `to`: `behind_opponent`, `dx`, `dy?` | at once | *existing* (teleport): copy target position + `0x80031208` + face |
 | `sound` | Play a sound | `sound` | at once | *existing*: isolated host chain |

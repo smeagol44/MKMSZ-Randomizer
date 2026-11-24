@@ -52,6 +52,27 @@ Steps as for Reptile: body, inputs, specials, icons and description, product opt
   - **Stand-ins and gaps** (owner to judge): the stock roundhouse launch `0x0C` (new host-kind projectile reaction `launch`) for MKT's victim reaction `0x80`, which is not read yet; no forming sparks; a silent impact, because his hit and blocked sounds (MKT `0x800058B0(4 or 3, 0x18)` = his fighter sounds 4/3) are layered events (2–3 tracks of `0x2C` bytes, one patch each) that the sound component cannot host yet; a first spawn offset (Reptile's).
   - **Command placement:** the MKT record has masks `0xFC` but sits only in the LP event; `commands` now places a command by its move program's `buttons` and writes them into the host record (Reptile's are equal).
 
+**Specials proof v02** (`MKMSZR_build_rayden-specials_proof_v02.py`; owner, 2026-11-24: "start with the torpedo, also remember it can be done while airborne"):
+
+| Test ROM | SHA-256 | Contents | State |
+|---|---|---|---|
+| `MKMSZR_rayden-specials_common_proof_v02.z64` | `701db4568dee05b966235636347f7314f3a0b22720cd7583d57ffe0c21871141` | v01 plus the Torpedo (B,B,F, no button, also airborne) in Ice Clone's slot. | **Pending** owner test |
+
+- **Stick commands** (Static-confirmed host path; `commands`, program buttons `"stick"`):
+  - The host raises input events 6 Up, 7 Down, 8 Left and 9 Right on stick presses, the same numbering as MKT's grid (semantic bits `0x1000`/`0x4000`/`0x8000`/`0x2000`; per-bit handler table `0x8009AAD0`).
+  - Each event has a record of 30 per-actor-type callbacks (press table `0x800A09C4`, release table `0x800A0CC4`). The dispatcher `0x800157E0` calls the current actor's entry (player type 4: `+0x10`) unless frozen (`0x800EEC1C`), special-locked (`0x800BF308`) or dead (action `0x502`). Events 7–11 have no callbacks; event 6 has an empty `jr ra`.
+  - The player's Left/Right callbacks (`0x800A07F4`, `0x800A086C`) now run a stick table through the parser `0x8004A0E0`, as the stock F,F / B,B tables `0x800B0FC8` / `0x800B0FF8` would (their checkers `0x8003C7F8` / `0x8003C820` are never called).
+  - Records carry direction masks (`0xA000`): the mask check `0x8003CCF8` refuses a record while a button outside its mask is held, and a zero mask would end the table. Tokens are as for button commands (newest first, facing-right and facing-left lists).
+- **Airborne start:** transfer mode 1 (mode 0 refuses an airborne start) and the gate without its floor and fall-speed checks (`specials.torpedo.airborne`).
+- **The Torpedo** (MKT record `0x800AB998` → propell `0x1E` → `0x800450D4`):
+  - begin (action `0x21E`, facing the opponent);
+  - `hover` (new component: no gravity, no y motion, and the airborne counter `+0x6B2` kept so the per-tick floor check does not install the stock fall);
+  - his sound 9, then the take-off (table-1 slot 0, phase 1, rate 3) and his flying pose (`0x2114`);
+  - velocity `0x80000`, then a 26-tick strike window (`0x800B0194`: box 80,45,90,24; damage 30, chip 7) hovering every tick; on a hit he stops and plays sound 13;
+  - the end: stop, face, his recovery pose (slot `0x16`), and MKT's slow drop to the floor through the stock jump `0x800321D0` (y `0xD999`, gravity `0x6CCC`: MKT y grows downward, so it is a drop, not a hop). The jump counts the airborne ticks and returns on landing.
+  - **Stand-ins** (owner to judge): the host roundhouse launch for MKT's victim reaction `0x7F` (a carry to the wall, then a screen shake); sound 9 for MKT's random choice of 9–11.
+  - **Combos:** his `HP, HP` option that ends in the torpedo (left out in inputs v01) can now come back, as a combo into a special; not done yet.
+
 - **Cross-script jump** (Static-confirmed): his sweep getup (slot `0x22`) shows one frame, then jumps into his getup (slot `0x21`) at its second frame. `body_build.linearise` now copies a jump into a script it has not reached inline.
 - **Taller images** (Static-confirmed): frame `0x15DC` (codec 22) decodes 125 rows for a 124-row descriptor. MKT draws the descriptor's rows from the top; frames with extra whole rows are cropped.
 - **Rising ramps** (Static-confirmed): his palette (`0x800A3660[24]` = `0x800B9AAC`) runs from dark to light (black up to cyan, greys up to white); `palette_ramps` took only light-to-dark runs, so every entry became its own ramp and the reduction fell back to median cut (speckled whites). Ramps are now found in either direction. Across the roster only fighters 3, 11 and 24 split differently; Reptile and Sektor are unchanged (test).

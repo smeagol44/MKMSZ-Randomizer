@@ -32,7 +32,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from . import host
+from . import host, physics
 from . import lower_projectile as lp
 from .host import hi, lo
 from .mips import Assembler
@@ -90,7 +90,7 @@ SOLID_BIT = 0x1000  # actor +0x8C: Freeze on Contact clears it while it runs (0x
 
 def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
                         default: int | None = None, alive: tuple[str, ...] = (),
-                        refuse_if: tuple[int, int] | None = None) -> None:  # fmt: skip
+                        refuse_if: tuple[int, int] | None = None, airborne: bool = False) -> None:  # fmt: skip
     """``label() -> 0x8000 / 0x4000`` (see the module notes). With ``default``, the gate word
     is used only when it is ``slti t0, v0, N`` (Ice Blast's rewritten tail), else ``default``.
     With ``alive`` (labels of words that projectiles set while they live,
@@ -98,17 +98,19 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     (Reptile: one fast and one slow forceball may coexist, owner 2026-11-11). Set words with no
     live projectile process are stale (a process ended by something else) and are cleared.
     ``refuse_if`` (controller offset, mask): refuse while that halfword of the player's
-    controller has a bit of the mask set (Invisibility: already stealthed)."""
+    controller has a bit of the mask set (Invisibility: already stealthed). ``airborne``: also
+    accept in the air (no fall-speed or floor check; Rayden's torpedo, owner 2026-11-24)."""
 
     a.label(label)
     a.addiu("sp", "sp", -0x20)
     a.sw("ra", 0x1C, "sp")
     a.lui("t0", hi(PLAYER_ACTOR))
     a.lw("t0", lo(PLAYER_ACTOR), "t0")
-    a.lw("t1", 0x18, "t0")
-    a.li("t2", FALL_SPEED_LIMIT)
-    a.slt("t2", "t2", "t1")
-    a.bnez("t2", label + "_no")
+    if not airborne:
+        a.lw("t1", 0x18, "t0")
+        a.li("t2", FALL_SPEED_LIMIT)
+        a.slt("t2", "t2", "t1")
+        a.bnez("t2", label + "_no")
     a.lui("t3", hi(PLAYER_CTRL))
     a.lw("t3", lo(PLAYER_CTRL), "t3")
     a.lh("t4", 0x6B0, "t3")
@@ -123,10 +125,11 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     a.lhu("t4", CTRL_ICE, "t3")
     a.slti("t4", "t4", cost)  # meter is a small positive halfword
     a.bnez("t4", label + "_no")
-    a.lw("t4", 0x30, "t5")
-    a.lw("t6", 0x6B4, "t3")
-    a.slt("t4", "t4", "t6")
-    a.bnez("t4", label + "_no")  # airborne
+    if not airborne:
+        a.lw("t4", 0x30, "t5")
+        a.lw("t6", 0x6B4, "t3")
+        a.slt("t4", "t4", "t6")
+        a.bnez("t4", label + "_no")  # airborne
     a.lui("t6", hi(host.CURRENT_CTRL))
     a.lw("t6", lo(host.CURRENT_CTRL), "t6")
     a.lhu("t7", 0x6AA, "t6")
@@ -184,6 +187,13 @@ def emit_charge(a: Assembler, amount: int) -> None:
     a.lhu("t1", CTRL_ICE, "t0")
     a.addiu("t1", "t1", -amount)
     a.sh("t1", CTRL_ICE, "t0")
+
+
+# The stock jump (Wiki Player-Actions-and-Special-Moves, "Integrator and gravity", "Airborne
+# counter"): 0x800321D0(actor, x vel, y vel, gravity, [sp+0x10] rate, [sp+0x14] root). 13 keeps a
+# velocity or the rate, a negative root keeps the animation. It counts the airborne ticks in
+# controller +0x6B2, sleeps until the actor lands and clears the counter.
+F_JUMP, JUMP_KEEP = 0x800321D0, 13
 
 
 def _scale(n: int, donor_ticks: int) -> int:
@@ -363,6 +373,32 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             elif op == "stop":
                 host.load_controller(a)
                 host.stop(a)
+                host.load_controller(a)
+            elif op == "hover":  # level flight: no gravity, no y motion, airborne counter kept
+                host.load_controller(a)
+                a.sw("zero", host.ACTOR_GRAVITY, "s1")
+                a.sw("zero", host.ACTOR_YVEL, "s1")
+                grounded = fresh("grounded")
+                a.lw("t0", host.ACTOR_Y, "s1")
+                a.lw("t1", host.CTRL_GROUND, "s0")
+                a.slt("t0", "t0", "t1")
+                a.beqz("t0", grounded)  # y >= floor: on the ground
+                a.lhu("t0", host.CTRL_AIRBORNE, "s0")
+                a.addiu("t0", "t0", 1)  # the per-tick floor check keeps a custom air action
+                a.sh("t0", host.CTRL_AIRBORNE, "s0")
+                a.label(grounded)
+            elif op == "jump":  # the stock jump/fall to the floor (returns on landing)
+                host.load_controller(a)
+                x, y, g = (lp._int(step.get(k, 0)) for k in ("x", "y", "gravity"))
+                a.move("a0", "s1")
+                a.li("a1", physics.convert_velocity(x))
+                a.li("a2", physics.convert_velocity(y))
+                a.li("a3", physics.convert_acceleration(g))
+                a.li("t0", JUMP_KEEP)
+                a.sw("t0", 0x10, "sp")  # rate: keep
+                a.li("t0", -1)
+                a.sw("t0", 0x14, "sp")  # root: keep the current animation
+                a.jal(F_JUMP)
                 host.load_controller(a)
             elif op == "face":
                 host.load_controller(a)

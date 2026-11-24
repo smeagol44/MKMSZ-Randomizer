@@ -188,3 +188,31 @@ def test_invisibility_fire_effect() -> None:
     text = " ".join(_text(a.link()))
     assert "ori a3, a3, 0xFFFF" in text  # drawn in front (sub-layer 0xFFFF)
     assert "addiu t1, t1, -64" in text  # Ice 0x40 (owner: half of Freeze on Contact's)
+
+
+def test_airborne_gate_skips_the_floor_checks() -> None:
+    # Rayden's torpedo (owner): it may start in the air.
+    from mkmszr.fighter_import.mips import Assembler
+
+    def words(airborne: bool) -> list[int]:
+        a = Assembler(0xA01AF420)
+        ls.emit_gate_condition(a, "g", ls.GATES["ice_clone"], 0x60, airborne=airborne)
+        return a.link()
+
+    grounded, air = words(False), words(True)
+    assert len(air) < len(grounded)
+    ground_check = 0x8D6E06B4  # lw t6, 0x6B4(t3): the floor read
+    assert ground_check in [int.from_bytes(grounded[i:i + 4], "big") for i in range(0, len(grounded), 4)]
+    assert ground_check not in [int.from_bytes(air[i:i + 4], "big") for i in range(0, len(air), 4)]
+
+
+def test_hover_and_jump_ops_lower() -> None:
+    from mkmszr.fighter_import.mips import Assembler
+
+    a = Assembler(0xA01AF420, cached_calls=True)
+    steps = [{"op": "hover"}, {"op": "jump", "x": "0", "y": "0xD999", "gravity": "0x6CCC", "until": "landing"},
+             {"op": "end"}]  # fmt: skip
+    ls.emit_action(a, "t", steps, cost=0, animations={})
+    code = a.link()
+    ws = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
+    assert 0x3C198003 in ws and 0x273921D0 in ws  # lui/addiu t9 -> 0x800321D0

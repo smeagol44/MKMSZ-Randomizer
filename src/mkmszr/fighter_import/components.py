@@ -77,6 +77,7 @@ COMPONENTS: dict[str, dict[str, str]] = {
     # motion
     "velocity": {"x": "vel", "y?": "vel"},
     "stop": {},
+    "hover": {},
     "jump": {
         "x": "vel",
         "y": "vel",

@@ -233,7 +233,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 stock = lp.host_reaction(proj["strike"]["reaction"])
                 groups[gkey] = _Group(gkey, [move], art, events, stock if stock is not None else reactions.take(),
                                       f"{move}_helper" if helper is not None else None)  # fmt: skip
-        for s in steps:
+        for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
             if s["op"] == "sound":
                 n = _int(s["sound"]["fighter"])
                 if n not in fighter_sounds:
@@ -277,7 +277,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             alive = (f"{move}_alive", *(f"{m}_alive" for m in shared_limit))
         refuse = (lower_special.CTRL_STEALTH, lower_special.STEALTH_BIT) if "stealth" in tune else None
         lower_special.emit_gate_condition(a, f"{move}_cond", gate, costs[move], default=default,
-                                          alive=alive, refuse_if=refuse)  # fmt: skip
+                                          alive=alive, refuse_if=refuse,
+                                          airborne=bool(tune.get("airborne")))  # fmt: skip
         g = group_of.get(move)
         meanings = {s["strike"]["reaction"] for s in _all_steps(steps) if s["op"] == "strike"}
         reaction_map = {}
@@ -350,7 +351,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     for _, records in report.get("strike_records", []):
         lower_special.emit_strike_data(a, records, link_va)
     main = a.link()
-    overrides = {m: (0, a.labels[f"{m}_cond"], a.labels[f"{m}_thunk"]) for m in order}
+    # Transfer mode 0 refuses an airborne start, mode 1 does not (Wiki Player-Actions "Descriptor
+    # selector and condition"): moves tuned "airborne" (Rayden's torpedo) take mode 1.
+    overrides = {m: (1 if d.specials.get(m, {}).get("airborne") else 0, a.labels[f"{m}_cond"], a.labels[f"{m}_thunk"])
+                 for m in order}  # fmt: skip
     cmds = commands.donor_commands(mkt, moves, d.commands)
     stub_base = (link_va + TABLE_RESERVE + len(main) + 0xF) & ~0xF
     low_cmd = commands.lower(clean, cmds, set(d.remove_commands), link_va, stub_base, overrides)
