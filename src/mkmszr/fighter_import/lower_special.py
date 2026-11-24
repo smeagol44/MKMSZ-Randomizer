@@ -200,6 +200,13 @@ F_JUMP, JUMP_KEEP = 0x800321D0, 13
 # with other uses, and a stale value is called as code (Rayden specials proof v02 save state: TLB
 # miss at 0x801125A0 called from 0x80032448 after a torpedo hit up close).
 CTRL_JUMP_CALLBACK = 0x70C
+# Air control in the stock jump: each air tick 0x800321D0 adds +-0x8000 to the player's x speed
+# from the held Left/Right (pad +0x638 bits 0x8000/0x2000, clamped), unless the player's input map
+# 0x802E7DFC is the busy map 0x8009F988 (0x8003237C..0x80032400), which an uncancellable special
+# holds. ``air_control`` installs the stock straight-air map first (0x8002B05C); the special lock
+# 0x800BF308 stays set, so the input dispatcher 0x800157E0 still starts no air attack (owner,
+# Rayden specials proof v07: "I have no air control ... unlike when you jump").
+AIR_MAP = 0x8009FA00
 
 
 def _scale(n: int, donor_ticks: int) -> int:
@@ -216,7 +223,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 stealth: str | None = None,
                 effects: dict[int, tuple[str, int]] | None = None,
                 skip: frozenset[str] = frozenset(),
-                carry: str | None = None) -> list[tuple[str, bytes]]:  # fmt: skip
+                carry: str | None = None, air_control: bool = False) -> list[tuple[str, bytes]]:  # fmt: skip
     """The action root for a move program (never returns). ``animations``: donor animation
     (table, slot) -> host secondary slot holding it, or ``("at", offset)`` for a body script
     without a table entry (selected by setting the cursor); ``child``: the projectile process
@@ -233,7 +240,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     for ``effect`` steps, started at the fighter in front of him through ``fx_spawn_xy``
     (``effects.emit_spawn``); ``skip``: step ops left out on purpose; ``carry``: the label of
     the word a ``carry`` step shares with the victim's ``torpedo_carry`` reaction
-    (:func:`emit_carry_reaction`).
+    (:func:`emit_carry_reaction`); ``air_control``: ``jump`` steps let the player steer (see
+    :data:`AIR_MAP`).
 
     Returns the strike records ``(label, 16 bytes)`` to place with :func:`emit_strike_data`.
 
@@ -418,6 +426,11 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 host.load_controller(a)
             elif op == "jump":  # the stock jump/fall to the floor (returns on landing)
                 host.load_controller(a)
+                if air_control:
+                    a.move("a0", "s1")
+                    a.li("a1", AIR_MAP)
+                    a.jal(host.F_INPUT_MAP)
+                    host.load_controller(a)
                 x, y, g = (lp._int(step.get(k, 0)) for k in ("x", "y", "gravity"))
                 a.move("a0", "s1")
                 a.li("a1", physics.convert_velocity(x))

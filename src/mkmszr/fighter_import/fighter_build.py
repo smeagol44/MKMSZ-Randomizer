@@ -317,6 +317,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             effects=fx_map or None,
             carry=f"{move}_carry_word" if "torpedo_carry" in reaction_map else None,
             skip=frozenset(tune.get("skip", ())),  # owner: steps left out (Rayden's torpedo turns)
+            air_control=bool(tune.get("air_control")),  # owner: steer the closing drop
         )  # fmt: skip
         if g is not None:
             ptune = tune.get("projectile", {})

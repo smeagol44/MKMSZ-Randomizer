@@ -51,3 +51,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v04.py` | `MKMSZR_rayden-specials_common_proof_v04.z64` | v03 with the carried victim held at his hands' grab point and kept airborne until the throw |
 | `MKMSZR_build_rayden-specials_proof_v05.py` | `MKMSZR_rayden-specials_common_proof_v05.z64` | v04 with the ledge fix (airborne counters every tick), a 40-donor-tick flight and no Ice cost for movement abilities |
 | `MKMSZR_build_rayden-specials_proof_v06.py` | `MKMSZR_rayden-specials_common_proof_v06.z64` | v05 without the torpedo's turns to the opponent |
+| `MKMSZR_build_rayden-specials_proof_v07.py` | `MKMSZR_rayden-specials_common_proof_v07.z64` | v06 with air control on the torpedo's closing drop |

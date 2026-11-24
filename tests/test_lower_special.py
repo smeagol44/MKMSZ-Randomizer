@@ -222,6 +222,24 @@ def test_hover_and_jump_ops_lower() -> None:
     assert ws.index(0xAE00070C) < call
 
 
+def test_air_control_installs_the_air_map_before_the_jump() -> None:
+    from mkmszr.fighter_import.mips import Assembler
+
+    steps = [{"op": "jump", "x": "0", "y": "0xD999", "gravity": "0x6CCC", "until": "landing"}, {"op": "end"}]
+    words = {}
+    for flag in (False, True):
+        a = Assembler(0xA01AF420, cached_calls=True)
+        ls.emit_action(a, "t", steps, cost=0, animations={}, air_control=flag)
+        code = a.link()
+        words[flag] = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
+    input_map = 0x2739B05C  # addiu t9, t9, lo(0x8002B05C)
+    jump = 0x273921D0
+    assert input_map not in words[False]
+    w = words[True]
+    assert input_map in w and w.index(input_map) < w.index(jump)
+    assert 0x3405FA00 in w or 0x34A5FA00 in w  # ori a1, lo(0x8009FA00): the straight-air map
+
+
 def test_carry_op_and_reaction_share_the_word() -> None:
     from mkmszr.fighter_import.mips import Assembler
 
