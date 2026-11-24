@@ -663,6 +663,7 @@
   },
   {
    "name": "elbow_dash",
+   "movement": true,
    "command": {
     "buttons": "0x40",
     "tokens": [

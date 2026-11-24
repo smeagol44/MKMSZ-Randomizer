@@ -135,6 +135,9 @@ class Move:
     name: str
     command: dict[str, Any]
     steps: list[dict[str, Any]]
+    # A movement ability (owner rule, 2026-11-24: moving abilities cost no Ice), e.g. Rayden's
+    # torpedo and teleport, Reptile's elbow dash, Sektor's teleport.
+    movement: bool = False
 
 
 def _int(value: Any) -> int | None:
@@ -249,7 +252,9 @@ def validate_programs(doc: Any) -> list[Move]:
             elif not SRC.match(str(cond.get("src", ""))):
                 errors.append(f"{where}: condition {cond['kind']} needs src")
         validate_steps(m.get("steps"), f"{where} steps", errors)
-        moves.append(Move(m.get("name", ""), cmd, m.get("steps", [])))
+        if not isinstance(m.get("movement", False), bool):
+            errors.append(f"{where}: movement must be true or false")
+        moves.append(Move(m.get("name", ""), cmd, m.get("steps", []), m.get("movement", False) is True))
     if not moves:
         errors.append("no moves")
     for gap in doc.get("gaps", []):

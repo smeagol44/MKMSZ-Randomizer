@@ -205,6 +205,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         steps = list(programs[move].steps)
         if "sleep_ticks" in tune:  # owner: a different recovery (Acid Spit, specials proof v11)
             steps = [dict(s, ticks=_int(tune["sleep_ticks"])) if s["op"] == "sleep" else s for s in steps]
+        if "strike_ticks" in tune:  # owner: a longer hit window (Rayden's torpedo, specials proof v05)
+            steps = [dict(s, ticks=_int(tune["strike_ticks"])) if s["op"] == "strike" else s for s in steps]
         steps_of[move] = steps
         proj = next((s for s in steps if s["op"] == "projectile"), None)
         if proj is not None:
@@ -254,7 +256,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     rom[body_build.FILE87_ROM : body_build.FILE87_ROM + len(file87)] = file87
 
     # ---- payload ---------------------------------------------------------------------------
-    costs = {m: d.costs.get(m, lower_special.COSTS[p]) for m, p in d.commands.items() if p}
+    # Ice costs: the description's (owner decisions), else none for a movement ability (owner
+    # rule, 2026-11-24), else the replaced Sub-Zero power's.
+    movement = {mv.name for mv in moves if mv.movement}
+    costs = {m: d.costs.get(m, lower_special.MOVEMENT_COST if m in movement else lower_special.COSTS[p])
+             for m, p in d.commands.items() if p}  # fmt: skip
     if len(order) > TRANSFER_ENTRIES_FREE:
         raise BuildError("more specials than free transfer-table entries")
     selectors = {m: FIRST_SELECTOR + k for k, m in enumerate(order)}

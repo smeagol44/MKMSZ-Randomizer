@@ -76,6 +76,7 @@ COSTS = {
     "polar_blast": 0xA6,
     "ice_shatter": 0,  # contextual, no Ice cost
 }
+MOVEMENT_COST = 0  # movement abilities cost no Ice (owner rule, 2026-11-24; move program "movement")
 BLOCKED_FLAG = 0x802ECD88  # halfword: the collision core sets it on a blocked contact
 F_SET_XVEL = 0x8002B1EC  # (actor, x speed): actor +0x14 and +0x58
 FACING_BIT = 0x10
@@ -383,18 +384,16 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 host.stop(a)
                 host.load_controller(a)
             elif op == "hover":  # level flight: no gravity, no y motion, airborne counter kept
+                # The counter counts every tick, also at floor height: with it at zero the
+                # per-tick floor check 0x80024BA8 installs the stock fall where no floor region
+                # matches (a ground torpedo over a ledge). It also keeps him from landing (only
+                # by crossing); the closing ``jump`` clears it.
                 host.load_controller(a)
                 a.sw("zero", host.ACTOR_GRAVITY, "s1")
                 a.sw("zero", host.ACTOR_YVEL, "s1")
-                grounded = fresh("grounded")
-                a.lw("t0", host.ACTOR_Y, "s1")
-                a.lw("t1", host.CTRL_GROUND, "s0")
-                a.slt("t0", "t0", "t1")
-                a.beqz("t0", grounded)  # y >= floor: on the ground
                 a.lhu("t0", host.CTRL_AIRBORNE, "s0")
-                a.addiu("t0", "t0", 1)  # the per-tick floor check keeps a custom air action
+                a.addiu("t0", "t0", 1)
                 a.sh("t0", host.CTRL_AIRBORNE, "s0")
-                a.label(grounded)
             elif op == "carry":  # see emit_carry_reaction
                 if carry is None:
                     raise ValueError(f"{label}: carry step without a carry word")
@@ -744,13 +743,12 @@ def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
     a.sw("t1", ACTOR_PREV_Y, "s1")  # moved, not falling: no landing by crossing
     a.sw("zero", host.ACTOR_GRAVITY, "s1")
     a.sw("zero", host.ACTOR_YVEL, "s1")
-    a.lw("t2", host.CTRL_GROUND, "s0")
-    a.slt("t1", "t1", "t2")
-    a.beqz("t1", label + "_grounded")  # y >= floor: on the ground
+    # Every tick, also at floor height: the per-tick floor check 0x80024BA8 also runs for
+    # enemies (classes 2-3) and installs the stock fall when no floor region matches and +0x6B0
+    # is zero, i.e. at a ledge during a ground carry (v04: counted only above the floor).
     a.lhu("t1", host.CTRL_AIRBORNE, "s0")
-    a.addiu("t1", "t1", 1)  # held in the air: the floor check must not install a fall
+    a.addiu("t1", "t1", 1)
     a.sh("t1", host.CTRL_AIRBORNE, "s0")
-    a.label(label + "_grounded")
     host.sleep_tick(a)
     a.addiu("s3", "s3", -1)
     a.bnez("s3", label + "_loop")

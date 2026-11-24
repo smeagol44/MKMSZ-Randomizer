@@ -117,6 +117,7 @@
     },
     {
       "name": "torpedo",
+      "movement": true,
       "command": {
         "buttons": "stick",
         "tokens": [

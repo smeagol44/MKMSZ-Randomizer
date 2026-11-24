@@ -252,6 +252,18 @@ def test_carry_op_and_reaction_share_the_word() -> None:
     for sw in (0xAE290030, 0xAE29003C, 0xAE200010, 0xAE200018):  # y, previous y, gravity, y speed
         assert sw in held
     assert 0xA6090000 | 0x6B2 in held  # sh t1, +0x6B2(s0): the airborne counter
+    # counted every tick, not only above the floor (v04: a ground carry fell at a ledge)
+    assert 0x8E0906B4 not in held  # lw t1, +0x6B4(s0): no floor comparison
+
+
+def test_movement_moves_are_marked() -> None:
+    moves = {m.name: m for m in components.load_programs("rayden")[0]}
+    assert moves["torpedo"].movement and not moves["lightning"].movement
+    assert {m.name for m in components.load_programs("reptile")[0] if m.movement} == {"elbow_dash"}
+    with pytest.raises(components.ProgramError, match="movement"):
+        components.validate_programs({"format": 1, "moves": [
+            {"name": "x", "movement": "yes", "command": {"buttons": 0, "tokens": [], "window": 1,
+             "src": "owner"}, "steps": [{"op": "end"}]}]})  # fmt: skip
 
 
 def test_carry_step_needs_its_word() -> None:
