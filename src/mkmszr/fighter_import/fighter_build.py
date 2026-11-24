@@ -334,8 +334,13 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         if "torpedo_carry" in reaction_map and "torpedo_carry" not in reaction_labels:
             reaction_labels["torpedo_carry"] = f"{move}_carry"
             release = f"{move}_carry_release"
-            lower_special.emit_carry_reaction(a, f"{move}_carry", f"{move}_carry_word", release,
-                                              lp.REACTION_LOWERING["torpedo_carry_release"]["morph"])  # fmt: skip
+            grab = tune.get("carry", {})  # specials.<move>.carry: the grab point, in px
+            lower_special.emit_carry_reaction(
+                a, f"{move}_carry", f"{move}_carry_word", release,
+                lp.REACTION_LOWERING["torpedo_carry_release"]["morph"],
+                dx_px=_int(grab.get("dx_px", lower_special.CARRY_DX_PX)),
+                dy_px=_int(grab.get("dy_px", lower_special.CARRY_DY_PX)),
+            )
             a.label(release)
             for w in lp.lifted_reaction(clean, "torpedo_carry_release"):
                 a.raw(w)

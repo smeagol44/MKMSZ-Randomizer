@@ -656,21 +656,32 @@ def emit_hold_reaction(a: Assembler, label: str, donor_ticks: int = 1, pose: boo
 # flying for up to 0x20 donor ticks (both objects share one velocity) unless a wall stops them; then
 # the screen shakes, his sound 13 plays and the victim's process restarts at 0x8004558C: his
 # table-0 slot 0x1A pose, do_jump(0x33333, -0x6CCCD, 0x5199), landing. Host (specials proof v03):
-# the victim reaction below keeps the victim at its contact distance in front of the player each
-# tick, in the first frame of root 0x1E, while the attacker's ``carry`` step keeps the shared word
-# set; it clears the word itself when the victim's room to the wall ahead runs out, then
+# the victim reaction below holds the victim at a grab point in front of the player each tick, in
+# the first frame of root 0x1E, while the attacker's ``carry`` step keeps the shared word set; it
+# clears the word itself when the victim's room to the wall ahead runs out, then
 # tail-calls the lifted knockback ``torpedo_carry_release`` (``lower_projectile``), which plays
 # the throw from its own start. The victim morphs first, as the stock launch does, because root
 # 0x1E is a shared root (Wiki Fighter-Recompiler-Components, "knockback morph").
 CARRY_ROOT = 0x1E
 CARRY_WALL_MARGIN = 40  # whole units (20 px) of room left ahead of the victim
 CARRY_TIMEOUT_TICKS = 24  # host ticks: past the attacker's 16 (0x20 donor ticks at 2 per tick)
+# The grab point (specials proof v04; owner on v03: Rayden's hands should hold the victim's waist,
+# and an airborne torpedo must not carry the victim along the ground or off a ledge). x: in front
+# of the player's anchor, toward his facing; y: from the player's y (actor y grows downward). The
+# flat frame 0x2100 reaches 66 px in front of his anchor (136 px wide, anchor at 70); a ground
+# carry at the same y looked right (owner, v03).
+CARRY_DX_PX, CARRY_DY_PX = 72, 0
+ACTOR_PREV_Y = 0x3C  # floor landing is by crossing from the previous y (0x80025ED4)
 
 
 def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
-                        morphs: tuple[int, ...]) -> None:  # fmt: skip
+                        morphs: tuple[int, ...], dx_px: int = CARRY_DX_PX,
+                        dy_px: int = CARRY_DY_PX) -> None:  # fmt: skip
     """Victim reaction ``torpedo_carry`` (see the notes above); ``word``: the attacker's carry
-    word, ``release``: the lifted knockback's label, ``morphs``: the victim morph routines."""
+    word, ``release``: the lifted knockback's label, ``morphs``: the victim morph routines;
+    ``dx_px``, ``dy_px``: the grab point. While held the victim has no gravity or vertical speed
+    and its airborne counter counts (as ``hover``), so it neither falls nor lands on a floor or
+    a ledge before the throw."""
 
     frame = 0x30
     a.label(label)
@@ -695,11 +706,7 @@ def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
         a.lw(reg, lo(host.PLAYER_CTRL), reg)
         a.lw(reg, host.CTRL_ACTOR, reg)
 
-    host.load_controller(a)
-    player_actor("t0")
-    a.lw("t1", host.ACTOR_X, "t0")
-    a.lw("t2", host.ACTOR_X, "s1")
-    a.subu("s2", "t2", "t1")  # the contact distance, kept
+    a.li("s2", dx_px * lp.UNITS_PER_PX << 8)  # actor x is whole units << 8
     a.li("s3", CARRY_TIMEOUT_TICKS)
     a.label(label + "_loop")
     a.la("t0", word)
@@ -721,9 +728,29 @@ def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
     a.bnez("t3", label + "_wall")
     host.load_controller(a)
     player_actor("t0")
+    a.move("t2", "s2")
+    a.lhu("t1", lp.ACTOR_FLAGS, "t0")
+    a.andi("t1", "t1", lp.FACING_BIT)
+    a.beqz("t1", label + "_ahead")
+    a.subu("t2", "zero", "s2")  # he faces left: the grab point is to his left
+    a.label(label + "_ahead")
     a.lw("t1", host.ACTOR_X, "t0")
-    a.addu("t1", "t1", "s2")
+    a.addu("t1", "t1", "t2")
     a.sw("t1", host.ACTOR_X, "s1")
+    a.lw("t1", host.ACTOR_Y, "t0")
+    a.li("t2", dy_px * lp.UNITS_PER_PX << 8)
+    a.addu("t1", "t1", "t2")
+    a.sw("t1", host.ACTOR_Y, "s1")
+    a.sw("t1", ACTOR_PREV_Y, "s1")  # moved, not falling: no landing by crossing
+    a.sw("zero", host.ACTOR_GRAVITY, "s1")
+    a.sw("zero", host.ACTOR_YVEL, "s1")
+    a.lw("t2", host.CTRL_GROUND, "s0")
+    a.slt("t1", "t1", "t2")
+    a.beqz("t1", label + "_grounded")  # y >= floor: on the ground
+    a.lhu("t1", host.CTRL_AIRBORNE, "s0")
+    a.addiu("t1", "t1", 1)  # held in the air: the floor check must not install a fall
+    a.sh("t1", host.CTRL_AIRBORNE, "s0")
+    a.label(label + "_grounded")
     host.sleep_tick(a)
     a.addiu("s3", "s3", -1)
     a.bnez("s3", label + "_loop")

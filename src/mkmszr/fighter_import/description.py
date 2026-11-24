@@ -61,7 +61,8 @@ Body fields:
 * ``help`` (optional): the Power Ups help text per power slot (``fighter_import.fighter_help``).
 * ``specials`` (optional): move name -> lowering tuning for ``fighter_import.fighter_build``
   (owner calibrations such as offsets, facing, recovery, the per-move projectile limit,
-  stealth drain, effects), in the order the moves are built.
+  stealth drain, effects, the torpedo carry's grab point `carry`: `dx_px`, `dy_px`), in the
+  order the moves are built.
 * ``costs`` (optional): move name -> Ice cost, where it differs from the replaced Sub-Zero
   power's (``lower_special.COSTS``); owner decisions, e.g. Reptile's halved forceballs.
 * ``legacy``: frozen Sektor-era modules this fighter still uses (plan rule 4).

@@ -245,6 +245,13 @@ def test_carry_op_and_reaction_share_the_word() -> None:
     assert 0x24050000 | ls.CARRY_ROOT in ws[reaction:]  # root 0x1E selected for the pose
     j = 0x08000000 | (a.labels["release"] >> 2) & 0x03FFFFFF
     assert j in ws[reaction:]  # tail call into the throw
+    # held at the grab point (72 px = 144 units << 8) at the player's y, with no gravity or y
+    # speed and the previous y moved too (owner, v03: no ground carry, no ledge drop)
+    held = ws[reaction:]
+    assert 0x34129000 in held or 0x36529000 in held  # ori s2, 0x9000
+    for sw in (0xAE290030, 0xAE29003C, 0xAE200010, 0xAE200018):  # y, previous y, gravity, y speed
+        assert sw in held
+    assert 0xA6090000 | 0x6B2 in held  # sh t1, +0x6B2(s0): the airborne counter
 
 
 def test_carry_step_needs_its_word() -> None:
