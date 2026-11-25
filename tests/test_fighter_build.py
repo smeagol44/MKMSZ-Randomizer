@@ -95,9 +95,11 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     # two facing toggles; the torpedo's three jumps (bounce, bounce, drop) take the air map
     assert ws.count(0x012A4826) == 2  # xor t1, t1, t2 (the facing bit)
     assert ws.count(0x2739B05C) == 5  # input map: two begins without a turn, three jumps
-    # v11 (owner screenshot): the burst goes to the enemy hit (collision core 0x802E83D8 /
-    # 0x802C1BA0), not the projectile's copied opponent
-    assert any((w >> 16) == 0x8D09 and (w & 0xFFFF) == 0x83D8 for w in ws)  # lw t1, lo(HIT_X)(t0)
+    # v11-v12 (owner screenshots, Wind): the burst goes to the enemy hit (the player's +0x640,
+    # set by the collision core), at its whole position: path, path position, x, z, y
+    i = next(k for k, w in enumerate(ws) if w == 0x8D081AC0 and ws[k + 1] == 0x8D080640)
+    copies = [w for w in ws[i : i + 20] if (w >> 16) == 0x8D09]  # lw t1, field(t0)
+    assert [w & 0xFFFF for w in copies] == [0xDC, 0xE0, 0x2C, 0x34, 0x30]
     assert 0x2529FFA0 not in ws and 0x2529FFE0 in ws  # addiu t1, t1, -0x60 / -0x20
 
 

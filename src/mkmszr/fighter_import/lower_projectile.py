@@ -480,10 +480,13 @@ class Lowered:
     # it facing the wrong way (Rayden's lightning burst, specials proof v09: "coming from the
     # other way"). Unlike impact_flip off, the position stays MKT's.
     impact_mirror: bool = False
-    # Place an "at opponent" impact on the enemy the strike hit: the collision core writes a
-    # projectile victim's x and y to HIT_X / HIT_Y (0x8002DCB0, attacker actor tag 0x700) before
-    # its reaction. The projectile's own opponent (+0x640) is the player's at launch, which can be
-    # another enemy (Rayden's lightning burst on a far pillar, specials proof v10).
+    # Place an "at opponent" impact on the enemy the strike hit, at its whole position (path,
+    # path position, x, y, z): with a path (+0xDC), the offset 0x80031208 only advances the path
+    # position +0xE0 and x follows from it. On the ordinary hit path the collision core records a projectile
+    # victim's x / y (HIT_X / HIT_Y, 0x8002DCB0) and then links the player and the victim (player
+    # +0x640 = victim, 0x8002DD18). The projectile's own +0x640 is the player's opponent at
+    # launch, which can be another enemy (Rayden's lightning burst on a far pillar, v10); copying
+    # x and y alone left it at the bolt's path position on a walkway (v11, Wind).
     impact_at_hit: bool = False
     # Keep the projectile's own y at the opponent: MKT's objects share the fighters' ground y, but
     # the host projectile is raised by its offset (Acid Spit v13: splash 36 px below the hit).
@@ -661,13 +664,21 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         host.load_controller(a)
         a.sw("zero", 0x14, "s1")
         if p.impact_at_opponent and p.impact_at_hit:  # on the enemy hit (see Lowered)
-            a.lui("t0", host.hi(HIT_X))
-            a.lw("t1", host.lo(HIT_X), "t0")
-            a.sw("t1", host.ACTOR_X, "s1")
+            a.lui("t0", host.hi(host.PLAYER_CTRL))
+            a.lw("t0", host.lo(host.PLAYER_CTRL), "t0")
+            a.lw("t0", host.CTRL_OPPONENT, "t0")
+            a.beqz("t0", prefix + "no_opponent")
+            a.lw("t0", host.CTRL_ACTOR, "t0")
+            a.beqz("t0", prefix + "no_opponent")
+            # its whole position, as the teleport copies it: on a walkway the offset below moves
+            # along the path from the path position, so x alone left the burst at the bolt's
+            # (specials proof v11, Wind)
+            fields = [host.ACTOR_PATH, host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Z]
             if not p.impact_keep_y:
-                a.lui("t0", host.hi(HIT_Y))
-                a.lw("t1", host.lo(HIT_Y), "t0")
-                a.sw("t1", host.ACTOR_Y, "s1")
+                fields.append(host.ACTOR_Y)
+            for field in fields:
+                a.lw("t1", field, "t0")
+                a.sw("t1", field, "s1")
         elif p.impact_at_opponent:  # on the opponent, facing the attacker, MKT's adjust
             a.lw("t0", host.CTRL_OPPONENT, "s0")
             a.beqz("t0", prefix + "no_opponent")
