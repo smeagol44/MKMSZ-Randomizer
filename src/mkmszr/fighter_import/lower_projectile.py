@@ -53,6 +53,7 @@ ACTOR_D8 = 0x46  # projectile actor +0xD8, as Quan Chi's
 UNITS_PER_PX = 2
 MKT_TABLE1 = 0x168  # MKT get_char_ani table 1 (heap-relative)
 KSEG1_TO_KSEG0 = 0x20000000
+HIT_X, HIT_Y = 0x802E83D8, 0x802C1BA0  # a projectile's victim x / y at its last hit (0x8002DCB0)
 ACTOR_FLAGS, FACING_BIT = 0x8C, 0x10  # actor facing (0x800344F4, 0x8002B6F4)
 
 # Victim reactions by meaning -> host. "base": a stock host reaction (leaf, no branches) copied
@@ -479,6 +480,11 @@ class Lowered:
     # it facing the wrong way (Rayden's lightning burst, specials proof v09: "coming from the
     # other way"). Unlike impact_flip off, the position stays MKT's.
     impact_mirror: bool = False
+    # Place an "at opponent" impact on the enemy the strike hit: the collision core writes a
+    # projectile victim's x and y to HIT_X / HIT_Y (0x8002DCB0, attacker actor tag 0x700) before
+    # its reaction. The projectile's own opponent (+0x640) is the player's at launch, which can be
+    # another enemy (Rayden's lightning burst on a far pillar, specials proof v10).
+    impact_at_hit: bool = False
     # Keep the projectile's own y at the opponent: MKT's objects share the fighters' ground y, but
     # the host projectile is raised by its offset (Acid Spit v13: splash 36 px below the hit).
     impact_keep_y: bool = False
@@ -654,7 +660,15 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     if p.art.impact_slot is not None:
         host.load_controller(a)
         a.sw("zero", 0x14, "s1")
-        if p.impact_at_opponent:  # on the opponent, facing the attacker, MKT's adjust
+        if p.impact_at_opponent and p.impact_at_hit:  # on the enemy hit (see Lowered)
+            a.lui("t0", host.hi(HIT_X))
+            a.lw("t1", host.lo(HIT_X), "t0")
+            a.sw("t1", host.ACTOR_X, "s1")
+            if not p.impact_keep_y:
+                a.lui("t0", host.hi(HIT_Y))
+                a.lw("t1", host.lo(HIT_Y), "t0")
+                a.sw("t1", host.ACTOR_Y, "s1")
+        elif p.impact_at_opponent:  # on the opponent, facing the attacker, MKT's adjust
             a.lw("t0", host.CTRL_OPPONENT, "s0")
             a.beqz("t0", prefix + "no_opponent")
             a.lw("t0", host.CTRL_ACTOR, "t0")
@@ -664,6 +678,7 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
             if not p.impact_keep_y:
                 a.lw("t1", host.ACTOR_Y, "t0")
                 a.sw("t1", host.ACTOR_Y, "s1")
+        if p.impact_at_opponent:
             if p.impact_flip:
                 a.lhu("t1", ACTOR_FLAGS, "s1")
                 a.li("t2", FACING_BIT)

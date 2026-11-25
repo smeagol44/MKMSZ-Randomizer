@@ -332,10 +332,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         if g is not None:
             ptune = tune.get("projectile", {})
             low = lp.lower(projectile_of[move], g.art, g.events, g.reaction_slot, clean)
-            if "impact_flip" in ptune or "impact_keep_y" in ptune or "impact_mirror" in ptune:
+            if {"impact_flip", "impact_keep_y", "impact_mirror", "impact_at_hit"} & set(ptune):
                 low = dataclasses.replace(low, impact_flip=bool(ptune.get("impact_flip", True)),
                                           impact_keep_y=bool(ptune.get("impact_keep_y", False)),
-                                          impact_mirror=bool(ptune.get("impact_mirror", False)))  # fmt: skip
+                                          impact_mirror=bool(ptune.get("impact_mirror", False)),
+                                          impact_at_hit=bool(ptune.get("impact_at_hit", False)))  # fmt: skip
             g.lowered = low
             lp.emit_process(a, low, child=f"{move}_ball", prefix=f"{move}_", data=f"g{_gid(g)}_",
                             alive=f"{move}_alive")  # fmt: skip
