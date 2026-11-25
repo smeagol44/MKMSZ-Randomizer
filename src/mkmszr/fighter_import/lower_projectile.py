@@ -80,12 +80,16 @@ REACTION_LOWERING: dict[str, dict[str, Any]] = {
         "morph_at": 2,  # after the frame and the saved ra
     },
 }
-# The throw at the end of Rayden's torpedo carry (``lower_special.emit_carry_reaction``): the same
-# lifted knockback with MKT's release arc (0x8004558C: do_jump(0x33333, -0x6CCCD, 0x5199), the
-# victim bouncing back off the wall toward the attacker).
+# The victim's end of Rayden's torpedo carry (``lower_special.emit_carry_reaction``). MKT
+# 0x8005391C (given to the victim by 0x8006D3B4): stop, back on the ground, face him, its slot
+# 0x1E in two phases, then a getup (0x800587FC(0x21)): it slumps where the carry ended. The host:
+# the same lifted knockback with no push and no lift, so the victim falls from where it was held
+# (owner on v03: it falls only when released) into root 0x1E and the host landing/getup.
+# Specials proof v03-v07 used do_jump(0x33333, -0x6CCCD, 0x5199) here: that is Rayden's own bounce
+# (0x8004558C), misread as the victim's (generator, 2026-11-25).
 REACTION_LOWERING["torpedo_carry_release"] = {
     **REACTION_LOWERING["knockback_arc"],
-    "donor_arc": (0x33333, -0x6CCCD, 0x5199),
+    "donor_arc": (0, 0, 0x5199),
 }
 # Stumble-kind reactions: a lifted copy of the host Fire spiked-rod trap stumble, the reaction
 # Sektor's rocket was accepted with (robo_zap, proof v35), without its 8-tick hit pause, its

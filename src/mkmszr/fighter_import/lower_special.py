@@ -76,6 +76,10 @@ COSTS = {
     "polar_blast": 0xA6,
     "ice_shatter": 0,  # contextual, no Ice cost
 }
+# Per-thousand random gate (Wiki Function-Registry): 0x8000 when a native random value modulo
+# 1000 is below a0. A sound step with ``random: k`` picks one of k donor sounds evenly (MKT
+# ``ft_sound(randu(k) + n)``, Rayden's torpedo start).
+F_RANDPER = 0x80016008
 MOVEMENT_COST = 0  # movement abilities cost no Ice (owner rule, 2026-11-24; move program "movement")
 BLOCKED_FLAG = 0x802ECD88  # halfword: the collision core sets it on a blocked contact
 F_SET_XVEL = 0x8002B1EC  # (actor, x speed): actor +0x14 and +0x58
@@ -469,9 +473,22 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 _emit_strike(step)
             elif op == "sound":
                 fighter = int(step["sound"]["fighter"])
-                if not sounds or fighter not in sounds:
-                    raise ValueError(f"{label}: fighter sound {fighter} has no host event")
-                host.play_sound(a, sounds[fighter])
+                choices = [fighter + k for k in range(int(step["sound"].get("random", 1)))]
+                if not sounds or any(n not in sounds for n in choices):
+                    raise ValueError(f"{label}: fighter sound {choices} has no host event")
+                played = fresh("played")
+                for k, n in enumerate(choices[:-1]):  # one of k..: a per-thousand gate each
+                    other = fresh("other")
+                    a.li("a0", 1000 // (len(choices) - k))
+                    a.jal(F_RANDPER)
+                    a.andi("v0", "v0", 0xFFFF)
+                    a.li("t0", 0x8000)
+                    a.bne("v0", "t0", other)
+                    host.play_sound(a, sounds[n])
+                    a.beq("zero", "zero", played)
+                    a.label(other)
+                host.play_sound(a, sounds[choices[-1]])
+                a.label(played)
                 host.load_controller(a)
             elif op == "projectile":
                 if child is None:

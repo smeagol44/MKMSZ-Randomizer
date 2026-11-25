@@ -146,10 +146,11 @@
         {
           "op": "sound",
           "sound": {
-            "fighter": 9
+            "fighter": 10,
+            "random": 3
           },
           "src": {
-            "sound": "MKT 0x80045130"
+            "sound": "MKT 0x80045128"
           }
         },
         {
@@ -167,17 +168,17 @@
           }
         },
         {
-          "op": "finish",
-          "rate": 3,
-          "src": {
-            "rate": "MKT 0x800451A4"
-          }
-        },
-        {
           "op": "velocity",
           "x": "0x80000",
           "src": {
             "x": "MKT 0x80045140"
+          }
+        },
+        {
+          "op": "finish",
+          "rate": 3,
+          "src": {
+            "rate": "MKT 0x800451A4"
           }
         },
         {
@@ -230,9 +231,6 @@
               }
             },
             {
-              "op": "stop"
-            },
-            {
               "op": "sound",
               "sound": {
                 "fighter": 13
@@ -240,17 +238,70 @@
               "src": {
                 "sound": "MKT 0x80045510"
               }
+            },
+            {
+              "op": "pose",
+              "anim": {
+                "table": 0,
+                "slot": 26,
+                "offset": 1
+              },
+              "src": {
+                "anim": "MKT 0x800455A8"
+              }
+            },
+            {
+              "op": "jump",
+              "x": "0x33333",
+              "y": "-0x6CCCC",
+              "gravity": "0x5199",
+              "until": "landing",
+              "src": {
+                "x": "MKT 0x800455E0",
+                "y": "MKT 0x800455DC",
+                "gravity": "MKT 0x800455EC",
+                "until": "MKT 0x8004560C"
+              }
+            },
+            {
+              "op": "end"
             }
           ],
           "on_block": [
             {
-              "op": "stop"
+              "op": "pose",
+              "anim": {
+                "table": 0,
+                "slot": 26,
+                "offset": 1
+              },
+              "src": {
+                "anim": "MKT 0x800455A8"
+              }
+            },
+            {
+              "op": "jump",
+              "x": "0x33333",
+              "y": "-0x6CCCC",
+              "gravity": "0x5199",
+              "until": "landing",
+              "src": {
+                "x": "MKT 0x800455E0",
+                "y": "MKT 0x800455DC",
+                "gravity": "MKT 0x800455EC",
+                "until": "MKT 0x8004560C"
+              }
+            },
+            {
+              "op": "end"
             }
           ],
           "src": {
             "strike": "MKT 0x800B0194",
             "ticks": "MKT 0x800451B8",
-            "reaction": "MKT 0x800452C4"
+            "reaction": "MKT 0x800452C4",
+            "on_block": "MKT 0x8004531C",
+            "on_hit": "MKT 0x80045204"
           }
         },
         {
@@ -304,15 +355,15 @@
     },
     {
       "move": "torpedo",
-      "what": "MKT plays one of his sounds 9-11 at random at the start; the host plays 9"
-    },
-    {
-      "move": "torpedo",
       "what": "MKT shakes the screen when the carry ends (0x8002A750(6, 6)); no host screen shake is located"
     },
     {
       "move": "torpedo",
       "what": "the carried victim shows the first frame of its root 0x1E (MKT: his table-0 slot 0x1E frame chosen per fighter, 0x800A8170) and is thrown from the lifted host knockback (MKT: his slot 0x1A pose)"
+    },
+    {
+      "move": "torpedo",
+      "what": "MKT animates the bounce (slot 0x1A from frame 1, rate 3) during its jump; the host holds frame 1"
     }
   ]
 }

@@ -88,27 +88,14 @@ def test_lightning_differs_by_the_projectile_only(mkt: bytes) -> None:
 
 
 @needs_mkt
-def test_torpedo_differences_from_the_accepted_program_are_pinned(mkt: bytes) -> None:
-    """What MKT does that the accepted torpedo does not (owner to decide, 2026-11-25): a random
-    start sound 10-12 (the hand reading said 9-11), the speed from the second phase, and after the
-    carry or a block Rayden bounces back (slot 0x1A, do_jump(0x33333, -0x6CCCD, 0x5199))."""
+def test_torpedo_equals_the_accepted_program(mkt: bytes) -> None:
+    """The owner switched the torpedo to MKT's version (2026-11-25): a random start sound 10-12,
+    the speed from the lean, and Rayden's bounce back after the carry or a block. The victim's
+    positioning routines that MKT also runs stay unknown (the host victim reaction plays them)."""
 
     g = gen.Generator(mkt, 24).move(0x8004F3A0)
-    assert changed(gen.compare(g.steps, accepted("rayden", "torpedo"))) == [
-        '-sound {"sound":{"fighter":9}}',
-        '+sound {"sound":{"fighter":10}}',
-        '+velocity {"x":524288}',
-        '-velocity {"x":524288}',
-        "-    stop {}",
-        '+    pose {"anim":{"offset":1,"slot":26,"table":0}}',
-        '+    jump {"gravity":20889,"until":"landing","x":209715,"y":-445644}',
-        "+    end {}",
-        "-    stop {}",
-        '+    pose {"anim":{"offset":1,"slot":26,"table":0}}',
-        '+    jump {"gravity":20889,"until":"landing","x":209715,"y":-445644}',
-        "+    end {}",
-    ]
-    assert any("10..12" in n for n in g.notes)
+    assert gen.compare(g.steps, accepted("rayden", "torpedo")) == []
+    assert all(u.split(":")[0] in ("0x800453B4", "0x800453DC", "0x8004552C") for u in g.unknown)
 
 
 def test_canonical_ignores_provenance_and_number_spelling() -> None:

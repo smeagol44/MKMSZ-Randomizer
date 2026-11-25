@@ -239,9 +239,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                                       f"{move}_helper" if helper is not None else None)  # fmt: skip
         for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
             if s["op"] == "sound":
-                n = _int(s["sound"]["fighter"])
-                if n not in fighter_sounds:
-                    fighter_sounds[n] = install(bank.event(bank.fighter_event(donor_id, n)))
+                first = _int(s["sound"]["fighter"])
+                for n in range(first, first + _int(s["sound"].get("random", 1))):  # every choice
+                    if n not in fighter_sounds:
+                        fighter_sounds[n] = install(bank.event(bank.fighter_event(donor_id, n)))
         if "footsteps" in tune:
             footsteps[move] = tuple(install(bank.event(_int(e))) for e in tune["footsteps"])
         for fx, spec in tune.get("effects", {}).items():

@@ -52,3 +52,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v05.py` | `MKMSZR_rayden-specials_common_proof_v05.z64` | v04 with the ledge fix (airborne counters every tick), a 40-donor-tick flight and no Ice cost for movement abilities |
 | `MKMSZR_build_rayden-specials_proof_v06.py` | `MKMSZR_rayden-specials_common_proof_v06.z64` | v05 without the torpedo's turns to the opponent |
 | `MKMSZR_build_rayden-specials_proof_v07.py` | `MKMSZR_rayden-specials_common_proof_v07.z64` | v06 with air control on the torpedo's closing drop |
+| `MKMSZR_build_rayden-specials_proof_v08.py` | `MKMSZR_rayden-specials_common_proof_v08.z64` | v07 switched to MKT's torpedo as the generator writes it (random sound, speed from the lean, Rayden's bounce back, the victim slumps) |

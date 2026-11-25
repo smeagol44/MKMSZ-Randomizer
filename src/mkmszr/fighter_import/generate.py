@@ -429,6 +429,8 @@ def _sound(w: _Walk, c: dc.Call, a: list) -> list[dict]:
         n = _RANDU.get(v.a.call)
         first = v.b.const() + 1  # randu(n) is 1..n
         span = f"{first}..{first + n - 1}" if n else f"{first} up"
+        if n:
+            return [{"op": "sound", "sound": {"fighter": first, "random": n}}]
         w.note(f"MKT picks the sound at random, {span} (0x{c.pc:08X}); the program plays {first}")
         return [{"op": "sound", "sound": {"fighter": first}}]
     w.unknown(f"0x{c.pc:08X}: sound {c.args[0]}")

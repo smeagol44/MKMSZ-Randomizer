@@ -17,7 +17,8 @@
     "colour": {"depth": 16, "method": "auto"},
     "phase_slots": {"0x23": "shift:+1"},
     "script_sounds": {"0x21": 7, "0x22": 7},
-    "secondary_scripts": {"0x25": "table0:0x24:1", "0x40": "table1:0x00:2", "0x41": "table0:0x16:1"},
+    "secondary_scripts": {"0x25": "table0:0x24:1", "0x40": "table1:0x00:2", "0x41": "table0:0x16:1",
+                          "0x42": "table0:0x1A:1"},
     "common_animations": ["death", "long_fall", "pickup", "grabbed"]
   },
   "commands": {"lightning": "ice_blast", "torpedo": "ice_clone"},

@@ -25,14 +25,15 @@
 | Reptile elbow dash | **identical** |
 | Reptile invisibility | identical except the stealth length (owner: 1200 ticks) |
 | Rayden Lightning | identical except the projectile (projectile rules: next) |
-| Rayden torpedo | differs where MKT differs from the accepted program (below) |
+| Rayden torpedo | identical since specials proof v08 (the owner switched to MKT's version, below) |
 | Rayden reversed Lightning, teleport, Shocker | generated from his command records; the teleport and the Shocker report unknown routines (relocation, the getup helper, the Shocker's range checks) |
 
-- **MKT facts the generator found in the torpedo** (Static-confirmed; the accepted program differs; owner to decide):
+- **MKT facts the generator found in the torpedo** (Static-confirmed). The accepted program (proofs v03–v07) differed; owner, 2026-11-25: "Let's switch to MKT's version" (specials proof v08):
   - the start sound is random **10–12**: `randu(n)` (`0x8006E490`) returns 1..n, and the routine adds 9. The hand reading said 9–11 and the program plays 9;
   - the speed is restored after the take-off phase, so he moves during the lean (the program starts it after the lean);
   - after the carry, and at once when the hit is blocked, Rayden's own process restarts at `0x8004558C`: action `0x632`, his slot-`0x1A` pose from frame 1, `do_jump(0x33333, -0x6CCCD, 0x5199)` at rate 3, landing. Rayden bounces back off the wall; the victim gets a new routine (`0x8006D3B4(victim, 0x8005391C)`). The hand reading took this jump for the victim's release; the accepted program has the victim thrown and Rayden doing his recovery drop;
-  - the recovery drop runs only when he is airborne (`0x8003E07C` is an airborne test).
+  - the recovery drop runs only when he is airborne (`0x8003E07C` is an airborne test);
+  - the victim's new routine `0x8005391C` does not throw it: it stops, is put back on the ground, faces him, plays its slot `0x1E` in two phases (rate 5) and gets up (`0x800587FC(0x21)`). It slumps where the carry ended.
 - **Registry:** `is_airborne` `0x8003E07C`, `randu` `0x8006E490`, `ani_to_phase_end` `0x8000DC24` (Static-confirmed); `shake_screen` `0x8002A750`, `get_his_char_ani` `0x8006D8D0`, `give_routine` `0x8006D3B4` (Hypothesis); `reptile_dash_hit` and `dash_recover` are move bodies.
 
 ### Rayden — progress
@@ -91,6 +92,7 @@ Steps as for Reptile: body, inputs, specials, icons and description, product opt
 | `MKMSZR_rayden-specials_common_proof_v05.z64` | `2c5d3f08725848d519bfc0f4239ce6cd29840f059d615ba28826bd65cf3559db` | v04 with the ledge fix, a 40-donor-tick flight and no Ice cost (below). Payload `0x1060` bytes. | Owner (2026-11-24): "remove the face opponent. That's up to the player." |
 | `MKMSZR_rayden-specials_common_proof_v06.z64` | `7125356cff7d6b16913e696ec215255ee76dc2d81d0e066ca26c52d91b4e2b25` | v05 without the torpedo's turns: `specials.torpedo.face` false (the begin without its face call, as Acid Spit's) and the new generic tuning `specials.<move>.skip: ["face"]` (step kinds left out; the turn before the recovery). The Lightning still turns, as MKT's does. Payload `0x1090` bytes. | Owner (2026-11-24): after the torpedo the fall has no air control, unlike a jump. |
 | `MKMSZR_rayden-specials_common_proof_v07.z64` | `6eda7603766cdc681ff8bc8f2fa2548e45a827ef14ff223e24d662e741c180c0` | v06 with air control on the closing drop (`specials.torpedo.air_control`, below). Payload `0x10B0` bytes. | **Runtime-confirmed (bounded)** by the owner (2026-11-24): "Works perfectly". **Torpedo accepted.** |
+| `MKMSZR_rayden-specials_common_proof_v08.z64` | `1fd7423695c7d2c1a12df0fa8e6d3a72b4eb78ca46927edbfe13997ddd9bfcc9` | v07 switched to MKT's torpedo (owner, 2026-11-25), as the generator writes it: a random start sound 10–12 (sound steps gained `random: k`, lowered through the per-thousand gate `0x80016008`); the speed from the lean; after the carry, and at once on a block, Rayden bounces back (his slot `0x1A` from frame 1, new body script `0x42`, `do_jump(0x33333, -0x6CCCC, 0x5199)`: positive x is away from the opponent in both games); the victim slumps where the carry ended instead of being thrown (the release knockback with no push and no lift). Kept owner adjustments: no turning, 40-tick flight, air control (now also on the bounce), the grab point, no Ice cost. Gaps: MKT animates the bounce (rate 3) during its jump, the host holds frame 1; no screen shake. Payload `0x13B0` bytes. | **Pending** owner test |
 
 - **Stick commands** (Static-confirmed host path; `commands`, program buttons `"stick"`):
   - The host raises input events 6 Up, 7 Down, 8 Left and 9 Right on stick presses, the same numbering as MKT's grid (semantic bits `0x1000`/`0x4000`/`0x8000`/`0x2000`; per-bit handler table `0x8009AAD0`).
