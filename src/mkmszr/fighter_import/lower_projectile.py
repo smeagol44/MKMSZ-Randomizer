@@ -244,9 +244,17 @@ def donor_helper(donor: Donor, anim: dict[str, Any]) -> Helper | None:
     return Helper(tuple(h for h in shown[start:] if h is not None), start)
 
 
-def _frame(donor: Donor, rel: int, shift: int) -> effects.EffectFrame:
+def _frame(donor: Donor, rel: int, shift: int, mirror: bool = False) -> effects.EffectFrame:
+    """A donor frame for effect art; ``mirror``: each row reversed in place, the anchor kept, so
+    the image faces the other way over the same box (see ``place_art``'s ``impact_mirror``)."""
+
     f = donor.frame(rel)
-    indices = bytes(0 if v == 0 else v + shift for v in f["padded"])
+    padded = f["padded"]
+    if mirror:
+        w, stride = f["w"], f["stride"]
+        rows = [padded[y * stride : (y + 1) * stride] for y in range(len(padded) // stride)]
+        padded = b"".join(bytes(r[:w][::-1]) + bytes(r[w:]) for r in rows)
+    indices = bytes(0 if v == 0 else v + shift for v in padded)
     return effects.EffectFrame(f["w"], f["eh"], f["x"], f["y"], indices)
 
 
@@ -282,11 +290,18 @@ def place_art(
     helper: Helper | None = None,
     helper_slot: int | None = None,
     throw_rate: int = 0,
+    impact_mirror: bool = False,
 ) -> ArtLayout:
     """Put the projectile's art in the fighter file and point table-1 ``slots`` (empty in
     stock) at its flight and impact scripts. By default it is appended; with ``at`` it is
     written from that offset inside the file (e.g. the body region's free tail, Sektor proof
-    v47's heap-neutral placement) and must end by ``budget``."""
+    v47's heap-neutral placement) and must end by ``budget``.
+
+    ``impact_mirror``: the impact frames are mirrored within their own box (rows reversed, the
+    anchor kept). Rayden's lightning burst is placed right by MKT's flip and offset but faces
+    the wrong way on the host (specials proof v09); flipping the actor back instead (v10-v12)
+    mirrored the image around its anchor, which sits far to one side, and moved it 115 px
+    (owner save state, v12: the burst actor exactly at the hit position minus MKT's offset)."""
 
     cursor = len(file87) if at is None else at
 
@@ -322,7 +337,7 @@ def place_art(
         )
         colours += impact_palette + [0] * (32 - len(impact_palette))
         impact_rels = list(dict.fromkeys(impact.frames))
-        frames += [_frame(donor, r, 32) for r in impact_rels]
+        frames += [_frame(donor, r, 32, impact_mirror) for r in impact_rels]
         rels += impact_rels
     if helper is not None:  # the helper's frames take the flight palette (MKT binds it from them)
         helper_rels = [r for r in dict.fromkeys(helper.frames) if r not in rels]
@@ -476,10 +491,6 @@ class Lowered:
     impact_at_opponent: bool = False
     impact_dx: int = 0  # world units, after facing the attacker (MKT multi_adjust_xy)
     impact_flip: bool = True  # MKT flip_single (Acid Spit v10: mirrored on the host)
-    # Mirror the impact art back after placing it: MKT's flip places it, but the host then draws
-    # it facing the wrong way (Rayden's lightning burst, specials proof v09: "coming from the
-    # other way"). Unlike impact_flip off, the position stays MKT's.
-    impact_mirror: bool = False
     # Place an "at opponent" impact on the enemy the strike hit, at its whole position (path,
     # path position, x, y, z): with a path (+0xDC), the offset 0x80031208 only advances the path
     # position +0xE0 and x follows from it. On the ordinary hit path the collision core records a projectile
@@ -700,11 +711,6 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
             a.move("a2", "zero")
             a.jal(F_OFFSET)
             host.load_controller(a)
-            if p.impact_mirror:
-                a.lhu("t1", ACTOR_FLAGS, "s1")
-                a.li("t2", FACING_BIT)
-                a.xor("t1", "t1", "t2")
-                a.sh("t1", ACTOR_FLAGS, "s1")
             a.label(prefix + "no_opponent")
         if p.art.virtual:
             select(None, p.art.impact_at)

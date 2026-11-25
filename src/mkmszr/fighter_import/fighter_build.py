@@ -231,7 +231,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 art = lp.place_art(file87, mkt, donor_id, proj, slots, body_build.TYPE_END, at=at,
                                    helper=helper,
                                    helper_slot=_int(ptune["helper_slot"]) if "helper_slot" in ptune else None,
-                                   throw_rate=int(throw["rate"]))  # fmt: skip
+                                   throw_rate=int(throw["rate"]),
+                                   impact_mirror=bool(ptune.get("impact_mirror", False)))  # fmt: skip
                 needed = len(lp.projectile_sounds(proj))
                 events, samples_end = lp.install_sounds(
                     rom, clean, mkt, donor_id, proj, tuple(chains.take() for _ in range(needed)),
@@ -332,10 +333,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         if g is not None:
             ptune = tune.get("projectile", {})
             low = lp.lower(projectile_of[move], g.art, g.events, g.reaction_slot, clean)
-            if {"impact_flip", "impact_keep_y", "impact_mirror", "impact_at_hit"} & set(ptune):
+            if {"impact_flip", "impact_keep_y", "impact_at_hit"} & set(ptune):
                 low = dataclasses.replace(low, impact_flip=bool(ptune.get("impact_flip", True)),
                                           impact_keep_y=bool(ptune.get("impact_keep_y", False)),
-                                          impact_mirror=bool(ptune.get("impact_mirror", False)),
                                           impact_at_hit=bool(ptune.get("impact_at_hit", False)))  # fmt: skip
             g.lowered = low
             lp.emit_process(a, low, child=f"{move}_ball", prefix=f"{move}_", data=f"g{_gid(g)}_",

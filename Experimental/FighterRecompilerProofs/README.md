@@ -57,3 +57,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v10.py` | `MKMSZR_rayden-specials_common_proof_v10.z64` | v09 with the lightning burst mirrored back (`impact_mirror`) and the torpedo's air control again |
 | `MKMSZR_build_rayden-specials_proof_v11.py` | `MKMSZR_rayden-specials_common_proof_v11.z64` | v10 with the lightning burst on the enemy hit (`impact_at_hit`) |
 | `MKMSZR_build_rayden-specials_proof_v12.py` | `MKMSZR_rayden-specials_common_proof_v12.z64` | v11 with the burst at the enemy's whole position (path, path position, x, y, z) |
+| `MKMSZR_build_rayden-specials_proof_v13.py` | `MKMSZR_rayden-specials_common_proof_v13.z64` | v12 with the burst mirrored within its own frames (no runtime flip) |

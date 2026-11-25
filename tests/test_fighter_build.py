@@ -91,9 +91,11 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     # Lightning keeps Ice Blast's 0x20
     ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
     assert 0x2413000D in ws and 0x24130014 not in ws  # addiu s3, zero, 13
-    # v10 (owner): the lightning burst is placed by MKT's flip and mirrored back (impact_mirror):
-    # two facing toggles; the torpedo's three jumps (bounce, bounce, drop) take the air map
-    assert ws.count(0x012A4826) == 2  # xor t1, t1, t2 (the facing bit)
+    # v13 (owner save state): the lightning burst is placed by MKT's flip alone (one facing
+    # toggle); impact_mirror mirrors its frames in the art instead (v10-v12 flipped the actor
+    # back, mirroring it around an anchor outside its box); the torpedo's three jumps (bounce,
+    # bounce, drop) take the air map
+    assert ws.count(0x012A4826) == 1  # xor t1, t1, t2 (the facing bit)
     assert ws.count(0x2739B05C) == 5  # input map: two begins without a turn, three jumps
     # v11-v12 (owner screenshots, Wind): the burst goes to the enemy hit (the player's +0x640,
     # set by the collision core), at its whole position: path, path position, x, z, y
@@ -119,3 +121,20 @@ def test_a_pose_past_its_script_is_refused(roms: tuple[bytes, bytes], monkeypatc
     monkeypatch.setattr(components, "load_programs", with_bad_pose)
     with pytest.raises(fb.BuildError, match="past the 6 words"):
         fb.build(*roms, "rayden")
+
+
+@needs_roms
+def test_impact_mirror_reverses_rows_and_keeps_the_anchor(roms: tuple[bytes, bytes]) -> None:
+    from mkmszr.fighter_import import lower_projectile as lp
+    from mkmszr.fighter_import.body_build import Donor
+
+    donor = Donor(roms[1], 24)
+    rel = 0x2060  # a lightning burst frame (slot 0x43 part 4)
+    plain, mirrored = lp._frame(donor, rel, 32), lp._frame(donor, rel, 32, mirror=True)
+    f = donor.frame(rel)
+    w, stride = f["w"], f["stride"]
+    assert (mirrored.anchor_x, mirrored.anchor_y) == (plain.anchor_x, plain.anchor_y)
+    assert stride == plain.stride
+    for y in range(f["eh"]):
+        row = plain.indices[y * stride : y * stride + w]
+        assert mirrored.indices[y * stride : y * stride + w] == row[::-1]
