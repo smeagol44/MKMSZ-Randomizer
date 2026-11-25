@@ -91,6 +91,10 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     # Lightning keeps Ice Blast's 0x20
     ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
     assert 0x2413000D in ws and 0x24130014 not in ws  # addiu s3, zero, 13
+    # v10 (owner): the lightning burst is placed by MKT's flip and mirrored back (impact_mirror):
+    # two facing toggles; the torpedo's three jumps (bounce, bounce, drop) take the air map
+    assert ws.count(0x012A4826) == 2  # xor t1, t1, t2 (the facing bit)
+    assert ws.count(0x2739B05C) == 5  # input map: two begins without a turn, three jumps
     assert 0x2529FFA0 not in ws and 0x2529FFE0 in ws  # addiu t1, t1, -0x60 / -0x20
 
 

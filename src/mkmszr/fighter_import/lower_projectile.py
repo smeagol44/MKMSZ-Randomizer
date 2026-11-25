@@ -475,6 +475,10 @@ class Lowered:
     impact_at_opponent: bool = False
     impact_dx: int = 0  # world units, after facing the attacker (MKT multi_adjust_xy)
     impact_flip: bool = True  # MKT flip_single (Acid Spit v10: mirrored on the host)
+    # Mirror the impact art back after placing it: MKT's flip places it, but the host then draws
+    # it facing the wrong way (Rayden's lightning burst, specials proof v09: "coming from the
+    # other way"). Unlike impact_flip off, the position stays MKT's.
+    impact_mirror: bool = False
     # Keep the projectile's own y at the opponent: MKT's objects share the fighters' ground y, but
     # the host projectile is raised by its offset (Acid Spit v13: splash 36 px below the hit).
     impact_keep_y: bool = False
@@ -670,6 +674,11 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
             a.move("a2", "zero")
             a.jal(F_OFFSET)
             host.load_controller(a)
+            if p.impact_mirror:
+                a.lhu("t1", ACTOR_FLAGS, "s1")
+                a.li("t2", FACING_BIT)
+                a.xor("t1", "t1", "t2")
+                a.sh("t1", ACTOR_FLAGS, "s1")
             a.label(prefix + "no_opponent")
         if p.art.virtual:
             select(None, p.art.impact_at)

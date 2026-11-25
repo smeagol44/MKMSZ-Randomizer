@@ -22,8 +22,9 @@
     "common_animations": ["death", "long_fall", "pickup", "grabbed"]
   },
   "commands": {"lightning": "ice_blast", "torpedo": "ice_clone"},
-  "specials": {"lightning": {"donor_ticks": 2, "projectile": {"offset_px": [-30, -36], "box": "centre_on_art"}},
-               "torpedo": {"face": false, "skip": ["face"], "airborne": true, "donor_ticks": 2}},
+  "specials": {"lightning": {"donor_ticks": 2, "projectile": {"offset_px": [-30, -36], "box": "centre_on_art",
+                                                              "impact_mirror": true}},
+               "torpedo": {"face": false, "skip": ["face"], "airborne": true, "donor_ticks": 2, "air_control": true}},
   "legacy": [],
   "notes": "Milestone 6 (owner, 2026-11-13): Rayden is the next fighter. Body first."
 }
