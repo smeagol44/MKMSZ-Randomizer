@@ -776,6 +776,47 @@ def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
     a.j_label(release)  # the throw, as the reaction itself (same sp and ra)
 
 
+# Victim reactions the builder supplies as payload routines (strike meanings that are not
+# STOCK_REACTIONS and not lifted projectile reactions), each in a spare reaction-table entry.
+# One table instead of a builder branch per reaction: a new reaction is a row here.
+@dataclass(frozen=True)
+class ReactionContext:
+    tune: dict[str, Any]  # the move's ``specials`` tuning
+    donor_ticks: int
+    clean: bytes
+
+
+@dataclass(frozen=True)
+class VictimReaction:
+    suffix: str  # routine label: "<move>_<suffix>"
+    emit: Callable[[Assembler, str, ReactionContext], None]
+    word: bool = False  # the attacker's steps share "<label>_word" with it (``carry``)
+
+
+def _emit_hold(a: Assembler, label: str, ctx: ReactionContext) -> None:
+    emit_hold_reaction(a, label, ctx.donor_ticks)
+
+
+def _emit_carry(a: Assembler, label: str, ctx: ReactionContext) -> None:
+    grab = ctx.tune.get("carry", {})  # specials.<move>.carry: the grab point, in px
+    release = label + "_release"
+    emit_carry_reaction(a, label, label + "_word", release,
+                        lp.REACTION_LOWERING["torpedo_carry_release"]["morph"],
+                        dx_px=lp._int(grab.get("dx_px", CARRY_DX_PX)),
+                        dy_px=lp._int(grab.get("dy_px", CARRY_DY_PX)))  # fmt: skip
+    a.label(release)
+    for w in lp.lifted_reaction(ctx.clean, "torpedo_carry_release"):
+        a.raw(w)
+    a.label(label + "_word")
+    a.raw(0)
+
+
+VICTIM_REACTIONS: dict[str, VictimReaction] = {
+    "elbow_hold": VictimReaction("hold", _emit_hold),
+    "torpedo_carry": VictimReaction("carry", _emit_carry, word=True),
+}
+
+
 # Stealth (Reptile's Invisibility): the Eye item's effect (Wiki Fighter-Recompiler-Components,
 # "Eye item"). 0x80072584 sets it on the player: controller +0x6BC |= 0x1000 (enemy AI
 # idles), actor +0x8C |= 0x4000, +0x64 |= 0x2000, colour +0xFC/+0xFE/+0x100 = 32 (also on the

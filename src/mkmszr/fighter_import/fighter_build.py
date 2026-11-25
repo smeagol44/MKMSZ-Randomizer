@@ -266,6 +266,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     selectors = {m: FIRST_SELECTOR + k for k, m in enumerate(order)}
     custom_reactions: dict[str, int] = {}  # meaning -> reaction-table entry
     reaction_labels: dict[str, str] = {}  # meaning -> its routine's label
+    emitted: set[str] = set()  # meanings whose routine is in the payload
     per_move = [m for m in order if d.specials.get(m, {}).get("limit") == "per_move"]
     shared_limit = [m for m in projectile_of if m not in per_move]
     a = Assembler(link_va + TABLE_RESERVE, cached_calls=True)
@@ -294,6 +295,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             if meaning not in custom_reactions:
                 custom_reactions[meaning] = reactions.take()
             reaction_map[meaning] = custom_reactions[meaning]
+            spec = lower_special.VICTIM_REACTIONS.get(meaning)
+            if spec is not None:  # its routine: named by the first move that uses it
+                reaction_labels.setdefault(meaning, f"{move}_{spec.suffix}")
+        words = [f"{reaction_labels[m]}_word" for m in sorted(reaction_map)
+                 if m in lower_special.VICTIM_REACTIONS and lower_special.VICTIM_REACTIONS[m].word]  # fmt: skip
         foot = None
         if move in footsteps:
             slot = next(_int(s["anim"]["slot"]) for s in _all_steps(steps)
@@ -315,7 +321,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             speed=lambda v: physics.fold_donor_speeds(v, v, lambda x: x, lp.UNITS_PER_PX)[0],
             footsteps=foot, stealth=f"{move}_stealth" if "stealth" in tune else None,
             effects=fx_map or None,
-            carry=f"{move}_carry_word" if "torpedo_carry" in reaction_map else None,
+            carry=words[0] if words else None,
             skip=frozenset(tune.get("skip", ())),  # owner: steps left out (Rayden's torpedo turns)
             air_control=bool(tune.get("air_control")),  # owner: steer the closing drop
         )  # fmt: skip
@@ -336,24 +342,12 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                     lp.emit_helper(a, g.art, 0, dy, g.helper, None, body_at=body_slot[1])
                 else:
                     lp.emit_helper(a, g.art, 0, dy, g.helper, body_slot)
-        if "elbow_hold" in reaction_map and "elbow_hold" not in reaction_labels:
-            reaction_labels["elbow_hold"] = f"{move}_hold"
-            lower_special.emit_hold_reaction(a, f"{move}_hold", _int(tune.get("donor_ticks", 1)))
-        if "torpedo_carry" in reaction_map and "torpedo_carry" not in reaction_labels:
-            reaction_labels["torpedo_carry"] = f"{move}_carry"
-            release = f"{move}_carry_release"
-            grab = tune.get("carry", {})  # specials.<move>.carry: the grab point, in px
-            lower_special.emit_carry_reaction(
-                a, f"{move}_carry", f"{move}_carry_word", release,
-                lp.REACTION_LOWERING["torpedo_carry_release"]["morph"],
-                dx_px=_int(grab.get("dx_px", lower_special.CARRY_DX_PX)),
-                dy_px=_int(grab.get("dy_px", lower_special.CARRY_DY_PX)),
-            )
-            a.label(release)
-            for w in lp.lifted_reaction(clean, "torpedo_carry_release"):
-                a.raw(w)
-            a.label(f"{move}_carry_word")
-            a.raw(0)
+        ctx = lower_special.ReactionContext(tune, _int(tune.get("donor_ticks", 1)), clean)
+        for meaning in sorted(set(reaction_map) - emitted):
+            spec = lower_special.VICTIM_REACTIONS.get(meaning)
+            if spec is not None:
+                spec.emit(a, reaction_labels[meaning], ctx)
+                emitted.add(meaning)
         unknown = set(reaction_map) - set(reaction_labels)
         if unknown:
             raise BuildError(f"{move}: no host routine for reactions {sorted(unknown)}")
