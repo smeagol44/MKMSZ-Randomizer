@@ -124,7 +124,7 @@ def test_a_pose_past_its_script_is_refused(roms: tuple[bytes, bytes], monkeypatc
 
 
 @needs_roms
-def test_impact_mirror_reverses_rows_and_keeps_the_anchor(roms: tuple[bytes, bytes]) -> None:
+def test_impact_mirror_reverses_rows_around_the_core(roms: tuple[bytes, bytes]) -> None:
     from mkmszr.fighter_import import lower_projectile as lp
     from mkmszr.fighter_import.body_build import Donor
 
@@ -133,8 +133,12 @@ def test_impact_mirror_reverses_rows_and_keeps_the_anchor(roms: tuple[bytes, byt
     plain, mirrored = lp._frame(donor, rel, 32), lp._frame(donor, rel, 32, mirror=True)
     f = donor.frame(rel)
     w, stride = f["w"], f["stride"]
-    assert (mirrored.anchor_x, mirrored.anchor_y) == (plain.anchor_x, plain.anchor_y)
     assert stride == plain.stride
     for y in range(f["eh"]):
         row = plain.indices[y * stride : y * stride + w]
         assert mirrored.indices[y * stride : y * stride + w] == row[::-1]
+    # the core (the burst's star) stays where it was: the anchor moves by w - 1 - 2 * core
+    core = lp._densest_column(f["padded"], w, stride)
+    assert mirrored.anchor_y == plain.anchor_y
+    assert mirrored.anchor_x == plain.anchor_x + (w - 1 - 2 * core)
+    assert -plain.anchor_x + core == -mirrored.anchor_x + (w - 1 - core)

@@ -58,3 +58,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v11.py` | `MKMSZR_rayden-specials_common_proof_v11.z64` | v10 with the lightning burst on the enemy hit (`impact_at_hit`) |
 | `MKMSZR_build_rayden-specials_proof_v12.py` | `MKMSZR_rayden-specials_common_proof_v12.z64` | v11 with the burst at the enemy's whole position (path, path position, x, y, z) |
 | `MKMSZR_build_rayden-specials_proof_v13.py` | `MKMSZR_rayden-specials_common_proof_v13.z64` | v12 with the burst mirrored within its own frames (no runtime flip) |
+| `MKMSZR_build_rayden-specials_proof_v14.py` | `MKMSZR_rayden-specials_common_proof_v14.z64` | v13 with the burst mirrored around each frame's core (the star stays on the enemy) |
