@@ -827,6 +827,26 @@ def phase_slot_frames(donor: Donor, slots, sources: dict | None = None) -> dict[
     return out
 
 
+def donor_loop_target(donor: Donor, root: int, frames: list[int]) -> int:
+    """Index, among a new script's words, of the frame the donor script at ``root`` loops back to
+    (its token-1 jump right after ``frames``). Only scripts with no phase end or token before
+    the loop are supported (Rayden's slot 0x1A: six frames, then a jump to the second)."""
+
+    positions: list[int] = []
+    values: list[int] = []
+    pos = root
+    for _ in range(MAX_SCRIPT_WORDS):
+        v = donor.m32(pos)
+        if v == 1 and values == frames and donor.m32(pos + 4) in positions:
+            return positions.index(donor.m32(pos + 4))
+        if v in (0, 1) or MKT.is_token(v) or not donor.is_shape(v):
+            break
+        positions.append(pos)
+        values.append(v)
+        pos += 4
+    raise LayoutError(f"script 0x{root:X} does not end in a loop the builder can copy")
+
+
 def donor_frames_by_phase(donor: Donor, root: int, starts: set[int]) -> list[list[int]]:
     """Body frames of the donor script at ``root`` grouped by phase, every token skipped (with its
     operands), up to a jump/stop or the next script start. The frame after a helper step (tokens
@@ -1343,7 +1363,8 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         if s < VIRTUAL_SCRIPT and be32(clean_file, 0x104 + 4 * s):
             raise LayoutError(f"secondary slot 0x{s:02X} is not empty in the host file")
         script_items.append(("secondary", s))
-        item_sizes[("secondary", s)] = 4 * sum(len(p) + 1 for p in phases)
+        loop = 1 if s in body_d.loop_scripts else 0  # the last phase end becomes token 1 + target
+        item_sizes[("secondary", s)] = 4 * (sum(len(p) + 1 for p in phases) + loop)
     for it in script_items:
         if it[0] == "script":
             item_sizes[it] = 4 * slot_cfg[it[1]]["n"]
@@ -1449,6 +1470,11 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
     for s, phases in new_scripts.items():
         at = item_offsets[("secondary", s)]
         words = [w for p in phases for w in [*(shape_map[r] for r in p), 0]]
+        if s in body_d.loop_scripts:
+            t, i, _n = body_d.secondary_scripts[s]
+            root = (donor.table0 if t == 0 else _t1)[i]
+            target = donor_loop_target(donor, root, [r for p in phases for r in p])
+            words[-1:] = [1, at + 4 * target]  # host token 1: jump to a file offset
         for i, w in enumerate(words):
             put32(file87, at + 4 * i, w)
             owned.add(at + 4 * i)

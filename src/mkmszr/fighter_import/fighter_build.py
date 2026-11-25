@@ -207,6 +207,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             steps = [dict(s, ticks=_int(tune["sleep_ticks"])) if s["op"] == "sleep" else s for s in steps]
         if "strike_ticks" in tune:  # owner: a longer hit window (Rayden's torpedo, specials proof v05)
             steps = [dict(s, ticks=_int(tune["strike_ticks"])) if s["op"] == "strike" else s for s in steps]
+        ticks_per = _int(tune.get("donor_ticks", 1))
+        if ticks_per > 1:  # projectile frame rates are donor ticks too (Rayden's lightning, v09)
+            steps = [_projectile_rates(s, ticks_per) if s["op"] == "projectile" else s for s in steps]
         steps_of[move] = steps
         proj = next((s for s in steps if s["op"] == "projectile"), None)
         if proj is not None:
@@ -431,6 +434,15 @@ def _gid(g: _Group) -> str:
 def _combo_slot(d: fd.FighterDescription) -> tuple[int | None]:
     table, index = d.body.sources.get(combos.COMBO_SLOT, (0, combos.COMBO_SLOT))
     return (index if table == 1 else None,)
+
+
+def _projectile_rates(step: dict[str, Any], ticks_per: int) -> dict[str, Any]:
+    """A projectile step with its flight and impact frame rates in host ticks (rounded up)."""
+
+    out = dict(step, rate=max(1, -(-_int(step["rate"]) // ticks_per)))
+    if "impact" in step and "rate" in step["impact"]:
+        out["impact"] = dict(step["impact"], rate=max(1, -(-_int(step["impact"]["rate"]) // ticks_per)))
+    return out
 
 
 def _all_steps(steps: list[dict[str, Any]]):

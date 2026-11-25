@@ -152,7 +152,13 @@ REGISTRY: dict[int, MktRoutine] = {
         "advance the animation (0x8000E3CC) each a0 ticks until the phase ends (as mframew)",
         _G,
     ),
-    0x8002A750: _e("shake_screen", "a0, a1 = amplitudes", "screen shake; Hypothesis (torpedo crash)", _G),
+    0x8002A750: _e(
+        "shake_screen",
+        "a0 = amplitude, a1 = count",
+        "process 0x103 at 0x8002A78C: every 3 ticks the vertical camera offset 0x8015D690 -= "
+        "amplitude, amplitude = -amplitude, count times",
+        _G,
+    ),
     0x8006D8D0: _e(
         "get_his_char_ani",
         "a0 = table, a1 = slot",

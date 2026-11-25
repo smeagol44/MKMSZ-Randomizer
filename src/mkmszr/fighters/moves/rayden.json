@@ -21,11 +21,11 @@
         {
           "op": "begin",
           "action_mkt": "0x2B",
-          "face": true,
+          "face": false,
           "stop": true,
           "src": {
             "action_mkt": "MKT 0x80077E4C",
-            "face": "MKT 0x80050440",
+            "face": "MKT 0x80077E54",
             "stop": "MKT 0x80050428"
           }
         },
@@ -231,6 +231,17 @@
               }
             },
             {
+              "op": "shake_screen",
+              "amplitude": 6,
+              "count": 6,
+              "ticks": 3,
+              "src": {
+                "amplitude": "MKT 0x80045504",
+                "count": "MKT 0x8004550C",
+                "ticks": "MKT 0x8002A7C0"
+              }
+            },
+            {
               "op": "sound",
               "sound": {
                 "fighter": 13
@@ -260,8 +271,10 @@
                 "x": "MKT 0x800455E0",
                 "y": "MKT 0x800455DC",
                 "gravity": "MKT 0x800455EC",
-                "until": "MKT 0x8004560C"
-              }
+                "until": "MKT 0x8004560C",
+                "rate": "MKT 0x800455C8"
+              },
+              "rate": 3
             },
             {
               "op": "end"
@@ -289,8 +302,10 @@
                 "x": "MKT 0x800455E0",
                 "y": "MKT 0x800455DC",
                 "gravity": "MKT 0x800455EC",
-                "until": "MKT 0x8004560C"
-              }
+                "until": "MKT 0x8004560C",
+                "rate": "MKT 0x800455C8"
+              },
+              "rate": 3
             },
             {
               "op": "end"
@@ -355,15 +370,7 @@
     },
     {
       "move": "torpedo",
-      "what": "MKT shakes the screen when the carry ends (0x8002A750(6, 6)); no host screen shake is located"
-    },
-    {
-      "move": "torpedo",
       "what": "the carried victim shows the first frame of its root 0x1E (MKT: his table-0 slot 0x1E frame chosen per fighter, 0x800A8170) and is thrown from the lifted host knockback (MKT: his slot 0x1A pose)"
-    },
-    {
-      "move": "torpedo",
-      "what": "MKT animates the bounce (slot 0x1A from frame 1, rate 3) during its jump; the host holds frame 1"
     }
   ]
 }

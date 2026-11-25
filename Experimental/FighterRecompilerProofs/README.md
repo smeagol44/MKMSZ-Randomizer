@@ -53,3 +53,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v06.py` | `MKMSZR_rayden-specials_common_proof_v06.z64` | v05 without the torpedo's turns to the opponent |
 | `MKMSZR_build_rayden-specials_proof_v07.py` | `MKMSZR_rayden-specials_common_proof_v07.z64` | v06 with air control on the torpedo's closing drop |
 | `MKMSZR_build_rayden-specials_proof_v08.py` | `MKMSZR_rayden-specials_common_proof_v08.z64` | v07 switched to MKT's torpedo as the generator writes it (random sound, speed from the lean, Rayden's bounce back, the victim slumps) |
+| `MKMSZR_build_rayden-specials_proof_v09.py` | `MKMSZR_rayden-specials_common_proof_v09.z64` | pure MKT: torpedo calibrations dropped, screen shake, animated bounce; Lightning at MKT's timing without a start turn |

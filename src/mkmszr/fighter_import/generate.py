@@ -277,7 +277,7 @@ class _Walk:
             return [self.window(body, strike, count)]
         if self._carry(body):
             self.note("MKT's carry shares one velocity between the fighters and ends when either "
-                      "stops (a wall); the host holds the victim at a grab point")  # fmt: skip
+                      "stops (a wall); the host keeps the victim at its contact distance")  # fmt: skip
             return [{"op": "carry", "ticks": count, "every_tick": [{"op": "hover"}, {"op": "pass_through", "ticks": 1}]}]
         steps = self.stmts(body)
         return [{"op": "repeat", "count": count, "steps": steps}]
@@ -501,11 +501,10 @@ def _jump(w: _Walk, c: dc.Call, a: list) -> list[dict]:
         w.unknown(f"0x{c.pc:08X}: jump {c.args}")
         return []
     rate = c.args[4].const()
-    shown = w.show_pending()
-    if shown and rate is not None and 0 < rate < 0x100:
-        w.note(f"MKT animates the jump at rate {rate} from the selected frame (0x{c.pc:08X}); the "
-               "program holds the frame")  # fmt: skip
-    return shown + [{"op": "jump", "x": hex(x), "y": hex(y), "gravity": hex(g), "until": "landing"}]
+    step: dict[str, Any] = {"op": "jump", "x": hex(x), "y": hex(y), "gravity": hex(g), "until": "landing"}
+    if rate is not None and 0 < rate < 0x100:  # do_jump animates the selection at this rate
+        step["rate"] = rate
+    return w.show_pending() + [step]
 
 
 def _end(w: _Walk, c: dc.Call, a: list) -> list[dict]:
@@ -530,8 +529,11 @@ def _no_repel(w: _Walk, c: dc.Call, a: list) -> list[dict]:
 
 
 def _shake_screen(w: _Walk, c: dc.Call, a: list) -> list[dict]:
-    w.note(f"MKT shakes the screen ({a[0]}, {a[1]}); no host component")
-    return []
+    if a[0] is None or a[1] is None:
+        w.unknown(f"0x{c.pc:08X}: shake_screen {c.args[0]}, {c.args[1]}")
+        return []
+    # 0x8002A78C steps every 3 ticks (Static-confirmed)
+    return [{"op": "shake_screen", "amplitude": a[0], "count": a[1], "ticks": 3}]
 
 
 def _shake_object(w: _Walk, c: dc.Call, a: list) -> list[dict]:
@@ -637,7 +639,7 @@ def without_host_details(steps: list[dict]) -> list[dict]:
 
 # ---- comparison --------------------------------------------------------------------------------
 _KEYS = ("anim", "rate", "until", "ticks", "count", "x", "y", "gravity", "sound", "strike",
-         "only_if", "dx", "dy", "effect", "action_mkt")  # fmt: skip
+         "only_if", "dx", "dy", "effect", "action_mkt", "amplitude")  # fmt: skip
 _NESTED = ("steps", "every_tick", "on_hit", "on_block")
 
 

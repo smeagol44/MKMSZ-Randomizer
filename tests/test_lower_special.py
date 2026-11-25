@@ -263,15 +263,55 @@ def test_carry_op_and_reaction_share_the_word() -> None:
     assert 0x24050000 | ls.CARRY_ROOT in ws[reaction:]  # root 0x1E selected for the pose
     j = 0x08000000 | (a.labels["release"] >> 2) & 0x03FFFFFF
     assert j in ws[reaction:]  # tail call into the throw
-    # held at the grab point (72 px = 144 units << 8) at the player's y, with no gravity or y
-    # speed and the previous y moved too (owner, v03: no ground carry, no ledge drop)
+    # MKT (v09, owner: pure MKT): the contact distance (victim x - player x, kept) and the
+    # victim's own height, held: no gravity or y speed, the previous y moved too
     held = ws[reaction:]
-    assert 0x34129000 in held or 0x36529000 in held  # ori s2, 0x9000
+    assert 0x01499023 in held  # subu s2, t2, t1: the contact distance
+    assert 0x8E290030 in held  # lw t1, +0x30(s1): its own y
     for sw in (0xAE290030, 0xAE29003C, 0xAE200010, 0xAE200018):  # y, previous y, gravity, y speed
         assert sw in held
     assert 0xA6090000 | 0x6B2 in held  # sh t1, +0x6B2(s0): the airborne counter
     # counted every tick, not only above the floor (v04: a ground carry fell at a ledge)
     assert 0x8E0906B4 not in held  # lw t1, +0x6B4(s0): no floor comparison
+
+
+def test_carry_grab_point_is_an_owner_option() -> None:
+    """The v04-v08 grab point (72 px ahead at the player's y) stays available as tuning."""
+
+    a = Assembler(0xA01AF420, cached_calls=True)
+    ls.emit_carry_reaction(a, "carry", "word", "release", (), dx_px=72, dy_px=0)
+    a.label("release")
+    a.label("word")
+    a.raw(0)
+    code = a.link()
+    ws = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
+    assert 0x34129000 in ws or 0x36529000 in ws  # ori s2, 0x9000: 72 px = 144 units << 8
+    assert 0x01499023 not in ws
+
+
+def test_shake_screen_runs_mkt_algorithm_on_the_camera_offset() -> None:
+    a = Assembler(0xA01AF420, cached_calls=True)
+    steps = [{"op": "shake_screen", "amplitude": 6, "count": 6, "ticks": 3}, {"op": "end"}]
+    ls.emit_action(a, "t", steps, cost=0, animations={}, donor_ticks=2)
+    code = a.link()
+    ws = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
+    assert 0x24040015 in ws  # the process id of the host's shakes
+    shaker = next(v for k, v in a.labels.items() if "shaker" in k and not k.endswith("_step"))
+    tail = ws[(shaker - a.base) // 4 :]
+    assert tail[:2] == [0x24100006, 0x2411000C]  # 6 steps of 6 px (12 world units)
+    assert 0x24040002 in tail  # 3 donor ticks at 2 per host tick
+    assert 0xAD00A928 in tail or 0xAD00A928 - 0x10000 in tail or any(
+        (w & 0xFFFF) == 0xA928 and (w >> 26) == 0x2B and (w >> 16) & 0x1F == 0 for w in tail)  # fmt: skip
+
+
+def test_jump_rate_animates_the_selection() -> None:
+    a = Assembler(0xA01AF420, cached_calls=True)
+    steps = [{"op": "jump", "x": "0x33333", "y": "-0x6CCCC", "gravity": "0x5199", "until": "landing",
+              "rate": 3}, {"op": "end"}]  # fmt: skip
+    ls.emit_action(a, "t", steps, cost=0, animations={}, donor_ticks=2)
+    code = a.link()
+    ws = [int.from_bytes(code[i:i + 4], "big") for i in range(0, len(code), 4)]
+    assert 0x24080002 in ws and 0x2408000D not in ws  # rate 2, not "keep" (13)
 
 
 def test_movement_moves_are_marked() -> None:
