@@ -6,6 +6,35 @@
 
 **Milestone 6 — next fighters: Rayden** (MKT fighter 24), started 2026-11-13 ([amendment 1](Fighter-Recompiler-Amendment-1): decisions and his power slots). Milestone 4 (Reptile) shipped as a product Fighter option (PRs #209, #210); its record follows below.
 
+### Generator — agreed tasks (owner, 2026-11-25: option A)
+
+1. One table for builder-supplied victim reactions (`lower_special.VICTIM_REACTIONS`; done, outputs unchanged).
+2. **Generator v0** (`fighter_import.decompile`, `fighter_import.generate`): MKT routine → structured IR → move program, with a golden comparison against the accepted programs. In progress (below).
+3. Projectile rules (Lightning's bolt, Reptile's forceballs and acid), then the remaining moves of the roster that the rules reach.
+4. Owner adjustments out of the move programs into the descriptions (forceball spawn offsets, the 1200-tick stealth), and host details (`hover` for airborne moves) derived from the tuning in the backend.
+5. Builds from generated programs: Rayden's teleport, reversed Lightning and Shocker as the first unseen moves; then several fighters per ROM for testing projectiles together (owner).
+
+**Generator v0 (2026-11-25; Implementation/CI-confirmed, static).**
+
+- **Decompiler** (`decompile`): symbolic values (`proc` = the current process `*0x8014C31C`, `self` = its object `+0x418`, call results, loads), IDO shapes (forward branches as if/else; back branches as do-while; a branch-likely's delay slot on its taken path; the else-block's first instruction hoisted into that delay slot; jumps out of a loop as `break`). Known arguments fold branches: Rayden's lightning routine `0x80077DF8` gives Lightning with 0 and the reversed Lightning with 1.
+- **Rules** (`generate.CALL_RULES`): MKT engine routines → steps (begin, sound, animation selection and phase animation, frame stepping, velocity, stop, face, sleep, jump, effect, no-repel, shakes, end), the dispatch tables (`do_special`, `do_body_propell`, `do_quick_special`), MKT strike records decoded from `0x800AFDB0[fighter]` (box, reaction, damage, chip), MKT reaction ids → meanings (`REACTION_MEANINGS`, one shared table), and shapes: a counted loop around a strike is a hit window (`on_hit` from the contact branch, `on_block` from the strike flag `0x8014C3B8`, `only_if` from the `opponent_unsettled` guard), a counted loop without one is `repeat`, the torpedo's shared-velocity loop is `carry`. Unnamed routines next to the move's body are followed; anything else is reported as unknown, not guessed.
+- **Results against the accepted programs** (pinned in `tests/test_generate.py`):
+
+| Move | Result |
+|---|---|
+| Reptile elbow dash | **identical** |
+| Reptile invisibility | identical except the stealth length (owner: 1200 ticks) |
+| Rayden Lightning | identical except the projectile (projectile rules: next) |
+| Rayden torpedo | differs where MKT differs from the accepted program (below) |
+| Rayden reversed Lightning, teleport, Shocker | generated from his command records; the teleport and the Shocker report unknown routines (relocation, the getup helper, the Shocker's range checks) |
+
+- **MKT facts the generator found in the torpedo** (Static-confirmed; the accepted program differs; owner to decide):
+  - the start sound is random **10–12**: `randu(n)` (`0x8006E490`) returns 1..n, and the routine adds 9. The hand reading said 9–11 and the program plays 9;
+  - the speed is restored after the take-off phase, so he moves during the lean (the program starts it after the lean);
+  - after the carry, and at once when the hit is blocked, Rayden's own process restarts at `0x8004558C`: action `0x632`, his slot-`0x1A` pose from frame 1, `do_jump(0x33333, -0x6CCCD, 0x5199)` at rate 3, landing. Rayden bounces back off the wall; the victim gets a new routine (`0x8006D3B4(victim, 0x8005391C)`). The hand reading took this jump for the victim's release; the accepted program has the victim thrown and Rayden doing his recovery drop;
+  - the recovery drop runs only when he is airborne (`0x8003E07C` is an airborne test).
+- **Registry:** `is_airborne` `0x8003E07C`, `randu` `0x8006E490`, `ani_to_phase_end` `0x8000DC24` (Static-confirmed); `shake_screen` `0x8002A750`, `get_his_char_ani` `0x8006D8D0`, `give_routine` `0x8006D3B4` (Hypothesis); `reptile_dash_hit` and `dash_recover` are move bodies.
+
 ### Rayden — progress
 
 Steps as for Reptile: body, inputs, specials, icons and description, product option.
@@ -393,6 +422,7 @@ Fighter- or move-specific code outside fighter descriptions and components (plan
   - slide is Sub-Zero's;
   - the elbow dash is the only fully new move.
 - 2026-11-10: automatic recognition of MKT machine code is deferred to milestone 6; Sektor's move modules are frozen legacy.
+- 2026-11-25: build the generator (option A; [amendment 1](Fighter-Recompiler-Amendment-1)). Current projectiles stay as they are until several fighters can be built and tested together.
 - 2026-11-11 (projectile proofs): Reptile's forceball launches its victim toward him (v03 over v02); MKT frames and sound cadence convert at one host tick per MKT tick; the rocket speed conversion stays for now (owner: slightly off, not twice) and is to be revisited later.
 - 2026-11-11 (catalogue review): the component list is accepted and grows as needed; Reptile's invisibility uses the Eye's stealth for now (a mana-draining version is a later idea); Quan Chi's projectile confirmed as the reference move; the generic-projectile direction is still being discussed.
 - 2026-11-11: provenance convention accepted: every move-program value names its source (`MKT 0x…`, `host`, `owner`).

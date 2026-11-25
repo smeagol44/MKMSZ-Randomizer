@@ -11,7 +11,7 @@
 | Which fighters come next | **Rayden** (MKT fighter 24) | Owner: "Can we continue with Rayden, now?" |
 | Rayden's power slots | Lightning (D,F + LP) → Ice Blast; Teleport (D,U) → Directional Ice; reversed Lightning (D,B + LP) → Air Ice Blast; Torpedo (B,B,F) → Ice Clone; Shocker (hold HP, release) → Ice Shatter; Slide and Super Slide stay; Freeze on Contact removed; Polar Blast deferred (as for every fighter) | Assistant proposal, owner: "The Power slots are okay" |
 | Ice cost of movement abilities | **None**, as a general rule for every fighter (move programs mark them `"movement": true`; first: Rayden's torpedo; Reptile's elbow dash and Sektor's teleport were already free) | Owner, 2026-11-24: "as a general rule, let's make moving abilities not consume mana/energy/ice" |
-| Whether automatic recognition of MKT machine code is worth building | Not decided; default **not yet** (moves keep being read with the reading aid and written as data) | Assistant proposal; no owner answer yet |
+| Whether automatic recognition of MKT machine code is worth building | **Yes (2026-11-25).** Build a generator that writes move programs from MKT's code, checked against the accepted Reptile and Rayden programs; owner adjustments stay in the fighter descriptions. Rayden's remaining moves (teleport, reversed Lightning, Shocker) are its first unseen moves. Current projectiles stay as they are until the generator can build several fighters for testing them together (owner: Acid Spit's hit effect is sometimes misplaced). | Owner: "Let's go with option A" (2026-11-25; earlier default "not yet") |
 | Which Sektor legacy modules to migrate | Not decided; default **not yet** | Assistant proposal; no owner answer yet |
 
 ## Notes
