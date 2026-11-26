@@ -664,9 +664,9 @@
           "op": "strike",
           "strike": {
             "box": [
+              55,
               0,
-              0,
-              61,
+              55,
               120
             ],
             "damage": 32,
@@ -720,7 +720,8 @@
           ],
           "src": {
             "strike": "MKT 0x8006CBE4",
-            "ticks": "MKT 0x80073250"
+            "ticks": "MKT 0x80073250",
+            "box": "MKT 0x80073290"
           }
         },
         {
@@ -735,7 +736,7 @@
         },
         {
           "op": "repeat",
-          "count": 2,
+          "count": 14,
           "steps": [
             {
               "op": "sleep",
@@ -757,6 +758,16 @@
           "ticks": 3,
           "src": {
             "ticks": "MKT 0x80073540"
+          }
+        },
+        {
+          "op": "pose",
+          "anim": {
+            "table": 1,
+            "slot": 2
+          },
+          "src": {
+            "anim": "MKT 0x8007354C"
           }
         },
         {

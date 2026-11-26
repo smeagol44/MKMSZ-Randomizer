@@ -144,7 +144,7 @@ The native path, without patching the Ice root:
 3. **Placement.** Owner's position, then `0x80031208(actor, dx, dy)`. For this actor, `+dy` moves the ball **down**. Reptile's forceball needs (−60, −72) world units (owner calibration; the MKT frame anchors alone left it too far and too low). No z shift (Quan Chi's −`0x1000` moved it toward the camera).
 4. **Motion.** Facing-signed x velocity (controller `+0x700 == 0x10`: negative); donor `0x59999` → host `0x77776`.
 5. **Animation.** `fighter_select_animation(1, slot)` then `animation_advance` each tick; the frame script holds each donor frame for its donor rate in host ticks (one host tick per MKT tick).
-6. **Hit trigger.** Each tick, `0x8002BA04(record, 0)` with a KSEG0 strike record (current record also stored at `+0x638`). Box from MKT verbatim; reaction and blocked reaction by meaning.
+6. **Hit trigger.** Each tick, `0x8002BA04(record, 0)` with a KSEG0 strike record (current record also stored at `+0x638`). Box from MKT verbatim; reaction and blocked reaction by meaning. The box is `(x, y, w, h)` donor px with `x` the **front edge** and `w` reaching back toward the attacker (`0x8002BD58`: facing right, x − w .. x; facing left, −x .. −x + w; scaled 0.9; Static-confirmed, and the Shocker's v25 box (0, 0, 61, 120) lay behind Rayden in the owner's test). A box made by hand from a range check takes `x` = the range.
 7. **Sound.** Donor samples in isolated host chains (`sound.install`), played by event: the hum at its donor cadence, the impact on contact.
 8. **Ending.** On contact: stop, impact frames, then remove (`0x80024B00`), release the texture (`0x8001C424`) and `process_exit`. Otherwise `0x80035088(actor, 200)` ends it offscreen.
 

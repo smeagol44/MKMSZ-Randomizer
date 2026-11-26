@@ -371,6 +371,9 @@ def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> 
     assert built.reactions["shock_hold"] == 0x4E
     ((_, record),) = dict(built.report["strike_records"])["shocker"]
     assert record[8:12] == bytes((0x4E, 0x05, 0x20, 0x00))  # reaction, blocked, damage 32, no chip
+    # v26 (owner on v25): the host box is (front edge, y, width back, height); v25's (0, ..., 61)
+    # lay behind him. MKT's grab range |dx| < 0x37 in front:
+    assert record[:8] == bytes.fromhex("0037000000370078")
     entry = lp.REACTION_TABLE - 0x7FFFF400 + 4 * 0x4E
     target = int.from_bytes(built.rom[entry : entry + 4], "big")
     assert built.link_va <= target < built.link_va + len(built.payload)
