@@ -98,10 +98,11 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     assert ws.count(0x012A4826) == 1  # xor t1, t1, t2 (the facing bit)
     assert ws.count(0x2739B05C) == 5  # input map: two begins without a turn, three jumps
     # v11-v12 (owner screenshots, Wind): the burst goes to the enemy hit (the player's +0x640,
-    # set by the collision core), at its whole position: path, path position, x, z, y
+    # set by the collision core), at its whole position: path, path position, x, z; v15: the
+    # bolt's own height kept (impact_keep_y), not the enemy's feet
     i = next(k for k, w in enumerate(ws) if w == 0x8D081AC0 and ws[k + 1] == 0x8D080640)
     copies = [w for w in ws[i : i + 20] if (w >> 16) == 0x8D09]  # lw t1, field(t0)
-    assert [w & 0xFFFF for w in copies] == [0xDC, 0xE0, 0x2C, 0x34, 0x30]
+    assert [w & 0xFFFF for w in copies] == [0xDC, 0xE0, 0x2C, 0x34]
     assert 0x2529FFA0 not in ws and 0x2529FFE0 in ws  # addiu t1, t1, -0x60 / -0x20
 
 
@@ -124,21 +125,23 @@ def test_a_pose_past_its_script_is_refused(roms: tuple[bytes, bytes], monkeypatc
 
 
 @needs_roms
-def test_impact_mirror_reverses_rows_around_the_core(roms: tuple[bytes, bytes]) -> None:
+def test_impact_mirror_uses_one_axis_for_the_animation(roms: tuple[bytes, bytes]) -> None:
+    """v15 (owner): every impact frame mirrors around the same anchor-relative column, so the
+    frames keep their places relative to each other (v14's per-frame cores made them jump)."""
+
     from mkmszr.fighter_import import lower_projectile as lp
     from mkmszr.fighter_import.body_build import Donor
 
     donor = Donor(roms[1], 24)
-    rel = 0x2060  # a lightning burst frame (slot 0x43 part 4)
-    plain, mirrored = lp._frame(donor, rel, 32), lp._frame(donor, rel, 32, mirror=True)
-    f = donor.frame(rel)
-    w, stride = f["w"], f["stride"]
-    assert stride == plain.stride
-    for y in range(f["eh"]):
-        row = plain.indices[y * stride : y * stride + w]
-        assert mirrored.indices[y * stride : y * stride + w] == row[::-1]
-    # the core (the burst's star) stays where it was: the anchor moves by w - 1 - 2 * core
-    core = lp._densest_column(f["padded"], w, stride)
-    assert mirrored.anchor_y == plain.anchor_y
-    assert mirrored.anchor_x == plain.anchor_x + (w - 1 - 2 * core)
-    assert -plain.anchor_x + core == -mirrored.anchor_x + (w - 1 - core)
+    rels = list(dict.fromkeys(lp.donor_part(donor, {"table": 0, "slot": 67, "part": 4}).frames))
+    axis = lp.mirror_axis(donor, rels)
+    for rel in rels:
+        f = donor.frame(rel)
+        w, stride = f["w"], f["stride"]
+        plain, mirrored = lp._frame(donor, rel, 32), lp._frame(donor, rel, 32, axis)
+        for y in range(f["eh"]):
+            row = plain.indices[y * stride : y * stride + w]
+            assert mirrored.indices[y * stride : y * stride + w] == row[::-1]
+        # column c sat at c - x; its mirror lands at 2 * axis - (c - x)
+        for c in (0, w - 1):
+            assert (w - 1 - c) - mirrored.anchor_x == 2 * axis - (c - plain.anchor_x)

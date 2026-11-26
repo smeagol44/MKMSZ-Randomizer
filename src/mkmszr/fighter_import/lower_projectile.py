@@ -244,31 +244,38 @@ def donor_helper(donor: Donor, anim: dict[str, Any]) -> Helper | None:
     return Helper(tuple(h for h in shown[start:] if h is not None), start)
 
 
-def _densest_column(padded: bytes, w: int, stride: int, window: int = 7) -> int:
-    """The column with the most pixels around it (a ``window``-wide moving sum): where an effect
-    frame's bright core is (Rayden's lightning burst: the star, its streak trailing off)."""
+def mirror_axis(donor: Donor, rels: list[int], window: int = 7) -> int:
+    """The anchor-relative column where an animation's frames, taken together, are densest (a
+    ``window``-wide moving sum over every frame's pixels placed by its anchor): the core of an
+    effect (Rayden's lightning burst: where its star is)."""
 
-    rows = len(padded) // stride
-    cols = [sum(1 for y in range(rows) if padded[y * stride + x]) for x in range(w)]
+    hist: dict[int, int] = {}
+    for rel in rels:
+        f = donor.frame(rel)
+        w, stride, padded = f["w"], f["stride"], f["padded"]
+        for col in range(w):
+            n = sum(1 for y in range(len(padded) // stride) if padded[y * stride + col])
+            hist[col - f["x"]] = hist.get(col - f["x"], 0) + n
+    lo, hi = min(hist), max(hist)
     half = window // 2
-    sums = [sum(cols[max(0, x - half) : x + half + 1]) for x in range(w)]
-    return max(range(w), key=lambda x: (sums[x], -abs(2 * x - (w - 1))))
+    sums = {a: sum(hist.get(b, 0) for b in range(a - half, a + half + 1)) for a in range(lo, hi + 1)}
+    return max(sums, key=lambda a: (sums[a], -a))
 
 
-def _frame(donor: Donor, rel: int, shift: int, mirror: bool = False) -> effects.EffectFrame:
-    """A donor frame for effect art. ``mirror``: each row reversed and the anchor moved so the
-    frame's core column (:func:`_densest_column`) stays where it was: the image faces the other way
-    around its own core (see ``place_art``'s ``impact_mirror``)."""
+def _frame(donor: Donor, rel: int, shift: int, mirror_at: int | None = None) -> effects.EffectFrame:
+    """A donor frame for effect art. ``mirror_at``: mirrored around that anchor-relative column
+    (:func:`mirror_axis`): rows reversed and the anchor moved so column ``a`` lands on
+    ``2 * mirror_at - a``. One axis for every frame of an animation keeps its frames in place
+    relative to each other (see ``place_art``'s ``impact_mirror``)."""
 
     f = donor.frame(rel)
     padded, x_anchor = f["padded"], f["x"]
-    if mirror:
+    if mirror_at is not None:
         w, stride = f["w"], f["stride"]
-        core = _densest_column(padded, w, stride)
         rows = [padded[y * stride : (y + 1) * stride] for y in range(len(padded) // stride)]
         padded = b"".join(bytes(r[:w][::-1]) + bytes(r[w:]) for r in rows)
-        # the image's left edge is at (anchor - x): keep the core at (anchor - x + core)
-        x_anchor = f["x"] + (w - 1 - 2 * core)
+        # column c sat at (c - x); its mirror w - 1 - c must sit at 2 * mirror_at - (c - x)
+        x_anchor = w - 1 - f["x"] - 2 * mirror_at
     indices = bytes(0 if v == 0 else v + shift for v in padded)
     return effects.EffectFrame(f["w"], f["eh"], x_anchor, f["y"], indices)
 
@@ -312,12 +319,12 @@ def place_art(
     written from that offset inside the file (e.g. the body region's free tail, Sektor proof
     v47's heap-neutral placement) and must end by ``budget``.
 
-    ``impact_mirror``: the impact frames are mirrored around their own cores (rows reversed, the
-    anchor moved so each frame's densest column stays put). Rayden's lightning burst is placed
-    right by MKT's flip and offset, star on the enemy, but its streak points away from him on
-    the host (specials proof v09). Flipping the actor back (v10-v12) mirrored the image around
-    its anchor, which lies outside the frames, and moved it ~115 px (owner save state, v12);
-    mirroring within the box (v13) moved the off-centre star behind the enemy (owner)."""
+    ``impact_mirror``: the impact animation is mirrored around its core, one axis for all its
+    frames (:func:`mirror_axis`). Rayden's lightning burst is placed by MKT's flip and offset,
+    star on the enemy, but faces away from him on the host (specials proof v09). Flipping the
+    actor back (v10-v12) mirrored it around its anchor, outside the frames, ~115 px off (owner
+    save state); mirroring each frame within its box (v13) put the off-centre star behind the
+    enemy; around each frame's own core (v14) the frames jumped against each other (owner)."""
 
     cursor = len(file87) if at is None else at
 
@@ -353,7 +360,8 @@ def place_art(
         )
         colours += impact_palette + [0] * (32 - len(impact_palette))
         impact_rels = list(dict.fromkeys(impact.frames))
-        frames += [_frame(donor, r, 32, impact_mirror) for r in impact_rels]
+        axis = mirror_axis(donor, impact_rels) if impact_mirror else None
+        frames += [_frame(donor, r, 32, axis) for r in impact_rels]
         rels += impact_rels
     if helper is not None:  # the helper's frames take the flight palette (MKT binds it from them)
         helper_rels = [r for r in dict.fromkeys(helper.frames) if r not in rels]
