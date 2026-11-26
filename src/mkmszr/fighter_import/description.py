@@ -36,6 +36,9 @@ Body fields:
 * ``body.secondary_scripts`` (optional): empty host secondary slot -> ``"table1:0xNN:P"``
   (or ``table0``): a new script with the frames of the donor script's first P phases (tokens
   dropped), for animations a host-only special plays (Reptile's forceball and acid throws).
+  A ``:loop`` suffix ends it in the donor script's own loop (host token 1 to the same frame)
+  instead of a phase end: an animation a rate stepper plays on its own (Rayden's bounce flip,
+  animated by the stock jump).
   Keys 0x40-0x7F get no table-1 entry (the host has only four empty ones); the build reports
   their file offsets and the special sets the animation cursor by offset.
 * ``body.run``: the MKT slot with the Run poses (``0x4A`` for every MKT fighter) and the host
@@ -63,7 +66,8 @@ Body fields:
   (owner calibrations such as offsets, facing, recovery, the per-move projectile limit,
   stealth drain, effects, `face` (turn at the start), `skip` (step kinds left out), `air_control` (steer the closing drop), recovery
   `sleep_ticks`, hit window `strike_ticks` in donor ticks, the
-  torpedo carry's grab point `carry`: `dx_px`, `dy_px`), in the
+  torpedo carry's grab point `carry`: `dx_px`, `dy_px`; `projectile`: `impact_toward_px`,
+  the impact moved that many pixels toward the attacker), in the
   order the moves are built.
 * ``costs`` (optional): move name -> Ice cost, where it differs from the replaced Sub-Zero
   power's (``lower_special.COSTS``); owner decisions, e.g. Reptile's halved forceballs.
@@ -139,6 +143,7 @@ class Body:
     secondary_slots: dict[int, tuple[int, int]] = field(default_factory=dict)  # host S slot -> (table, index)
     secondary_scripts: dict[int, tuple[int, int, int]] = field(default_factory=dict)  # -> (table, index, phases)
     script_sounds: dict[int, int] = field(default_factory=dict)  # host primary slot -> donor ft_sound index
+    loop_scripts: frozenset[int] = frozenset()  # secondary_scripts keys that end in the donor's loop
 
 
 @dataclass(frozen=True)
@@ -297,15 +302,18 @@ def validate(data: Any) -> FighterDescription:
         elif slot is not None:
             secondary[slot] = (int(table[-1]), idx)
     new_scripts: dict[int, tuple[int, int, int]] = {}
+    loop_scripts: set[int] = set()
     raw_new = body_d.get("secondary_scripts", {}) if isinstance(body_d, dict) else {}
     for key, value in (raw_new if isinstance(raw_new, dict) else {}).items():
         slot = _int(key, f"body.secondary_scripts key {key!r}", errors)
-        m = re.fullmatch(r"table([01]):(0x[0-9A-Fa-f]{1,2}):([1-9])", str(value))
+        m = re.fullmatch(r"table([01]):(0x[0-9A-Fa-f]{1,2}):([1-9])(:loop)?", str(value))
         if slot is None or not (0 <= slot < 0x2B or 0x40 <= slot < 0x80) or slot in secondary or not m:
             errors.append(f"body.secondary_scripts[{key}]: empty host secondary slot (or 0x40-0x7F, "
                           "no table entry) -> 'table1:0xNN:P'")  # fmt: skip
         else:
             new_scripts[slot] = (int(m.group(1)), int(m.group(2), 16), int(m.group(3)))
+            if m.group(4):
+                loop_scripts.add(slot)
     if not isinstance(raw_new, dict):
         errors.append("body.secondary_scripts: expected an object")
     script_sounds: dict[int, int] = {}
@@ -416,7 +424,8 @@ def validate(data: Any) -> FighterDescription:
         raise DescriptionError("; ".join(errors))
     return FighterDescription(
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
-        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts, script_sounds),
+        body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts, script_sounds,
+                  frozenset(loop_scripts)),
         legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove),
         icons=icons, help=help_text, costs=costs, specials=specials, outfit=outfit,
     )  # fmt: skip

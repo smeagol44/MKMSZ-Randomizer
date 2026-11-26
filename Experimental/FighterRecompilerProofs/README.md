@@ -52,3 +52,14 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v05.py` | `MKMSZR_rayden-specials_common_proof_v05.z64` | v04 with the ledge fix (airborne counters every tick), a 40-donor-tick flight and no Ice cost for movement abilities |
 | `MKMSZR_build_rayden-specials_proof_v06.py` | `MKMSZR_rayden-specials_common_proof_v06.z64` | v05 without the torpedo's turns to the opponent |
 | `MKMSZR_build_rayden-specials_proof_v07.py` | `MKMSZR_rayden-specials_common_proof_v07.z64` | v06 with air control on the torpedo's closing drop |
+| `MKMSZR_build_rayden-specials_proof_v08.py` | `MKMSZR_rayden-specials_common_proof_v08.z64` | v07 switched to MKT's torpedo as the generator writes it (random sound, speed from the lean, Rayden's bounce back, the victim slumps) |
+| `MKMSZR_build_rayden-specials_proof_v09.py` | `MKMSZR_rayden-specials_common_proof_v09.z64` | pure MKT: torpedo calibrations dropped, screen shake, animated bounce; Lightning at MKT's timing without a start turn |
+| `MKMSZR_build_rayden-specials_proof_v10.py` | `MKMSZR_rayden-specials_common_proof_v10.z64` | v09 with the lightning burst mirrored back (`impact_mirror`) and the torpedo's air control again |
+| `MKMSZR_build_rayden-specials_proof_v11.py` | `MKMSZR_rayden-specials_common_proof_v11.z64` | v10 with the lightning burst on the enemy hit (`impact_at_hit`) |
+| `MKMSZR_build_rayden-specials_proof_v12.py` | `MKMSZR_rayden-specials_common_proof_v12.z64` | v11 with the burst at the enemy's whole position (path, path position, x, y, z) |
+| `MKMSZR_build_rayden-specials_proof_v13.py` | `MKMSZR_rayden-specials_common_proof_v13.z64` | v12 with the burst mirrored within its own frames (no runtime flip) |
+| `MKMSZR_build_rayden-specials_proof_v14.py` | `MKMSZR_rayden-specials_common_proof_v14.z64` | v13 with the burst mirrored around each frame's core (the star stays on the enemy) |
+| `MKMSZR_build_rayden-specials_proof_v15.py` | `MKMSZR_rayden-specials_common_proof_v15.z64` | v14 with one mirror axis for the whole burst animation and the bolt's height kept |
+| `MKMSZR_build_rayden-specials_proof_v16.py` | `MKMSZR_rayden-specials_common_proof_v16.z64` | v15 with MKT's lightning reaction (stagger with a cyan blink) and the somersault anchors moved to his body |
+| `MKMSZR_build_rayden-specials_proof_v17.py` | `MKMSZR_rayden-specials_common_proof_v17.z64` | v16 with the bolt's flight frames kept apart from the burst's, the blink on the vertex colours (lighting paused), and the burst following the victim |
+| `MKMSZR_build_rayden-specials_proof_v18.py` | `MKMSZR_rayden-specials_common_proof_v18.z64` | v17 with the burst 6 px nearer Rayden and the blink at half speed |

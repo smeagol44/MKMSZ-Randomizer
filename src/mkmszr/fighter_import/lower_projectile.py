@@ -53,6 +53,9 @@ ACTOR_D8 = 0x46  # projectile actor +0xD8, as Quan Chi's
 UNITS_PER_PX = 2
 MKT_TABLE1 = 0x168  # MKT get_char_ani table 1 (heap-relative)
 KSEG1_TO_KSEG0 = 0x20000000
+FOLLOW_SP = 0x24  # the child's frame: four offset words (0x20 is the texture handle)
+FOLLOW_FIELDS = (host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Y, host.ACTOR_Z)
+HIT_X, HIT_Y = 0x802E83D8, 0x802C1BA0  # a projectile's victim x / y at its last hit (0x8002DCB0)
 ACTOR_FLAGS, FACING_BIT = 0x8C, 0x10  # actor facing (0x800344F4, 0x8002B6F4)
 
 # Victim reactions by meaning -> host. "base": a stock host reaction (leaf, no branches) copied
@@ -80,12 +83,16 @@ REACTION_LOWERING: dict[str, dict[str, Any]] = {
         "morph_at": 2,  # after the frame and the saved ra
     },
 }
-# The throw at the end of Rayden's torpedo carry (``lower_special.emit_carry_reaction``): the same
-# lifted knockback with MKT's release arc (0x8004558C: do_jump(0x33333, -0x6CCCD, 0x5199), the
-# victim bouncing back off the wall toward the attacker).
+# The victim's end of Rayden's torpedo carry (``lower_special.emit_carry_reaction``). MKT
+# 0x8005391C (given to the victim by 0x8006D3B4): stop, back on the ground, face him, its slot
+# 0x1E in two phases, then a getup (0x800587FC(0x21)): it slumps where the carry ended. The host:
+# the same lifted knockback with no push and no lift, so the victim falls from where it was held
+# (owner on v03: it falls only when released) into root 0x1E and the host landing/getup.
+# Specials proof v03-v07 used do_jump(0x33333, -0x6CCCD, 0x5199) here: that is Rayden's own bounce
+# (0x8004558C), misread as the victim's (generator, 2026-11-25).
 REACTION_LOWERING["torpedo_carry_release"] = {
     **REACTION_LOWERING["knockback_arc"],
-    "donor_arc": (0x33333, -0x6CCCD, 0x5199),
+    "donor_arc": (0, 0, 0x5199),
 }
 # Stumble-kind reactions: a lifted copy of the host Fire spiked-rod trap stumble, the reaction
 # Sektor's rocket was accepted with (robo_zap, proof v35), without its 8-tick hit pause, its
@@ -100,6 +107,27 @@ REACTION_LOWERING["acid_stagger"] = {
     "donor_push": 0x26666,  # MKT reaction 0x72 (0x800547C8): +0x420 = 0x26666, then 0x80057F94
     "donor_ref": 0x33333,  # MKT zap_stumble (r_rocket), the host's accepted 0x56666
 }
+# MKT reaction 0x80 (0x800539A8, Rayden's lightning): the hit preamble, a push away from the
+# attacker at 0x26666, the hit voice, the victim's slot 0x20 played twice at rate 2 with its
+# per-fighter shock palette (0x800A38B0[fighter], into process +0x440): the victim staggers back
+# and blinks cyan. The host: Acid Spit's stumble (the same push; it plays the victim's root 0x20)
+# plus a blink helper (``blink``) that alternates the victim's colour with cyan, as host enemies
+# have no MKT palettes. The host draw (0x80018A8C) tints each actor through its per-vertex
+# colours, red +0xA0..+0xA3, green +0xA4..+0xA7, blue +0xA8..+0xAB (one byte per corner), and
+# recomputes them from the stage lighting (0x80024F74) every draw while actor +0x8C bit 0x1000 is
+# set. The host's own flash does the same: 0x80034740 clears the bit and writes the colours (the
+# shocked player brightens them, 0x80055858), 0x80034658 sets it again. Specials proof v16 wrote
+# +0xFC/+0xFE/+0x100, which the draw reads only as alpha (+0xFC, under +0x8C & 0x6000): no blink.
+REACTION_LOWERING["shock_stagger"] = {
+    **REACTION_LOWERING["acid_stagger"],
+    "donor_push": 0x26666,  # MKT 0x800539E8: away_x_vel 0x26666
+    # owner on v17 (2026-11-26): half the speed, cyan and normal two frames each (every 2: one)
+    "blink": {"colour": (0x20, 0xFF, 0xFF), "count": 8, "every": 4},
+}
+BLINK_PROCESS_ID = 0x100  # as the stealth timer
+ACTOR_LIT_BIT = 0x1000  # actor +0x8C: colours from the stage lighting every draw
+ACTOR_VERTEX_RGB = (0xA0, 0xA4, 0xA8)  # four corner bytes each
+NORMAL_RGB = 0x80  # 0x80034740's unlit colour
 # Host-kind reactions: a stock reaction-table entry used as is (no payload code). The roundhouse
 # launch 0x0C knocks the victim away and runs the victim morphs (Rayden's lightning stand-in).
 REACTION_LOWERING["launch"] = {"kind": "host", "slot": 0x0C}
@@ -239,10 +267,40 @@ def donor_helper(donor: Donor, anim: dict[str, Any]) -> Helper | None:
     return Helper(tuple(h for h in shown[start:] if h is not None), start)
 
 
-def _frame(donor: Donor, rel: int, shift: int) -> effects.EffectFrame:
+def mirror_axis(donor: Donor, rels: list[int], window: int = 7) -> int:
+    """The anchor-relative column where an animation's frames, taken together, are densest (a
+    ``window``-wide moving sum over every frame's pixels placed by its anchor): the core of an
+    effect (Rayden's lightning burst: where its star is)."""
+
+    hist: dict[int, int] = {}
+    for rel in rels:
+        f = donor.frame(rel)
+        w, stride, padded = f["w"], f["stride"], f["padded"]
+        for col in range(w):
+            n = sum(1 for y in range(len(padded) // stride) if padded[y * stride + col])
+            hist[col - f["x"]] = hist.get(col - f["x"], 0) + n
+    lo, hi = min(hist), max(hist)
+    half = window // 2
+    sums = {a: sum(hist.get(b, 0) for b in range(a - half, a + half + 1)) for a in range(lo, hi + 1)}
+    return max(sums, key=lambda a: (sums[a], -a))
+
+
+def _frame(donor: Donor, rel: int, shift: int, mirror_at: int | None = None) -> effects.EffectFrame:
+    """A donor frame for effect art. ``mirror_at``: mirrored around that anchor-relative column
+    (:func:`mirror_axis`): rows reversed and the anchor moved so column ``a`` lands on
+    ``2 * mirror_at - a``. One axis for every frame of an animation keeps its frames in place
+    relative to each other (see ``place_art``'s ``impact_mirror``)."""
+
     f = donor.frame(rel)
-    indices = bytes(0 if v == 0 else v + shift for v in f["padded"])
-    return effects.EffectFrame(f["w"], f["eh"], f["x"], f["y"], indices)
+    padded, x_anchor = f["padded"], f["x"]
+    if mirror_at is not None:
+        w, stride = f["w"], f["stride"]
+        rows = [padded[y * stride : (y + 1) * stride] for y in range(len(padded) // stride)]
+        padded = b"".join(bytes(r[:w][::-1]) + bytes(r[w:]) for r in rows)
+        # column c sat at (c - x); its mirror w - 1 - c must sit at 2 * mirror_at - (c - x)
+        x_anchor = w - 1 - f["x"] - 2 * mirror_at
+    indices = bytes(0 if v == 0 else v + shift for v in padded)
+    return effects.EffectFrame(f["w"], f["eh"], x_anchor, f["y"], indices)
 
 
 @dataclass(frozen=True)
@@ -277,11 +335,19 @@ def place_art(
     helper: Helper | None = None,
     helper_slot: int | None = None,
     throw_rate: int = 0,
+    impact_mirror: bool = False,
 ) -> ArtLayout:
     """Put the projectile's art in the fighter file and point table-1 ``slots`` (empty in
     stock) at its flight and impact scripts. By default it is appended; with ``at`` it is
     written from that offset inside the file (e.g. the body region's free tail, Sektor proof
-    v47's heap-neutral placement) and must end by ``budget``."""
+    v47's heap-neutral placement) and must end by ``budget``.
+
+    ``impact_mirror``: the impact animation is mirrored around its core, one axis for all its
+    frames (:func:`mirror_axis`). Rayden's lightning burst is placed by MKT's flip and offset,
+    star on the enemy, but faces away from him on the host (specials proof v09). Flipping the
+    actor back (v10-v12) mirrored it around its anchor, outside the frames, ~115 px off (owner
+    save state); mirroring each frame within its box (v13) put the off-centre star behind the
+    enemy; around each frame's own core (v14) the frames jumped against each other (owner)."""
 
     cursor = len(file87) if at is None else at
 
@@ -309,27 +375,32 @@ def place_art(
     if len(flight_palette) > 32:
         raise ValueError("flight palette must fit 32 colours")
     colours = flight_palette + [0] * (32 - len(flight_palette))
-    rels = list(dict.fromkeys(flight.frames))
-    frames = [_frame(donor, r, 0) for r in rels]
+    # One drawn frame per (part, donor frame): a donor frame can open the impact and close the
+    # flight loop (Rayden's 0x2024); the impact's copy takes the impact palette (and mirror), so
+    # keyed by the donor frame alone it replaced the flight's: the bolt jumped ~115 px ahead
+    # once per loop (specials proof v16, owner video).
+    keys = [("flight", r) for r in dict.fromkeys(flight.frames)]
+    frames = [_frame(donor, r, 0) for _, r in keys]
     if impact is not None:
         impact_palette = (
             list(effects.mkt_palette(mkt, impact.palette)) if impact.palette else flight_palette
         )
         colours += impact_palette + [0] * (32 - len(impact_palette))
         impact_rels = list(dict.fromkeys(impact.frames))
-        frames += [_frame(donor, r, 32) for r in impact_rels]
-        rels += impact_rels
+        axis = mirror_axis(donor, impact_rels) if impact_mirror else None
+        frames += [_frame(donor, r, 32, axis) for r in impact_rels]
+        keys += [("impact", r) for r in impact_rels]
     if helper is not None:  # the helper's frames take the flight palette (MKT binds it from them)
-        helper_rels = [r for r in dict.fromkeys(helper.frames) if r not in rels]
+        helper_rels = [r for r in dict.fromkeys(helper.frames) if ("flight", r) not in keys]
         frames += [_frame(donor, r, 0) for r in helper_rels]
-        rels += helper_rels
+        keys += [("flight", r) for r in helper_rels]
     art = effects.EffectArt(tuple(frames), tuple(colours), compressed=True)
     placed = effects.layout(art, (cursor + 3) & ~3)
     put(bytes(placed.offset - cursor) + placed.data)
     script_at = placed.script - placed.offset
     shape = {
-        rel: int.from_bytes(placed.data[script_at + 4 * i : script_at + 4 * i + 4], "big")
-        for i, rel in enumerate(rels)
+        key: int.from_bytes(placed.data[script_at + 4 * i : script_at + 4 * i + 4], "big")
+        for i, key in enumerate(keys)
     }
 
     def script(words: list[int]) -> int:
@@ -339,8 +410,8 @@ def place_art(
     # Frames shown by the close-range check steps appear once each (one advance per step);
     # the rest at ``rate``; the loop goes back to the donor's loop frame (MKT acid: 0x31B0).
     early = len(step.get("checks", []))
-    flight_words = [shape[r] for r in flight.frames[:early]]
-    flight_words += [shape[r] for r in flight.frames[early:] for _ in range(rate)]
+    flight_words = [shape["flight", r] for r in flight.frames[:early]]
+    flight_words += [shape["flight", r] for r in flight.frames[early:] for _ in range(rate)]
     loop_word = (flight.loop_from if flight.loop_from < early
                  else early + (flight.loop_from - early) * rate)  # fmt: skip
     flight_at = cursor
@@ -349,7 +420,7 @@ def place_art(
     entries = [(slots[0] if slots else 0, flight_at)]
     if impact is not None:
         impact_rate = _int(impact_step["rate"])
-        impact_words = [shape[r] for r in impact.frames for _ in range(impact_rate)]
+        impact_words = [shape["impact", r] for r in impact.frames for _ in range(impact_rate)]
         impact_ticks = len(impact_words)
         impact_at = cursor
         script(impact_words + [1, impact_at + 4 * (impact_ticks - 1)])  # hold the last frame
@@ -362,7 +433,7 @@ def place_art(
         # owner's current body pose (:func:`emit_helper`), so it cannot drift from the body.
         helper_at = cursor
         n = len(helper.frames)
-        script([shape[r] for r in helper.frames] + [1, helper_at + 4 * (n - 1)])
+        script([shape["flight", r] for r in helper.frames] + [1, helper_at + 4 * (n - 1)])
         if slots is not None:
             entries.append((helper_slot, helper_at))
     virtual = slots is None
@@ -471,9 +542,21 @@ class Lowered:
     impact_at_opponent: bool = False
     impact_dx: int = 0  # world units, after facing the attacker (MKT multi_adjust_xy)
     impact_flip: bool = True  # MKT flip_single (Acid Spit v10: mirrored on the host)
+    # Place an "at opponent" impact on the enemy the strike hit, at its whole position (path,
+    # path position, x, y, z): with a path (+0xDC), the offset 0x80031208 only advances the path
+    # position +0xE0 and x follows from it. On the ordinary hit path the collision core records a projectile
+    # victim's x / y (HIT_X / HIT_Y, 0x8002DCB0) and then links the player and the victim (player
+    # +0x640 = victim, 0x8002DD18). The projectile's own +0x640 is the player's opponent at
+    # launch, which can be another enemy (Rayden's lightning burst on a far pillar, v10); copying
+    # x and y alone left it at the bolt's path position on a walkway (v11, Wind).
+    impact_at_hit: bool = False
     # Keep the projectile's own y at the opponent: MKT's objects share the fighters' ground y, but
     # the host projectile is raised by its offset (Acid Spit v13: splash 36 px below the hit).
     impact_keep_y: bool = False
+    # MKT's burst copies the opponent's x / y velocity into itself every tick (0x800781F0), so it
+    # rides with the push. The host: every tick the impact keeps its offset from the victim it
+    # was placed on (path position, x, y, z), until the victim's controller holds another actor.
+    impact_follow: bool = False
 
 
 def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
@@ -520,6 +603,7 @@ def lower(
         events.get("hum"), _int(step.get("hum", {}).get("every", 0)), events.get("impact"),
         meaning, checks, impact.get("at") == "opponent",
         _int(impact.get("adjust", [0, 0])[0]) * UNITS_PER_PX,
+        impact_follow=impact.get("follow") == "opponent",
     )  # fmt: skip
 
 
@@ -646,7 +730,30 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     if p.art.impact_slot is not None:
         host.load_controller(a)
         a.sw("zero", 0x14, "s1")
-        if p.impact_at_opponent:  # on the opponent, facing the attacker, MKT's adjust
+        if p.impact_at_opponent and p.impact_at_hit:  # on the enemy hit (see Lowered)
+            if p.impact_follow:
+                a.move("s5", "zero")  # no victim: nothing to follow
+            a.lui("t0", host.hi(host.PLAYER_CTRL))
+            a.lw("t0", host.lo(host.PLAYER_CTRL), "t0")
+            a.lw("t0", host.CTRL_OPPONENT, "t0")
+            a.beqz("t0", prefix + "no_opponent")
+            a.lw("t0", host.CTRL_ACTOR, "t0")
+            a.beqz("t0", prefix + "no_opponent")
+            # its whole position, as the teleport copies it: on a walkway the offset below moves
+            # along the path from the path position, so x alone left the burst at the bolt's
+            # (specials proof v11, Wind)
+            fields = [host.ACTOR_PATH, host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Z]
+            if not p.impact_keep_y:
+                fields.append(host.ACTOR_Y)
+            for field in fields:
+                a.lw("t1", field, "t0")
+                a.sw("t1", field, "s1")
+            if p.impact_follow:  # the victim: its controller (s4) and actor (s5)
+                a.lui("s4", host.hi(host.PLAYER_CTRL))
+                a.lw("s4", host.lo(host.PLAYER_CTRL), "s4")
+                a.lw("s4", host.CTRL_OPPONENT, "s4")
+                a.move("s5", "t0")
+        elif p.impact_at_opponent:  # on the opponent, facing the attacker, MKT's adjust
             a.lw("t0", host.CTRL_OPPONENT, "s0")
             a.beqz("t0", prefix + "no_opponent")
             a.lw("t0", host.CTRL_ACTOR, "t0")
@@ -656,6 +763,7 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
             if not p.impact_keep_y:
                 a.lw("t1", host.ACTOR_Y, "t0")
                 a.sw("t1", host.ACTOR_Y, "s1")
+        if p.impact_at_opponent:
             if p.impact_flip:
                 a.lhu("t1", ACTOR_FLAGS, "s1")
                 a.li("t2", FACING_BIT)
@@ -673,9 +781,32 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
             a.li("a0", 1)
             a.li("a1", p.art.impact_slot)
             a.jal(F_SELECT)
+        follow = p.impact_follow and p.impact_at_opponent and p.impact_at_hit
+        if follow:  # the offsets from the victim, after the adjust (no victim: s5 = 0)
+            host.load_controller(a)
+            a.beqz("s5", prefix + "follow_none")
+            for k, field in enumerate(FOLLOW_FIELDS):
+                a.lw("t1", field, "s1")
+                a.lw("t2", field, "s5")
+                a.subu("t1", "t1", "t2")
+                a.sw("t1", FOLLOW_SP + 4 * k, "sp")
+            a.label(prefix + "follow_none")
         a.li("s2", p.art.impact_ticks)
         a.label(prefix + "impact_loop")
         host.load_controller(a)
+        if follow:
+            a.beqz("s5", prefix + "follow_skip")
+            a.lw("t0", host.CTRL_ACTOR, "s4")
+            a.bne("t0", "s5", prefix + "follow_lost")
+            for k, field in enumerate(FOLLOW_FIELDS):
+                a.lw("t1", field, "s5")
+                a.lw("t2", FOLLOW_SP + 4 * k, "sp")
+                a.addu("t1", "t1", "t2")
+                a.sw("t1", field, "s1")
+            a.beq("zero", "zero", prefix + "follow_skip")
+            a.label(prefix + "follow_lost")
+            a.move("s5", "zero")  # the victim gone: stay put
+            a.label(prefix + "follow_skip")
         a.move("a0", "s1")
         a.jal(F_ADVANCE)
         a.li("a0", 1)
@@ -893,6 +1024,81 @@ def emit_helper_data(a: Assembler, label: str) -> None:
     a.raw(HELPER_IDLE)
 
 
+def emit_blink_start(a: Assembler, blink: str, then: str) -> None:
+    """In the victim's reaction (its own process): start process ``blink`` with the victim's
+    controller as its argument (+0x6F4, written after creation as effects do), then go on at
+    ``then`` with the reaction's own sp and ra."""
+
+    a.addiu("sp", "sp", -0x20)
+    a.sw("ra", 0x18, "sp")
+    a.sw("s0", 0x14, "sp")
+    a.lui("t0", host.hi(host.CURRENT_CTRL))
+    a.lw("s0", host.lo(host.CURRENT_CTRL), "t0")
+    a.li("a0", BLINK_PROCESS_ID)
+    a.la("a1", blink)
+    a.jal(F_CLONE)
+    a.beqz("v0", blink + "_none")  # no process left: no blink
+    a.sw("s0", 0x6F4, "v0")
+    a.label(blink + "_none")
+    a.lw("s0", 0x14, "sp")
+    a.lw("ra", 0x18, "sp")
+    a.addiu("sp", "sp", 0x20)
+    a.j_label(then)
+
+
+def emit_blink(a: Assembler, label: str, rgb: tuple[int, int, int], count: int, every: int) -> None:
+    """Process ``label``: ``count`` times, every ``every`` ticks, the victim's colour alternates
+    between ``rgb`` (lighting paused, the corner colours written) and its own (the lighting bit
+    as it was, or the unlit colour), then its own; it stops touching the victim as soon as its
+    controller holds another actor (the victim gone)."""
+
+    def colours(values: tuple[int, int, int]) -> None:
+        for base, value in zip(ACTOR_VERTEX_RGB, values):
+            a.li("t1", value)
+            for corner in range(4):
+                a.sb("t1", base + corner, "s3")
+
+    def own(relight: str) -> None:  # the lighting bit back (lit actors), or the unlit colour
+        a.bnez("s6", relight)
+        colours((NORMAL_RGB,) * 3)
+        a.label(relight)
+        a.lhu("t1", ACTOR_FLAGS, "s3")
+        a.or_("t1", "t1", "s6")
+        a.sh("t1", ACTOR_FLAGS, "s3")
+
+    a.label(label)
+    host.load_controller(a)
+    a.lw("s2", 0x6F4, "s0")  # the victim's controller
+    a.lw("s3", host.CTRL_ACTOR, "s2")  # its actor, as at the start
+    a.lhu("s6", ACTOR_FLAGS, "s3")
+    a.andi("s6", "s6", ACTOR_LIT_BIT)  # lit by the stage
+    a.li("s4", count)
+    a.move("s5", "zero")  # 0: tint next, 1: own next
+    a.label(label + "_step")
+    a.lw("t0", host.CTRL_ACTOR, "s2")
+    a.bne("t0", "s3", label + "_exit")
+    a.bnez("s5", label + "_own")
+    a.lhu("t1", ACTOR_FLAGS, "s3")
+    a.andi("t1", "t1", 0xFFFF ^ ACTOR_LIT_BIT)
+    a.sh("t1", ACTOR_FLAGS, "s3")
+    colours(rgb)
+    a.beq("zero", "zero", label + "_set")
+    a.label(label + "_own")
+    own(label + "_relight")
+    a.label(label + "_set")
+    a.li("t1", 1)
+    a.xor("s5", "s5", "t1")
+    a.li("a0", every)
+    a.jal(F_SLEEP)
+    a.addiu("s4", "s4", -1)
+    a.bnez("s4", label + "_step")
+    a.lw("t0", host.CTRL_ACTOR, "s2")
+    a.bne("t0", "s3", label + "_exit")
+    own(label + "_relight_end")
+    a.label(label + "_exit")
+    a.jal(F_EXIT)
+
+
 def emit_data(a: Assembler, p: Lowered, base: int, clean: bytes | None = None, data: str = "") -> None:
     """Strike record (16-aligned, read through its KSEG0 alias), the close-range check records
     and the reaction: the lifted arc words, or (stumble kind) the stumble lifted here, which
@@ -910,12 +1116,19 @@ def emit_data(a: Assembler, p: Lowered, base: int, clean: bytes | None = None, d
     if host_reaction(p.reaction_meaning) is not None:
         return  # a stock reaction: nothing in the payload
     a.label(data + "reaction")
-    if REACTION_LOWERING[p.reaction_meaning].get("kind", "arc") == "stumble":
+    spec = REACTION_LOWERING[p.reaction_meaning]
+    if spec.get("kind", "arc") == "stumble":
         if clean is None:
             raise ValueError("a stumble reaction is lifted from the clean ROM")
+        if "blink" in spec:  # start the blink helper, then the stumble as the reaction itself
+            emit_blink_start(a, data + "blink", data + "stumble")
+            a.label(data + "stumble")
         code = lift_stumble(clean, p.reaction_meaning, a.pc())
         for i in range(0, len(code), 4):
             a.raw(int.from_bytes(code[i : i + 4], "big"))
+        if "blink" in spec:
+            b = spec["blink"]
+            emit_blink(a, data + "blink", b["colour"], b["count"], b["every"])
     else:
         for word in p.reaction_words:
             a.raw(word)

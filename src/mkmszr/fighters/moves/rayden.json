@@ -21,11 +21,11 @@
         {
           "op": "begin",
           "action_mkt": "0x2B",
-          "face": true,
+          "face": false,
           "stop": true,
           "src": {
             "action_mkt": "MKT 0x80077E4C",
-            "face": "MKT 0x80050440",
+            "face": "MKT 0x80077E54",
             "stop": "MKT 0x80050428"
           }
         },
@@ -74,7 +74,7 @@
             ],
             "damage": 22,
             "block_damage": 4,
-            "reaction": "launch",
+            "reaction": "shock_stagger",
             "blocked_reaction": "blocked"
           },
           "palette": "0x800B9B04",
@@ -90,6 +90,7 @@
               -115,
               0
             ],
+            "follow": "opponent",
             "end": "animation"
           },
           "src": {
@@ -100,7 +101,8 @@
             "strike": "MKT 0x800B0164",
             "palette": "MKT 0x800B9B04",
             "impact": "MKT 0x80078124",
-            "reaction": "host stand-in (owner to judge): MKT victim reaction 0x80 not read yet"
+            "follow": "MKT 0x800781F0",
+            "reaction": "MKT 0x800539A8"
           }
         },
         {
@@ -146,10 +148,11 @@
         {
           "op": "sound",
           "sound": {
-            "fighter": 9
+            "fighter": 10,
+            "random": 3
           },
           "src": {
-            "sound": "MKT 0x80045130"
+            "sound": "MKT 0x80045128"
           }
         },
         {
@@ -167,17 +170,17 @@
           }
         },
         {
-          "op": "finish",
-          "rate": 3,
-          "src": {
-            "rate": "MKT 0x800451A4"
-          }
-        },
-        {
           "op": "velocity",
           "x": "0x80000",
           "src": {
             "x": "MKT 0x80045140"
+          }
+        },
+        {
+          "op": "finish",
+          "rate": 3,
+          "src": {
+            "rate": "MKT 0x800451A4"
           }
         },
         {
@@ -230,7 +233,15 @@
               }
             },
             {
-              "op": "stop"
+              "op": "shake_screen",
+              "amplitude": 6,
+              "count": 6,
+              "ticks": 3,
+              "src": {
+                "amplitude": "MKT 0x80045504",
+                "count": "MKT 0x8004550C",
+                "ticks": "MKT 0x8002A7C0"
+              }
             },
             {
               "op": "sound",
@@ -240,17 +251,74 @@
               "src": {
                 "sound": "MKT 0x80045510"
               }
+            },
+            {
+              "op": "pose",
+              "anim": {
+                "table": 0,
+                "slot": 26,
+                "offset": 1
+              },
+              "src": {
+                "anim": "MKT 0x800455A8"
+              }
+            },
+            {
+              "op": "jump",
+              "x": "0x33333",
+              "y": "-0x6CCCC",
+              "gravity": "0x5199",
+              "until": "landing",
+              "src": {
+                "x": "MKT 0x800455E0",
+                "y": "MKT 0x800455DC",
+                "gravity": "MKT 0x800455EC",
+                "until": "MKT 0x8004560C",
+                "rate": "MKT 0x800455C8"
+              },
+              "rate": 3
+            },
+            {
+              "op": "end"
             }
           ],
           "on_block": [
             {
-              "op": "stop"
+              "op": "pose",
+              "anim": {
+                "table": 0,
+                "slot": 26,
+                "offset": 1
+              },
+              "src": {
+                "anim": "MKT 0x800455A8"
+              }
+            },
+            {
+              "op": "jump",
+              "x": "0x33333",
+              "y": "-0x6CCCC",
+              "gravity": "0x5199",
+              "until": "landing",
+              "src": {
+                "x": "MKT 0x800455E0",
+                "y": "MKT 0x800455DC",
+                "gravity": "MKT 0x800455EC",
+                "until": "MKT 0x8004560C",
+                "rate": "MKT 0x800455C8"
+              },
+              "rate": 3
+            },
+            {
+              "op": "end"
             }
           ],
           "src": {
             "strike": "MKT 0x800B0194",
             "ticks": "MKT 0x800451B8",
-            "reaction": "MKT 0x800452C4"
+            "reaction": "MKT 0x800452C4",
+            "on_block": "MKT 0x8004531C",
+            "on_hit": "MKT 0x80045204"
           }
         },
         {
@@ -292,23 +360,11 @@
   "gaps": [
     {
       "move": "lightning",
-      "what": "MKT victim reaction 0x80 (the lightning hit) is not read; the host roundhouse launch stands in"
-    },
-    {
-      "move": "lightning",
       "what": "the forming sparks (slot 0x43 parts 1-2) and the bolt's growth routine 0x80078230 are not lowered yet"
     },
     {
       "move": "lightning",
       "what": "MKT plays the hit or blocked sound by 0x800058B0(4 or 3, 0x18): layered events 0x204 / 0x203 (2-3 tracks of 0x2C bytes, one patch each), which the sound component cannot host yet; the impact is silent"
-    },
-    {
-      "move": "torpedo",
-      "what": "MKT plays one of his sounds 9-11 at random at the start; the host plays 9"
-    },
-    {
-      "move": "torpedo",
-      "what": "MKT shakes the screen when the carry ends (0x8002A750(6, 6)); no host screen shake is located"
     },
     {
       "move": "torpedo",

@@ -86,10 +86,23 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     entry = lp.REACTION_TABLE - 0x7FFFF400 + 4 * slot
     target = int.from_bytes(built.rom[entry : entry + 4], "big")
     assert built.link_va <= target < built.link_va + len(built.payload)
-    # owner calibration and rule (v05): a 40-donor-tick window (20 host ticks); no Ice cost for
-    # a movement ability (Ice Clone's slot would charge 0x60); Lightning keeps Ice Blast's 0x20
+    # MKT's 26-tick window (13 host ticks; the owner's 40 of v05-v08 dropped in v09: pure MKT);
+    # no Ice cost for a movement ability (owner rule; Ice Clone's slot would charge 0x60);
+    # Lightning keeps Ice Blast's 0x20
     ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
-    assert 0x24130014 in ws  # addiu s3, zero, 20
+    assert 0x2413000D in ws and 0x24130014 not in ws  # addiu s3, zero, 13
+    # v13 (owner save state): the lightning burst is placed by MKT's flip alone (one facing
+    # toggle); impact_mirror mirrors its frames in the art instead (v10-v12 flipped the actor
+    # back, mirroring it around an anchor outside its box); the torpedo's three jumps (bounce,
+    # bounce, drop) take the air map
+    assert ws.count(0x012A4826) == 1  # xor t1, t1, t2 (the facing bit)
+    assert ws.count(0x2739B05C) == 5  # input map: two begins without a turn, three jumps
+    # v11-v12 (owner screenshots, Wind): the burst goes to the enemy hit (the player's +0x640,
+    # set by the collision core), at its whole position: path, path position, x, z; v15: the
+    # bolt's own height kept (impact_keep_y), not the enemy's feet
+    i = next(k for k, w in enumerate(ws) if w == 0x8D081AC0 and ws[k + 1] == 0x8D080640)
+    copies = [w for w in ws[i : i + 20] if (w >> 16) == 0x8D09]  # lw t1, field(t0)
+    assert [w & 0xFFFF for w in copies] == [0xDC, 0xE0, 0x2C, 0x34]
     assert 0x2529FFA0 not in ws and 0x2529FFE0 in ws  # addiu t1, t1, -0x60 / -0x20
 
 
@@ -109,3 +122,113 @@ def test_a_pose_past_its_script_is_refused(roms: tuple[bytes, bytes], monkeypatc
     monkeypatch.setattr(components, "load_programs", with_bad_pose)
     with pytest.raises(fb.BuildError, match="past the 6 words"):
         fb.build(*roms, "rayden")
+
+
+@needs_roms
+def test_impact_mirror_uses_one_axis_for_the_animation(roms: tuple[bytes, bytes]) -> None:
+    """v15 (owner): every impact frame mirrors around the same anchor-relative column, so the
+    frames keep their places relative to each other (v14's per-frame cores made them jump)."""
+
+    from mkmszr.fighter_import import lower_projectile as lp
+    from mkmszr.fighter_import.body_build import Donor
+
+    donor = Donor(roms[1], 24)
+    rels = list(dict.fromkeys(lp.donor_part(donor, {"table": 0, "slot": 67, "part": 4}).frames))
+    axis = lp.mirror_axis(donor, rels)
+    for rel in rels:
+        f = donor.frame(rel)
+        w, stride = f["w"], f["stride"]
+        plain, mirrored = lp._frame(donor, rel, 32), lp._frame(donor, rel, 32, axis)
+        for y in range(f["eh"]):
+            row = plain.indices[y * stride : y * stride + w]
+            assert mirrored.indices[y * stride : y * stride + w] == row[::-1]
+        # column c sat at c - x; its mirror lands at 2 * axis - (c - x)
+        for c in (0, w - 1):
+            assert (w - 1 - c) - mirrored.anchor_x == 2 * axis - (c - plain.anchor_x)
+
+
+@needs_roms
+def test_shock_stagger_starts_the_blink_then_the_stumble(roms: tuple[bytes, bytes]) -> None:
+    """v16 (owner: MKT staggers and blinks cyan): the lightning's reaction entry starts the blink
+    helper (process 0x100) and goes on into the lifted host stumble."""
+
+    from mkmszr.fighter_import import lower_projectile as lp
+
+    built = fb.build(*roms, "rayden")
+    slot = built.reactions["projectile (0, 67, 3)"]
+    o = lp.REACTION_TABLE - 0x7FFFF400 + 4 * slot
+    entry = int.from_bytes(built.rom[o : o + 4], "big")
+    k = (entry - built.link_va) // 4
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    head = ws[k : k + 30]
+    assert 0x24040100 in head  # addiu a0, zero, 0x100: the blink process
+    assert 0xAC5006F4 in head  # sw s0, 0x6F4(v0): the victim's controller as its argument
+    assert any((w >> 26) == 2 for w in head)  # j: on into the stumble, as the reaction itself
+    # v17 (owner: no blink in v16): the draw tints through the per-vertex colours +0xA0..+0xAB
+    # and recomputes them from the stage lighting while actor +0x8C bit 0x1000 is set
+    assert 0x3129EFFF in ws  # andi t1, t1, 0xEFFF: lighting paused
+    assert {0xA26900A0 + k for k in range(12)} <= set(ws)  # sb t1, 0xA0..0xAB(s3)
+    assert 0x01364825 in ws  # or t1, t1, s6: the lighting bit back as it was
+    assert not {0xA66900FC, 0xA66900FE, 0xA6690100} & set(ws)  # v16's sh t1, +0xFC..(s3)
+    assert 0x24040004 in ws  # v18 (owner): addiu a0, zero, 4: two frames cyan, two normal
+
+
+@needs_roms
+def test_lightning_burst_sits_six_pixels_nearer(roms: tuple[bytes, bytes]) -> None:
+    """v18 (owner: the burst "a bit too far past the enemy"): MKT's adjust -115 px, then
+    ``impact_toward_px`` 6 toward Rayden: -109 px, -218 world units for the offset call."""
+
+    built = fb.build(*roms, "rayden")
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    assert 0x2405FF26 in ws and 0x2405FF1A not in ws  # addiu a1, zero, -218 (not -230)
+
+
+@needs_roms
+def test_lightning_burst_follows_the_victim(roms: tuple[bytes, bytes]) -> None:
+    """v17 (owner: the burst should follow the pushed enemy): MKT's burst copies the opponent's
+    velocity every tick (0x800781F0); the host burst keeps its offset from the victim (path
+    position, x, y, z) every tick."""
+
+    built = fb.build(*roms, "rayden")
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    for k, field in enumerate((0xE0, 0x2C, 0x30, 0x34)):
+        assert 0xAFA90024 + 4 * k in ws  # sw t1, 0x24+4k(sp): the offset
+        assert 0x8EA90000 + field in ws  # lw t1, field(s5): the victim's
+        assert 0x8FAA0024 + 4 * k in ws  # lw t2, 0x24+4k(sp)
+
+
+@needs_roms
+def test_a_frame_shared_by_flight_and_impact_is_drawn_twice(roms: tuple[bytes, bytes]) -> None:
+    """v17 (owner video: the bolt jumped ahead once per loop): Rayden's donor frame 0x2024 ends
+    the flight loop and opens the burst; the burst's copy (mirrored, its own palette) replaced
+    the flight's. Each part now has its own drawn frames."""
+
+    from mkmszr.fighter_import import components
+    from mkmszr.fighter_import import lower_projectile as lp
+
+    moves, _ = components.load_programs("rayden")
+    step = next(s for m in moves if m.name == "lightning" for s in m.steps if s["op"] == "projectile")
+    file87 = bytearray(0x200)
+    art = lp.place_art(file87, roms[1], 24, step, None, 1 << 24, impact_mirror=True)
+
+    def script(at: int) -> set[int]:
+        words = []
+        while (w := int.from_bytes(file87[at : at + 4], "big")) != 1:
+            words.append(w)
+            at += 4
+        return set(words)
+
+    assert len(script(art.flight_at)) == 6 and len(script(art.impact_at)) == 7
+    assert not script(art.flight_at) & script(art.impact_at)
+
+
+@needs_roms
+def test_somersault_anchors_move_to_the_body(roms: tuple[bytes, bytes]) -> None:
+    """v16 (owner: a mid-air turn shifted Rayden): his somersault anchors move 21 px; Reptile's
+    (2 px off) stay."""
+
+    clean, mkt = roms
+    for name, expected in (("rayden", ["SOMERSAULT slot 0x1A: anchors moved 21 px to the body's centre"]),
+                           ("reptile", [])):  # fmt: skip
+        body = fb.body_build.build_body(fb.fd.load(name), clean, mkt, fb.body_build.Extras())
+        assert [line for line in body.log if "SOMERSAULT" in line] == expected

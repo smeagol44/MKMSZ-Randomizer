@@ -76,6 +76,10 @@ COSTS = {
     "polar_blast": 0xA6,
     "ice_shatter": 0,  # contextual, no Ice cost
 }
+# Per-thousand random gate (Wiki Function-Registry): 0x8000 when a native random value modulo
+# 1000 is below a0. A sound step with ``random: k`` picks one of k donor sounds evenly (MKT
+# ``ft_sound(randu(k) + n)``, Rayden's torpedo start).
+F_RANDPER = 0x80016008
 MOVEMENT_COST = 0  # movement abilities cost no Ice (owner rule, 2026-11-24; move program "movement")
 BLOCKED_FLAG = 0x802ECD88  # halfword: the collision core sets it on a blocked contact
 F_SET_XVEL = 0x8002B1EC  # (actor, x speed): actor +0x14 and +0x58
@@ -86,7 +90,10 @@ FACING_BIT = 0x10
 # specials proof v15: "the roundhouse kick one, not the uppercut"). ``uppercut``: 0x800507D0,
 # Runtime-confirmed (Sektor teleport).
 STOCK_REACTIONS = {"launch": 0x0C, "uppercut": 0x08}
-SOLID_BIT = 0x1000  # actor +0x8C: Freeze on Contact clears it while it runs (0x80034740 / 0x80034658)
+# actor +0x8C: the draw takes the actor's colours from the stage lighting while it is set
+# (0x800188B4 -> 0x80024F74); Freeze on Contact clears it while it runs (0x80034740 / 0x80034658).
+# Named LIT_BIT until specials proof v17: the pass-through does not depend on it.
+LIT_BIT = 0x1000
 
 
 def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
@@ -249,9 +256,11 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     separation is not located). Specials proof v15 stopped at the victim. From v16 each
     pass-through tick clears actor ``+0x8C`` bit ``0x1000`` as stock Freeze on Contact does while
     Sub-Zero runs through enemies, and re-applies the move's last speed (kept in ``s5``); ``end``
-    sets the bit again (Hypothesis until runtime-tested)."""
+    sets the bit again (Runtime-confirmed together, Reptile v16). The bit's only reader is the
+    draw's stage lighting (:data:`LIT_BIT`), so the speed is what lets him through (inference)."""
 
     records: list[tuple[str, bytes]] = []
+    shakers: list[tuple[str, dict[str, Any]]] = []
     counter = [0]
 
     def ops(steps: list[dict[str, Any]]) -> set[str]:
@@ -365,7 +374,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             elif op == "pass_through":  # see the docstring
                 host.load_controller(a)
                 a.lhu("t0", lp.ACTOR_FLAGS, "s1")
-                a.andi("t0", "t0", 0xFFFF ^ SOLID_BIT)
+                a.andi("t0", "t0", 0xFFFF ^ LIT_BIT)
                 a.sh("t0", lp.ACTOR_FLAGS, "s1")
                 if moves:
                     a.move("a0", "s1")
@@ -436,8 +445,11 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 a.li("a1", physics.convert_velocity(x))
                 a.li("a2", physics.convert_velocity(y))
                 a.li("a3", physics.convert_acceleration(g))
-                a.li("t0", JUMP_KEEP)
-                a.sw("t0", 0x10, "sp")  # rate: keep
+                # rate: the stock jump steps the current animation at it each air tick
+                # (0x80031724 / 0x8003174C); 13 keeps the animation as it is
+                rate = _scale(int(step["rate"]), donor_ticks) if "rate" in step else JUMP_KEEP
+                a.li("t0", rate)
+                a.sw("t0", 0x10, "sp")
                 a.li("t0", -1)
                 a.sw("t0", 0x14, "sp")  # root: keep the current animation
                 a.sw("zero", CTRL_JUMP_CALLBACK, "s0")  # no per-tick callback (see above)
@@ -446,6 +458,13 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             elif op == "face":
                 host.load_controller(a)
                 host.face_opponent(a)
+                host.load_controller(a)
+            elif op == "shake_screen":
+                shaker = fresh("shaker")
+                shakers.append((shaker, step))
+                a.li("a0", SHAKE_PROCESS_ID)
+                a.la("a1", shaker)
+                a.jal(F_PROCESS_CREATE)  # no process left: no shake
                 host.load_controller(a)
             elif op == "shake":
                 dx = int(step["dx"]) * lp.UNITS_PER_PX
@@ -469,9 +488,22 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 _emit_strike(step)
             elif op == "sound":
                 fighter = int(step["sound"]["fighter"])
-                if not sounds or fighter not in sounds:
-                    raise ValueError(f"{label}: fighter sound {fighter} has no host event")
-                host.play_sound(a, sounds[fighter])
+                choices = [fighter + k for k in range(int(step["sound"].get("random", 1)))]
+                if not sounds or any(n not in sounds for n in choices):
+                    raise ValueError(f"{label}: fighter sound {choices} has no host event")
+                played = fresh("played")
+                for k, n in enumerate(choices[:-1]):  # one of k..: a per-thousand gate each
+                    other = fresh("other")
+                    a.li("a0", 1000 // (len(choices) - k))
+                    a.jal(F_RANDPER)
+                    a.andi("v0", "v0", 0xFFFF)
+                    a.li("t0", 0x8000)
+                    a.bne("v0", "t0", other)
+                    host.play_sound(a, sounds[n])
+                    a.beq("zero", "zero", played)
+                    a.label(other)
+                host.play_sound(a, sounds[choices[-1]])
+                a.label(played)
                 host.load_controller(a)
             elif op == "projectile":
                 if child is None:
@@ -507,7 +539,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 if passes:
                     host.load_controller(a)
                     a.lhu("t0", lp.ACTOR_FLAGS, "s1")
-                    a.ori("t0", "t0", SOLID_BIT)
+                    a.ori("t0", "t0", LIT_BIT)
                     a.sh("t0", lp.ACTOR_FLAGS, "s1")
                 if moves:  # MKT's reaction_exit leaves no motion behind
                     host.load_controller(a)
@@ -565,6 +597,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     host.enter_action(a, host.Frame(size=0x40, strike_offset=0x30), ())
     host.load_controller(a)
     emit(steps, None)
+    for shaker, step in shakers:  # after the action root, which never returns
+        emit_screen_shake(a, shaker, int(step["amplitude"]) * lp.UNITS_PER_PX, int(step["count"]),
+                          _scale(int(step["ticks"]), donor_ticks))  # fmt: skip
     return records
 
 
@@ -682,18 +717,19 @@ CARRY_TIMEOUT_TICKS = 24  # host ticks: past the attacker's 16 (0x20 donor ticks
 # of the player's anchor, toward his facing; y: from the player's y (actor y grows downward). The
 # flat frame 0x2100 reaches 66 px in front of his anchor (136 px wide, anchor at 70); a ground
 # carry at the same y looked right (owner, v03).
-CARRY_DX_PX, CARRY_DY_PX = 72, 0
+CARRY_DX_PX, CARRY_DY_PX = 72, 0  # the v04-v08 calibration; dropped in v09 (owner: pure MKT)
 ACTOR_PREV_Y = 0x3C  # floor landing is by crossing from the previous y (0x80025ED4)
 
 
 def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
-                        morphs: tuple[int, ...], dx_px: int = CARRY_DX_PX,
-                        dy_px: int = CARRY_DY_PX) -> None:  # fmt: skip
+                        morphs: tuple[int, ...], dx_px: int | None = None,
+                        dy_px: int | None = None) -> None:  # fmt: skip
     """Victim reaction ``torpedo_carry`` (see the notes above); ``word``: the attacker's carry
     word, ``release``: the lifted knockback's label, ``morphs``: the victim morph routines;
-    ``dx_px``, ``dy_px``: the grab point. While held the victim has no gravity or vertical speed
-    and its airborne counter counts (as ``hover``), so it neither falls nor lands on a floor or
-    a ledge before the throw."""
+    ``dx_px``, ``dy_px``: a grab point (an owner calibration, specials proof v04-v08); without
+    them the victim keeps its contact distance and its own height, as MKT's shared velocity does.
+    While held it has no gravity or vertical speed and its airborne counter counts (as ``hover``),
+    so it neither falls nor lands on a floor or a ledge before the release."""
 
     frame = 0x30
     a.label(label)
@@ -718,7 +754,14 @@ def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
         a.lw(reg, lo(host.PLAYER_CTRL), reg)
         a.lw(reg, host.CTRL_ACTOR, reg)
 
-    a.li("s2", dx_px * lp.UNITS_PER_PX << 8)  # actor x is whole units << 8
+    if dx_px is None:  # MKT: the contact distance, kept (signed, so no facing test)
+        host.load_controller(a)
+        player_actor("t0")
+        a.lw("t1", host.ACTOR_X, "t0")
+        a.lw("t2", host.ACTOR_X, "s1")
+        a.subu("s2", "t2", "t1")
+    else:
+        a.li("s2", dx_px * lp.UNITS_PER_PX << 8)  # actor x is whole units << 8
     a.li("s3", CARRY_TIMEOUT_TICKS)
     a.label(label + "_loop")
     a.la("t0", word)
@@ -741,17 +784,21 @@ def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
     host.load_controller(a)
     player_actor("t0")
     a.move("t2", "s2")
-    a.lhu("t1", lp.ACTOR_FLAGS, "t0")
-    a.andi("t1", "t1", lp.FACING_BIT)
-    a.beqz("t1", label + "_ahead")
-    a.subu("t2", "zero", "s2")  # he faces left: the grab point is to his left
-    a.label(label + "_ahead")
+    if dx_px is not None:
+        a.lhu("t1", lp.ACTOR_FLAGS, "t0")
+        a.andi("t1", "t1", lp.FACING_BIT)
+        a.beqz("t1", label + "_ahead")
+        a.subu("t2", "zero", "s2")  # he faces left: the grab point is to his left
+        a.label(label + "_ahead")
     a.lw("t1", host.ACTOR_X, "t0")
     a.addu("t1", "t1", "t2")
     a.sw("t1", host.ACTOR_X, "s1")
-    a.lw("t1", host.ACTOR_Y, "t0")
-    a.li("t2", dy_px * lp.UNITS_PER_PX << 8)
-    a.addu("t1", "t1", "t2")
+    if dy_px is not None:
+        a.lw("t1", host.ACTOR_Y, "t0")
+        a.li("t2", dy_px * lp.UNITS_PER_PX << 8)
+        a.addu("t1", "t1", "t2")
+    else:
+        a.lw("t1", host.ACTOR_Y, "s1")  # its own height, held
     a.sw("t1", host.ACTOR_Y, "s1")
     a.sw("t1", ACTOR_PREV_Y, "s1")  # moved, not falling: no landing by crossing
     a.sw("zero", host.ACTOR_GRAVITY, "s1")
@@ -774,6 +821,80 @@ def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
     a.lw("ra", 0x28, "sp")
     a.addiu("sp", "sp", frame)
     a.j_label(release)  # the throw, as the reaction itself (same sp and ra)
+
+
+# Screen shake (MKT 0x8002A750(amplitude, count): a process that, every 3 ticks, moves the
+# camera's vertical offset by the amplitude and flips its sign, count times). The host keeps
+# camera shake offsets at 0x8009A928 (vertical) and 0x8009A92C (horizontal): the camera update
+# adds them (0x800132A4: camera 0x8009A944 = [0x8009A928] - target y; 0x8009A948 = [0x8009A92C]
+# + 160 - target x), its own shake process 0x80037A24 (process 0x15 at 0x80037CA0, used across
+# the stages) writes them from a 16-step table and zeroes them at the end. Its shortest run is
+# 16 steps; MKT's is 6, so the move runs MKT's algorithm on the same offset and zeroes it.
+SHAKE_PROCESS_ID = 0x15  # as the host's shakes
+SHAKE_VERTICAL = 0x8009A928
+
+
+def emit_screen_shake(a: Assembler, label: str, amplitude: int, count: int, ticks: int) -> None:
+    """Process ``label``: MKT's screen shake on the host's vertical camera offset
+    (``amplitude`` in world units), then the offset back to 0 and exit."""
+
+    a.label(label)
+    a.li("s0", count)
+    a.li("s1", amplitude)
+    a.label(label + "_step")
+    a.lui("t0", hi(SHAKE_VERTICAL))
+    a.lw("t1", lo(SHAKE_VERTICAL), "t0")
+    a.subu("t1", "t1", "s1")
+    a.sw("t1", lo(SHAKE_VERTICAL), "t0")
+    a.subu("s1", "zero", "s1")
+    a.li("a0", ticks)
+    a.jal(F_SLEEP)
+    a.addiu("s0", "s0", -1)
+    a.bnez("s0", label + "_step")
+    a.lui("t0", hi(SHAKE_VERTICAL))
+    a.sw("zero", lo(SHAKE_VERTICAL), "t0")
+    a.jal(F_PROCESS_EXIT)
+
+
+# Victim reactions the builder supplies as payload routines (strike meanings that are not
+# STOCK_REACTIONS and not lifted projectile reactions), each in a spare reaction-table entry.
+# One table instead of a builder branch per reaction: a new reaction is a row here.
+@dataclass(frozen=True)
+class ReactionContext:
+    tune: dict[str, Any]  # the move's ``specials`` tuning
+    donor_ticks: int
+    clean: bytes
+
+
+@dataclass(frozen=True)
+class VictimReaction:
+    suffix: str  # routine label: "<move>_<suffix>"
+    emit: Callable[[Assembler, str, ReactionContext], None]
+    word: bool = False  # the attacker's steps share "<label>_word" with it (``carry``)
+
+
+def _emit_hold(a: Assembler, label: str, ctx: ReactionContext) -> None:
+    emit_hold_reaction(a, label, ctx.donor_ticks)
+
+
+def _emit_carry(a: Assembler, label: str, ctx: ReactionContext) -> None:
+    grab = ctx.tune.get("carry", {})  # specials.<move>.carry: a grab point, in px (owner)
+    release = label + "_release"
+    emit_carry_reaction(a, label, label + "_word", release,
+                        lp.REACTION_LOWERING["torpedo_carry_release"]["morph"],
+                        dx_px=lp._int(grab["dx_px"]) if "dx_px" in grab else None,
+                        dy_px=lp._int(grab["dy_px"]) if "dy_px" in grab else None)  # fmt: skip
+    a.label(release)
+    for w in lp.lifted_reaction(ctx.clean, "torpedo_carry_release"):
+        a.raw(w)
+    a.label(label + "_word")
+    a.raw(0)
+
+
+VICTIM_REACTIONS: dict[str, VictimReaction] = {
+    "elbow_hold": VictimReaction("hold", _emit_hold),
+    "torpedo_carry": VictimReaction("carry", _emit_carry, word=True),
+}
 
 
 # Stealth (Reptile's Invisibility): the Eye item's effect (Wiki Fighter-Recompiler-Components,

@@ -31,6 +31,10 @@ What a reading does:
 
 **Done-criterion check (2026-11-10):** every Reptile command reads with **no unknown call** (38 routines), and every Sektor command reads with no unknown call at the move-body level (test-enforced, ROM-backed).
 
+## Generator
+
+From 2026-11-25 the move programs can be written by the generator (`fighter_import.decompile` → `fighter_import.generate`) instead of by hand from the reading. The reading aid stays the tool for routines the generator reports as unknown. How it works, what it reproduces and the MKT facts it found: [Fighter recompiler status](Fighter-Recompiler-Status#generator--agreed-tasks-owner-2026-11-25-option-a).
+
 ## Registry
 
 `mkt_registry.REGISTRY` maps an address to a name, arguments, effect, evidence and kind (`engine`, `move` or `global`). It includes the names already established in [MKT adapter primitives](MKT-Adapter-Primitives) and adds the ones below, all read in this task.

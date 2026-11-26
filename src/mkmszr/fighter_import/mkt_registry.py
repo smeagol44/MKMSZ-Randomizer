@@ -29,6 +29,7 @@ class MktRoutine:
 
 _W = "Wiki MKT-Adapter-Primitives"
 _M = "Wiki Fighter-Recompiler-MKT-Moves (static reading)"
+_G = "generator reading, 2026-11-25 (Wiki Fighter-Recompiler-Status, generator)"
 
 
 def _e(name: str, args: str = "", effect: str = "", evidence: str = _W) -> MktRoutine:
@@ -134,16 +135,55 @@ REGISTRY: dict[int, MktRoutine] = {
         _M,
     ),
     0x8003E620: _e("strike_check_a0", "a0 = strike", "fighter strike check against the opponent"),
+    0x8003E07C: _e(
+        "is_airborne",
+        "a0 = object",
+        "0x8000 when the object has y velocity (+0x10) or is off the ground (+0x18 != process "
+        "+0x3F8), else 0x4000",
+        _G,
+    ),
+    0x800539A8: _e(
+        "r_shock",
+        "",
+        "reaction 0x80: preamble, away_x_vel 0x26666, hit voice, shock palette into +0x440, the "
+        "victim's slot 0x20 twice (0x80053B5C)",
+        _G,
+    ),
+    0x8006E490: _e("randu", "a0 = n", "random 1..n (0x8006E454 % n + 1); 0 when n is 0", _G),
+    0x8006D3B4: _e(
+        "give_routine", "a0 = process, a1 = routine", "restart a process at a routine; Hypothesis", _G
+    ),
+    0x8000DC24: _e(
+        "ani_to_phase_end",
+        "a0 = ticks",
+        "advance the animation (0x8000E3CC) each a0 ticks until the phase ends (as mframew)",
+        _G,
+    ),
+    0x8002A750: _e(
+        "shake_screen",
+        "a0 = amplitude, a1 = count",
+        "process 0x103 at 0x8002A78C: every 3 ticks the vertical camera offset 0x8015D690 -= "
+        "amplitude, amplitude = -amplitude, count times",
+        _G,
+    ),
+    0x8006D8D0: _e(
+        "get_his_char_ani",
+        "a0 = table, a1 = slot",
+        "select an animation of the opponent (as get_char_ani); Hypothesis (torpedo carry)",
+        _G,
+    ),
+    0x8000126C: _e("link_object", "a0 = list, a1 = object", "Pending (lightning setup)", _G),
     0x80045050: _e(
         "do_body_propell",
         "a0 = propell selector",
         "context_jump to table 0x800A80D0[a0] (40 entries)",
     ),
-    0x80047118: _e(
+    0x80047118: MktRoutine(
         "dash_recover",
         "a0 = object",
         "dash_stop, ani_frame_at_t0(3, 0x4A), shake_object(object, 4, 0, 4, 3), reaction_exit",
         _M,
+        "move",
     ),
     0x8004716C: _e("dash_stop", "", "action +0x3F6 = 0x61F, object flags |= 4, stop_me", _M),
     0x80048564: _e("teleport_flight_callback", "", "flight callback: strike check while rising"),
@@ -323,7 +363,7 @@ REGISTRY: dict[int, MktRoutine] = {
     # -- Reptile (fighter 19) -----------------------------------------------------------------
     0x8004A294: _m("do_slide", "ninja slide body (propell 0x15)"),
     0x800467D0: _m("prop_do_reptile_dash", "Reptile elbow dash body (propell 0x17)", _W),
-    0x80046910: _e("reptile_dash_hit", "", "elbow dash strike handling"),
+    0x80046910: _m("reptile_dash_hit", "elbow dash strike handling", _W),
     0x800546A0: _e("r_reptile_dash", "", "victim reaction 0x74"),
     0x80055838: _e("r_jax_dash", "", "victim reaction 0x24"),
     0x80073918: _m("reptile_invisibility", "Reptile invisibility body (quick special 0x1B)"),
@@ -364,4 +404,6 @@ REGISTRY: dict[int, MktRoutine] = {
     ),
     0x80169BF4: _g("player2_object", "player-2 fighter object (inference)"),
     0x8014C3B8: _g("strike_flag", "set by the strike box check; meaning Pending"),
+    0x800A8AE0: _g("reaction_table", "victim reactions by strike byte 8 (0x80: 0x800539A8)", _G),
+    0x800A38B0: _g("shock_palettes", "per-fighter cyan shock palette (reaction 0x80 blink)", _G),
 }

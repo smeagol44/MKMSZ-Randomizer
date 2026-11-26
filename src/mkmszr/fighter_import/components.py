@@ -44,9 +44,10 @@ REACTIONS = {
     "elbow_hold": "MKT 0x74: grounded victim held about 20 ticks; airborne victims rejected",
     "launch": "MKT 0x24: generic damaging launch, flight and landing",
     "torpedo_carry": "MKT torpedo 0x800452C4: victim carried in front of the attacker (his `carry` step) "
-    "until a wall or the end, then thrown back (x 0x33333, y -0x6CCCD, gravity 0x5199)",
+    "until a wall or the end, then it slumps where it is (MKT 0x8005391C)",
     "knockback_arc": "MKT 0x71: victim launched on an arc toward the attacker (x 0x2CCCC, y -0x6CCCC, gravity 0x5199)",
     "acid_stagger": "MKT 0x72: victim staggers back (+0x420 = 0x26666); details Pending",
+    "shock_stagger": "MKT 0x80: victim staggers back (0x26666) blinking cyan (its shock palette)",
     "rocket_stumble": "MKT r_rocket -> zap_stumble: stumble back",
     "uppercut": "teleport strike: host uppercut reaction 0x08 (runtime-confirmed teleport)",
     "blocked": "the stock blocked reaction",
@@ -86,7 +87,9 @@ COMPONENTS: dict[str, dict[str, str]] = {
         "y": "vel",
         "gravity": "accel",
         "until": "enum:landing|below_screen|surface",
+        "rate?": "ticks",
     },
+    "shake_screen": {"amplitude": "px", "count": "int", "ticks": "ticks"},
     "shake": {"dx": "px", "dy": "px", "count": "int", "ticks": "ticks"},
     "pass_through": {"ticks": "ticks"},
     "relocate": {"to": "enum:behind_opponent", "dx": "px", "dy?": "px"},
@@ -169,8 +172,8 @@ def _check_value(kind: str, value: Any, where: str, errors: list[str]) -> None:
             need(_int(value.get("slot")) is not None, "anim needs a slot")
             need(set(value) <= {"table", "slot", "part", "offset"}, "anim has unknown keys")
     elif kind == "sound":
-        need(isinstance(value, dict) and len(value) == 1 and set(value) <= {"fighter", "shared"},
-             "sound is {fighter: n} or {shared: n}")  # fmt: skip
+        need(isinstance(value, dict) and (set(value) in ({"fighter"}, {"shared"}, {"fighter", "random"})),
+             "sound is {fighter: n}, {fighter: n, random: k} (one of n..n+k-1) or {shared: n}")  # fmt: skip
     elif kind == "effect":
         need(isinstance(value, dict) and set(value) == {"mkt_fx"}, "effect is {mkt_fx: n}")
     elif kind == "strike":
@@ -198,7 +201,7 @@ def _check_value(kind: str, value: Any, where: str, errors: list[str]) -> None:
              "homing is {aim_dy, speed, explode_within}")  # fmt: skip
     elif kind == "impact":
         need(isinstance(value, dict) and "end" in value and set(value) <= {
-            "anim", "rate", "sound", "effect", "at", "end", "bounce", "adjust"}, "impact keys")  # fmt: skip
+            "anim", "rate", "sound", "effect", "at", "end", "bounce", "adjust", "follow"}, "impact keys")  # fmt: skip
     elif kind == "steps":
         need(isinstance(value, list), "expected a list of steps")
     else:  # pragma: no cover - catalogue error

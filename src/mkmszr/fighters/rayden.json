@@ -17,13 +17,15 @@
     "colour": {"depth": 16, "method": "auto"},
     "phase_slots": {"0x23": "shift:+1"},
     "script_sounds": {"0x21": 7, "0x22": 7},
-    "secondary_scripts": {"0x25": "table0:0x24:1", "0x40": "table1:0x00:2", "0x41": "table0:0x16:1"},
+    "secondary_scripts": {"0x25": "table0:0x24:1", "0x40": "table1:0x00:2", "0x41": "table0:0x16:1",
+                          "0x42": "table0:0x1A:1:loop"},
     "common_animations": ["death", "long_fall", "pickup", "grabbed"]
   },
   "commands": {"lightning": "ice_blast", "torpedo": "ice_clone"},
-  "specials": {"lightning": {"face": true, "projectile": {"offset_px": [-30, -36], "box": "centre_on_art"}},
-               "torpedo": {"face": false, "skip": ["face"], "airborne": true, "donor_ticks": 2, "strike_ticks": 40, "air_control": true,
-                           "carry": {"dx_px": 72, "dy_px": 0}}},
+  "specials": {"lightning": {"donor_ticks": 2, "projectile": {"offset_px": [-30, -36], "box": "centre_on_art",
+                                                              "impact_mirror": true, "impact_at_hit": true,
+                                                              "impact_keep_y": true, "impact_toward_px": 6}},
+               "torpedo": {"face": false, "skip": ["face"], "airborne": true, "donor_ticks": 2, "air_control": true}},
   "legacy": [],
   "notes": "Milestone 6 (owner, 2026-11-13): Rayden is the next fighter. Body first."
 }

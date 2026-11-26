@@ -207,6 +207,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             steps = [dict(s, ticks=_int(tune["sleep_ticks"])) if s["op"] == "sleep" else s for s in steps]
         if "strike_ticks" in tune:  # owner: a longer hit window (Rayden's torpedo, specials proof v05)
             steps = [dict(s, ticks=_int(tune["strike_ticks"])) if s["op"] == "strike" else s for s in steps]
+        ticks_per = _int(tune.get("donor_ticks", 1))
+        if ticks_per > 1:  # projectile frame rates are donor ticks too (Rayden's lightning, v09)
+            steps = [_projectile_rates(s, ticks_per) if s["op"] == "projectile" else s for s in steps]
         steps_of[move] = steps
         proj = next((s for s in steps if s["op"] == "projectile"), None)
         if proj is not None:
@@ -228,7 +231,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 art = lp.place_art(file87, mkt, donor_id, proj, slots, body_build.TYPE_END, at=at,
                                    helper=helper,
                                    helper_slot=_int(ptune["helper_slot"]) if "helper_slot" in ptune else None,
-                                   throw_rate=int(throw["rate"]))  # fmt: skip
+                                   throw_rate=int(throw["rate"]),
+                                   impact_mirror=bool(ptune.get("impact_mirror", False)))  # fmt: skip
                 needed = len(lp.projectile_sounds(proj))
                 events, samples_end = lp.install_sounds(
                     rom, clean, mkt, donor_id, proj, tuple(chains.take() for _ in range(needed)),
@@ -239,9 +243,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                                       f"{move}_helper" if helper is not None else None)  # fmt: skip
         for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
             if s["op"] == "sound":
-                n = _int(s["sound"]["fighter"])
-                if n not in fighter_sounds:
-                    fighter_sounds[n] = install(bank.event(bank.fighter_event(donor_id, n)))
+                first = _int(s["sound"]["fighter"])
+                for n in range(first, first + _int(s["sound"].get("random", 1))):  # every choice
+                    if n not in fighter_sounds:
+                        fighter_sounds[n] = install(bank.event(bank.fighter_event(donor_id, n)))
         if "footsteps" in tune:
             footsteps[move] = tuple(install(bank.event(_int(e))) for e in tune["footsteps"])
         for fx, spec in tune.get("effects", {}).items():
@@ -266,6 +271,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     selectors = {m: FIRST_SELECTOR + k for k, m in enumerate(order)}
     custom_reactions: dict[str, int] = {}  # meaning -> reaction-table entry
     reaction_labels: dict[str, str] = {}  # meaning -> its routine's label
+    emitted: set[str] = set()  # meanings whose routine is in the payload
     per_move = [m for m in order if d.specials.get(m, {}).get("limit") == "per_move"]
     shared_limit = [m for m in projectile_of if m not in per_move]
     a = Assembler(link_va + TABLE_RESERVE, cached_calls=True)
@@ -294,6 +300,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             if meaning not in custom_reactions:
                 custom_reactions[meaning] = reactions.take()
             reaction_map[meaning] = custom_reactions[meaning]
+            spec = lower_special.VICTIM_REACTIONS.get(meaning)
+            if spec is not None:  # its routine: named by the first move that uses it
+                reaction_labels.setdefault(meaning, f"{move}_{spec.suffix}")
+        words = [f"{reaction_labels[m]}_word" for m in sorted(reaction_map)
+                 if m in lower_special.VICTIM_REACTIONS and lower_special.VICTIM_REACTIONS[m].word]  # fmt: skip
         foot = None
         if move in footsteps:
             slot = next(_int(s["anim"]["slot"]) for s in _all_steps(steps)
@@ -315,16 +326,20 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             speed=lambda v: physics.fold_donor_speeds(v, v, lambda x: x, lp.UNITS_PER_PX)[0],
             footsteps=foot, stealth=f"{move}_stealth" if "stealth" in tune else None,
             effects=fx_map or None,
-            carry=f"{move}_carry_word" if "torpedo_carry" in reaction_map else None,
+            carry=words[0] if words else None,
             skip=frozenset(tune.get("skip", ())),  # owner: steps left out (Rayden's torpedo turns)
             air_control=bool(tune.get("air_control")),  # owner: steer the closing drop
         )  # fmt: skip
         if g is not None:
             ptune = tune.get("projectile", {})
             low = lp.lower(projectile_of[move], g.art, g.events, g.reaction_slot, clean)
-            if "impact_flip" in ptune or "impact_keep_y" in ptune:
+            if {"impact_flip", "impact_keep_y", "impact_at_hit"} & set(ptune):
                 low = dataclasses.replace(low, impact_flip=bool(ptune.get("impact_flip", True)),
-                                          impact_keep_y=bool(ptune.get("impact_keep_y", False)))  # fmt: skip
+                                          impact_keep_y=bool(ptune.get("impact_keep_y", False)),
+                                          impact_at_hit=bool(ptune.get("impact_at_hit", False)))  # fmt: skip
+            if "impact_toward_px" in ptune:  # owner: the impact nearer the attacker (facing him)
+                low = dataclasses.replace(low, impact_dx=low.impact_dx
+                                          + _int(ptune["impact_toward_px"]) * lp.UNITS_PER_PX)  # fmt: skip
             g.lowered = low
             lp.emit_process(a, low, child=f"{move}_ball", prefix=f"{move}_", data=f"g{_gid(g)}_",
                             alive=f"{move}_alive")  # fmt: skip
@@ -336,24 +351,12 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                     lp.emit_helper(a, g.art, 0, dy, g.helper, None, body_at=body_slot[1])
                 else:
                     lp.emit_helper(a, g.art, 0, dy, g.helper, body_slot)
-        if "elbow_hold" in reaction_map and "elbow_hold" not in reaction_labels:
-            reaction_labels["elbow_hold"] = f"{move}_hold"
-            lower_special.emit_hold_reaction(a, f"{move}_hold", _int(tune.get("donor_ticks", 1)))
-        if "torpedo_carry" in reaction_map and "torpedo_carry" not in reaction_labels:
-            reaction_labels["torpedo_carry"] = f"{move}_carry"
-            release = f"{move}_carry_release"
-            grab = tune.get("carry", {})  # specials.<move>.carry: the grab point, in px
-            lower_special.emit_carry_reaction(
-                a, f"{move}_carry", f"{move}_carry_word", release,
-                lp.REACTION_LOWERING["torpedo_carry_release"]["morph"],
-                dx_px=_int(grab.get("dx_px", lower_special.CARRY_DX_PX)),
-                dy_px=_int(grab.get("dy_px", lower_special.CARRY_DY_PX)),
-            )
-            a.label(release)
-            for w in lp.lifted_reaction(clean, "torpedo_carry_release"):
-                a.raw(w)
-            a.label(f"{move}_carry_word")
-            a.raw(0)
+        ctx = lower_special.ReactionContext(tune, _int(tune.get("donor_ticks", 1)), clean)
+        for meaning in sorted(set(reaction_map) - emitted):
+            spec = lower_special.VICTIM_REACTIONS.get(meaning)
+            if spec is not None:
+                spec.emit(a, reaction_labels[meaning], ctx)
+                emitted.add(meaning)
         unknown = set(reaction_map) - set(reaction_labels)
         if unknown:
             raise BuildError(f"{move}: no host routine for reactions {sorted(unknown)}")
@@ -436,6 +439,15 @@ def _gid(g: _Group) -> str:
 def _combo_slot(d: fd.FighterDescription) -> tuple[int | None]:
     table, index = d.body.sources.get(combos.COMBO_SLOT, (0, combos.COMBO_SLOT))
     return (index if table == 1 else None,)
+
+
+def _projectile_rates(step: dict[str, Any], ticks_per: int) -> dict[str, Any]:
+    """A projectile step with its flight and impact frame rates in host ticks (rounded up)."""
+
+    out = dict(step, rate=max(1, -(-_int(step["rate"]) // ticks_per)))
+    if "impact" in step and "rate" in step["impact"]:
+        out["impact"] = dict(step["impact"], rate=max(1, -(-_int(step["impact"]["rate"]) // ticks_per)))
+    return out
 
 
 def _all_steps(steps: list[dict[str, Any]]):

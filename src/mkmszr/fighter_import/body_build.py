@@ -827,6 +827,70 @@ def phase_slot_frames(donor: Donor, slots, sources: dict | None = None) -> dict[
     return out
 
 
+# The host mirrors a sprite around its anchor when the fighter turns, also in mid-air (the turn
+# button during a somersault). MKT anchors some fighters' somersault frames well behind the body
+# (Rayden: the visual centre 15-26 px in front of the anchor, mean 21; Reptile 2; stock Sub-Zero
+# about 4), so a mid-air turn threw him ~40 px sideways (owner, Rayden specials v15). A
+# somersault slot whose frames sit on average more than SOMERSAULT_TOLERANCE px off their
+# anchors has every frame's anchor moved by that mean: the body turns around its middle, and the
+# frames keep their motion relative to each other. Computed layouts only: Sektor's explicit
+# legacy layout (somersaults 12.6 px off) is the regression gate and stays as accepted.
+SOMERSAULT_SLOTS = (0x1A, 0x1B)  # host primary slots: the forward and backward somersaults
+SOMERSAULT_TOLERANCE = 8
+
+
+def visual_centre(frame: dict) -> float:
+    """Anchor-relative x of a frame's pixel mass (its image's left edge is at -x)."""
+
+    w, stride, padded = frame["w"], frame["stride"], frame["padded"]
+    rows = len(padded) // stride
+    cols = [sum(1 for y in range(rows) if padded[y * stride + c]) for c in range(w)]
+    total = sum(cols) or 1
+    return sum(c * n for c, n in enumerate(cols)) / total - frame["x"]
+
+
+def recentre_somersaults(frame_cache: dict, donor: Donor, slot_cfg: dict, log: list | None = None) -> None:
+    """See SOMERSAULT_SLOTS: shift the somersault slots' frames so their mean visual centre is
+    on the anchor (only when it is off by more than SOMERSAULT_TOLERANCE px)."""
+
+    done: set[int] = set()
+    for slot in SOMERSAULT_SLOTS:
+        if slot not in slot_cfg:
+            continue
+        rels = [r for r in dict.fromkeys(slot_cfg[slot]["shapes"]) if r in frame_cache and r not in done]
+        if not rels:
+            continue
+        mean = sum(visual_centre(frame_cache[r]) for r in rels) / len(rels)
+        if abs(mean) <= SOMERSAULT_TOLERANCE:
+            continue
+        shift = round(mean)
+        for r in rels:
+            frame_cache[r] = dict(frame_cache[r], x=frame_cache[r]["x"] + shift)
+            done.add(r)
+        if log is not None:
+            log.append(f"SOMERSAULT slot 0x{slot:02X}: anchors moved {shift} px to the body's centre")
+
+
+def donor_loop_target(donor: Donor, root: int, frames: list[int]) -> int:
+    """Index, among a new script's words, of the frame the donor script at ``root`` loops back to
+    (its token-1 jump right after ``frames``). Only scripts with no phase end or token before
+    the loop are supported (Rayden's slot 0x1A: six frames, then a jump to the second)."""
+
+    positions: list[int] = []
+    values: list[int] = []
+    pos = root
+    for _ in range(MAX_SCRIPT_WORDS):
+        v = donor.m32(pos)
+        if v == 1 and values == frames and donor.m32(pos + 4) in positions:
+            return positions.index(donor.m32(pos + 4))
+        if v in (0, 1) or MKT.is_token(v) or not donor.is_shape(v):
+            break
+        positions.append(pos)
+        values.append(v)
+        pos += 4
+    raise LayoutError(f"script 0x{root:X} does not end in a loop the builder can copy")
+
+
 def donor_frames_by_phase(donor: Donor, root: int, starts: set[int]) -> list[list[int]]:
     """Body frames of the donor script at ``root`` grouped by phase, every token skipped (with its
     operands), up to a jump/stop or the next script start. The frame after a helper step (tokens
@@ -1265,6 +1329,8 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
     for r in sets["flipped"]:
         frame_cache[r] = donor.frame(r)
     frame_cache.update(extras.frames)
+    if layout is None:  # computed layouts; Sektor's explicit (legacy) layout stays pinned
+        recentre_somersaults(frame_cache, donor, slot_cfg, log)
 
     colour = body_d.colour
     index_map, palette = colour.index_map, colour.palette
@@ -1343,7 +1409,8 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         if s < VIRTUAL_SCRIPT and be32(clean_file, 0x104 + 4 * s):
             raise LayoutError(f"secondary slot 0x{s:02X} is not empty in the host file")
         script_items.append(("secondary", s))
-        item_sizes[("secondary", s)] = 4 * sum(len(p) + 1 for p in phases)
+        loop = 1 if s in body_d.loop_scripts else 0  # the last phase end becomes token 1 + target
+        item_sizes[("secondary", s)] = 4 * (sum(len(p) + 1 for p in phases) + loop)
     for it in script_items:
         if it[0] == "script":
             item_sizes[it] = 4 * slot_cfg[it[1]]["n"]
@@ -1449,6 +1516,11 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
     for s, phases in new_scripts.items():
         at = item_offsets[("secondary", s)]
         words = [w for p in phases for w in [*(shape_map[r] for r in p), 0]]
+        if s in body_d.loop_scripts:
+            t, i, _n = body_d.secondary_scripts[s]
+            root = (donor.table0 if t == 0 else _t1)[i]
+            target = donor_loop_target(donor, root, [r for p in phases for r in p])
+            words[-1:] = [1, at + 4 * target]  # host token 1: jump to a file offset
         for i, w in enumerate(words):
             put32(file87, at + 4 * i, w)
             owned.add(at + 4 * i)
