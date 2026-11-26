@@ -74,7 +74,7 @@
             ],
             "damage": 22,
             "block_damage": 4,
-            "reaction": "launch",
+            "reaction": "shock_stagger",
             "blocked_reaction": "blocked"
           },
           "palette": "0x800B9B04",
@@ -100,7 +100,7 @@
             "strike": "MKT 0x800B0164",
             "palette": "MKT 0x800B9B04",
             "impact": "MKT 0x80078124",
-            "reaction": "host stand-in (owner to judge): MKT victim reaction 0x80 not read yet"
+            "reaction": "MKT 0x800539A8"
           }
         },
         {
@@ -356,10 +356,6 @@
     }
   ],
   "gaps": [
-    {
-      "move": "lightning",
-      "what": "MKT victim reaction 0x80 (the lightning hit) is not read; the host roundhouse launch stands in"
-    },
     {
       "move": "lightning",
       "what": "the forming sparks (slot 0x43 parts 1-2) and the bolt's growth routine 0x80078230 are not lowered yet"

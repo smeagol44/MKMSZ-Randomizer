@@ -827,6 +827,50 @@ def phase_slot_frames(donor: Donor, slots, sources: dict | None = None) -> dict[
     return out
 
 
+# The host mirrors a sprite around its anchor when the fighter turns, also in mid-air (the turn
+# button during a somersault). MKT anchors some fighters' somersault frames well behind the body
+# (Rayden: the visual centre 15-26 px in front of the anchor, mean 21; Reptile 2; stock Sub-Zero
+# about 4), so a mid-air turn threw him ~40 px sideways (owner, Rayden specials v15). A
+# somersault slot whose frames sit on average more than SOMERSAULT_TOLERANCE px off their
+# anchors has every frame's anchor moved by that mean: the body turns around its middle, and the
+# frames keep their motion relative to each other. Computed layouts only: Sektor's explicit
+# legacy layout (somersaults 12.6 px off) is the regression gate and stays as accepted.
+SOMERSAULT_SLOTS = (0x1A, 0x1B)  # host primary slots: the forward and backward somersaults
+SOMERSAULT_TOLERANCE = 8
+
+
+def visual_centre(frame: dict) -> float:
+    """Anchor-relative x of a frame's pixel mass (its image's left edge is at -x)."""
+
+    w, stride, padded = frame["w"], frame["stride"], frame["padded"]
+    rows = len(padded) // stride
+    cols = [sum(1 for y in range(rows) if padded[y * stride + c]) for c in range(w)]
+    total = sum(cols) or 1
+    return sum(c * n for c, n in enumerate(cols)) / total - frame["x"]
+
+
+def recentre_somersaults(frame_cache: dict, donor: Donor, slot_cfg: dict, log: list | None = None) -> None:
+    """See SOMERSAULT_SLOTS: shift the somersault slots' frames so their mean visual centre is
+    on the anchor (only when it is off by more than SOMERSAULT_TOLERANCE px)."""
+
+    done: set[int] = set()
+    for slot in SOMERSAULT_SLOTS:
+        if slot not in slot_cfg:
+            continue
+        rels = [r for r in dict.fromkeys(slot_cfg[slot]["shapes"]) if r in frame_cache and r not in done]
+        if not rels:
+            continue
+        mean = sum(visual_centre(frame_cache[r]) for r in rels) / len(rels)
+        if abs(mean) <= SOMERSAULT_TOLERANCE:
+            continue
+        shift = round(mean)
+        for r in rels:
+            frame_cache[r] = dict(frame_cache[r], x=frame_cache[r]["x"] + shift)
+            done.add(r)
+        if log is not None:
+            log.append(f"SOMERSAULT slot 0x{slot:02X}: anchors moved {shift} px to the body's centre")
+
+
 def donor_loop_target(donor: Donor, root: int, frames: list[int]) -> int:
     """Index, among a new script's words, of the frame the donor script at ``root`` loops back to
     (its token-1 jump right after ``frames``). Only scripts with no phase end or token before
@@ -1285,6 +1329,8 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
     for r in sets["flipped"]:
         frame_cache[r] = donor.frame(r)
     frame_cache.update(extras.frames)
+    if layout is None:  # computed layouts; Sektor's explicit (legacy) layout stays pinned
+        recentre_somersaults(frame_cache, donor, slot_cfg, log)
 
     colour = body_d.colour
     index_map, palette = colour.index_map, colour.palette

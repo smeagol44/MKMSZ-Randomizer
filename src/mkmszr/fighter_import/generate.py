@@ -38,7 +38,7 @@ REACTION_MEANINGS = {
     0x72: "acid_stagger",  # Reptile's acid
     0x74: "elbow_hold",  # Reptile's elbow first contact
     0x7F: "launch",  # Rayden's torpedo victim (the carry is the attacker's): stand-in
-    0x80: "launch",  # Rayden's lightning hit: owner-accepted stand-in
+    0x80: "shock_stagger",  # Rayden's lightning: stagger back, cyan blink (0x800539A8)
 }
 
 

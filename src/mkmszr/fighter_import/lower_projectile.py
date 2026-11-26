@@ -105,6 +105,20 @@ REACTION_LOWERING["acid_stagger"] = {
     "donor_push": 0x26666,  # MKT reaction 0x72 (0x800547C8): +0x420 = 0x26666, then 0x80057F94
     "donor_ref": 0x33333,  # MKT zap_stumble (r_rocket), the host's accepted 0x56666
 }
+# MKT reaction 0x80 (0x800539A8, Rayden's lightning): the hit preamble, a push away from the
+# attacker at 0x26666, the hit voice, the victim's slot 0x20 played twice at rate 2 with its
+# per-fighter shock palette (0x800A38B0[fighter], into process +0x440): the victim staggers back
+# and blinks cyan. The host: Acid Spit's stumble (the same push; it plays the victim's root 0x20)
+# plus a blink helper (``blink``) that alternates the victim's colour (actor +0xFC/+0xFE/+0x100,
+# red/green/blue, 0x80 normal) with cyan, as host enemies have no MKT palettes.
+REACTION_LOWERING["shock_stagger"] = {
+    **REACTION_LOWERING["acid_stagger"],
+    "donor_push": 0x26666,  # MKT 0x800539E8: away_x_vel 0x26666
+    "blink": {"colour": (0x20, 0xFF, 0xFF), "count": 8, "every": 2},
+}
+BLINK_PROCESS_ID = 0x100  # as the stealth timer
+ACTOR_RGB = (0xFC, 0xFE, 0x100)
+NORMAL_RGB = 0x80
 # Host-kind reactions: a stock reaction-table entry used as is (no payload code). The roundhouse
 # launch 0x0C knocks the victim away and runs the victim morphs (Rayden's lightning stand-in).
 REACTION_LOWERING["launch"] = {"kind": "host", "slot": 0x0C}
@@ -962,6 +976,67 @@ def emit_helper_data(a: Assembler, label: str) -> None:
     a.raw(HELPER_IDLE)
 
 
+def emit_blink_start(a: Assembler, blink: str, then: str) -> None:
+    """In the victim's reaction (its own process): start process ``blink`` with the victim's
+    controller as its argument (+0x6F4, written after creation as effects do), then go on at
+    ``then`` with the reaction's own sp and ra."""
+
+    a.addiu("sp", "sp", -0x20)
+    a.sw("ra", 0x18, "sp")
+    a.sw("s0", 0x14, "sp")
+    a.lui("t0", host.hi(host.CURRENT_CTRL))
+    a.lw("s0", host.lo(host.CURRENT_CTRL), "t0")
+    a.li("a0", BLINK_PROCESS_ID)
+    a.la("a1", blink)
+    a.jal(F_CLONE)
+    a.beqz("v0", blink + "_none")  # no process left: no blink
+    a.sw("s0", 0x6F4, "v0")
+    a.label(blink + "_none")
+    a.lw("s0", 0x14, "sp")
+    a.lw("ra", 0x18, "sp")
+    a.addiu("sp", "sp", 0x20)
+    a.j_label(then)
+
+
+def emit_blink(a: Assembler, label: str, rgb: tuple[int, int, int], count: int, every: int) -> None:
+    """Process ``label``: ``count`` times, every ``every`` ticks, the victim's colour alternates
+    between ``rgb`` and normal, then normal; it stops touching the victim as soon as its
+    controller holds another actor (the victim gone)."""
+
+    a.label(label)
+    host.load_controller(a)
+    a.lw("s2", 0x6F4, "s0")  # the victim's controller
+    a.lw("s3", host.CTRL_ACTOR, "s2")  # its actor, as at the start
+    a.li("s4", count)
+    a.move("s5", "zero")  # 0: tint next, 1: normal next
+    a.label(label + "_step")
+    a.lw("t0", host.CTRL_ACTOR, "s2")
+    a.bne("t0", "s3", label + "_exit")
+    a.bnez("s5", label + "_normal")
+    for field, value in zip(ACTOR_RGB, rgb):
+        a.li("t1", value)
+        a.sh("t1", field, "s3")
+    a.beq("zero", "zero", label + "_set")
+    a.label(label + "_normal")
+    a.li("t1", NORMAL_RGB)
+    for field in ACTOR_RGB:
+        a.sh("t1", field, "s3")
+    a.label(label + "_set")
+    a.li("t1", 1)
+    a.xor("s5", "s5", "t1")
+    a.li("a0", every)
+    a.jal(F_SLEEP)
+    a.addiu("s4", "s4", -1)
+    a.bnez("s4", label + "_step")
+    a.lw("t0", host.CTRL_ACTOR, "s2")
+    a.bne("t0", "s3", label + "_exit")
+    a.li("t1", NORMAL_RGB)
+    for field in ACTOR_RGB:
+        a.sh("t1", field, "s3")
+    a.label(label + "_exit")
+    a.jal(F_EXIT)
+
+
 def emit_data(a: Assembler, p: Lowered, base: int, clean: bytes | None = None, data: str = "") -> None:
     """Strike record (16-aligned, read through its KSEG0 alias), the close-range check records
     and the reaction: the lifted arc words, or (stumble kind) the stumble lifted here, which
@@ -979,12 +1054,19 @@ def emit_data(a: Assembler, p: Lowered, base: int, clean: bytes | None = None, d
     if host_reaction(p.reaction_meaning) is not None:
         return  # a stock reaction: nothing in the payload
     a.label(data + "reaction")
-    if REACTION_LOWERING[p.reaction_meaning].get("kind", "arc") == "stumble":
+    spec = REACTION_LOWERING[p.reaction_meaning]
+    if spec.get("kind", "arc") == "stumble":
         if clean is None:
             raise ValueError("a stumble reaction is lifted from the clean ROM")
+        if "blink" in spec:  # start the blink helper, then the stumble as the reaction itself
+            emit_blink_start(a, data + "blink", data + "stumble")
+            a.label(data + "stumble")
         code = lift_stumble(clean, p.reaction_meaning, a.pc())
         for i in range(0, len(code), 4):
             a.raw(int.from_bytes(code[i : i + 4], "big"))
+        if "blink" in spec:
+            b = spec["blink"]
+            emit_blink(a, data + "blink", b["colour"], b["count"], b["every"])
     else:
         for word in p.reaction_words:
             a.raw(word)

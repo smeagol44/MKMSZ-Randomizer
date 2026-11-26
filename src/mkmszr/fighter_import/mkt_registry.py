@@ -142,6 +142,13 @@ REGISTRY: dict[int, MktRoutine] = {
         "+0x3F8), else 0x4000",
         _G,
     ),
+    0x800539A8: _e(
+        "r_shock",
+        "",
+        "reaction 0x80: preamble, away_x_vel 0x26666, hit voice, shock palette into +0x440, the "
+        "victim's slot 0x20 twice (0x80053B5C)",
+        _G,
+    ),
     0x8006E490: _e("randu", "a0 = n", "random 1..n (0x8006E454 % n + 1); 0 when n is 0", _G),
     0x8006D3B4: _e(
         "give_routine", "a0 = process, a1 = routine", "restart a process at a routine; Hypothesis", _G
@@ -397,4 +404,6 @@ REGISTRY: dict[int, MktRoutine] = {
     ),
     0x80169BF4: _g("player2_object", "player-2 fighter object (inference)"),
     0x8014C3B8: _g("strike_flag", "set by the strike box check; meaning Pending"),
+    0x800A8AE0: _g("reaction_table", "victim reactions by strike byte 8 (0x80: 0x800539A8)", _G),
+    0x800A38B0: _g("shock_palettes", "per-fighter cyan shock palette (reaction 0x80 blink)", _G),
 }

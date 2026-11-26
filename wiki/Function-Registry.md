@@ -215,6 +215,7 @@ Static-confirmed from clean MKMSZ USA Rev. 0; readings and use on [Fighter recom
 | `0x80030378` | Select primary slot, second phase | Static-confirmed | `0x8002FE54(0, slot)`, then moves the cursor past the first phase |
 | `0x80031070` | Animate to phase end | Static-confirmed | Advances the animation, sleeping `a0` ticks per step, until the phase ends |
 | `0x80072584` | Eye use (item-use table entry 3) | Static-confirmed | Player controller `+0x6BC |= 0x1000`, actor `+0x8C |= 0x4000`, `+0x64 |= 0x2000`, colour `+0xFC/+0xFE/+0x100 = 32` (also the attached actor `+0x650`), `0x800A5FA0 |= 1`, `0x802ECCC6 |= 1` |
+| actor `+0xFC/+0xFE/+0x100` | Actor colour (red, green, blue) | Static-confirmed (channels); Pending runtime for values above `0x80` | Halfwords, `0x80` normal: the Eye sets all three to 32 (dark), the after-image fades (`0x8005A2EC`, `0x80062B80`) lower each channel by `0x14` per step, the draw code reads the low bytes. Rayden's lightning blink sets `0x20, 0xFF, 0xFF` (cyan; specials proof v16). |
 | `0x80072644` | Eye timer process | Static-confirmed | Started by the Inventory (`0x80073BE8`, class `0x100`); sleeps 1200 ticks, then undoes `0x80072584` (colour back to 128) |
 | `0x80005D74` | Enemy AI: player not seen | Static-confirmed | Taken by enemy AI routines while player `+0x6BC & 0x1000`: idle for a random 47..110 ticks |
 | `0x800498A8` | Quan Chi projectile action | Static-confirmed | Type `0x1B` AI action: secondary slot 2 in four steps, child `0x80049668`, sleep 40 |

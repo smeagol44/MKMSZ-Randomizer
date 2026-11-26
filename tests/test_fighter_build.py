@@ -145,3 +145,34 @@ def test_impact_mirror_uses_one_axis_for_the_animation(roms: tuple[bytes, bytes]
         # column c sat at c - x; its mirror lands at 2 * axis - (c - x)
         for c in (0, w - 1):
             assert (w - 1 - c) - mirrored.anchor_x == 2 * axis - (c - plain.anchor_x)
+
+
+@needs_roms
+def test_shock_stagger_starts_the_blink_then_the_stumble(roms: tuple[bytes, bytes]) -> None:
+    """v16 (owner: MKT staggers and blinks cyan): the lightning's reaction entry starts the blink
+    helper (process 0x100) and goes on into the lifted host stumble."""
+
+    from mkmszr.fighter_import import lower_projectile as lp
+
+    built = fb.build(*roms, "rayden")
+    slot = built.reactions["projectile (0, 67, 3)"]
+    o = lp.REACTION_TABLE - 0x7FFFF400 + 4 * slot
+    entry = int.from_bytes(built.rom[o : o + 4], "big")
+    k = (entry - built.link_va) // 4
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    head = ws[k : k + 30]
+    assert 0x24040100 in head  # addiu a0, zero, 0x100: the blink process
+    assert 0xAC5006F4 in head  # sw s0, 0x6F4(v0): the victim's controller as its argument
+    assert any((w >> 26) == 2 for w in head)  # j: on into the stumble, as the reaction itself
+
+
+@needs_roms
+def test_somersault_anchors_move_to_the_body(roms: tuple[bytes, bytes]) -> None:
+    """v16 (owner: a mid-air turn shifted Rayden): his somersault anchors move 21 px; Reptile's
+    (2 px off) stay."""
+
+    clean, mkt = roms
+    for name, expected in (("rayden", ["SOMERSAULT slot 0x1A: anchors moved 21 px to the body's centre"]),
+                           ("reptile", [])):  # fmt: skip
+        body = fb.body_build.build_body(fb.fd.load(name), clean, mkt, fb.body_build.Extras())
+        assert [line for line in body.log if "SOMERSAULT" in line] == expected
