@@ -122,14 +122,13 @@ def test_cli_sektor_build_is_pinned(tmp_path: Path) -> None:
 # Reptile through the product option: the CLI output equals the owner-validated composition
 # proof v03 byte for byte (Runtime-confirmed bounded, owner 2026-11-13: the forceball no longer
 # hangs on the Temple monk).
-REPTILE_CLI_SHA256 = "31c22f522fe98cbc3230793b405a64b65ff7ec5f9310b301242d1761db23d93c"
+# Since Reptile specials proof v23 (owner, 2026-11-26: "Acid spit works now"): the same with Acid
+# Spit's splash on the enemy hit, MKT's flip and mirrored art (composition v03 was 31c22f52...).
+REPTILE_CLI_SHA256 = "96fbf32a7c6803cad626b45ee923003393e0e9913ac0d21bf51d8af557f96632"
 
 
 @needs_roms
-def test_cli_reptile_build_is_the_validated_composition(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from test_fighter_build import accepted_acid
-
-    accepted_acid(monkeypatch)  # the accepted Acid Spit placement (Reptile proof v23 pending)
+def test_cli_reptile_build_is_the_validated_composition(tmp_path: Path) -> None:
     out = tmp_path / "reptile.z64"
     assert main(["--mkt-rom", DONOR, "--seed", "REPTILE-PROD-1", "--fighter", "reptile",
                  CLEAN, str(out)]) == 0  # fmt: skip
