@@ -126,7 +126,10 @@ REPTILE_CLI_SHA256 = "31c22f522fe98cbc3230793b405a64b65ff7ec5f9310b301242d1761db
 
 
 @needs_roms
-def test_cli_reptile_build_is_the_validated_composition(tmp_path: Path) -> None:
+def test_cli_reptile_build_is_the_validated_composition(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from test_fighter_build import accepted_acid
+
+    accepted_acid(monkeypatch)  # the accepted Acid Spit placement (Reptile proof v23 pending)
     out = tmp_path / "reptile.z64"
     assert main(["--mkt-rom", DONOR, "--seed", "REPTILE-PROD-1", "--fighter", "reptile",
                  CLEAN, str(out)]) == 0  # fmt: skip
