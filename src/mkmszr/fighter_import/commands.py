@@ -60,8 +60,14 @@ HOST_TABLES = (
 # would. Records carry direction-bit masks: the mask check 0x8003CCF8 refuses a record while a
 # button outside it is held, and a zero mask would end the table.
 STICK_EVENT_RECORDS = (0x800A07E4, 0x800A085C)  # events 8 Left, 9 Right (press table)
+# Events 6 Up and 7 Down (press table 0x800A09C4 - 0x78 per event before Left): the player's Up
+# callback is an empty jr ra (0x8003C7F0), Down's is empty. A stick command that ends with Up or
+# Down (Rayden's teleport, D,U) hooks that event too.
+UPDOWN_EVENT_RECORDS = {6: 0x800A06F4, 7: 0x800A076C}
+EMPTY_CALLBACK = 0x8003C7F0  # jr ra; nop
 PLAYER_TYPE_SLOT = 4 * 4  # actor type 4 (player) in a 30-callback record
 STICK_MASK = 0xA000  # Left | Right: no button bits
+STICK_MASK_UPDOWN = 0x5000  # Up | Down (MKT token 6 / 7 newest)
 
 # Sub-Zero's command records (Wiki Player-Actions-and-Special-Moves, stock reconciliation).
 HOST_POWERS = {
@@ -114,6 +120,13 @@ class Lowered:
     stubs: bytes  # code at the stub base
     report: list[str]
     stick_checker: int | None = None  # VA of the stick-table checker (event records 8 and 9)
+    stick_events: tuple[int, ...] = ()  # Up / Down events a stick command ends with (6, 7)
+
+
+def stick_event(cmd: Command) -> int:
+    """The direction event that completes a stick command: its newest token (facing right)."""
+
+    return _u16(cmd.record, 0x12)
 
 
 def _host_record(clean: bytes, cmd: Command, cond: int, override: tuple[int, int, int] | None) -> bytes:
@@ -123,8 +136,9 @@ def _host_record(clean: bytes, cmd: Command, cond: int, override: tuple[int, int
     else:
         selector, action = override[0], override[2]
     rec = bytearray(cmd.record)
-    if cmd.stick:
-        rec[0:4] = STICK_MASK.to_bytes(2, "big") * 2
+    if cmd.stick:  # the mask of the event that ends it (the newest token)
+        mask = STICK_MASK_UPDOWN if stick_event(cmd) in UPDOWN_EVENT_RECORDS else STICK_MASK
+        rec[0:4] = mask.to_bytes(2, "big") * 2
     elif cmd.buttons:  # the MKT event's button (Rayden's lightning record has masks 0xFC)
         rec[0:4] = cmd.buttons.to_bytes(2, "big") * 2
     rec[4:16] = selector.to_bytes(4, "big") + cond.to_bytes(4, "big") + action.to_bytes(4, "big")
@@ -223,7 +237,8 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
         a.addiu("sp", "sp", 0x18)
     if unwired:
         report.append("no action yet: " + ", ".join(unwired))
-    return Lowered(out, moved, a.link(), report, checker)
+    events = tuple(sorted({stick_event(c) for c in stick} & set(UPDOWN_EVENT_RECORDS)))
+    return Lowered(out, moved, a.link(), report, checker, events)
 
 
 def _name(va: int) -> str:
@@ -293,6 +308,11 @@ def install(rom: bytearray, clean: bytes, low: Lowered, storage_rom: int, storag
             slot = record + PLAYER_TYPE_SLOT - VA_TO_ROM
             if _u32(rom, slot) != 0 or _u32(clean, slot) != 0:
                 raise CommandError(f"event record 0x{record:08X}: the player's callback is not free")
+            rom[slot : slot + 4] = (low.stick_checker or 0).to_bytes(4, "big")
+        for event in low.stick_events:
+            slot = UPDOWN_EVENT_RECORDS[event] + PLAYER_TYPE_SLOT - VA_TO_ROM
+            if _u32(rom, slot) not in (0, EMPTY_CALLBACK) or _u32(clean, slot) not in (0, EMPTY_CALLBACK):
+                raise CommandError(f"event {event}: the player's callback is not free")
             rom[slot : slot + 4] = (low.stick_checker or 0).to_bytes(4, "big")
 
 

@@ -230,6 +230,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     reactions = _Pool(REACTION_POOL, "spare reaction-table entries")
     groups: dict[tuple[tuple[int, int, int], str], _Group] = {}
     art_of: dict[tuple[int, int, int], tuple[lp.ArtLayout, dict[str, int], str | None]] = {}
+    afterimage_of: dict[str, tuple[str, lp.ArtLayout, int]] = {}  # move -> (process, art, ticks)
+    cooldown_of: dict[str, int] = {}  # move -> host ticks (MKT ticks_since conditions)
     steps_of: dict[str, list[dict[str, Any]]] = {}
     projectile_of: dict[str, dict[str, Any]] = {}
     placed_at = body.chain_start
@@ -291,6 +293,17 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 art_of[akey] = (art, events, helper_label)
                 groups[gkey] = _Group(akey, proj["strike"]["reaction"], [move], art, events,
                                       stock if stock is not None else reactions.take(), helper_label)  # fmt: skip
+        for s in _all_steps(steps):  # an afterimage: the fighter's own art for its process
+            if s["op"] == "afterimage":
+                rate = max(1, -(-_int(s["rate"]) // ticks_per))
+                part = {"table": _int(s["anim"]["table"]), "slot": _int(s["anim"]["slot"]), "part": 1}
+                art = lp.place_art(file87, mkt, donor_id, {"art": part, "rate": rate}, None,
+                                   body_build.TYPE_END, at=_free_from(file87, body.chain_start))  # fmt: skip
+                frames = len(lp.donor_part(donor, part).frames)
+                afterimage_of[move] = (f"{move}_afterimage", art, frames * rate)
+        cool = next((c for c in programs[move].command.get("conditions", []) if c["kind"] == "cooldown"), None)
+        if cool is not None and proj is None:  # projectiles: the host one-projectile rule instead
+            cooldown_of[move] = max(1, -(-_int(cool["ticks"]) // ticks_per))
         for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
             if s["op"] == "sound":
                 first = _int(s["sound"]["fighter"])
@@ -340,7 +353,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         if move in per_move:
             alive = (f"{move}_alive", *(f"{m}_alive" for m in shared_limit))
         refuse = (lower_special.CTRL_STEALTH, lower_special.STEALTH_BIT) if "stealth" in tune else None
+        relocates = any(s["op"] == "relocate" for s in _all_steps(steps))
         lower_special.emit_gate_condition(a, f"{move}_cond", gate, costs[move], default=default,
+                                          cooldown=f"{move}_cooldown_word" if move in cooldown_of else None,
+                                          target_range=lower_special.RELOCATE_RANGE if relocates else None,
                                           alive=alive, refuse_if=refuse,
                                           airborne=bool(tune.get("airborne")))  # fmt: skip
         g = group_of.get(move)
@@ -379,6 +395,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             carry=words[0] if words else None,
             skip=frozenset(tune.get("skip", ())),  # owner: steps left out (Rayden's torpedo turns)
             air_control=bool(tune.get("air_control")),  # owner: steer the closing drop
+            cooldown=f"{move}_cooldown" if move in cooldown_of else None,
+            afterimage=afterimage_of[move][0] if move in afterimage_of else None,
         )  # fmt: skip
         if g is not None:
             ptune = tune.get("projectile", {})
@@ -409,6 +427,13 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         unknown = set(reaction_map) - set(reaction_labels)
         if unknown:
             raise BuildError(f"{move}: no host routine for reactions {sorted(unknown)}")
+        if move in afterimage_of:
+            label, art, ticks = afterimage_of[move]
+            lp.emit_afterimage_process(a, label, art, ticks)
+        if move in cooldown_of:
+            lower_special.emit_cooldown(a, f"{move}_cooldown", cooldown_of[move])
+        if relocates and "relocate" not in a.labels:
+            lower_special.emit_relocate_routine(a)
         if "stealth" in tune:
             stealth_moves.append(move)
             lower_special.emit_stealth_timer(a, f"{move}_stealth", _int(tune["stealth"]["period"]),

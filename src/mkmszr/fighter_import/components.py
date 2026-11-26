@@ -94,6 +94,7 @@ COMPONENTS: dict[str, dict[str, str]] = {
     "shake": {"dx": "px", "dy": "px", "count": "int", "ticks": "ticks"},
     "pass_through": {"ticks": "ticks"},
     "relocate": {"to": "enum:behind_opponent", "dx": "px", "dy?": "px"},
+    "afterimage": {"anim": "anim", "rate": "ticks"},
     # presentation
     "sound": {"sound": "sound"},
     "effect": {"effect": "effect", "at?": "enum:self|opponent"},

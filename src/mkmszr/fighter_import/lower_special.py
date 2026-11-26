@@ -100,7 +100,8 @@ LIT_BIT = 0x1000
 
 def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
                         default: int | None = None, alive: tuple[str, ...] = (),
-                        refuse_if: tuple[int, int] | None = None, airborne: bool = False) -> None:  # fmt: skip
+                        refuse_if: tuple[int, int] | None = None, airborne: bool = False,
+                        cooldown: str | None = None, target_range: int | None = None) -> None:  # fmt: skip
     """``label() -> 0x8000 / 0x4000`` (see the module notes). With ``default``, the gate word
     is used only when it is ``slti t0, v0, N`` (Ice Blast's rewritten tail), else ``default``.
     With ``alive`` (labels of words that projectiles set while they live,
@@ -109,11 +110,22 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     live projectile process are stale (a process ended by something else) and are cleared.
     ``refuse_if`` (controller offset, mask): refuse while that halfword of the player's
     controller has a bit of the mask set (Invisibility: already stealthed). ``airborne``: also
-    accept in the air (no fall-speed or floor check; Rayden's torpedo, owner 2026-11-24)."""
+    accept in the air (no fall-speed or floor check; Rayden's torpedo, owner 2026-11-24).
+    ``cooldown``: the label of a word the move's ``stamp`` keeps set for its cooldown (MKT's
+    ticks_since condition): refuse while it is set. ``target_range``: refuse unless an enemy is
+    within that range on the player's path (as Sektor's teleport condition, which avoids a
+    teleport with nobody to reach)."""
 
     a.label(label)
     a.addiu("sp", "sp", -0x20)
     a.sw("ra", 0x1C, "sp")
+    if target_range is not None:  # find_target uses s1 / s4
+        a.sw("s1", 0x18, "sp")
+        a.sw("s4", 0x14, "sp")
+    if cooldown is not None:
+        a.la("t0", cooldown)
+        a.lw("t0", 0, "t0")
+        a.bnez("t0", label + "_no")
     a.lui("t0", hi(PLAYER_ACTOR))
     a.lw("t0", lo(PLAYER_ACTOR), "t0")
     if not airborne:
@@ -179,14 +191,185 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
         a.label(label + "_gate")
     a.slt("t1", "v0", "t0")
     a.bnez("t1", label + "_no")
+    if target_range is not None:
+        a.lui("t0", hi(PLAYER_CTRL))
+        a.lw("t0", lo(PLAYER_CTRL), "t0")
+        a.lw("s1", host.CTRL_ACTOR, "t0")
+        host.find_target(a, label + "_no", target_range)
     a.li("v0", 0x8000)
     a.beq("zero", "zero", label + "_ret")
     a.label(label + "_no")
     a.li("v0", 0x4000)
     a.label(label + "_ret")
     a.lw("ra", 0x1C, "sp")
+    if target_range is not None:
+        a.lw("s1", 0x18, "sp")
+        a.lw("s4", 0x14, "sp")
     a.jr_ra()
     a.addiu("sp", "sp", 0x20)
+
+
+# ---- cooldowns (MKT stamp_tick + ticks_since) ---------------------------------------------------
+COOLDOWN_PROCESS_ID = 0x100  # as the blink and stealth timer
+
+
+def emit_cooldown(a: Assembler, label: str, ticks: int) -> None:
+    """Process ``label``: keep the word ``label_word`` set for ``ticks`` host ticks, then clear
+    it (the move's ``stamp`` starts it; its condition refuses while the word is set)."""
+
+    a.label(label)
+    a.li("a0", ticks)
+    a.jal(F_SLEEP)
+    a.la("t0", label + "_word")
+    a.sw("zero", 0, "t0")
+    a.jal(lp.F_EXIT)
+    a.label(label + "_word")
+    a.raw(0)
+
+
+def emit_stamp(a: Assembler, cooldown: str, skip: str) -> None:
+    """In the move: set the cooldown word and start its timer process (none left: no cooldown)."""
+
+    a.la("t0", cooldown + "_word")
+    a.li("t1", 1)
+    a.sw("t1", 0, "t0")
+    a.li("a0", COOLDOWN_PROCESS_ID)
+    a.la("a1", cooldown)
+    a.jal(lp.F_CLONE)
+    a.bnez("v0", skip)
+    a.la("t0", cooldown + "_word")
+    a.sw("zero", 0, "t0")
+    a.label(skip)
+    host.load_controller(a)
+
+
+# ---- relocation (MKT match_me_to_opponent + multi_adjust_xy; Sektor's teleport reposition) -----
+RELOCATE_RANGE = 592  # 0.925 x the 640-unit visible ground width at camera depth 0x200 (Sektor)
+RELOCATE_WALL_MARGIN = 4
+RELOCATE_MIN_SEPARATION = 16
+RELOCATE_FLOOR_BOUND = 0x20000
+RELOCATE_SNAP = 0x40
+
+
+def emit_relocate_routine(a: Assembler, label: str = "relocate") -> None:
+    """Subroutine ``relocate(a0 = distance in world units) -> v0`` (1 placed, 0 no enemy): the
+    player goes past the nearest enemy in range by ``a0`` (less when a wall is nearer), on the
+    enemy's floor, snapped onto the nearest probed floor; on the near side when the far one
+    has no floor, else at the enemy's x; a cornered enemy is nudged out; then he faces it. It
+    is Sektor's runtime-confirmed teleport reposition (``actions/robo_teleport``, production
+    settings: on the floor, own-floor fallback, floor probe, snap), as a subroutine any move can
+    call. MKT picks the side by the arena's edges; the host has no arena, so by the room."""
+
+    from .actions import robo_teleport as rt
+
+    a.label(label)
+    a.addiu("sp", "sp", -0x40)
+    a.sw("ra", 0x3C, "sp")
+    for k, r in enumerate(("s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7")):
+        a.sw(r, 0x1C + 4 * k, "sp")
+    a.move("s7", "a0")
+    host.load_controller(a)
+    host.find_target(a, label + "_none", RELOCATE_RANGE)
+    a.lw("t0", host.CTRL_GROUND, "v0")  # the enemy's floor, before any call
+    a.sw("t0", 0x10, "sp")
+    host.face_opponent(a)
+    host.load_controller(a)
+    a.lw("t0", host.ACTOR_X, "s4")
+    a.lw("t1", host.ACTOR_X, "s1")
+    a.slt("s6", "t0", "t1")  # 1: the enemy is on the player's -x side
+    a.lw("t0", 0x10, "sp")  # y: the enemy's floor if usable, else the player's, else its height
+    a.lw("t1", host.ACTOR_Y, "s4")
+    a.sw("t1", 0x14, "sp")
+    a.subu("t2", "t0", "t1")
+    a.bltz("t2", label + "_own")
+    a.li("t3", RELOCATE_FLOOR_BOUND)
+    a.slt("t3", "t3", "t2")
+    a.bnez("t3", label + "_own")
+    a.sw("t0", 0x14, "sp")
+    a.beq("zero", "zero", label + "_yset")
+    a.label(label + "_own")
+    a.lw("t0", host.CTRL_GROUND, "s0")
+    a.subu("t2", "t0", "t1")
+    a.bltz("t2", label + "_yset")
+    a.li("t3", 0x7FBC00)
+    a.beq("t0", "t3", label + "_yset")  # no floor
+    a.sw("t0", 0x14, "sp")
+    a.label(label + "_yset")
+    for field in (host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Z):
+        a.lw("t0", field, "s4")
+        a.sw("t0", field, "s1")
+    a.lw("t0", 0x14, "sp")
+    a.sw("t0", host.ACTOR_Y, "s1")
+    a.move("a0", "s4")
+    a.addiu("a1", "sp", 0x10)
+    a.addiu("a2", "sp", 0x14)
+    a.jal(host.F_WALL_DISTANCE)
+    a.lw("t0", 0x14, "sp")
+    a.beqz("s6", label + "_far")
+    a.lw("t0", 0x10, "sp")  # the wall room on the far side
+    a.label(label + "_far")
+    a.addiu("s5", "t0", -RELOCATE_WALL_MARGIN)
+    a.slt("t2", "s7", "s5")
+    a.beqz("t2", label + "_le")
+    a.move("s5", "s7")  # min(distance, room)
+    a.label(label + "_le")
+    a.bgez("s5", label + "_pos")
+    a.li("s5", 0)
+    a.label(label + "_pos")
+    host.offset_actor(a, "s1", "s5")
+    a.li("t1", RELOCATE_MIN_SEPARATION)
+    a.slt("t2", "s5", "t1")
+    a.beqz("t2", label + "_placed")
+    a.li("t1", RELOCATE_MIN_SEPARATION)
+    a.subu("s2", "t1", "s5")  # cornered: nudge the enemy out
+    a.lw("s3", host.ACTOR_X, "s4")
+    host.offset_actor(a, "s4", "s2")
+    a.lw("t0", host.ACTOR_X, "s4")
+    a.slt("t1", "s3", "t0")
+    a.beq("t1", "s6", label + "_placed")
+    a.move("a0", "s4")
+    a.subu("a1", "zero", "s2")
+    a.sll("a1", "a1", 1)
+    a.move("a2", "zero")
+    a.jal(host.F_OFFSET)
+    a.label(label + "_placed")
+
+    def probe() -> None:
+        a.lw("a0", host.ACTOR_X, "s1")
+        a.sra("a0", "a0", 8)
+        a.lw("a1", host.ACTOR_Z, "s1")
+        a.sra("a1", "a1", 8)
+        a.lw("a2", host.ACTOR_Y, "s1")
+        a.jal_label(label + "_floor_probe")
+
+    probe()
+    a.bnez("v0", label + "_spot")
+    a.lw("t0", host.ACTOR_X, "s4")  # near side: mirrored around the enemy
+    a.sll("t0", "t0", 1)
+    a.lw("t1", host.ACTOR_X, "s1")
+    a.subu("t0", "t0", "t1")
+    a.sw("t0", host.ACTOR_X, "s1")
+    probe()
+    a.bnez("v0", label + "_spot")
+    a.lw("t0", host.ACTOR_X, "s4")  # the enemy's own x
+    a.sw("t0", host.ACTOR_X, "s1")
+    probe()
+    a.beqz("v0", label + "_kept")
+    a.label(label + "_spot")
+    a.sw("v1", host.ACTOR_Y, "s1")  # on the probed floor
+    a.label(label + "_kept")
+    host.face_opponent(a)
+    a.li("v0", 1)
+    a.beq("zero", "zero", label + "_ret")
+    a.label(label + "_none")
+    a.move("v0", "zero")
+    a.label(label + "_ret")
+    a.lw("ra", 0x3C, "sp")
+    for k, r in enumerate(("s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7")):
+        a.lw(r, 0x1C + 4 * k, "sp")
+    a.jr_ra()
+    a.addiu("sp", "sp", 0x40)
+    rt.emit_floor_probe(a, label + "_floor_probe", nearest=RELOCATE_SNAP)
 
 
 def emit_charge(a: Assembler, amount: int) -> None:
@@ -232,7 +415,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 stealth: str | None = None,
                 effects: dict[int, tuple[str, int]] | None = None,
                 skip: frozenset[str] = frozenset(),
-                carry: str | None = None, air_control: bool = False) -> list[tuple[str, bytes]]:  # fmt: skip
+                carry: str | None = None, air_control: bool = False,
+                cooldown: str | None = None, afterimage: str | None = None) -> list[tuple[str, bytes]]:  # fmt: skip
     """The action root for a move program (never returns). ``animations``: donor animation
     (table, slot) -> host secondary slot holding it, or ``("at", offset)`` for a body script
     without a table entry (selected by setting the cursor); ``child``: the projectile process
@@ -250,7 +434,10 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     (``effects.emit_spawn``); ``skip``: step ops left out on purpose; ``carry``: the label of
     the word a ``carry`` step shares with the victim's ``torpedo_carry`` reaction
     (:func:`emit_carry_reaction`); ``air_control``: ``jump`` steps let the player steer (see
-    :data:`AIR_MAP`).
+    :data:`AIR_MAP`); ``cooldown``: the label of the move's cooldown process
+    (:func:`emit_cooldown`), started by its ``stamp`` step; ``afterimage``: the label of the
+    afterimage process (``lower_projectile.emit_afterimage_process``) for ``afterimage`` steps;
+    ``relocate`` steps call the ``relocate`` subroutine (:func:`emit_relocate_routine`).
 
     Returns the strike records ``(label, 16 bytes)`` to place with :func:`emit_strike_data`.
 
@@ -339,7 +526,18 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             if op in skip:
                 continue
             if op == "stamp":
-                continue  # MKT cooldown key: not lowered yet (host one-projectile rule instead)
+                if cooldown is not None:
+                    emit_stamp(a, cooldown, fresh("stamped"))
+                continue  # else not lowered (projectiles: the host one-projectile rule instead)
+            elif op == "afterimage":
+                if afterimage is None:
+                    raise ValueError(f"{label}: afterimage step without its process")
+                lp.emit_afterimage_spawn(a, afterimage, fresh("afterimage"))
+                host.load_controller(a)
+            elif op == "relocate":
+                a.li("a0", int(step["dx"]) * lp.UNITS_PER_PX)
+                a.jal_label("relocate")
+                host.load_controller(a)
             elif op == "begin":
                 host.set_special_lock(a)
                 host.set_action_id(a, ICE_ACTION_ID)

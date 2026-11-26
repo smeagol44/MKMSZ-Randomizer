@@ -135,7 +135,7 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     # back, mirroring it around an anchor outside its box); the torpedo's three jumps (bounce,
     # bounce, drop) take the air map
     assert ws.count(0x012A4826) == 2  # xor t1, t1, t2 (the facing bit): each lightning's burst
-    assert ws.count(0x2739B05C) == 6  # input map: three begins without a turn (both lightnings, torpedo), three jumps
+    assert ws.count(0x2739B05C) == 7  # input map: four begins without a turn (both lightnings, teleport, torpedo), three jumps
     # v11-v12 (owner screenshots, Wind): the burst goes to the enemy hit (the player's +0x640,
     # set by the collision core), at its whole position: path, path position, x, z; v15: the
     # bolt's own height kept (impact_keep_y), not the enemy's feet
@@ -321,3 +321,21 @@ def test_reversed_lightning_in_the_air_ice_blast_slot(roms: tuple[bytes, bytes])
     # row 2 halfwords at +0xC: lh t1, 0xC(t9); the focal 0x8009A8E8)
     assert ws.count(0xAD1173DC) >= 3 and ws.count(0xAD1773DC) >= 3  # 2 checks + the flight
     assert 0x8729000C in ws and 0x8D08A8E8 in ws
+
+
+@needs_roms
+def test_teleport_relocates_with_an_afterimage_and_a_cooldown(roms: tuple[bytes, bytes]) -> None:
+    """Generator step 5 (specials proof v23): the generated D,U program in Directional Ice Up's
+    slot: the afterimage runs as an effect-class process (not a projectile: specials stay free),
+    the relocation is Sektor's reposition as a subroutine (enemy in range required by the
+    condition), and MKT's 0x40-tick cooldown (32 host ticks) holds a word the condition reads."""
+
+    from mkmszr.fighter_import import lower_special
+
+    built = fb.build(*roms, "rayden")
+    assert built.selectors["teleport"] == 5
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    assert 0x24040015 in ws  # li a0, 0x15: the afterimage process class
+    assert 0x24040020 in ws  # li a0, 32: the cooldown, in host ticks
+    assert 0x24040086 in ws  # li a0, 134: the relocation distance (67 px)
+    assert lower_special.RELOCATE_RANGE == 592

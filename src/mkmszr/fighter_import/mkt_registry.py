@@ -355,6 +355,17 @@ REGISTRY: dict[int, MktRoutine] = {
         "proj_object", "", "create the projectile object and match_ani_points to the owner"
     ),
     0x8007F860: _e("proj_recover", "", "attacker recovery after a projectile"),
+    0x8006DA14: _e(
+        "new_object",
+        "a0, a1 = the fighter's art and palette (+0x5C, +0x58)",
+        "a new object from the fighter's art (Rayden's teleport: the silhouette left behind)",
+        _M,
+    ),
+    0x8005A380: _e("create_process", "a0 = id, a1 = routine", "start a process running routine", _M),
+    0x8006D5DC: _e("bind_palette", "a0 = palette, a1 = object", "bind a palette to an object", _M),
+    0x8000F9B0: _e(
+        "palette_back", "", "the fighter's own palette again after a temporary one (+0x3FA & 0x20)", _M
+    ),
     0x8007F878: _e(
         "proj_strike_check",
         "a0 = object, a1 = strike index",
@@ -403,6 +414,10 @@ REGISTRY: dict[int, MktRoutine] = {
     0x80079880: _m("acid_proc", "acid spit projectile process"),
     0x800799C8: _m("acid_arc_step", "acid spit arc: one animation step, sleep 2, strike box check"),
     0x80079920: _m("acid_impact", "acid spit impact on the opponent"),
+    0x80053AE8: _m(
+        "rayden_reappear",
+        "Rayden only (fighter 0x18): slot 0x21, cyan palette 0x800B9B04, his sound 7 (teleport, getup)",
+    ),
     0x80079A5C: _m("reptile_forceball_fast", "Reptile forceball, speed 0x59999 (special 0x28)"),
     0x80079AB4: _m("reptile_forceball_slow", "Reptile forceball, speed 0x26666 (special 0x22)"),
     0x80079B0C: _m("forceball_launch", "forceball throw: animation, projectile process, recovery"),

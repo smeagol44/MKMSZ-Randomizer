@@ -142,6 +142,9 @@ class _Walk:
         self.begin_own = False  # the begin step named its action itself (begin_special mode 1)
         self.object_anim: dict[str, int] | None = None  # selection a projectile object was made from
         self.projectiles: dict[int, tuple[dict, int]] = {}  # proj_process pc -> (step, child)
+        self.copy: int | None = None  # pc of new_object: the fighter's copy being set up
+        self.matched = False  # match_me_to_opponent ran: an offset next is a relocation
+        self.edges = False  # an arena-edge test ran in this routine (MKT's teleport side)
 
     def name(self, c: dc.Call) -> str:
         return self.gen.names.get(c.target, f"0x{c.target:08X}" if c.target else "jalr")
@@ -238,6 +241,10 @@ class _Walk:
             # the saved velocity source written back (torpedo: after the take-off phase)
             v, self.velocity = self.velocity, None
             return [{"op": "velocity", "x": hex(v)}]
+        if s.base == dc.SELF and s.off == 0x18 and "proc+0x3F8" in str(s.value):
+            self.note("MKT puts the fighter on his floor (object +0x18 = process +0x3F8); the host "
+                      "relocation lands him on the floor")  # fmt: skip
+            return []
         return []  # other process/object fields: not modelled (flags, timers, links)
 
     def branch(self, s: dc.If) -> list[dict]:
@@ -247,6 +254,18 @@ class _Walk:
         if any(f"[0x{p:08X}]" in str(s.cond) for p in PLAYER_OBJECTS) and "self" in str(s.cond):
             # which player the fighter is (per-player tables, e.g. the torpedo's velocity source):
             # bookkeeping; both arms do the same for their player
+            return self.stmts(s.then)
+        text = str(s.cond)
+        if "self+0x38:2" in text and isinstance(s.cond, dc.Bin) and s.cond.b.const() is not None:
+            # the fighter id (object +0x38): decided by the generated fighter
+            same = s.cond.b.const() == self.gen.fighter
+            return self.stmts(s.then if same == (s.cond.op == "==") else s.other)
+        if self.edges and "?" in text:  # the rest of the edge test (its distance, < 103 px)
+            return self.stmts(s.then)
+        if "0x802576F0" in text or "0x802576EC" in text:
+            self.edges = True
+            self.note("MKT picks a side by the arena's edges (0x802576EC / 0x802576F0); the host "
+                      "relocation picks it by the room there (walls, floor)")  # fmt: skip
             return self.stmts(s.then)
         call = self._tested_call(s.cond)
         if call == "is_airborne":
@@ -672,6 +691,58 @@ def _read_projectile(w: _Walk, child: int, fields: dict[tuple[int, int], int]) -
     return step
 
 
+def _new_object(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    w.copy = c.pc  # a copy of the fighter (its art): an afterimage when a process animates it
+    return []
+
+
+def _frame_at_t1(w: _Walk, c: dc.Call, a: list) -> list[dict]:  # ani_frame_at(skip, slot)
+    if w.copy is not None:
+        return []  # the copy's first frame: the afterimage shows it
+    return [{"op": "pose", "anim": {"table": 1, "slot": a[1], "offset": a[0]}}]
+
+
+def _create_process(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    """create_process(id, routine): a process that plays a table-1 animation on the fighter's
+    copy, then ends: an afterimage left where he stands (Rayden's teleport 0x80045854)."""
+
+    routine = (a[1] or 0) & 0xFFFFFFFF
+    body = dc.decompile(w.gen.mkt, routine) if routine else []
+    anim = next((x for x in _walk_calls(body) if w.name(x) == "animate_table1"), None)
+    if w.copy is None or anim is None or None in (anim.args[0].const(), anim.args[1].const()):
+        w.unknown(f"0x{c.pc:08X}: process 0x{routine:08X}")
+        return []
+    w.copy = None
+    return [{"op": "afterimage", "anim": {"table": 1, "slot": anim.args[1].const()},
+             "rate": anim.args[0].const()}]  # fmt: skip
+
+
+def _match_opponent(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    w.matched = True
+    return []
+
+
+def _adjust(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    """multi_adjust_xy(self, dx, dy) after match_me_to_opponent: the fighter is placed by the
+    opponent, facing as the opponent; a negative dx is behind it (Rayden's teleport: -0x43, or
+    +0x43 by an arena edge)."""
+
+    if not (w.matched and c.args[0] == dc.SELF):
+        w.unknown(f"0x{c.pc:08X}: offset {c.args[1]}")
+        return []
+    w.matched = False
+    v = c.args[1]
+    values = v.values if isinstance(v, dc.Phi) else (v.const(),)
+    if None in values:
+        w.unknown(f"0x{c.pc:08X}: offset {v}")
+        return []
+    step: dict[str, Any] = {"op": "relocate", "to": "behind_opponent", "dx": max(abs(x) for x in values)}
+    if len(values) > 1:
+        w.note(f"MKT places him {', '.join(str(x) for x in values)} px from the opponent by the "
+               "arena edges (behind unless the opponent is near one)")  # fmt: skip
+    return [step]
+
+
 def _flip(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     """flip_single(self): the fighter turns around (Rayden's reversed lightning)."""
 
@@ -956,6 +1027,16 @@ CALL_RULES = {
     "ani_frame_at_t0": _frame_at,
     "proj_process": _projectile,
     "proj_object_here": _object_here,
+    "new_object": _new_object,
+    "ani_frame_at": _frame_at_t1,
+    "create_process": _create_process,
+    "match_me_to_opponent": _match_opponent,
+    "multi_adjust_xy": _adjust,
+    "match_ani_points": _ignore,  # the copy put where the fighter stands
+    "bind_palette": _note_only("MKT binds a temporary palette (Rayden: his cyan 0x800B9B04 while "
+                               "he reappears); the host keeps the fighter's palette"),
+    "palette_back": _ignore,
+    "reset_fighter_state": _ignore,
     "proj_object": _ignore,
     "do_special": _dispatch,
     "do_body_propell": _dispatch,

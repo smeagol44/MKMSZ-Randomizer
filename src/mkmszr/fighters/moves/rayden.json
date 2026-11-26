@@ -279,6 +279,123 @@
       ]
     },
     {
+      "name": "teleport",
+      "command": {
+        "buttons": "stick",
+        "tokens": [
+          6,
+          7
+        ],
+        "window": 16,
+        "src": "MKT 0x800AB968",
+        "conditions": [
+          {
+            "kind": "cooldown",
+            "key": "0x8012C668",
+            "ticks": 64,
+            "src": "MKT 0x80050F28"
+          }
+        ]
+      },
+      "movement": true,
+      "steps": [
+        {
+          "op": "begin",
+          "face": false,
+          "stop": true,
+          "action_mkt": "0x21f",
+          "src": {
+            "face": "MKT 0x80045644",
+            "stop": "MKT 0x80045644",
+            "action_mkt": "MKT 0x80045644"
+          }
+        },
+        {
+          "op": "stamp",
+          "key": "0x8012C668",
+          "src": {
+            "key": "MKT 0x80045654"
+          }
+        },
+        {
+          "op": "sound",
+          "sound": {
+            "fighter": 6
+          },
+          "src": {
+            "sound": "MKT 0x8004565C"
+          }
+        },
+        {
+          "op": "afterimage",
+          "anim": {
+            "table": 1,
+            "slot": 1
+          },
+          "rate": 2,
+          "src": {
+            "anim": "MKT 0x800456D4",
+            "rate": "MKT 0x800456D4"
+          }
+        },
+        {
+          "op": "relocate",
+          "to": "behind_opponent",
+          "dx": 67,
+          "src": {
+            "to": "MKT 0x8004583C",
+            "dx": "MKT 0x8004583C"
+          }
+        },
+        {
+          "op": "face"
+        },
+        {
+          "op": "sound",
+          "sound": {
+            "fighter": 7
+          },
+          "src": {
+            "sound": "MKT 0x80053B44"
+          }
+        },
+        {
+          "op": "animate",
+          "anim": {
+            "table": 0,
+            "slot": 34
+          },
+          "rate": 2,
+          "until": "phase_end",
+          "src": {
+            "anim": "MKT 0x80045730",
+            "rate": "MKT 0x80045730",
+            "until": "MKT 0x80045730"
+          }
+        },
+        {
+          "op": "pose",
+          "anim": {
+            "table": 0,
+            "slot": 0
+          },
+          "src": {
+            "anim": "MKT 0x8004574C"
+          }
+        },
+        {
+          "op": "sleep",
+          "ticks": 8,
+          "src": {
+            "ticks": "MKT 0x8004575C"
+          }
+        },
+        {
+          "op": "end"
+        }
+      ]
+    },
+    {
       "name": "torpedo",
       "movement": true,
       "command": {

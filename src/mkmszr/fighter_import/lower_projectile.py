@@ -635,6 +635,86 @@ def emit_spawn(a: Assembler, child: str = "projectile", after: str = "after_spaw
     a.label(after)
 
 
+AFTERIMAGE_CLASS = 0x15  # an effect process (the stock hit effect's class), not a projectile
+
+
+AFTERIMAGE_FIELDS = (host.ACTOR_PATH, host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Y, host.ACTOR_Z)
+
+
+def emit_afterimage_spawn(a: Assembler, process: str, after: str) -> None:
+    """In the owner's action (``s1`` = his actor): keep where he stands and his facing in the
+    process's words (it starts on the next tick, after he has moved: MKT makes the copy at
+    once), then start the afterimage process."""
+
+    a.la("t0", process + "_at")
+    for k, field in enumerate(AFTERIMAGE_FIELDS):
+        a.lw("t1", field, "s1")
+        a.sw("t1", 4 * k, "t0")
+    a.lhu("t1", ACTOR_FLAGS, "s1")
+    a.sw("t1", 4 * len(AFTERIMAGE_FIELDS), "t0")
+    a.li("a0", AFTERIMAGE_CLASS)
+    a.la("a1", process)
+    a.jal(F_CLONE)
+    a.label(after)
+
+
+def emit_afterimage_process(a: Assembler, label: str, art: ArtLayout, ticks: int) -> None:
+    """Process ``label``: an actor built from the owner's (as a projectile's, at his place and
+    facing) shows the art's script for ``ticks`` host ticks, then goes (MKT: Rayden's teleport
+    leaves a copy of himself playing his silhouette, 0x80045854)."""
+
+    a.label(label)
+    a.addiu("sp", "sp", -0x40)
+    host.load_controller(a)
+    a.lhu("a0", 0x78, "s1")  # owner type
+    a.li("a1", art.flight_slot)
+    a.li("a2", ACTOR_D8)
+    a.li("a3", art.tex_w)
+    a.li("t0", art.tex_h)
+    a.sw("t0", 0x10, "sp")
+    a.addiu("t0", "sp", 0x20)
+    a.sw("t0", 0x14, "sp")
+    a.li("t0", art.palette_record)
+    a.sw("t0", 0x18, "sp")
+    a.jal(F_PROJ_BUILD)
+    host.load_controller(a)
+    a.la("t0", label + "_at")  # where the owner stood, and his facing then
+    for k, field in enumerate(AFTERIMAGE_FIELDS):
+        a.lw("t1", 4 * k, "t0")
+        a.sw("t1", field, "s1")
+    a.lw("t1", 4 * len(AFTERIMAGE_FIELDS), "t0")
+    a.andi("t1", "t1", FACING_BIT)
+    a.lhu("t2", ACTOR_FLAGS, "s1")
+    a.andi("t2", "t2", 0xFFFF ^ FACING_BIT)
+    a.or_("t2", "t2", "t1")
+    a.sh("t2", ACTOR_FLAGS, "s1")
+    if art.virtual:
+        host.set_cursor(a, art.flight_at)
+    else:
+        a.li("a0", 1)
+        a.li("a1", art.flight_slot)
+        a.jal(F_SELECT)
+    a.li("s2", ticks)
+    a.label(label + "_loop")
+    host.load_controller(a)
+    a.move("a0", "s1")
+    a.jal(F_ADVANCE)
+    a.li("a0", 1)
+    a.jal(F_SLEEP)
+    a.addiu("s2", "s2", -1)
+    a.bnez("s2", label + "_loop")
+    host.load_controller(a)
+    a.move("a0", "s1")
+    a.li("a1", ACTOR_LIST)
+    a.jal(F_ACTOR_REMOVE)
+    a.lw("a0", 0x20, "sp")
+    a.jal(F_TEX_RELEASE)
+    a.jal(F_EXIT)
+    a.label(label + "_at")
+    for _ in range(len(AFTERIMAGE_FIELDS) + 1):
+        a.raw(0)
+
+
 def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: str = "play",
                  prefix: str = "", data: str = "", alive: str | None = None) -> None:  # fmt: skip
     """The projectile process. Needs :func:`host.emit_sound_player` (label ``player``) and

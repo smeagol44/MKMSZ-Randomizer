@@ -113,15 +113,17 @@ def test_rayden_lightning_goes_to_its_event_button() -> None:
     found = cmds.donor_commands(mkt, moves, fd.load("rayden").commands)
     assert [(c.name, c.calls, c.buttons, c.stick) for c in found] == [
         ("lightning", "ice_blast", 0x80, False), ("reversed_lightning", "ice_blast_air", 0x80, False),
-        ("torpedo", "ice_clone", 0, True)]  # fmt: skip
-    overrides = {"torpedo": (1, 0xA01B0000, 0xA01B0100), "reversed_lightning": (0, 0xA01B0200, 0xA01B0300)}
+        ("teleport", "directional_ice_up", 0, True), ("torpedo", "ice_clone", 0, True)]  # fmt: skip
+    overrides = {"torpedo": (1, 0xA01B0000, 0xA01B0100), "reversed_lightning": (0, 0xA01B0200, 0xA01B0300),
+                 "teleport": (0, 0xA01B0400, 0xA01B0500)}  # fmt: skip
     low = cmds.lower(clean, found, set(), 0xA01AF420, 0xA01AF520, overrides)
     lp = low.tables["LP"]
     # Ice Clone's record taken; the reversed lightning (Air Ice Blast's slot, no record of its own:
     # its own special) is a second LP record
     assert len(lp) == 2 and all(r[:4] == bytes.fromhex("00800080") for r in lp)
     assert lp[1][8:16] == bytes.fromhex("a01b0200a01b0300")
-    assert all(len(low.tables[b]) == n for b, n in (("HP", 3), ("LK", 1), ("HK", 1)))
+    # Directional Ice Up's HK record goes: the teleport (a stick command) takes its slot
+    assert all(len(low.tables[b]) == n for b, n in (("HP", 3), ("LK", 1), ("HK", 0)))
 
 
 @needs_roms
@@ -130,9 +132,13 @@ def test_rayden_torpedo_is_a_stick_command(tmp_path: Path) -> None:
     clean, mkt = Path(CLEAN).read_bytes(), Path(MKT).read_bytes()  # type: ignore[arg-type]
     moves, _ = components.load_programs("rayden")
     found = cmds.donor_commands(mkt, moves, fd.load("rayden").commands)
-    overrides = {"torpedo": (1, 0xA01B0000, 0xA01B0100), "reversed_lightning": (0, 0xA01B0200, 0xA01B0300)}
+    overrides = {"torpedo": (1, 0xA01B0000, 0xA01B0100), "reversed_lightning": (0, 0xA01B0200, 0xA01B0300),
+                 "teleport": (0, 0xA01B0400, 0xA01B0500)}  # fmt: skip
     low = cmds.lower(clean, found, set(), 0xA01AF420, 0xA01AF520, overrides)
-    (rec,) = low.tables["STICK"]
+    tele, rec = low.tables["STICK"]  # by donor record: the teleport (D,U) first
+    # D,U ends with Up: its record takes the Up/Down mask and the checker also hooks event 6
+    assert tele[:4] == bytes.fromhex("50005000") and tele[16:22] == bytes.fromhex("001000060007")
+    assert low.stick_events == (6,)
     assert rec[:16] == bytes.fromhex("a000a00000000001a01b0000a01b0100")  # masks, mode 1, cond, action
     assert rec[16:24] == bytes.fromhex("0020000900080008")  # window, B,B,F facing right
     assert low.moved["STICK"] == 0xA01AF420 and low.stick_checker == 0xA01AF520
@@ -141,4 +147,7 @@ def test_rayden_torpedo_is_a_stick_command(tmp_path: Path) -> None:
     for record in cmds.STICK_EVENT_RECORDS:
         off = record + cmds.PLAYER_TYPE_SLOT - cmds.VA_TO_ROM
         assert int.from_bytes(rom[off : off + 4], "big") == 0xA01AF520
-    assert rom[0xF10000 : 0xF10000 + 16] == rec[:16]
+    assert rom[0xF10000 + 0x2C : 0xF10000 + 0x2C + 16] == rec[:16]
+    up = cmds.UPDOWN_EVENT_RECORDS[6] + cmds.PLAYER_TYPE_SLOT - cmds.VA_TO_ROM
+    assert int.from_bytes(clean[up : up + 4], "big") == cmds.EMPTY_CALLBACK  # the stock stub
+    assert int.from_bytes(rom[up : up + 4], "big") == 0xA01AF520
