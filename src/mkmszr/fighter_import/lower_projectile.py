@@ -870,8 +870,14 @@ CAMERA_VIEW = 0x8009A930
 CAMERA_T = 0x14  # the translation, after the 3x3 matrix (+ 2 bytes padding)
 WRAP_ARMED = 0x100
 WRAP_LAST_SP = 0x34  # the child's frame, after the follow offsets (0x24..0x33)
-WRAP_MARGIN = OFFSCREEN_MARGIN  # past the visible edge, as the offscreen test (v20: right at normal zoom)
-CAMERA_FOCAL = 0x8009A8E8  # the offscreen test: half-width = depth * 80 / focal
+# The visible half-width at a view depth is depth * 160 / focal (the projection 0x802C1148: m00 =
+# focal / 160 = 1.25). The host's offscreen test compares view x with half that (depth * 80 /
+# focal) plus its margin, 200: 40 units past the edge at Wind's normal depth 400 (the wrap the
+# owner saw right in v20), 133 units inside it at the zoomed-out depth 832 (owner's save states,
+# specials proof v21). The wrap triggers this far past the real edge (as v20 at normal zoom).
+WRAP_MARGIN = 40
+CAMERA_FOCAL = 0x8009A8E8  # focal length (200); the depth is the camera's T.z (0x802C1BB4 copies it)
+VISIBLE_HALF = 160  # half the screen width in pixels
 PLAYER_ACTOR = 0x802E73DC
 # The enemy-victim scan (0x8002CC4C) skips an enemy that is not ahead of the player actor by the
 # player's facing bit and x: fine for projectiles that fly forward. A wrapping projectile can
@@ -901,10 +907,10 @@ def _view(a: Assembler, actor: str, row: int, out: str) -> None:
 
 def emit_past_screen_edge(a: Assembler, actor: str, out: str, done: str) -> None:
     """``out`` = 1 when ``actor`` is more than WRAP_MARGIN past the visible half-width at its own
-    depth (view depth * 80 / focal) and moving further out (|view x| grew since last tick),
-    else 0. The host's offscreen test 0x80035088 takes one fixed depth (0x802C1BB4) for all
-    actors, which does not follow a zoomed-out camera (specials proof v20: the bolt wrapped
-    while still on screen)."""
+    view depth (depth * 160 / focal) and moving further out (|view x| grew since last tick),
+    else 0. The host's offscreen test 0x80035088 uses half that width plus 200, which is inside
+    the screen on a zoomed-out camera (Wind: depth 832; specials proofs v20-v21: the bolt
+    wrapped while still on screen)."""
 
     a.lui("t9", host.hi(CAMERA_VIEW))
     a.addiu("t9", "t9", host.lo(CAMERA_VIEW))
@@ -918,7 +924,7 @@ def emit_past_screen_edge(a: Assembler, actor: str, out: str, done: str) -> None
     a.move(out, "zero")
     a.slt("t0", "t4", "t2")  # moving out
     a.beqz("t0", done)
-    a.li("t0", 80)
+    a.li("t0", VISIBLE_HALF)
     a.mult("t3", "t0")
     a.mflo("t3")
     a.nop()

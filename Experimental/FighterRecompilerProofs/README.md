@@ -67,3 +67,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v19.py` | `MKMSZR_rayden-specials_common_proof_v19.z64` | v18 with MKT's two close-range checks before the lightning's flight |
 | `MKMSZR_build_rayden-specials_proof_v20.py` | `MKMSZR_rayden-specials_common_proof_v20.z64` | v19 plus the generated reversed lightning (D,B + LP) in Air Ice Blast's slot, with MKT's screen wrap |
 | `MKMSZR_build_rayden-specials_proof_v21.py` | `MKMSZR_rayden-specials_common_proof_v21.z64` | v20 with the reversed bolt judging victims ahead of itself, and the wrap triggered at the bolt's own depth (zoomed-out camera) |
+| `MKMSZR_build_rayden-specials_proof_v22.py` | `MKMSZR_rayden-specials_common_proof_v22.z64` | v21 with the wrap at the real visible edge (depth × 160 / focal), right on the zoomed-out camera too |
