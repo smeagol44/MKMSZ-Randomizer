@@ -223,6 +223,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     for key, (t, i, _) in d.body.secondary_scripts.items():
         animations[(t, i)] = key if key < body_build.VIRTUAL_SCRIPT else ("at", body.script_offsets[key])
     animations[(0, d.body.run_slot)] = ("at", body_build.RUN_TARGET)
+    for k in d.body.slots:  # host primary k holds MKT table-0 index k (the generic body rule)
+        if k not in d.body.sources:  # (a slot with another source holds something else)
+            animations.setdefault((0, k), ("primary", k))
     script_words = {(t, i): body.script_words[key] for key, (t, i, _) in d.body.secondary_scripts.items()
                     if key in body.script_words}  # fmt: skip
 
@@ -297,9 +300,14 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             if s["op"] == "afterimage":
                 rate = max(1, -(-_int(s["rate"]) // ticks_per))
                 part = {"table": _int(s["anim"]["table"]), "slot": _int(s["anim"]["slot"]), "part": 1}
-                art = lp.place_art(file87, mkt, donor_id, {"art": part, "rate": rate}, None,
+                art_step: dict[str, Any] = {"art": part, "rate": rate}
+                first = lp.donor_part(donor, part).frames
+                named = donor.m32(first[0] + 0x14) if first else 0
+                if named & 0xFF000000 == 0x80000000:  # its frames name their palette (Rayden's
+                    art_step["palette"] = hex(named)  # silhouette: white to cyan, 0x800B9AF0)
+                art = lp.place_art(file87, mkt, donor_id, art_step, None,
                                    body_build.TYPE_END, at=_free_from(file87, body.chain_start))  # fmt: skip
-                frames = len(lp.donor_part(donor, part).frames)
+                frames = len(first)
                 afterimage_of[move] = (f"{move}_afterimage", art, frames * rate)
         cool = next((c for c in programs[move].command.get("conditions", []) if c["kind"] == "cooldown"), None)
         if cool is not None and proj is None:  # projectiles: the host one-projectile rule instead

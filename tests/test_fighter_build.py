@@ -339,3 +339,17 @@ def test_teleport_relocates_with_an_afterimage_and_a_cooldown(roms: tuple[bytes,
     assert 0x24040020 in ws  # li a0, 32: the cooldown, in host ticks
     assert 0x24040086 in ws  # li a0, 134: the relocation distance (67 px)
     assert lower_special.RELOCATE_RANGE == 592
+
+
+@needs_roms
+def test_teleport_reappears_with_the_getup_and_its_own_sound(roms: tuple[bytes, bytes]) -> None:
+    """v24 (owner on v23): the reappear is the body's getup (host primary 0x22, MKT table-0
+    index 0x22, selected from table 0) with its built-in sound 7; the move's own sounds are
+    skipped (owner: one sound); the afterimage draws at its owner's +0xD8 in the palette its
+    frames name (Rayden's silhouette 0x800B9AF0)."""
+
+    built = fb.build(*roms, "rayden")
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    k = next(i for i, w in enumerate(ws) if w == 0x00002021 and ws[i + 1] == 0x24050022)  # a0 = 0, a1 = 0x22
+    assert ws[k + 2 : k + 4] == [0x3C198003, 0x2739FE54]  # the select 0x8002FE54, through t9
+    assert 0x8E2600D8 in ws  # lw a2, 0xD8(s1): the owner's draw offset for the afterimage

@@ -475,7 +475,13 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
         return animations[key]
 
     def select(where: int | tuple[str, int], offset: int = 0) -> None:
-        if isinstance(where, tuple):
+        if isinstance(where, tuple) and where[0] == "primary":  # a body slot (Rayden's getup)
+            if offset:
+                raise ValueError(f"{label}: a pose offset needs a script offset")
+            a.move("a0", "zero")
+            a.li("a1", where[1])
+            a.jal(lp.F_SELECT)
+        elif isinstance(where, tuple):
             host.load_controller(a)
             host.set_cursor(a, where[1] + 4 * offset)
         else:

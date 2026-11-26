@@ -69,3 +69,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v21.py` | `MKMSZR_rayden-specials_common_proof_v21.z64` | v20 with the reversed bolt judging victims ahead of itself, and the wrap triggered at the bolt's own depth (zoomed-out camera) |
 | `MKMSZR_build_rayden-specials_proof_v22.py` | `MKMSZR_rayden-specials_common_proof_v22.z64` | v21 with the wrap at the real visible edge (depth × 160 / focal), right on the zoomed-out camera too |
 | `MKMSZR_build_rayden-specials_proof_v23.py` | `MKMSZR_rayden-specials_common_proof_v23.z64` | v22 plus the generated teleport (D,U) in Directional Ice Up's slot: afterimage, relocation, cooldown |
+| `MKMSZR_build_rayden-specials_proof_v24.py` | `MKMSZR_rayden-specials_common_proof_v24.z64` | v23 with one sound, the getup as the reappear, and the afterimage at his height in its white palette |

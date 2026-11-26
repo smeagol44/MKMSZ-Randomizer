@@ -668,7 +668,7 @@ def emit_afterimage_process(a: Assembler, label: str, art: ArtLayout, ticks: int
     host.load_controller(a)
     a.lhu("a0", 0x78, "s1")  # owner type
     a.li("a1", art.flight_slot)
-    a.li("a2", ACTOR_D8)
+    a.lw("a2", 0xD8, "s1")  # the owner's vertical draw offset (Rayden 0x6C; projectiles 0x46)
     a.li("a3", art.tex_w)
     a.li("t0", art.tex_h)
     a.sw("t0", 0x10, "sp")
