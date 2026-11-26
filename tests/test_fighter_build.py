@@ -283,3 +283,20 @@ def test_reptile_acid_takes_the_impact_defaults(roms: tuple[bytes, bytes]) -> No
     i = next(k for k, w in enumerate(ws) if w == 0x8D081AC0 and ws[k + 1] == 0x8D080640)
     copies = [w for w in ws[i : i + 20] if (w >> 16) == 0x8D09]  # lw t1, field(t0)
     assert [w & 0xFFFF for w in copies] == [0xDC, 0xE0, 0x2C, 0x34]
+
+
+def test_airborne_moves_hover_where_the_program_flew_level() -> None:
+    """Generator step 4: ``hover`` is the backend's for moves tuned ``airborne`` (after the begin,
+    and first on every tick of hit windows and carries), no longer a step of the program."""
+
+    from mkmszr.fighter_import import components
+
+    moves, _ = components.load_programs("rayden")
+    torpedo = next(m for m in moves if m.name == "torpedo").steps
+    assert not any(s["op"] == "hover" for s in fb._all_steps(torpedo))
+    steps = fb.with_hover(torpedo)
+    assert [s["op"] for s in steps[:2]] == ["begin", "hover"]
+    window = next(s for s in steps if s["op"] == "strike")
+    assert window["every_tick"] == [{"op": "hover"}]
+    carry = next(s for s in window["on_hit"] if s["op"] == "carry")
+    assert [s["op"] for s in carry["every_tick"]] == ["hover", "pass_through"]

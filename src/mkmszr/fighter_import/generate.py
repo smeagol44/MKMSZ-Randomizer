@@ -326,7 +326,7 @@ class _Walk:
         if self._carry(body):
             self.note("MKT's carry shares one velocity between the fighters and ends when either "
                       "stops (a wall); the host keeps the victim at its contact distance")  # fmt: skip
-            return [{"op": "carry", "ticks": count, "every_tick": [{"op": "hover"}, {"op": "pass_through", "ticks": 1}]}]
+            return [{"op": "carry", "ticks": count, "every_tick": [{"op": "pass_through", "ticks": 1}]}]
         steps = self.stmts(body)
         return [{"op": "repeat", "count": count, "steps": steps}]
 
@@ -934,25 +934,6 @@ CALL_RULES = {
 }
 
 
-# ---- host details ---------------------------------------------------------------------------
-HOST_ONLY = ("hover",)  # added by the host lowering for an owner tuning (``airborne``), not MKT's
-
-
-def without_host_details(steps: list[dict]) -> list[dict]:
-    out = []
-    for s in steps:
-        if s["op"] in HOST_ONLY:
-            continue
-        s = dict(s)
-        for key in ("steps", "every_tick", "on_hit", "on_block"):
-            if key in s:
-                s[key] = without_host_details(s[key])
-                if not s[key] and key == "every_tick":
-                    del s[key]
-        out.append(s)
-    return out
-
-
 # ---- comparison --------------------------------------------------------------------------------
 _KEYS = ("anim", "rate", "until", "ticks", "count", "x", "y", "gravity", "sound", "strike",
          "only_if", "dx", "dy", "effect", "action_mkt", "amplitude",
@@ -995,5 +976,5 @@ def compare(generated: list[dict], accepted: list[dict]) -> list[str]:
 
     import difflib
 
-    a, b = canonical(without_host_details(accepted)), canonical(without_host_details(generated))
+    a, b = canonical(accepted), canonical(generated)
     return list(difflib.unified_diff(a, b, "accepted", "generated", lineterm="", n=1))

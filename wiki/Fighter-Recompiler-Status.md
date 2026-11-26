@@ -11,7 +11,7 @@
 1. One table for builder-supplied victim reactions (`lower_special.VICTIM_REACTIONS`; done, outputs unchanged).
 2. **Generator v0** (`fighter_import.decompile`, `fighter_import.generate`): MKT routine → structured IR → move program, with a golden comparison against the accepted programs. In progress (below).
 3. Projectile rules (Lightning's bolt, Reptile's forceballs and acid), then the remaining moves of the roster that the rules reach. **Done for the four accepted projectiles** (2026-11-26, below); the roster sweep goes with step 5.
-4. Owner adjustments out of the move programs into the descriptions (forceball spawn offsets, the 1200-tick stealth), and host details (`hover` for airborne moves) derived from the tuning in the backend.
+4. Owner adjustments out of the move programs into the descriptions (forceball spawn offsets, the 1200-tick stealth), and host details (`hover` for airborne moves) derived from the tuning in the backend. **Done** (2026-11-26, below).
 5. Builds from generated programs: Rayden's teleport, reversed Lightning and Shocker as the first unseen moves; then several fighters per ROM for testing projectiles together (owner).
 
 **Generator v0 (2026-11-25; Implementation/CI-confirmed, static).**
@@ -23,10 +23,10 @@
 | Move | Result |
 |---|---|
 | Reptile elbow dash | **identical** |
-| Reptile invisibility | identical except the stealth length (owner: 1200 ticks) |
+| Reptile invisibility | **identical** (since step 4: the stealth length is the description's) |
 | Rayden Lightning | **identical** (MKT's close-range checks added on the owner's decision, specials proof v19) |
 | Reptile Acid Spit | **identical** (since the projectile rules) |
-| Reptile forceballs (fast, slow) | identical except the spawn offset (owner: (−30, −36); MKT starts at his animation point; step 4 moves it to the description) |
+| Reptile forceballs (fast, slow) | **identical** (since step 4: the owner's spawn offset (−30, −36) is in the description) |
 | Rayden torpedo | identical since specials proof v08 (the owner switched to MKT's version, below) |
 | Rayden reversed Lightning, teleport, Shocker | generated from his command records; the teleport and the Shocker report unknown routines (relocation, the getup helper, the Shocker's range checks) |
 
@@ -38,6 +38,11 @@
   - **palette**: the one of the frame the object is made from (descriptor `+0x14`): a throw helper (token 11; Reptile's `0x315C` → `0x800BEC14`, `0x2FD4` → `0x800BECE4`) or the selection `proj_object_here` (`0x8007F9E8`) takes (Rayden's slot `0x43` → `0x800B9B04`);
   - **values from the parent**: the parent writes the child process's `+0x440` after `proj_process` (Rayden: his argument, 0 for D,F; Reptile: the forceball speed). The decompiler now takes known process fields (`decompile(..., fields)`), and folds a branch with a known condition to that path's values; an unconditional jump to the end of a branch arm (IDO's ternary) is no longer unstructured;
   - also: a `begin_special` that names its action keeps it when MKT changes the action later (Acid Spit's `0x604`: noted), and `stamp_tick` becomes `stamp` (its key the stamped word).
+- **Step 4: owner adjustments out of the programs (2026-11-26; Implementation/CI-confirmed: the Rayden v19 and Reptile v23 ROMs are byte-identical).** A move program is now MKT's alone, so the generator's output can replace it:
+  - Reptile's forceball spawn offset (−30, −36) is `specials.forceball_*.projectile.offset_px` in his description (Rayden's lightning offset already was); the programs start at MKT's point (0, 0);
+  - the `stealth` step has no length: the 1200 ticks were never lowered (the length is the description's Ice-paid stealth timer, `specials.invisibility.stealth`);
+  - `hover` is the backend's: a move tuned `airborne` gets it after its begin and first on every tick of its hit windows and carries (`fighter_build.with_hover`). The torpedo program has no `hover` steps, and the generator no longer strips them.
+  - The owner adjustments that remain are all in the descriptions: `face`, `skip`, `sleep_ticks`, `strike_ticks`, `air_control`, `donor_ticks`, the projectile tunings (`offset_px`, `box`, `impact_toward_px`) and the stealth timer.
 - **MKT fact for the owner (Static-confirmed): the lightning's close-range checks.** Before the flight, MKT's bolt process calls `0x80078230` twice: one frame, then a strike check with record `0x10` (box 101, 36, 64, 16) on each of two ticks; a hit there goes straight to the impact. The accepted program had no checks, so a bolt thrown at an enemy standing inside its spawn point could pass through him. Owner, 2026-11-26: "Yes, add the checks" (specials proof v19). (D,B uses `0x12`, and its flight `0x13`, reaction `0x81`.)
 - **MKT facts the generator found in the torpedo** (Static-confirmed). The accepted program (proofs v03–v07) differed; owner, 2026-11-25: "Let's switch to MKT's version" (specials proof v08):
   - the start sound is random **10–12**: `randu(n)` (`0x8006E490`) returns 1..n, and the routine adds 9. The hand reading said 9–11 and the program plays 9;

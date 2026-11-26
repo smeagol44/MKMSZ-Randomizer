@@ -76,8 +76,8 @@
       "part": 3
      },
      "offset": [
-      -30,
-      -36
+      0,
+      0
      ],
      "speed": "0x59999",
      "rate": 3,
@@ -114,7 +114,7 @@
      },
      "src": {
       "art": "MKT 0x80079B84",
-      "offset": "owner",
+      "offset": "MKT 0x80079B28",
       "speed": "MKT 0x80079A98",
       "rate": "MKT 0x80079B94",
       "strike": "MKT 0x800B03CC",
@@ -213,8 +213,8 @@
       "part": 3
      },
      "offset": [
-      -30,
-      -36
+      0,
+      0
      ],
      "speed": "0x26666",
      "rate": 3,
@@ -251,7 +251,7 @@
      },
      "src": {
       "art": "MKT 0x80079B84",
-      "offset": "owner",
+      "offset": "MKT 0x80079B28",
       "speed": "MKT 0x80079AF0",
       "rate": "MKT 0x80079B94",
       "strike": "MKT 0x800B03CC",
@@ -485,11 +485,7 @@
      }
     },
     {
-     "op": "stealth",
-     "ticks": 1200,
-     "src": {
-      "ticks": "owner"
-     }
+     "op": "stealth"
     },
     {
      "op": "end"
@@ -891,7 +887,7 @@
   },
   {
    "move": "invisibility",
-   "what": "MKT sets object flag 0x20 and the flag's readers are Pending; the program lowers it to the MKMSZ Eye stealth state (owner's direction); the duration 1200 ticks is the Eye's, not a donor value"
+   "what": "MKT sets object flag 0x20 and the flag's readers are Pending; the program lowers it to the MKMSZ Eye stealth state (owner's direction); its length is the description's Ice-paid stealth timer (specials.invisibility.stealth), not a donor value"
   },
   {
    "move": "slide",

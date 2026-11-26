@@ -164,9 +164,6 @@
           }
         },
         {
-          "op": "hover"
-        },
-        {
           "op": "sound",
           "sound": {
             "fighter": 10,
@@ -219,11 +216,6 @@
             "blocked_reaction": "blocked"
           },
           "ticks": 26,
-          "every_tick": [
-            {
-              "op": "hover"
-            }
-          ],
           "on_hit": [
             {
               "op": "sound",
@@ -238,9 +230,6 @@
               "op": "carry",
               "ticks": 32,
               "every_tick": [
-                {
-                  "op": "hover"
-                },
                 {
                   "op": "pass_through",
                   "ticks": 1,

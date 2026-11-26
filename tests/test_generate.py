@@ -63,21 +63,18 @@ def test_decompile_folds_a_known_argument(mkt: bytes) -> None:
 @pytest.mark.parametrize(
     ("fighter", "fid", "move", "entry", "args"),
     [("reptile", 19, "elbow_dash", 0x800467D0, ()),
-     ("reptile", 19, "acid_spit", 0x8004F904, ())],  # its command's entry (do_special 0x23)
+     ("reptile", 19, "acid_spit", 0x8004F904, ()),  # its command's entry (do_special 0x23)
+     # the speed reaches the process through the parent's +0x440; the hum is its flight
+     # callback; the owner's spawn offset is in the description since generator step 4
+     ("reptile", 19, "forceball_fast", 0x8004F9A4, ()),
+     ("reptile", 19, "forceball_slow", 0x8004F8E4, ()),
+     # MKT's flag 0x20 has no timer: the stealth length is the description's (step 4)
+     ("reptile", 19, "invisibility", 0x80073918, ())],
 )
 def test_generated_equals_accepted(mkt: bytes, fighter: str, fid: int, move: str, entry: int, args: tuple) -> None:
     g = gen.Generator(mkt, fid).move(entry, args)
     assert gen.compare(g.steps, accepted(fighter, move)) == []
     assert g.unknown == []
-
-
-@needs_mkt
-def test_invisibility_differs_by_the_owner_length_only(mkt: bytes) -> None:
-    g = gen.Generator(mkt, 19).move(0x80073918)
-    assert changed(gen.compare(g.steps, accepted("reptile", "invisibility"))) == [
-        '-stealth {"ticks":1200}',
-        "+stealth {}",
-    ]
 
 
 def projectile_of(steps: list[dict]) -> dict:
@@ -97,18 +94,6 @@ def test_lightning_equals_the_accepted_program(mkt: bytes) -> None:
     assert g.unknown == []
 
 
-@needs_mkt
-@pytest.mark.parametrize(("move", "entry"), [("forceball_fast", 0x8004F9A4), ("forceball_slow", 0x8004F8E4)])
-def test_forceballs_differ_by_the_owner_offset_only(mkt: bytes, move: str, entry: int) -> None:
-    """The forceball speed reaches the process through the parent's +0x440 (0x59999 / 0x26666);
-    the hum is its flight callback (sound 0x12 every 3 ticks). The spawn offset (-30, -36) is the
-    owner's (generator step 4 moves it to the description); MKT starts at the owner's point."""
-
-    g = gen.Generator(mkt, 19).move(entry)
-    assert projectile_of(g.steps)["offset"] == [0, 0]
-    projectile_of(g.steps)["offset"] = [-30, -36]
-    assert gen.compare(g.steps, accepted("reptile", move)) == []
-    assert g.unknown == []
 
 
 @needs_mkt
