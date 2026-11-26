@@ -209,10 +209,13 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     chains = _Pool(tuple(EXTRA_CHAINS) + tuple(VOICE_CHAINS[used_voices:]), "isolated sound chains")
     voice_chains = list(VOICE_CHAINS[:used_voices])
     bank = sound.MktSoundBank(mkt)
+    script_sound: tuple[int, int] | None = None  # (donor sound, host event): moves share it
     if d.body.script_sounds:  # body.script_sounds: the spare descriptor's event plays it
         (sfx,) = set(d.body.script_sounds.values())
-        samples_end = voices.install_script_sound(rom, clean, mkt, donor_id, sfx, chains.take(),
+        chain = chains.take()
+        samples_end = voices.install_script_sound(rom, clean, mkt, donor_id, sfx, chain,
                                                   (samples_end + 0xF) & ~0xF, vs)  # fmt: skip
+        script_sound = (sfx, chain.event)
 
     def install(donor_sound: sound.DonorSound) -> int:
         nonlocal samples_end
@@ -239,7 +242,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     steps_of: dict[str, list[dict[str, Any]]] = {}
     projectile_of: dict[str, dict[str, Any]] = {}
     placed_at = body.chain_start
-    fighter_sounds: dict[int, int] = {}
+    fighter_sounds: dict[int, int] = dict([script_sound]) if script_sound else {}
     footsteps: dict[str, tuple[int, ...]] = {}
     effect_art: dict[int, tuple[effects.EffectArt, effects.EffectLayout, dict[str, Any]]] = {}
     report: dict[str, Any] = {"body": body.report}
@@ -314,21 +317,29 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         if cool is not None and proj is None:  # projectiles: the host one-projectile rule instead
             cooldown_of[move] = max(1, -(-_int(cool["ticks"]) // ticks_per))
         unported: set[int] = set()
-        for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
+        silent = "sound" in tune.get("skip", ())  # owner: the move's sounds left out (no chains)
+        for s in [] if silent else _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
             if s["op"] == "sound" and "random" not in s["sound"]:
                 n = _int(s["sound"]["fighter"])
                 if n not in fighter_sounds and n not in unported:
-                    try:
-                        donor_sound = bank.event(bank.fighter_event(donor_id, n))
-                    except ValueError:  # several tracks (Rayden's 5, event 0x205): not ported yet
+                    tracks = bank.tracks(bank.fighter_event(donor_id, n))
+                    if len(tracks) == 1 and len(tracks[0].track) == 0x20:
+                        fighter_sounds[n] = install(tracks[0])
+                        continue
+                    try:  # several tracks (Rayden's 5, event 0x205): one chain per track
+                        for t in tracks:
+                            sound.retarget(t.track, 0)
+                    except ValueError:  # a stream the port cannot read: left out, reported
                         unported.add(n)
                         report.setdefault("unported_sounds", []).append((move, n))
                         continue
-                    fighter_sounds[n] = install(donor_sound)
+                    fighter_sounds[n], samples_end = sound.install_tracks(
+                        rom, clean, tracks, tuple(chains.take() for _ in tracks), (samples_end + 0xF) & ~0xF)
+                    report.setdefault("multi_track_sounds", []).append((move, n, len(tracks)))
         if unported:
             steps = _without_sounds(steps, unported)
             steps_of[move] = steps
-        for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
+        for s in [] if silent else _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
             if s["op"] == "sound":
                 first = _int(s["sound"]["fighter"])
                 for n in range(first, first + _int(s["sound"].get("random", 1))):  # every choice
@@ -349,10 +360,14 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
 
     # ---- payload ---------------------------------------------------------------------------
     # Ice costs: the description's (owner decisions), else none for a movement ability (owner
-    # rule, 2026-11-24), else the replaced Sub-Zero power's.
+    # rule, 2026-11-24), twice Ice Blast's for a grab (owner rule, 2026-11-26), else the replaced
+    # Sub-Zero power's.
     movement = {mv.name for mv in moves if mv.movement}
-    costs = {m: d.costs.get(m, lower_special.MOVEMENT_COST if m in movement else lower_special.COSTS[p])
+    grabs = {mv.name for mv in moves if mv.grab}
+    costs = {m: d.costs.get(m, lower_special.MOVEMENT_COST if m in movement
+                            else lower_special.GRAB_COST if m in grabs else lower_special.COSTS[p])
              for m, p in d.commands.items() if p}  # fmt: skip
+    report["costs"] = dict(costs)
     if len(order) > TRANSFER_ENTRIES_FREE:
         raise BuildError("more specials than free transfer-table entries")
     selectors = {m: FIRST_SELECTOR + k for k, m in enumerate(order)}
@@ -709,6 +724,10 @@ def production(clean: bytes, mkt: bytes, name: str, *, fixed_va: int = FIXED_VA)
         if not s0 <= sound.MSZ_TBL + o < s1:
             raise BuildError(f"chain {chain.event}: sample outside the moved block")
         _put32(image, w, o + shift)
+        dfn = sound.MSZ_EVENT_DEFS + chain.event * 16 + 8  # a multi-track event's tracks move too
+        o = int.from_bytes(image[dfn : dfn + 4], "big")
+        if s0 <= sound.MSZ_TRACKS + o < s1:
+            _put32(image, dfn, o + shift)
     for site in LOAD_JAL_SITES:
         _guarded(image, site, EXPECTED_RAW_LOADER_JAL, 0x0C000000 | ((load_wrapper >> 2) & 0x03FFFFFF))
     for off, boff in jal_sites.items():

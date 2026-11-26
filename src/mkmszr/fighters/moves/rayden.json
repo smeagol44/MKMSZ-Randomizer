@@ -672,7 +672,8 @@
             "damage": 32,
             "block_damage": 0,
             "reaction": "shock_hold",
-            "blocked_reaction": "blocked"
+            "blocked_reaction": "blocked",
+            "unblockable": true
           },
           "ticks": 1,
           "on_hit": [
@@ -721,7 +722,8 @@
           "src": {
             "strike": "MKT 0x8006CBE4",
             "ticks": "MKT 0x80073250",
-            "box": "MKT 0x80073290"
+            "box": "MKT 0x80073290",
+            "unblockable": "MKT 0x8006CBE4"
           }
         },
         {
@@ -773,7 +775,8 @@
         {
           "op": "end"
         }
-      ]
+      ],
+      "grab": true
     }
   ],
   "gaps": [

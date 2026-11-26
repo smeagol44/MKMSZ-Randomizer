@@ -131,3 +131,22 @@ def test_player_entry_of_the_type_file_table() -> None:
                     readers.append(nxt.pc)
                     break
     assert readers == [0x80046FCC]
+
+
+def test_grab_flag_and_unblockable_strike() -> None:
+    """Rayden's Shocker: the move is a ``grab`` (owner rule: twice Ice Blast's Ice) and its
+    strike is ``unblockable`` (MKT's grab checks no block); both are optional booleans."""
+
+    shocker = next(m for m in cp.load_programs("rayden")[0] if m.name == "shocker")
+    assert shocker.grab and not shocker.movement
+    strike = next(s for s in shocker.steps if s["op"] == "strike")["strike"]
+    assert strike["unblockable"] is True
+    doc = copy.deepcopy(_doc())
+    doc["moves"][0]["grab"] = "yes"
+    with pytest.raises(cp.ProgramError, match="grab must be true or false"):
+        cp.validate_programs(doc)
+    raw = {"format": 1, "moves": [{"name": shocker.name, "command": shocker.command,
+                                   "steps": copy.deepcopy(shocker.steps)}]}  # fmt: skip
+    next(s for s in raw["moves"][0]["steps"] if s["op"] == "strike")["strike"]["unblockable"] = 1
+    with pytest.raises(cp.ProgramError, match="unblockable is true or false"):
+        cp.validate_programs(raw)

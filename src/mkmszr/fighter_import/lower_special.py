@@ -83,6 +83,7 @@ COSTS = {
 F_RANDPER = 0x80016008
 F_TURN = 0x8003188C  # (actor): turn it around (face_opponent 0x80031EF0 calls it when needed)
 MOVEMENT_COST = 0  # movement abilities cost no Ice (owner rule, 2026-11-24; move program "movement")
+GRAB_COST = 2 * COSTS["ice_blast"]  # grabs cost twice Ice Blast's (owner rule, 2026-11-26; "grab")
 BLOCKED_FLAG = 0x802ECD88  # halfword: the collision core sets it on a blocked contact
 F_SET_XVEL = 0x8002B1EC  # (actor, x speed): actor +0x14 and +0x58
 FACING_BIT = 0x10
@@ -1046,14 +1047,23 @@ def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
 # (0x8005A1B8), is posed in its slot 0x20 at his hands (0x800733F8, per-fighter offsets) and, 8
 # times, its shock palette goes on and off (0x8000FD28 / 0x8000F9B0, the cyan palette reaction 0x80
 # uses) while it is moved 4 px and back every 3 donor ticks (0x800735BC); then it drops and lands
-# knocked down (0x800734CC -> 0x80058728). The host: the victim stops and shows its root 0x20, is
-# held where the grab found it (no gravity, its airborne counter counting, as the carry) for the
-# hold, moved 4 px down and back every ``every`` ticks, blinks cyan (the lightning's blink
-# helper), then falls into the torpedo victim's release (the lifted knockback with no push).
+# knocked down (0x800734CC -> 0x80058728). The host: the victim stops, shows its root 0x20 and
+# turns to face him; each tick it is held at his hands (the grab point below; no gravity, its
+# airborne counter counting, as the carry), moved 4 px down and back every ``every`` ticks, and
+# blinks cyan (the lightning's blink helper), then falls into the torpedo victim's release (the
+# lifted knockback with no push). Specials proof v25-v26 held it where the strike found it.
 SHOCK_ROOT = 0x20
 SHOCK_HOLD_DONOR_TICKS = 8 * 2 * 6  # 8 shocks, each 2 halves of 2 x 3 donor ticks
 SHOCK_JIGGLE_DONOR_TICKS = 3
 SHOCK_JIGGLE_PX = 4
+# MKT 0x800733F8: match_ani_points(him, victim) gives the victim his position, flip_single turns
+# it to face him, then multi_adjust_xy(victim, dx, dy - 8) from the per-victim table 0x800AAF8C
+# (6 bytes: frame, dx, dy). Its common entry (16 of 28 fighters: the ninjas, Cage, Baraka, ...)
+# is dx -44, dy -13; dx runs along the victim's facing, toward him, so the victim's anchor is
+# 44 px in front of his and 21 px up (Static-confirmed reading). Host enemies are not MKT
+# fighters: the common entry for all.
+SHOCK_GRAB_DX_PX = 44
+SHOCK_GRAB_DY_PX = -13 - 8
 
 
 def emit_shock_hold_reaction(a: Assembler, label: str, release: str, morphs: tuple[int, ...],
@@ -1084,11 +1094,38 @@ def emit_shock_hold_reaction(a: Assembler, label: str, release: str, morphs: tup
     a.beqz("v0", label + "_noblink")
     a.sw("s0", 0x6F4, "v0")
     a.label(label + "_noblink")
-    host.load_controller(a)
-    a.lw("s3", host.ACTOR_Y, "s1")  # its height, held
+
+    def player_actor(reg: str) -> None:
+        a.lui(reg, hi(host.PLAYER_CTRL))
+        a.lw(reg, lo(host.PLAYER_CTRL), reg)
+        a.lw(reg, host.CTRL_ACTOR, reg)
+
+    host.load_controller(a)  # it faces him (MKT flip_single after match_ani_points)
+    player_actor("t0")
+    a.lhu("t1", lp.ACTOR_FLAGS, "t0")
+    a.lhu("t2", lp.ACTOR_FLAGS, "s1")
+    a.xor("t1", "t1", "t2")
+    a.andi("t1", "t1", lp.FACING_BIT)
+    a.bnez("t1", label + "_faced")  # (the assembler fills branch delay slots)
+    a.move("a0", "s1")
+    a.jal(F_TURN)
+    a.label(label + "_faced")
     a.li("s2", ticks)
     a.label(label + "_loop")
     host.load_controller(a)
+    player_actor("t0")  # at his hands: his position plus the grab offset along his facing
+    a.li("t2", SHOCK_GRAB_DX_PX * lp.UNITS_PER_PX << 8)  # actor x is whole units << 8
+    a.lhu("t1", lp.ACTOR_FLAGS, "t0")
+    a.andi("t1", "t1", lp.FACING_BIT)
+    a.beqz("t1", label + "_ahead")
+    a.subu("t2", "zero", "t2")  # he faces left: the grab point is to his left
+    a.label(label + "_ahead")
+    a.lw("t1", host.ACTOR_X, "t0")
+    a.addu("t1", "t1", "t2")
+    a.sw("t1", host.ACTOR_X, "s1")
+    a.lw("s3", host.ACTOR_Y, "t0")
+    a.li("t2", SHOCK_GRAB_DY_PX * lp.UNITS_PER_PX << 8)  # y grows downward: negative is up
+    a.addu("s3", "s3", "t2")
     a.li("t0", every)  # down 4 px on every other ``every`` ticks
     a.div("s2", "t0")
     a.mflo("t1")
@@ -1100,7 +1137,7 @@ def emit_shock_hold_reaction(a: Assembler, label: str, release: str, morphs: tup
     a.mflo("t1")
     a.nop()
     a.nop()
-    a.addu("t1", "t1", "s3")  # y grows downward
+    a.addu("t1", "t1", "s3")
     a.sw("t1", host.ACTOR_Y, "s1")
     a.sw("t1", ACTOR_PREV_Y, "s1")
     a.sw("zero", host.ACTOR_GRAVITY, "s1")
@@ -1112,7 +1149,7 @@ def emit_shock_hold_reaction(a: Assembler, label: str, release: str, morphs: tup
     a.addiu("s2", "s2", -1)
     a.bnez("s2", label + "_loop")
     host.load_controller(a)
-    a.sw("s3", host.ACTOR_Y, "s1")
+    a.sw("s3", host.ACTOR_Y, "s1")  # at the grab height: the drop falls from his hands
     a.sw("s3", ACTOR_PREV_Y, "s1")
     for k, reg in enumerate(("s0", "s1", "s2", "s3")):
         a.lw(reg, 0x18 + 4 * k, "sp")
