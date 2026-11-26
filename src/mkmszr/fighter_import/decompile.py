@@ -93,12 +93,27 @@ class Bin(Value):
         return f"({self.a} {self.op} {self.b})"
 
 
+@dataclass(frozen=True)
+class Phi(Value):
+    """One of several constants, by the path taken (IDO keeps a choice in a register or a stack
+    slot past the join: Rayden's teleport side, +0x43 / -0x43)."""
+
+    values: tuple[int, ...]
+
+    def __str__(self) -> str:
+        return "(" + " | ".join(str(Const(v)) for v in self.values) + ")"
+
+
 UNKNOWN = Unknown()
 PROC = Load(Const(CURRENT_PROCESS - 0x100000000), 0)
 SELF = Load(PROC, 0x418)  # the current fighter's object
 
 
 def _fold(op: str, a: Value, b: Value) -> Value:
+    if isinstance(a, Phi) and b.const() is not None:  # each choice, the same operation
+        vals = [_fold(op, Const(v), b) for v in a.values]
+        if all(v.const() is not None for v in vals):
+            return Phi(tuple(dict.fromkeys(v.const() for v in vals)))
     x, y = a.const(), b.const()
     if x is not None and y is not None:
         f = {
@@ -204,11 +219,28 @@ class State:
             self.regs[r] = v
 
 
+def _join(x: Value, y: Value | None) -> Value | None:
+    if y is None:
+        return None
+    if x == y:
+        return x
+    xs = x.values if isinstance(x, Phi) else (x.const(),)
+    ys = y.values if isinstance(y, Phi) else (y.const(),)
+    if None in xs or None in ys:
+        return None
+    return Phi(tuple(dict.fromkeys(xs + ys)))
+
+
 def _merge(a: State, b: State) -> State:
-    regs = {r: v for r, v in a.regs.items() if b.regs.get(r) == v}
-    mem = {k: v for k, v in a.mem.items() if b.mem.get(k) == v}
-    stack = {k: v for k, v in a.stack.items() if b.stack.get(k) == v}
-    return State(regs, mem, stack)
+    def both(x: dict, y: dict) -> dict:
+        out = {}
+        for k, v in x.items():
+            j = _join(v, y.get(k))
+            if j is not None:
+                out[k] = j
+        return out
+
+    return State(both(a.regs, b.regs), both(a.mem, b.mem), both(a.stack, b.stack))
 
 
 # ---- the decompiler -------------------------------------------------------------------------------
@@ -263,8 +295,31 @@ class Decompiler:
             if rs == 29:
                 word = st.stack.get(imm & ~3, UNKNOWN)
                 c = word.const()
-                if width == 4:
+                if width < 4 and imm & 3 and imm in st.stack:  # a narrow store at this offset
+                    word = st.stack[imm]
+                    vals = word.values if isinstance(word, Phi) else (word.const(),)
+                    if None not in vals:
+                        mask = (1 << 8 * width) - 1
+                        parts = []
+                        for v in vals:
+                            part = v & mask
+                            if op in ("lh", "lb") and part >> (8 * width - 1):
+                                part -= 1 << 8 * width
+                            parts.append(part)
+                        st.set(rt, Phi(tuple(dict.fromkeys(parts))) if len(parts) > 1 else Const(parts[0]))
+                    else:
+                        st.set(rt, UNKNOWN)
+                elif width == 4:
                     st.set(rt, word)
+                elif isinstance(word, Phi):  # part of each stored constant
+                    shift = 8 * (4 - width - (imm & 3))
+                    parts = []
+                    for v in word.values:
+                        part = (v >> shift) & ((1 << 8 * width) - 1)
+                        if op in ("lh", "lb") and part >> (8 * width - 1):
+                            part -= 1 << 8 * width
+                        parts.append(part)
+                    st.set(rt, Phi(tuple(dict.fromkeys(parts))))
                 elif c is not None:  # part of a stored constant (big-endian)
                     shift = 8 * (4 - width - (imm & 3))
                     part = (c >> shift) & ((1 << 8 * width) - 1)

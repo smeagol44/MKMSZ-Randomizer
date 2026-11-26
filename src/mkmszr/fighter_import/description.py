@@ -65,7 +65,8 @@ Body fields:
 * ``specials`` (optional): move name -> lowering tuning for ``fighter_import.fighter_build``
   (owner calibrations such as offsets, facing, recovery, the per-move projectile limit,
   stealth drain, effects, `face` (turn at the start), `skip` (step kinds left out), `air_control` (steer the closing drop), recovery
-  `sleep_ticks`, hit window `strike_ticks` in donor ticks, the
+  `sleep_ticks`, hit window `strike_ticks` in donor ticks, `turn_back` (its `face` steps turn
+  back instead: the reversed lightning), the
   torpedo carry's grab point `carry`: `dx_px`, `dy_px`; `projectile`: `impact_toward_px`,
   the impact moved that many pixels toward the attacker), in the
   order the moves are built.
@@ -411,8 +412,8 @@ def validate(data: Any) -> FighterDescription:
         entries = raw_outfit.get("entries") if isinstance(raw_outfit, dict) else None
         own = raw_outfit.get("own") if isinstance(raw_outfit, dict) else None
         values = [_int(e, "outfit.entries", errors) for e in entries] if isinstance(entries, list) else []
-        if not values or any(v is None or not 1 <= v <= 15 for v in values) or own not in ("red", "green"):
-            errors.append("outfit: {entries: body palette indices 1..15, own: 'red' or 'green'}")
+        if not values or any(v is None or not 1 <= v <= 15 for v in values) or own not in ("red", "green", "blue"):
+            errors.append("outfit: {entries: body palette indices 1..15, own: 'red', 'green' or 'blue'}")
         else:
             outfit = {"entries": tuple(values), "own": own}  # type: ignore[misc]
     unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes",

@@ -21,8 +21,10 @@ def _raw(fighter: str) -> dict:
 
 def test_packaged_descriptions_load() -> None:
     assert fd.available() == ["rayden", "reptile", "sektor"]
-    rayden = fd.load("rayden")  # milestone 6: body, inputs, Lightning so far
-    assert (rayden.donor_fighter_id, rayden.title, rayden.commands) == (24, "RAYDEN", {"lightning": "ice_blast", "torpedo": "ice_clone"})
+    rayden = fd.load("rayden")  # milestone 6: body, inputs, the five specials
+    assert (rayden.donor_fighter_id, rayden.title, rayden.commands) == (24, "RAYDEN", {"lightning": "ice_blast", "reversed_lightning": "ice_blast_air",
+                                                                         "teleport": "directional_ice_up", "torpedo": "ice_clone",
+                                                                             "shocker": "ice_shatter"})
     sektor, reptile = fd.load("sektor"), fd.load("reptile")
     assert (sektor.donor_fighter_id, sektor.donor_name, sektor.title) == (7, "SEKTOR", "SEKTOR")
     assert (reptile.donor_fighter_id, reptile.donor_name, reptile.legacy) == (19, "REPTILE", ())
@@ -77,7 +79,7 @@ def test_layout_rejects_bad_places_and_overlaps() -> None:
         (lambda d: d["body"].update(secondary_slots={"0x40": "table1:0x02"}), "secondary slot"),
         (lambda d: d.update(outfit={"entries": ["0x10"], "own": "red"}), "outfit"),
         (lambda d: d["body"].update(script_sounds={"0x50": 7}), "script_sounds"),
-        (lambda d: d.update(outfit={"entries": ["0x03"], "own": "blue"}), "outfit"),
+        (lambda d: d.update(outfit={"entries": ["0x03"], "own": "purple"}), "outfit"),
     ],
 )
 def test_validator_rejects(change, message) -> None:

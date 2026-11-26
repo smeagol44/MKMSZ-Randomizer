@@ -36,6 +36,7 @@ def test_config_accepts_the_fighters_and_requires_classic_specials() -> None:
     assert RandomizerConfig(fighter="sektor").fighter == "sektor"
     assert RandomizerConfig(fighter="reptile").fighter == "reptile"
     assert RandomizerConfig(fighter="reptile", outfit=OutfitConfig(mode="red")).fighter == "reptile"
+    assert RandomizerConfig(fighter="rayden", outfit=OutfitConfig(mode="green")).fighter == "rayden"
     assert RandomizerConfig(fighter="sektor", outfit=OutfitConfig(mode="red")).fighter == "sektor"
     with pytest.raises(ValueError):
         RandomizerConfig(fighter="scorpion")  # type: ignore[arg-type]
@@ -50,6 +51,7 @@ def test_cli_fighter_option() -> None:
     assert parser.parse_args(["in.z64", "out.z64"]).fighter == "sub-zero"
     assert parser.parse_args(["in.z64", "out.z64", "--fighter", "sektor"]).fighter == "sektor"
     assert parser.parse_args(["in.z64", "out.z64", "--fighter", "reptile"]).fighter == "reptile"
+    assert parser.parse_args(["in.z64", "out.z64", "--fighter", "rayden"]).fighter == "rayden"
     with pytest.raises(SystemExit):
         parser.parse_args(["in.z64", "out.z64", "--fighter", "kano"])
     with pytest.raises(SystemExit):
@@ -151,3 +153,29 @@ def test_cli_reptile_outfit_recolours_only_his_greens(tmp_path: Path) -> None:
     vanilla, purple = fighter_file("vanilla"), fighter_file("purple")
     changed = {(i - PALETTE_OFFSET) // 2 for i in range(len(vanilla)) if vanilla[i] != purple[i]}
     assert changed == {10, 11, 12, 13, 14}  # his greens; skin, greys and black stay
+
+
+# Rayden through the product option (milestone 6; Pending the owner's full-seed run): his payload
+# blob no longer fits the fighter file's body tail (his move art fills it), so it is appended to
+# the file inside the runtime-confirmed file budget (body_build.SAFE_END, v49); his samples need
+# the enlarged generated-output tail [0x01820000, 0x01880000).
+@needs_roms
+def test_cli_rayden_build_places_his_blob_and_samples(tmp_path: Path) -> None:
+    from mkmszr.fighter_import import body_build
+    from mkmszr.fighter_import.outfit import PALETTE_OFFSET
+    from mkmszr.patches.fighter_swap import TAIL
+
+    def build(outfit: str) -> bytes:
+        out = tmp_path / f"rayden-{outfit}.z64"
+        assert main(["--mkt-rom", DONOR, "--seed", "RAYDEN-PROD-1", "--fighter", "rayden",
+                     "--outfit", outfit, CLEAN, str(out)]) == 0  # fmt: skip
+        return out.read_bytes()
+
+    rom = build("vanilla")
+    entry = 0x000A5010 + 0x87 * 12
+    start, end = (int.from_bytes(rom[entry + k : entry + k + 4], "big") for k in (0, 4))
+    assert start == TAIL[0] and body_build.FILE87_SIZE < end - start < body_build.SAFE_END
+    assert set(rom[TAIL[1] : TAIL[1] + 0x1000]) == {0xFF}
+    vanilla, red = rom[start:end], build("red")[start:end]
+    changed = {(i - PALETTE_OFFSET) // 2 for i in range(len(vanilla)) if vanilla[i] != red[i]}
+    assert changed == {2, 3, 4}  # his blue tunic only

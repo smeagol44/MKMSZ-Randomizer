@@ -139,6 +139,263 @@
       ]
     },
     {
+      "name": "reversed_lightning",
+      "command": {
+        "buttons": "0x80",
+        "tokens": [
+          8,
+          7
+        ],
+        "window": 16,
+        "src": "MKT 0x800ABA80"
+      },
+      "steps": [
+        {
+          "op": "begin",
+          "face": false,
+          "stop": true,
+          "action_mkt": "0x31",
+          "src": {
+            "face": "MKT 0x80077E30",
+            "stop": "MKT 0x80077E30",
+            "action_mkt": "MKT 0x80077E30"
+          }
+        },
+        {
+          "op": "flip"
+        },
+        {
+          "op": "sound",
+          "sound": {
+            "fighter": 2
+          },
+          "src": {
+            "sound": "MKT 0x80077EB0"
+          }
+        },
+        {
+          "op": "animate",
+          "anim": {
+            "table": 0,
+            "slot": 36
+          },
+          "rate": 3,
+          "until": "phase_end",
+          "src": {
+            "anim": "MKT 0x80077EC4",
+            "rate": "MKT 0x80077EC4",
+            "until": "MKT 0x80077EC4"
+          }
+        },
+        {
+          "op": "projectile",
+          "speed": "0x80000",
+          "rate": 3,
+          "wrap": {
+            "cooldown": 10
+          },
+          "strike": {
+            "box": [
+              133,
+              36,
+              60,
+              16
+            ],
+            "damage": 22,
+            "block_damage": 4,
+            "reaction": "shock_stagger_toward",
+            "blocked_reaction": "blocked"
+          },
+          "art": {
+            "table": 0,
+            "slot": 67,
+            "part": 3
+          },
+          "offset": [
+            0,
+            0
+          ],
+          "checks": [
+            {
+              "box": [
+                101,
+                36,
+                64,
+                16
+              ],
+              "after": 1
+            },
+            {
+              "box": [
+                101,
+                36,
+                64,
+                16
+              ],
+              "after": 2
+            }
+          ],
+          "palette": "0x800b9b04",
+          "impact": {
+            "at": "opponent",
+            "end": "animation",
+            "adjust": [
+              -115,
+              0
+            ],
+            "rate": 4,
+            "follow": "opponent",
+            "anim": {
+              "table": 0,
+              "slot": 67,
+              "part": 4
+            }
+          },
+          "src": {
+            "speed": "MKT 0x80077ED0",
+            "rate": "MKT 0x80077ED0",
+            "wrap": "MKT 0x80077ED0",
+            "strike": "MKT 0x80077ED0",
+            "art": "MKT 0x80077ED0",
+            "offset": "MKT 0x80077ED0",
+            "checks": "MKT 0x80077ED0",
+            "palette": "MKT 0x80077ED0",
+            "impact": "MKT 0x80077ED0"
+          }
+        },
+        {
+          "op": "sleep",
+          "ticks": 48,
+          "src": {
+            "ticks": "MKT 0x80077EF0"
+          }
+        },
+        {
+          "op": "face"
+        },
+        {
+          "op": "end"
+        }
+      ]
+    },
+    {
+      "name": "teleport",
+      "command": {
+        "buttons": "stick",
+        "tokens": [
+          6,
+          7
+        ],
+        "window": 16,
+        "src": "MKT 0x800AB968",
+        "conditions": [
+          {
+            "kind": "cooldown",
+            "key": "0x8012C668",
+            "ticks": 64,
+            "src": "MKT 0x80050F28"
+          }
+        ]
+      },
+      "movement": true,
+      "steps": [
+        {
+          "op": "begin",
+          "face": false,
+          "stop": true,
+          "action_mkt": "0x21f",
+          "src": {
+            "face": "MKT 0x80045644",
+            "stop": "MKT 0x80045644",
+            "action_mkt": "MKT 0x80045644"
+          }
+        },
+        {
+          "op": "stamp",
+          "key": "0x8012C668",
+          "src": {
+            "key": "MKT 0x80045654"
+          }
+        },
+        {
+          "op": "sound",
+          "sound": {
+            "fighter": 6
+          },
+          "src": {
+            "sound": "MKT 0x8004565C"
+          }
+        },
+        {
+          "op": "afterimage",
+          "anim": {
+            "table": 1,
+            "slot": 1
+          },
+          "rate": 2,
+          "src": {
+            "anim": "MKT 0x800456D4",
+            "rate": "MKT 0x800456D4"
+          }
+        },
+        {
+          "op": "relocate",
+          "to": "behind_opponent",
+          "dx": 67,
+          "src": {
+            "to": "MKT 0x8004583C",
+            "dx": "MKT 0x8004583C"
+          }
+        },
+        {
+          "op": "face"
+        },
+        {
+          "op": "sound",
+          "sound": {
+            "fighter": 7
+          },
+          "src": {
+            "sound": "MKT 0x80053B44"
+          }
+        },
+        {
+          "op": "animate",
+          "anim": {
+            "table": 0,
+            "slot": 34
+          },
+          "rate": 2,
+          "until": "phase_end",
+          "src": {
+            "anim": "MKT 0x80045730",
+            "rate": "MKT 0x80045730",
+            "until": "MKT 0x80045730"
+          }
+        },
+        {
+          "op": "pose",
+          "anim": {
+            "table": 0,
+            "slot": 0
+          },
+          "src": {
+            "anim": "MKT 0x8004574C"
+          }
+        },
+        {
+          "op": "sleep",
+          "ticks": 8,
+          "src": {
+            "ticks": "MKT 0x8004575C"
+          }
+        },
+        {
+          "op": "end"
+        }
+      ]
+    },
+    {
       "name": "torpedo",
       "movement": true,
       "command": {
@@ -359,6 +616,158 @@
             "y": "MKT 0x80045290",
             "gravity": "MKT 0x80045298",
             "until": "MKT 0x8004529C"
+          }
+        },
+        {
+          "op": "end"
+        }
+      ]
+    },
+    {
+      "name": "shocker",
+      "command": {
+        "buttons": "0x10",
+        "release": true,
+        "tokens": [],
+        "window": 0,
+        "src": "MKT 0x800AB9F4",
+        "conditions": [
+          {
+            "kind": "held_for",
+            "ticks": 56,
+            "src": "MKT 0x80051008"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "op": "begin",
+          "action_mkt": "0x122",
+          "face": false,
+          "stop": true,
+          "src": {
+            "action_mkt": "MKT 0x800732B8",
+            "face": "MKT 0x8007323C",
+            "stop": "MKT 0x8007323C"
+          }
+        },
+        {
+          "op": "sound",
+          "sound": {
+            "fighter": 12
+          },
+          "src": {
+            "sound": "MKT 0x80073244"
+          }
+        },
+        {
+          "op": "strike",
+          "strike": {
+            "box": [
+              55,
+              0,
+              55,
+              120
+            ],
+            "damage": 32,
+            "block_damage": 0,
+            "reaction": "shock_hold",
+            "blocked_reaction": "blocked"
+          },
+          "ticks": 1,
+          "on_hit": [
+            {
+              "op": "sound",
+              "sound": {
+                "fighter": 5
+              },
+              "src": {
+                "sound": "MKT 0x800732CC"
+              }
+            },
+            {
+              "op": "pose",
+              "anim": {
+                "table": 1,
+                "slot": 2
+              },
+              "src": {
+                "anim": "MKT 0x80073304"
+              }
+            },
+            {
+              "op": "repeat",
+              "count": 32,
+              "steps": [
+                {
+                  "op": "sleep",
+                  "ticks": 3,
+                  "src": {
+                    "ticks": "MKT 0x800735EC"
+                  }
+                },
+                {
+                  "op": "next_frame"
+                }
+              ],
+              "src": {
+                "count": "MKT 0x80073348"
+              }
+            },
+            {
+              "op": "end"
+            }
+          ],
+          "src": {
+            "strike": "MKT 0x8006CBE4",
+            "ticks": "MKT 0x80073250",
+            "box": "MKT 0x80073290"
+          }
+        },
+        {
+          "op": "pose",
+          "anim": {
+            "table": 1,
+            "slot": 2
+          },
+          "src": {
+            "anim": "MKT 0x80073534"
+          }
+        },
+        {
+          "op": "repeat",
+          "count": 14,
+          "steps": [
+            {
+              "op": "sleep",
+              "ticks": 3,
+              "src": {
+                "ticks": "MKT 0x80073540"
+              }
+            },
+            {
+              "op": "next_frame"
+            }
+          ],
+          "src": {
+            "count": "MKT 0x80073540"
+          }
+        },
+        {
+          "op": "sleep",
+          "ticks": 3,
+          "src": {
+            "ticks": "MKT 0x80073540"
+          }
+        },
+        {
+          "op": "pose",
+          "anim": {
+            "table": 1,
+            "slot": 2
+          },
+          "src": {
+            "anim": "MKT 0x8007354C"
           }
         },
         {

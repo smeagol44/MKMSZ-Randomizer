@@ -69,8 +69,9 @@ FIRST_SELECTOR = 3  # stock transfer selectors 0..2
 TRANSFER_BOUND_ROM, TRANSFER_BOUND_STOCK = 0x4B654, 0x2CC20003  # sltiu v0, a2, 3
 TRANSFER_ENTRIES_FREE = 5  # 0x800A105C..0x800A106C: zero and unreferenced (Memory map)
 # Spare reaction-table entries (stock 0x8004E0C0 endless sleep, no strike record uses them;
-# Wiki Memory-and-Allocation-Map): 0x2B, 0x23, then byte 0x4C past the 64 reactions.
-REACTION_POOL = (0x2B, 0x23, 0x4C)
+# Wiki Memory-and-Allocation-Map): 0x2B, 0x23, then bytes 0x4C and 0x4E past the 64 reactions
+# (blocked entries 0x0C and 0x0E).
+REACTION_POOL = (0x2B, 0x23, 0x4C, 0x4E)
 VOICE_CHAINS = sound.ISOLATED_CHAINS[:10]
 EXTRA_CHAINS = sound.ISOLATED_CHAINS[10:]
 HELPER_DY_PX = -2  # throw helper above its projectile (owner fine-tune, specials proofs v09/v11)
@@ -140,15 +141,19 @@ def _free_from(file87: bytearray, start: int) -> int:
 
 @dataclass
 class _Group:
-    """A projectile art shared by the moves whose projectile step has the same donor art."""
+    """The moves whose projectile step has the same donor art and victim reaction (the art is
+    placed once per donor art: Rayden's lightning and reversed lightning share it, but react
+    differently, MKT 0x80 / 0x81)."""
 
     key: tuple[int, int, int]
+    reaction: str
     moves: list[str]
     art: lp.ArtLayout
     events: dict[str, int]
     reaction_slot: int
     helper: str | None
     lowered: lp.Lowered | None = None
+    first: bool = True  # the first group of its art (its labels and report key, as before)
 
 
 @dataclass
@@ -219,12 +224,18 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     for key, (t, i, _) in d.body.secondary_scripts.items():
         animations[(t, i)] = key if key < body_build.VIRTUAL_SCRIPT else ("at", body.script_offsets[key])
     animations[(0, d.body.run_slot)] = ("at", body_build.RUN_TARGET)
+    for k in d.body.slots:  # host primary k holds MKT table-0 index k (the generic body rule)
+        if k not in d.body.sources:  # (a slot with another source holds something else)
+            animations.setdefault((0, k), ("primary", k))
     script_words = {(t, i): body.script_words[key] for key, (t, i, _) in d.body.secondary_scripts.items()
                     if key in body.script_words}  # fmt: skip
 
     # ---- projectile groups and art (fighter-file tail) -------------------------------------
     reactions = _Pool(REACTION_POOL, "spare reaction-table entries")
-    groups: dict[tuple[int, int, int], _Group] = {}
+    groups: dict[tuple[tuple[int, int, int], str], _Group] = {}
+    art_of: dict[tuple[int, int, int], tuple[lp.ArtLayout, dict[str, int], str | None]] = {}
+    afterimage_of: dict[str, tuple[str, lp.ArtLayout, int]] = {}  # move -> (process, art, ticks)
+    cooldown_of: dict[str, int] = {}  # move -> host ticks (MKT ticks_since conditions)
     steps_of: dict[str, list[dict[str, Any]]] = {}
     projectile_of: dict[str, dict[str, Any]] = {}
     placed_at = body.chain_start
@@ -239,6 +250,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             steps = [dict(s, ticks=_int(tune["sleep_ticks"])) if s["op"] == "sleep" else s for s in steps]
         if "strike_ticks" in tune:  # owner: a longer hit window (Rayden's torpedo, specials proof v05)
             steps = [dict(s, ticks=_int(tune["strike_ticks"])) if s["op"] == "strike" else s for s in steps]
+        if tune.get("turn_back"):  # owner: after turning around, turn back rather than face
+            steps = [dict(s, op="flip") if s["op"] == "face" else s for s in steps]  # (reversed lightning)
         if tune.get("airborne"):  # level flight while it may have started in the air (host detail)
             steps = with_hover(steps)
         ticks_per = _int(tune.get("donor_ticks", 1))
@@ -254,9 +267,16 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 proj = lp.centre_on_art(donor, proj)
             projectile_of[move] = proj
             anim = proj["art"]
-            gkey = (_int(anim["table"]), _int(anim["slot"]), _int(anim.get("part", 1)))
+            akey = (_int(anim["table"]), _int(anim["slot"]), _int(anim.get("part", 1)))
+            gkey = (akey, proj["strike"]["reaction"])
             if gkey in groups:
                 groups[gkey].moves.append(move)
+            elif akey in art_of:  # the art and sounds placed for another reaction
+                art, events, helper_label = art_of[akey]
+                stock = lp.host_reaction(proj["strike"]["reaction"])
+                groups[gkey] = _Group(akey, proj["strike"]["reaction"], [move], art, events,
+                                      stock if stock is not None else reactions.take(), helper_label,
+                                      first=False)  # fmt: skip
             else:
                 throw = next(s for s in steps if s["op"] == "animate")
                 helper = lp.donor_helper(donor, throw["anim"])
@@ -273,8 +293,41 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                     (samples_end + 0xF) & ~0xF,
                 )  # fmt: skip
                 stock = lp.host_reaction(proj["strike"]["reaction"])
-                groups[gkey] = _Group(gkey, [move], art, events, stock if stock is not None else reactions.take(),
-                                      f"{move}_helper" if helper is not None else None)  # fmt: skip
+                helper_label = f"{move}_helper" if helper is not None else None
+                art_of[akey] = (art, events, helper_label)
+                groups[gkey] = _Group(akey, proj["strike"]["reaction"], [move], art, events,
+                                      stock if stock is not None else reactions.take(), helper_label)  # fmt: skip
+        for s in _all_steps(steps):  # an afterimage: the fighter's own art for its process
+            if s["op"] == "afterimage":
+                rate = max(1, -(-_int(s["rate"]) // ticks_per))
+                part = {"table": _int(s["anim"]["table"]), "slot": _int(s["anim"]["slot"]), "part": 1}
+                art_step: dict[str, Any] = {"art": part, "rate": rate}
+                first = lp.donor_part(donor, part).frames
+                named = donor.m32(first[0] + 0x14) if first else 0
+                if named & 0xFF000000 == 0x80000000:  # its frames name their palette (Rayden's
+                    art_step["palette"] = hex(named)  # silhouette: white to cyan, 0x800B9AF0)
+                art = lp.place_art(file87, mkt, donor_id, art_step, None,
+                                   body_build.TYPE_END, at=_free_from(file87, body.chain_start))  # fmt: skip
+                frames = len(first)
+                afterimage_of[move] = (f"{move}_afterimage", art, frames * rate)
+        cool = next((c for c in programs[move].command.get("conditions", []) if c["kind"] == "cooldown"), None)
+        if cool is not None and proj is None:  # projectiles: the host one-projectile rule instead
+            cooldown_of[move] = max(1, -(-_int(cool["ticks"]) // ticks_per))
+        unported: set[int] = set()
+        for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
+            if s["op"] == "sound" and "random" not in s["sound"]:
+                n = _int(s["sound"]["fighter"])
+                if n not in fighter_sounds and n not in unported:
+                    try:
+                        donor_sound = bank.event(bank.fighter_event(donor_id, n))
+                    except ValueError:  # several tracks (Rayden's 5, event 0x205): not ported yet
+                        unported.add(n)
+                        report.setdefault("unported_sounds", []).append((move, n))
+                        continue
+                    fighter_sounds[n] = install(donor_sound)
+        if unported:
+            steps = _without_sounds(steps, unported)
+            steps_of[move] = steps
         for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
             if s["op"] == "sound":
                 first = _int(s["sound"]["fighter"])
@@ -324,7 +377,15 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         if move in per_move:
             alive = (f"{move}_alive", *(f"{m}_alive" for m in shared_limit))
         refuse = (lower_special.CTRL_STEALTH, lower_special.STEALTH_BIT) if "stealth" in tune else None
+        relocates = any(s["op"] == "relocate" for s in _all_steps(steps))
+        held_cond = next((c for c in programs[move].command.get("conditions", []) if c["kind"] == "held_for"), None)
+        held = None
+        if held_cond is not None:  # MKT counts donor ticks; the hold counter host ticks
+            held = ("hold_hp_count", max(1, -(-_int(held_cond["ticks"]) // _int(tune.get("donor_ticks", 1)))))
         lower_special.emit_gate_condition(a, f"{move}_cond", gate, costs[move], default=default,
+                                          cooldown=f"{move}_cooldown_word" if move in cooldown_of else None,
+                                          target_range=lower_special.RELOCATE_RANGE if relocates else None,
+                                          held=held,
                                           alive=alive, refuse_if=refuse,
                                           airborne=bool(tune.get("airborne")))  # fmt: skip
         g = group_of.get(move)
@@ -363,6 +424,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             carry=words[0] if words else None,
             skip=frozenset(tune.get("skip", ())),  # owner: steps left out (Rayden's torpedo turns)
             air_control=bool(tune.get("air_control")),  # owner: steer the closing drop
+            cooldown=f"{move}_cooldown" if move in cooldown_of else None,
+            afterimage=afterimage_of[move][0] if move in afterimage_of else None,
         )  # fmt: skip
         if g is not None:
             ptune = tune.get("projectile", {})
@@ -376,7 +439,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             g.lowered = low
             lp.emit_process(a, low, child=f"{move}_ball", prefix=f"{move}_", data=f"g{_gid(g)}_",
                             alive=f"{move}_alive")  # fmt: skip
-            if move == g.moves[-1] and g.helper is not None:
+            if move == g.moves[-1] and g.helper is not None and g.first:  # once per art
                 throw = next(s for s in steps if s["op"] == "animate")
                 body_slot = animations[(_int(throw["anim"]["table"]), _int(throw["anim"]["slot"]))]
                 dy = low.dy + HELPER_DY_PX * lp.UNITS_PER_PX
@@ -393,6 +456,13 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         unknown = set(reaction_map) - set(reaction_labels)
         if unknown:
             raise BuildError(f"{move}: no host routine for reactions {sorted(unknown)}")
+        if move in afterimage_of:
+            label, art, ticks = afterimage_of[move]
+            lp.emit_afterimage_process(a, label, art, ticks)
+        if move in cooldown_of:
+            lower_special.emit_cooldown(a, f"{move}_cooldown", cooldown_of[move])
+        if relocates and "relocate" not in a.labels:
+            lower_special.emit_relocate_routine(a)
         if "stealth" in tune:
             stealth_moves.append(move)
             lower_special.emit_stealth_timer(a, f"{move}_stealth", _int(tune["stealth"]["period"]),
@@ -409,7 +479,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                                     _int(spec["reserve"]))  # fmt: skip
     host.emit_sound_player(a)
     for g in groups.values():
-        if g.helper is not None:
+        if g.helper is not None and g.first:
             lp.emit_helper_data(a, g.helper)
     for m in projectile_of:
         a.label(f"{m}_alive")
@@ -418,6 +488,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         lp.emit_data(a, g.lowered, link_va, clean, data=f"g{_gid(g)}_")  # type: ignore[arg-type]
     for _, records in report.get("strike_records", []):
         lower_special.emit_strike_data(a, records, link_va)
+    if any(programs[m].command.get("release") for m in order):
+        while a.pc() & 3:
+            a.nop()
+        a.label("hold_hp_count")  # High Punch hold, in host ticks (commands' counter process)
+        a.raw(0)
     main = a.link()
     # Transfer mode 0 refuses an airborne start, mode 1 does not (Wiki Player-Actions "Descriptor
     # selector and condition"): moves tuned "airborne" (Rayden's torpedo) take mode 1.
@@ -425,8 +500,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                  for m in order}  # fmt: skip
     cmds = commands.donor_commands(mkt, moves, d.commands)
     stub_base = (link_va + TABLE_RESERVE + len(main) + 0xF) & ~0xF
-    low_cmd = commands.lower(clean, cmds, set(d.remove_commands), link_va, stub_base, overrides)
-    if any(v + commands.RECORD * 5 + 4 > link_va + TABLE_RESERVE for v in low_cmd.moved.values()):
+    low_cmd = commands.lower(clean, cmds, set(d.remove_commands), link_va, stub_base, overrides,
+                             hold_word=a.labels.get("hold_hp_count"))  # fmt: skip
+    if any(v + commands.RECORD * len(low_cmd.tables[k]) + 4 > link_va + TABLE_RESERVE
+           for k, v in low_cmd.moved.items()):  # fmt: skip
         raise BuildError("moved command tables do not fit their reserve")
     end = stub_base - link_va + len(low_cmd.stubs)
     if end > PAYLOAD_LIMIT:
@@ -460,13 +537,17 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                   commands=low_cmd.report, samples_end=samples_end)  # fmt: skip
     return Built(
         bytes(rom), bytes(payload), link_va, bytes(file87), (SAMPLE_ROM, samples_end), dict(low_cmd.moved),
-        selectors, dict(custom_reactions) | {f"projectile {g.key}": g.reaction_slot for g in groups.values()},
+        selectors, dict(custom_reactions) | {_report_key(g, groups): g.reaction_slot for g in groups.values()},
         {f"fighter sound {n}": e for n, e in fighter_sounds.items()}, report,
     )  # fmt: skip
 
 
 def _gid(g: _Group) -> str:
-    return f"{g.key[0]}_{g.key[1]}_{g.key[2]}"
+    return f"{g.key[0]}_{g.key[1]}_{g.key[2]}" + ("" if g.first else f"_{g.reaction}")
+
+
+def _report_key(g: _Group, groups: dict) -> str:
+    return f"projectile {g.key}" + ("" if g.first else f" {g.reaction}")
 
 
 def _combo_slot(d: fd.FighterDescription) -> tuple[int | None]:
@@ -480,6 +561,23 @@ def _projectile_rates(step: dict[str, Any], ticks_per: int) -> dict[str, Any]:
     out = dict(step, rate=max(1, -(-_int(step["rate"]) // ticks_per)))
     if "impact" in step and "rate" in step["impact"]:
         out["impact"] = dict(step["impact"], rate=max(1, -(-_int(step["impact"]["rate"]) // ticks_per)))
+    if "wrap" in step:
+        out["wrap"] = {"cooldown": max(1, -(-_int(step["wrap"]["cooldown"]) // ticks_per))}
+    return out
+
+
+def _without_sounds(steps: list[dict[str, Any]], numbers: set[int]) -> list[dict[str, Any]]:
+    """The steps without the sound steps of ``numbers`` (sounds the importer cannot port yet)."""
+
+    out = []
+    for s in steps:
+        if s["op"] == "sound" and _int(s["sound"].get("fighter", -1)) in numbers and "random" not in s["sound"]:
+            continue
+        s = dict(s)
+        for key in ("steps", "every_tick", "on_hit", "on_block"):
+            if key in s:
+                s[key] = _without_sounds(s[key], numbers)
+        out.append(s)
     return out
 
 
@@ -492,7 +590,7 @@ def _all_steps(steps: list[dict[str, Any]]):
 
 # ---- production packaging (Sektor's accepted "option C" layout, made generic) ------------------
 OUTPUT_SIZE = 0x02000000
-TAIL = (0x01820000, 0x0186E4C0)  # generated-output region for the fighter file and samples
+TAIL = (0x01820000, 0x01880000)  # generated-output region for the fighter file and samples (Memory map)
 FIXED_VA = 0xA01B30F0  # production pool tail after the Inventory legend (in shared file 0x1A)
 POOL_END = 0x801B3420
 RAW_LOADER, FILE_87 = 0x80065D64, 0x87
@@ -560,9 +658,16 @@ def production(clean: bytes, mkt: bytes, name: str, *, fixed_va: int = FIXED_VA)
     file87 = bytearray(base.file87)
     table = relocate.encode(relocs)
     blob_off = _free_from(file87, base.report["chain_start"])
+    if blob_off + n + len(table) > body_build.TYPE_END:
+        # The body tail is taken (Rayden: his move art): append the blob to the file, inside the
+        # file-size budget the runtime-confirmed placement allowed (body_build.SAFE_END).
+        blob_off = (len(file87) + 0xF) & ~0xF
+        file87 += b"\xff" * (blob_off + n + len(table) - len(file87))
+        if len(file87) >= body_build.SAFE_END:
+            raise BuildError(f"payload blob (0x{n:X} + table 0x{len(table):X}) does not fit the fighter file budget")
     table_off = blob_off + n
     blob_end = table_off + len(table)
-    if blob_end > body_build.TYPE_END or set(file87[blob_off:blob_end]) != {0xFF}:
+    if set(file87[blob_off:blob_end]) != {0xFF}:
         raise BuildError(f"payload blob (0x{n:X} + table 0x{len(table):X}) does not fit the fighter file")
     file87[blob_off:table_off] = base.payload
     file87[table_off:blob_end] = table

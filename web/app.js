@@ -63,12 +63,12 @@ const fighterCanvas = document.querySelector("#fighterCanvas");
 const fighterStageStatus = document.querySelector("#fighterStageStatus");
 const fighterHover = document.querySelector("#fighterHover");
 
-const FIGHTER_LABELS = { "sub-zero": "Sub-Zero", sektor: "Sektor", reptile: "Reptile" };
+const FIGHTER_LABELS = { "sub-zero": "Sub-Zero", sektor: "Sektor", reptile: "Reptile", rayden: "Rayden" };
 // Fighters with an outfit recolour; the others keep their own colours (outfit locked to Vanilla).
-const OUTFIT_FIGHTERS = ["sub-zero", "sektor", "reptile"];
+const OUTFIT_FIGHTERS = ["sub-zero", "sektor", "reptile", "rayden"];
 // Title character default per fighter; the field follows the fighter unless the user typed
 // their own name (still editable either way).
-const FIGHTER_TITLES = { "sub-zero": "SUB-ZERO", sektor: "SEKTOR", reptile: "REPTILE" };
+const FIGHTER_TITLES = { "sub-zero": "SUB-ZERO", sektor: "SEKTOR", reptile: "REPTILE", rayden: "RAYDEN" };
 const FIGHTER_HINT_DEFAULT =
   "Validate the MKT donor ROM to import a fighter from Mortal Kombat Trilogy.";
 

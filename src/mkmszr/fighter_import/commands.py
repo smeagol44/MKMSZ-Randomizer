@@ -60,8 +60,14 @@ HOST_TABLES = (
 # would. Records carry direction-bit masks: the mask check 0x8003CCF8 refuses a record while a
 # button outside it is held, and a zero mask would end the table.
 STICK_EVENT_RECORDS = (0x800A07E4, 0x800A085C)  # events 8 Left, 9 Right (press table)
+# Events 6 Up and 7 Down (press table 0x800A09C4 - 0x78 per event before Left): the player's Up
+# callback is an empty jr ra (0x8003C7F0), Down's is empty. A stick command that ends with Up or
+# Down (Rayden's teleport, D,U) hooks that event too.
+UPDOWN_EVENT_RECORDS = {6: 0x800A06F4, 7: 0x800A076C}
+EMPTY_CALLBACK = 0x8003C7F0  # jr ra; nop
 PLAYER_TYPE_SLOT = 4 * 4  # actor type 4 (player) in a 30-callback record
 STICK_MASK = 0xA000  # Left | Right: no button bits
+STICK_MASK_UPDOWN = 0x5000  # Up | Down (MKT token 6 / 7 newest)
 
 # Sub-Zero's command records (Wiki Player-Actions-and-Special-Moves, stock reconciliation).
 HOST_POWERS = {
@@ -75,7 +81,9 @@ HOST_POWERS = {
 }
 # Sub-Zero powers with no command record (Ice Shatter is contextual, after two Ice Blasts). A
 # move may take one only with its own special (``lower(overrides=...)``): its record is new.
-COMMANDLESS_POWERS = ("ice_shatter",)
+# Air Ice Blast is Ice Blast's airborne branch (its own tier gate, no record of its own): Rayden's
+# reversed lightning takes its slot (Amendment 1) with a new record.
+COMMANDLESS_POWERS = ("ice_shatter", "ice_blast_air")
 
 
 class CommandError(ValueError):
@@ -103,6 +111,7 @@ class Command:
     held: int  # buttons the donor condition requires held (0: none)
     buttons: int = 0  # the move program's buttons (the MKT event's); 0: the record's masks
     stick: bool = False  # a stick-only command (program buttons "stick")
+    release: bool = False  # on the button's release (MKT release grid; Rayden's Shocker)
 
 
 @dataclass(frozen=True)
@@ -112,6 +121,15 @@ class Lowered:
     stubs: bytes  # code at the stub base
     report: list[str]
     stick_checker: int | None = None  # VA of the stick-table checker (event records 8 and 9)
+    stick_events: tuple[int, ...] = ()  # Up / Down events a stick command ends with (6, 7)
+    release_checker: int | None = None  # VA of the HP release checker (release event 0)
+    press_wrapper: int | None = None  # VA of the HP press wrapper (press event 0: hold counter)
+
+
+def stick_event(cmd: Command) -> int:
+    """The direction event that completes a stick command: its newest token (facing right)."""
+
+    return _u16(cmd.record, 0x12)
 
 
 def _host_record(clean: bytes, cmd: Command, cond: int, override: tuple[int, int, int] | None) -> bytes:
@@ -121,8 +139,9 @@ def _host_record(clean: bytes, cmd: Command, cond: int, override: tuple[int, int
     else:
         selector, action = override[0], override[2]
     rec = bytearray(cmd.record)
-    if cmd.stick:
-        rec[0:4] = STICK_MASK.to_bytes(2, "big") * 2
+    if cmd.stick:  # the mask of the event that ends it (the newest token)
+        mask = STICK_MASK_UPDOWN if stick_event(cmd) in UPDOWN_EVENT_RECORDS else STICK_MASK
+        rec[0:4] = mask.to_bytes(2, "big") * 2
     elif cmd.buttons:  # the MKT event's button (Rayden's lightning record has masks 0xFC)
         rec[0:4] = cmd.buttons.to_bytes(2, "big") * 2
     rec[4:16] = selector.to_bytes(4, "big") + cond.to_bytes(4, "big") + action.to_bytes(4, "big")
@@ -130,7 +149,8 @@ def _host_record(clean: bytes, cmd: Command, cond: int, override: tuple[int, int
 
 
 def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
-          stub_base: int, overrides: dict[str, tuple[int, int, int]] | None = None) -> Lowered:  # fmt: skip
+          stub_base: int, overrides: dict[str, tuple[int, int, int]] | None = None,
+          hold_word: int | None = None) -> Lowered:  # fmt: skip
     """Host tables for ``commands``. ``storage``: VA (KSEG1) where grown tables go, in order;
     ``stub_base``: VA (KSEG1) of the condition stubs, linked after the tables are placed.
     ``overrides``: command name -> (transfer selector, condition, action) of the move's own
@@ -150,7 +170,8 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
     for table in HOST_TABLES:
         mask = BUTTONS[table.button]
         rows: list[tuple[str, Command | None, int]] = []
-        for cmd in sorted((c for c in commands if c.calls and not c.stick), key=lambda c: c.donor_va):
+        for cmd in sorted((c for c in commands if c.calls and not c.stick and not c.release),
+                          key=lambda c: c.donor_va):  # fmt: skip
             if (cmd.buttons or _u16(cmd.record, 0) | _u16(cmd.record, 2)) & mask:
                 rows.append(("donor", cmd, 0))
         for name, va in HOST_POWERS.items():
@@ -173,6 +194,12 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
     if stick:
         moved["STICK"] = place["STICK"] = cursor
         cursor += RECORD * len(stick) + 4
+    release = [c for c in sorted(commands, key=lambda c: c.donor_va) if c.release and c.calls]
+    if release:
+        if hold_word is None:
+            raise CommandError("a release command needs the hold-count word")
+        moved["RELEASE"] = place["RELEASE"] = cursor
+        cursor += RECORD * len(release) + 4
     a = Assembler(stub_base, cached_calls=True)
     out: dict[str, list[bytes]] = {}
     report: list[str] = []
@@ -219,9 +246,102 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
         a.lw("ra", 0x10, "sp")
         a.jr("ra")
         a.addiu("sp", "sp", 0x18)
+    release_checker = press_wrapper = None
+    if release:
+        recs = []
+        for cmd in release:
+            override = overrides.get(cmd.name)
+            if override is None:
+                raise CommandError(f"{cmd.name}: a release command needs its own special")
+            recs.append(_host_record(clean, cmd, override[1], override))
+            report.append(f"HP release: {cmd.name} -> own special (slot of {cmd.calls})")
+        out["RELEASE"] = recs
+        release_checker = a.pc()  # the HP release event: the parser on the release table
+        a.addiu("sp", "sp", -0x18)
+        a.sw("ra", 0x10, "sp")
+        rtable = place["RELEASE"]
+        a.lui("a0", ((rtable + 0x8000) >> 16) & 0xFFFF)
+        a.addiu("a0", "a0", ((rtable & 0xFFFF) ^ 0x8000) - 0x8000)
+        a.jal(PARSER)
+        a.nop()
+        a.lw("ra", 0x10, "sp")
+        a.jr("ra")
+        a.addiu("sp", "sp", 0x18)
+        press_wrapper = _emit_hold_counter(a, hold_word)
     if unwired:
         report.append("no action yet: " + ", ".join(unwired))
-    return Lowered(out, moved, a.link(), report, checker)
+    events = tuple(sorted({stick_event(c) for c in stick} & set(UPDOWN_EVENT_RECORDS)))
+    return Lowered(out, moved, a.link(), report, checker, events, release_checker, press_wrapper)
+
+
+# High Punch hold timing (Rayden's Shocker, MKT ``ticks_since`` on the HP press stamp 0x80257738):
+# the press callback is wrapped; it zeroes the count word and starts a counter process (when none
+# runs) that adds 1 each tick while HP is held (0x800BF2EE & 0x10), then ends. The command's
+# condition reads the count when HP is released.
+HP_PRESS_RECORD, HP_RELEASE_RECORD = 0x800A049C, 0x800A0A6C  # events 0 (High Punch)
+HP_PRESS_STOCK = 0x8003C870  # the stock HP press callback (the HP table through the parser)
+HOLD_PROCESS_ID = 0x100
+F_CLONE, F_SLEEP, F_EXIT = 0x8002830C, 0x80028794, 0x80028564
+
+
+def _emit_hold_counter(a: Assembler, count: int) -> int:
+    """Emit the press wrapper (returned VA), the counter process and its running word."""
+
+    def la(reg: str, va: int) -> None:
+        a.lui(reg, ((va + 0x8000) >> 16) & 0xFFFF)
+        a.addiu(reg, reg, ((va & 0xFFFF) ^ 0x8000) - 0x8000)
+
+    wrapper = a.pc()
+    a.addiu("sp", "sp", -0x28)
+    a.sw("ra", 0x24, "sp")
+    for k, r in enumerate(("a0", "a1", "a2", "a3")):
+        a.sw(r, 0x10 + 4 * k, "sp")
+    la("t0", count)
+    a.sw("zero", 0, "t0")  # a new press: count from zero
+    a.la("t0", "hold_running")
+    a.lw("t1", 0, "t0")
+    a.bnez("t1", "hold_started")
+    a.li("t1", 1)
+    a.sw("t1", 0, "t0")
+    a.li("a0", HOLD_PROCESS_ID)
+    a.la("a1", "hold_counter")
+    a.jal(F_CLONE)
+    a.nop()
+    a.bnez("v0", "hold_started")
+    a.la("t0", "hold_running")
+    a.sw("zero", 0, "t0")  # no process left: no count (the command stays refused)
+    a.label("hold_started")
+    for k, r in enumerate(("a0", "a1", "a2", "a3")):
+        a.lw(r, 0x10 + 4 * k, "sp")
+    a.lw("ra", 0x24, "sp")
+    a.addiu("sp", "sp", 0x28)
+    a.j(HP_PRESS_STOCK)  # then the stock press: the HP button table
+    a.nop()
+    a.label("hold_counter")
+    a.label("hold_loop")
+    a.lui("t0", ((HELD_BUTTONS + 0x8000) >> 16) & 0xFFFF)
+    a.lhu("t0", ((HELD_BUTTONS & 0xFFFF) ^ 0x8000) - 0x8000, "t0")
+    a.andi("t0", "t0", BUTTONS["HP"])
+    a.beqz("t0", "hold_done")
+    a.nop()
+    la("t0", count)
+    a.lw("t1", 0, "t0")
+    a.slti("t2", "t1", 0x7FFF)
+    a.addu("t1", "t1", "t2")  # saturating
+    a.sw("t1", 0, "t0")
+    a.li("a0", 1)
+    a.jal(F_SLEEP)
+    a.nop()
+    a.beq("zero", "zero", "hold_loop")
+    a.nop()
+    a.label("hold_done")
+    a.la("t0", "hold_running")
+    a.sw("zero", 0, "t0")
+    a.jal(F_EXIT)
+    a.nop()
+    a.label("hold_running")
+    a.raw(0)
+    return wrapper
 
 
 def _name(va: int) -> str:
@@ -292,6 +412,21 @@ def install(rom: bytearray, clean: bytes, low: Lowered, storage_rom: int, storag
             if _u32(rom, slot) != 0 or _u32(clean, slot) != 0:
                 raise CommandError(f"event record 0x{record:08X}: the player's callback is not free")
             rom[slot : slot + 4] = (low.stick_checker or 0).to_bytes(4, "big")
+        for event in low.stick_events:  # (see below for the HP release hooks)
+            slot = UPDOWN_EVENT_RECORDS[event] + PLAYER_TYPE_SLOT - VA_TO_ROM
+            if _u32(rom, slot) not in (0, EMPTY_CALLBACK) or _u32(clean, slot) not in (0, EMPTY_CALLBACK):
+                raise CommandError(f"event {event}: the player's callback is not free")
+            rom[slot : slot + 4] = (low.stick_checker or 0).to_bytes(4, "big")
+    if "RELEASE" in low.tables:
+        data = b"".join(low.tables["RELEASE"]) + b"\0\0\0\0"
+        off = storage_rom + (low.moved["RELEASE"] - storage_va)
+        rom[off : off + len(data)] = data
+        for record, stock, hook in ((HP_RELEASE_RECORD, 0, low.release_checker),
+                                    (HP_PRESS_RECORD, HP_PRESS_STOCK, low.press_wrapper)):  # fmt: skip
+            slot = record + PLAYER_TYPE_SLOT - VA_TO_ROM
+            if _u32(rom, slot) != stock or _u32(clean, slot) != stock:
+                raise CommandError(f"event record 0x{record:08X}: the player's callback is not stock")
+            rom[slot : slot + 4] = (hook or 0).to_bytes(4, "big")
 
 
 def donor_commands(mkt: bytes, moves: list, spec: dict[str, str | None]) -> list[Command]:
@@ -313,7 +448,11 @@ def donor_commands(mkt: bytes, moves: list, spec: dict[str, str | None]) -> list
         raw = move.command.get("buttons", "")
         stick = raw == "stick"
         buttons = int(raw, 16) if raw and not stick else 0
-        out.append(Command(move.name, va, record_at(mkt, va, 0x80000000), spec[move.name], held, buttons, stick))
+        release = bool(move.command.get("release"))
+        if release and buttons != BUTTONS["HP"]:
+            raise CommandError(f"{move.name}: only High Punch release commands are lowered")
+        out.append(Command(move.name, va, record_at(mkt, va, 0x80000000), spec[move.name], held, buttons,
+                           stick, release))  # fmt: skip
     missing = set(spec) - {c.name for c in out}
     if missing:
         raise CommandError(f"no move program for {', '.join(sorted(missing))}")

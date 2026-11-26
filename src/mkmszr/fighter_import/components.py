@@ -48,6 +48,8 @@ REACTIONS = {
     "knockback_arc": "MKT 0x71: victim launched on an arc toward the attacker (x 0x2CCCC, y -0x6CCCC, gravity 0x5199)",
     "acid_stagger": "MKT 0x72: victim staggers back (+0x420 = 0x26666); details Pending",
     "shock_stagger": "MKT 0x80: victim staggers back (0x26666) blinking cyan (its shock palette)",
+    "shock_stagger_toward": "MKT 0x81: as 0x80, pushed towards the attacker (towards_x_vel)",
+    "shock_hold": "Rayden's Shocker grab: the victim held and shocked (blinking cyan), then dropped",
     "rocket_stumble": "MKT r_rocket -> zap_stumble: stumble back",
     "uppercut": "teleport strike: host uppercut reaction 0x08 (runtime-confirmed teleport)",
     "blocked": "the stock blocked reaction",
@@ -60,6 +62,8 @@ CONDITIONS = {
     "cooldown": "at least `ticks` since `key` was stamped for this player",
     "opponent_state": "opponent-state guard read from the donor; meaning Pending (see Wiki)",
     "projectiles_below": "fewer than `count` live projectiles of this fighter",
+    "held_for": "the command's button was held at least `ticks` before its release (MKT "
+                "ticks_since on the press stamp; a ``release`` command)",
 }
 
 # op -> {param: kind}; a trailing "?" marks an optional parameter.
@@ -93,6 +97,7 @@ COMPONENTS: dict[str, dict[str, str]] = {
     "shake": {"dx": "px", "dy": "px", "count": "int", "ticks": "ticks"},
     "pass_through": {"ticks": "ticks"},
     "relocate": {"to": "enum:behind_opponent", "dx": "px", "dy?": "px"},
+    "afterimage": {"anim": "anim", "rate": "ticks"},
     # presentation
     "sound": {"sound": "sound"},
     "effect": {"effect": "effect", "at?": "enum:self|opponent"},
@@ -119,6 +124,7 @@ COMPONENTS: dict[str, dict[str, str]] = {
         "trail?": "trail",
         "checks?": "boxes",
         "homing?": "homing",
+        "wrap?": "wrap",
         "impact": "impact",
     },
     # state
@@ -196,6 +202,9 @@ def _check_value(kind: str, value: Any, where: str, errors: list[str]) -> None:
     elif kind == "boxes":
         need(isinstance(value, list) and all(isinstance(b, dict) and set(b) == {"box", "after"}
              for b in value), "checks are [{box, after}]")  # fmt: skip
+    elif kind == "wrap":
+        need(isinstance(value, dict) and set(value) == {"cooldown"} and _int(value["cooldown"]) is not None,
+             "wrap is {cooldown}")  # fmt: skip
     elif kind == "homing":
         need(isinstance(value, dict) and set(value) == {"aim_dy", "speed", "explode_within"},
              "homing is {aim_dy, speed, explode_within}")  # fmt: skip

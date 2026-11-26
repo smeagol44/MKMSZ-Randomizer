@@ -65,3 +65,10 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v17.py` | `MKMSZR_rayden-specials_common_proof_v17.z64` | v16 with the bolt's flight frames kept apart from the burst's, the blink on the vertex colours (lighting paused), and the burst following the victim |
 | `MKMSZR_build_rayden-specials_proof_v18.py` | `MKMSZR_rayden-specials_common_proof_v18.z64` | v17 with the burst 6 px nearer Rayden and the blink at half speed |
 | `MKMSZR_build_rayden-specials_proof_v19.py` | `MKMSZR_rayden-specials_common_proof_v19.z64` | v18 with MKT's two close-range checks before the lightning's flight |
+| `MKMSZR_build_rayden-specials_proof_v20.py` | `MKMSZR_rayden-specials_common_proof_v20.z64` | v19 plus the generated reversed lightning (D,B + LP) in Air Ice Blast's slot, with MKT's screen wrap |
+| `MKMSZR_build_rayden-specials_proof_v21.py` | `MKMSZR_rayden-specials_common_proof_v21.z64` | v20 with the reversed bolt judging victims ahead of itself, and the wrap triggered at the bolt's own depth (zoomed-out camera) |
+| `MKMSZR_build_rayden-specials_proof_v22.py` | `MKMSZR_rayden-specials_common_proof_v22.z64` | v21 with the wrap at the real visible edge (depth × 160 / focal), right on the zoomed-out camera too |
+| `MKMSZR_build_rayden-specials_proof_v23.py` | `MKMSZR_rayden-specials_common_proof_v23.z64` | v22 plus the generated teleport (D,U) in Directional Ice Up's slot: afterimage, relocation, cooldown |
+| `MKMSZR_build_rayden-specials_proof_v24.py` | `MKMSZR_rayden-specials_common_proof_v24.z64` | v23 with one sound, the getup as the reappear, and the afterimage at his height in its white palette |
+| `MKMSZR_build_rayden-specials_proof_v25.py` | `MKMSZR_rayden-specials_common_proof_v25.z64` | v24 plus the Shocker (HP held, released) in Ice Shatter's slot: release commands, the hold count, the shock-hold reaction |
+| `MKMSZR_build_rayden-specials_proof_v26.py` | `MKMSZR_rayden-specials_common_proof_v26.z64` | v25 with the Shocker's box in front of him (MKT's grab range) and MKT's full miss (15 frames of shaking) |

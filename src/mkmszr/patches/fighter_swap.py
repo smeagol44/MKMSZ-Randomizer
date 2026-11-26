@@ -15,7 +15,7 @@ changes into the randomizer ROM:
 * the R4 tier/cost stock edits are recomputed from the randomizer ROM after any power-order
   shuffle (:func:`sektor_tiers.stock_edits`);
 * fighter file 0x87 and the donor samples go to the generated-output tail
-  ``[0x01820000, 0x0186E4C0)``, which must still be free (``0xFF``);
+  ``[0x01820000, 0x01880000)``, which must still be free (``0xFF``);
 * the Power Ups help text, the Power Ups icons (from donor art) and the outfit on the
   fighter's palette are applied;
 * the fixed loader (0x280 bytes for Sektor) goes into shared file 0x1A at KSEG0 ``0x801B30F0`` (pool tail
@@ -37,16 +37,16 @@ from ..rom import RomImage
 from .base import PatchContext
 from .rainbow_palette import LOAD_JAL_SITES
 
-FIGHTERS = ("sub-zero", "sektor", "reptile")
+FIGHTERS = ("sub-zero", "sektor", "reptile", "rayden")
 # Fighters built from their description (fighter_import.fighter_build, milestone 5): every word
 # the build changes is the fighter's, so no list is kept here.
-DESCRIBED = ("reptile",)
+DESCRIBED = ("reptile", "rayden")
 OUTPUT_SIZE = 0x02000000
 CLEAN_SIZE = 0x01000000
 FIXED_VA = 0xA01B30F0  # production pool tail after the Inventory legend (ends 0x801B30E6)
 POOL_BASE, POOL_END = 0x801AF820, 0x801B3420
 FILE_TABLE, FILE_1A, FILE_87 = 0x000A5010, 0x1A, 0x87
-TAIL = (0x01820000, 0x0186E4C0)
+TAIL = (0x01820000, 0x01880000)  # enlarged from 0x0186E4C0 for Rayden (Memory map)
 SOUND_TABLES = (0x00947000, 0x00980000)  # patch/subpatch/wave/book/track records
 
 # Fighter words (transplanted), by ROM offset or range [start, end).

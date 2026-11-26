@@ -69,7 +69,10 @@ def test_decompile_folds_a_known_argument(mkt: bytes) -> None:
      ("reptile", 19, "forceball_fast", 0x8004F9A4, ()),
      ("reptile", 19, "forceball_slow", 0x8004F8E4, ()),
      # MKT's flag 0x20 has no timer: the stealth length is the description's (step 4)
-     ("reptile", 19, "invisibility", 0x80073918, ())],
+     ("reptile", 19, "invisibility", 0x80073918, ()),
+     # generator step 5: the first program written by the generator, not by hand (2026-11-26)
+     ("rayden", 24, "reversed_lightning", 0x8004FA64, ()),
+     ("rayden", 24, "teleport", 0x8004F3F8, ())],
 )
 def test_generated_equals_accepted(mkt: bytes, fighter: str, fid: int, move: str, entry: int, args: tuple) -> None:
     g = gen.Generator(mkt, fid).move(entry, args)
@@ -123,3 +126,48 @@ def test_a_known_process_field_folds_the_bolt(mkt: bytes) -> None:
         calls = [s for s in stmts if s.kind == "call"]
         assert calls[0].args[0].const() == strike  # proj_set_strike
         assert [c.args[0].const() for c in calls if c.target == 0x80078230] == [check, check]
+
+
+@needs_mkt
+def test_reversed_lightning_reads_the_wrap_and_the_turn(mkt: bytes) -> None:
+    """D,B + LP (0x80077DF8(1)): MKT turns Rayden around (flip_single), the bolt's flight
+    callback 0x80078070 wraps it once at the screen edge (10 ticks), its strikes use reaction
+    0x81 (pushed towards the attacker), and he faces the opponent at the end."""
+
+    g = gen.Generator(mkt, 24).move(0x8004FA64)
+    ops = [s["op"] for s in g.steps]
+    assert ops == ["begin", "flip", "sound", "animate", "projectile", "sleep", "face", "end"]
+    made = projectile_of(g.steps)
+    assert made["wrap"] == {"cooldown": 10}
+    assert made["strike"]["reaction"] == "shock_stagger_toward"
+    assert all(s.get("src") for s in g.steps if len(s) > 1)  # provenance on every parameter
+
+
+@needs_mkt
+def test_teleport_reads_the_afterimage_and_the_relocation(mkt: bytes) -> None:
+    """D,U (propell 0x1D -> 0x80045624): a copy of Rayden playing table-1 slot 1 stays behind
+    (new_object + a process animating it), he is placed 67 px by the opponent (the side chosen by
+    the arena edges: the decompiler keeps both constants, -0x43 | 0x43), faces him and plays his
+    reappear (slot 0x22); Rayden's own branch of 0x80053AE8 folds by the fighter id."""
+
+    g = gen.Generator(mkt, 24).move(0x8004F3F8)
+    ops = [s["op"] for s in g.steps]
+    assert ops == ["begin", "stamp", "sound", "afterimage", "relocate", "face", "sound", "animate",
+                   "pose", "sleep", "end"]  # fmt: skip
+    assert g.steps[3]["anim"] == {"table": 1, "slot": 1} and g.steps[3]["rate"] == 2
+    assert g.steps[4]["dx"] == 67 and g.steps[6]["sound"] == {"fighter": 7}
+    assert g.unknown == []
+
+
+@needs_mkt
+def test_shocker_reading_names_the_grab_it_cannot_lower(mkt: bytes) -> None:
+    """HP release (quick special 0x1D -> 0x80073228): the generator reads the begin, the sounds
+    and the pose, and reports the grab it has no rule for (the grab test 0x8006CBE4, the damage
+    0x8006D824, the victim's routine); the program in moves/rayden.json is hand-written from this
+    reading (specials proof v25). A grab rule should empty this list."""
+
+    g = gen.Generator(mkt, 24).move(0x80073228)
+    assert [s["op"] for s in g.steps][:2] == ["begin", "sound"]
+    assert g.steps[0]["action_mkt"] == "0x122" and g.steps[1]["sound"] == {"fighter": 12}
+    calls = {u.split("call ")[1] for u in g.unknown if "call " in u}
+    assert {"0x8006CBE4", "0x8006D824", "0x80005140"} <= calls

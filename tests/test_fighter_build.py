@@ -120,7 +120,7 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     words = [int.from_bytes(built.file87[at + 4 * i : at + 4 * i + 4], "big") for i in range(n)]
     assert n == 6 and words[2] == words[5] == 0  # two phases of two frames, nothing borrowed
     slot = built.reactions["torpedo_carry"]
-    (_, records), = built.report["strike_records"]
+    records = dict(built.report["strike_records"])["torpedo"]
     assert records[0][1][8] == slot  # the strike's reaction byte
     entry = lp.REACTION_TABLE - 0x7FFFF400 + 4 * slot
     target = int.from_bytes(built.rom[entry : entry + 4], "big")
@@ -134,8 +134,9 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     # toggle); impact_mirror mirrors its frames in the art instead (v10-v12 flipped the actor
     # back, mirroring it around an anchor outside its box); the torpedo's three jumps (bounce,
     # bounce, drop) take the air map
-    assert ws.count(0x012A4826) == 1  # xor t1, t1, t2 (the facing bit)
-    assert ws.count(0x2739B05C) == 5  # input map: two begins without a turn, three jumps
+    assert ws.count(0x012A4826) == 2  # xor t1, t1, t2 (the facing bit): each lightning's burst
+    # input map: five begins without a turn (both lightnings, teleport, torpedo, Shocker), three jumps
+    assert ws.count(0x2739B05C) == 8
     # v11-v12 (owner screenshots, Wind): the burst goes to the enemy hit (the player's +0x640,
     # set by the collision core), at its whole position: path, path position, x, z; v15: the
     # bolt's own height kept (impact_keep_y), not the enemy's feet
@@ -300,3 +301,86 @@ def test_airborne_moves_hover_where_the_program_flew_level() -> None:
     assert window["every_tick"] == [{"op": "hover"}]
     carry = next(s for s in window["on_hit"] if s["op"] == "carry")
     assert [s["op"] for s in carry["every_tick"]] == ["hover", "pass_through"]
+
+
+@needs_roms
+def test_reversed_lightning_in_the_air_ice_blast_slot(roms: tuple[bytes, bytes]) -> None:
+    """Generator step 5 (specials proof v20): the generated D,B + LP program in Air Ice Blast's
+    slot (a new LP record), sharing the lightning's art with its own reaction (MKT 0x81); the
+    bolt wraps once at the screen edge by mirroring across the camera's centre."""
+
+    built = fb.build(*roms, "rayden")
+    assert built.selectors["reversed_lightning"] == 4
+    assert "projectile (0, 67, 3) shock_stagger_toward" in built.reactions
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    assert 0x24160100 in ws  # li s6, WRAP_ARMED
+    assert 0x8F290014 in ws and 0x87290000 in ws  # lw t1, 0x14(t9) (camera T), lh t1, 0(t9) (M00)
+    assert 0x2739188C in ws  # the turn 0x8003188C (flip), through t9
+    # v21 (owner on v20: "The bolt passes through enemies"; "with the zoomed out camera it
+    # doesn't spawn off screen"): its strike checks run with the player-actor pointer holding the
+    # bolt (sw s1 / sw s7 at 0x802E73DC), and the edge is judged at the bolt's own depth (view
+    # row 2 halfwords at +0xC: lh t1, 0xC(t9); the focal 0x8009A8E8)
+    assert ws.count(0xAD1173DC) >= 3 and ws.count(0xAD1773DC) >= 3  # 2 checks + the flight
+    assert 0x8729000C in ws and 0x8D08A8E8 in ws
+
+
+@needs_roms
+def test_teleport_relocates_with_an_afterimage_and_a_cooldown(roms: tuple[bytes, bytes]) -> None:
+    """Generator step 5 (specials proof v23): the generated D,U program in Directional Ice Up's
+    slot: the afterimage runs as an effect-class process (not a projectile: specials stay free),
+    the relocation is Sektor's reposition as a subroutine (enemy in range required by the
+    condition), and MKT's 0x40-tick cooldown (32 host ticks) holds a word the condition reads."""
+
+    from mkmszr.fighter_import import lower_special
+
+    built = fb.build(*roms, "rayden")
+    assert built.selectors["teleport"] == 5
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    assert 0x24040015 in ws  # li a0, 0x15: the afterimage process class
+    assert 0x24040020 in ws  # li a0, 32: the cooldown, in host ticks
+    assert 0x24040086 in ws  # li a0, 134: the relocation distance (67 px)
+    assert lower_special.RELOCATE_RANGE == 592
+
+
+@needs_roms
+def test_teleport_reappears_with_the_getup_and_its_own_sound(roms: tuple[bytes, bytes]) -> None:
+    """v24 (owner on v23): the reappear is the body's getup (host primary 0x22, MKT table-0
+    index 0x22, selected from table 0) with its built-in sound 7; the move's own sounds are
+    skipped (owner: one sound); the afterimage draws at its owner's +0xD8 in the palette its
+    frames name (Rayden's silhouette 0x800B9AF0)."""
+
+    built = fb.build(*roms, "rayden")
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    k = next(i for i, w in enumerate(ws) if w == 0x00002021 and ws[i + 1] == 0x24050022)  # a0 = 0, a1 = 0x22
+    assert ws[k + 2 : k + 4] == [0x3C198003, 0x2739FE54]  # the select 0x8002FE54, through t9
+    assert 0x8E2600D8 in ws  # lw a2, 0xD8(s1): the owner's draw offset for the afterimage
+
+
+@needs_roms
+def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> None:
+    """Specials proof v25: the Shocker (MKT 0x800AB9F4, HP released after 0x38 donor ticks)
+    sits in a release table hooked into the HP release event; the HP press callback is
+    wrapped to count the hold; the strike selects the shock-hold reaction in spare entry
+    0x4E (blocked entry 0x0E), whose routine is in the payload; sound 5 (two tracks) is
+    not ported yet."""
+
+    from mkmszr.fighter_import import commands as cmds
+    from mkmszr.fighter_import import lower_projectile as lp
+
+    built = fb.build(*roms, "rayden")
+    assert built.reactions["shock_hold"] == 0x4E
+    ((_, record),) = dict(built.report["strike_records"])["shocker"]
+    assert record[8:12] == bytes((0x4E, 0x05, 0x20, 0x00))  # reaction, blocked, damage 32, no chip
+    # v26 (owner on v25): the host box is (front edge, y, width back, height); v25's (0, ..., 61)
+    # lay behind him. MKT's grab range |dx| < 0x37 in front:
+    assert record[:8] == bytes.fromhex("0037000000370078")
+    entry = lp.REACTION_TABLE - 0x7FFFF400 + 4 * 0x4E
+    target = int.from_bytes(built.rom[entry : entry + 4], "big")
+    assert built.link_va <= target < built.link_va + len(built.payload)
+    slot = lambda record: record + cmds.PLAYER_TYPE_SLOT - cmds.VA_TO_ROM
+    hooks = [int.from_bytes(built.rom[slot(r) : slot(r) + 4], "big")
+             for r in (cmds.HP_RELEASE_RECORD, cmds.HP_PRESS_RECORD)]  # fmt: skip
+    assert all(built.link_va <= h < built.link_va + len(built.payload) for h in hooks)
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    assert 0x2908001C in ws  # slti t0, t0, 28: the hold gate (56 donor ticks at 2 per host tick)
+    assert built.report["unported_sounds"] == [("shocker", 5)]

@@ -16,7 +16,8 @@ A layer is ``{"anim": {"table", "slot", "phase" | "part", "frame"}}`` (``phase``
 script's phases, tokens dropped; ``part``: an MKT animation part, as the projectile art), or
 ``{"fx": {"animation", "dictionary", "frame"}}`` (a shared MKT effect, ``effects.
 mkt_animation_art``), with optional ``palette`` (MKT VA; default the recipe's), ``dx``/``dy``,
-``shade`` (0..1) and ``ghosts`` ``{"count", "dx"}`` (fading copies behind it, as motion).
+``shade`` (0..1), ``mirror`` (flipped about the origin: facing the other way) and ``ghosts``
+``{"count", "dx"}`` (fading copies behind it, as motion).
 All nine icons are reduced together to 63 colours (index 0 transparent), the shared palette.
 """
 
@@ -89,6 +90,14 @@ def _layer_frame(d: _Donor, layer: dict[str, Any]) -> tuple[effects.EffectFrame,
     return d.frame(layer["anim"]), None
 
 
+def _mirrored(frame: effects.EffectFrame) -> effects.EffectFrame:
+    """The frame flipped about the origin's vertical line (the fighter facing the other way)."""
+
+    rows = (frame.indices[y * frame.stride : y * frame.stride + frame.width][::-1].ljust(frame.stride, b"\0")
+            for y in range(frame.height))  # fmt: skip
+    return effects.EffectFrame(frame.width, frame.height, frame.width - frame.anchor_x, frame.anchor_y, b"".join(rows))
+
+
 def _radial(size: int, inner: RGB, outer: RGB):
     c = size / 2
 
@@ -108,6 +117,8 @@ def compose(d: _Donor, spec: dict[str, Any], palette: list[RGB], background: tup
     canvas = _Canvas(size, size, _radial(size, *background))
     for layer in spec["layers"]:
         frame, own = _layer_frame(d, layer)
+        if layer.get("mirror"):
+            frame = _mirrored(frame)
         pal = d.palette(_int(layer["palette"])) if "palette" in layer else (own or palette)
         left = _int(layer.get("dx", 0)) - frame.anchor_x - x0
         top = _int(layer.get("dy", 0)) - frame.anchor_y - y0
