@@ -90,6 +90,7 @@
               -115,
               0
             ],
+            "follow": "opponent",
             "end": "animation"
           },
           "src": {
@@ -100,6 +101,7 @@
             "strike": "MKT 0x800B0164",
             "palette": "MKT 0x800B9B04",
             "impact": "MKT 0x80078124",
+            "follow": "MKT 0x800781F0",
             "reaction": "MKT 0x800539A8"
           }
         },

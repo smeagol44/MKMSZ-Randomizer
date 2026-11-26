@@ -53,6 +53,8 @@ ACTOR_D8 = 0x46  # projectile actor +0xD8, as Quan Chi's
 UNITS_PER_PX = 2
 MKT_TABLE1 = 0x168  # MKT get_char_ani table 1 (heap-relative)
 KSEG1_TO_KSEG0 = 0x20000000
+FOLLOW_SP = 0x24  # the child's frame: four offset words (0x20 is the texture handle)
+FOLLOW_FIELDS = (host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Y, host.ACTOR_Z)
 HIT_X, HIT_Y = 0x802E83D8, 0x802C1BA0  # a projectile's victim x / y at its last hit (0x8002DCB0)
 ACTOR_FLAGS, FACING_BIT = 0x8C, 0x10  # actor facing (0x800344F4, 0x8002B6F4)
 
@@ -109,16 +111,22 @@ REACTION_LOWERING["acid_stagger"] = {
 # attacker at 0x26666, the hit voice, the victim's slot 0x20 played twice at rate 2 with its
 # per-fighter shock palette (0x800A38B0[fighter], into process +0x440): the victim staggers back
 # and blinks cyan. The host: Acid Spit's stumble (the same push; it plays the victim's root 0x20)
-# plus a blink helper (``blink``) that alternates the victim's colour (actor +0xFC/+0xFE/+0x100,
-# red/green/blue, 0x80 normal) with cyan, as host enemies have no MKT palettes.
+# plus a blink helper (``blink``) that alternates the victim's colour with cyan, as host enemies
+# have no MKT palettes. The host draw (0x80018A8C) tints each actor through its per-vertex
+# colours, red +0xA0..+0xA3, green +0xA4..+0xA7, blue +0xA8..+0xAB (one byte per corner), and
+# recomputes them from the stage lighting (0x80024F74) every draw while actor +0x8C bit 0x1000 is
+# set. The host's own flash does the same: 0x80034740 clears the bit and writes the colours (the
+# shocked player brightens them, 0x80055858), 0x80034658 sets it again. Specials proof v16 wrote
+# +0xFC/+0xFE/+0x100, which the draw reads only as alpha (+0xFC, under +0x8C & 0x6000): no blink.
 REACTION_LOWERING["shock_stagger"] = {
     **REACTION_LOWERING["acid_stagger"],
     "donor_push": 0x26666,  # MKT 0x800539E8: away_x_vel 0x26666
     "blink": {"colour": (0x20, 0xFF, 0xFF), "count": 8, "every": 2},
 }
 BLINK_PROCESS_ID = 0x100  # as the stealth timer
-ACTOR_RGB = (0xFC, 0xFE, 0x100)
-NORMAL_RGB = 0x80
+ACTOR_LIT_BIT = 0x1000  # actor +0x8C: colours from the stage lighting every draw
+ACTOR_VERTEX_RGB = (0xA0, 0xA4, 0xA8)  # four corner bytes each
+NORMAL_RGB = 0x80  # 0x80034740's unlit colour
 # Host-kind reactions: a stock reaction-table entry used as is (no payload code). The roundhouse
 # launch 0x0C knocks the victim away and runs the victim morphs (Rayden's lightning stand-in).
 REACTION_LOWERING["launch"] = {"kind": "host", "slot": 0x0C}
@@ -366,8 +374,12 @@ def place_art(
     if len(flight_palette) > 32:
         raise ValueError("flight palette must fit 32 colours")
     colours = flight_palette + [0] * (32 - len(flight_palette))
-    rels = list(dict.fromkeys(flight.frames))
-    frames = [_frame(donor, r, 0) for r in rels]
+    # One drawn frame per (part, donor frame): a donor frame can open the impact and close the
+    # flight loop (Rayden's 0x2024); the impact's copy takes the impact palette (and mirror), so
+    # keyed by the donor frame alone it replaced the flight's: the bolt jumped ~115 px ahead
+    # once per loop (specials proof v16, owner video).
+    keys = [("flight", r) for r in dict.fromkeys(flight.frames)]
+    frames = [_frame(donor, r, 0) for _, r in keys]
     if impact is not None:
         impact_palette = (
             list(effects.mkt_palette(mkt, impact.palette)) if impact.palette else flight_palette
@@ -376,18 +388,18 @@ def place_art(
         impact_rels = list(dict.fromkeys(impact.frames))
         axis = mirror_axis(donor, impact_rels) if impact_mirror else None
         frames += [_frame(donor, r, 32, axis) for r in impact_rels]
-        rels += impact_rels
+        keys += [("impact", r) for r in impact_rels]
     if helper is not None:  # the helper's frames take the flight palette (MKT binds it from them)
-        helper_rels = [r for r in dict.fromkeys(helper.frames) if r not in rels]
+        helper_rels = [r for r in dict.fromkeys(helper.frames) if ("flight", r) not in keys]
         frames += [_frame(donor, r, 0) for r in helper_rels]
-        rels += helper_rels
+        keys += [("flight", r) for r in helper_rels]
     art = effects.EffectArt(tuple(frames), tuple(colours), compressed=True)
     placed = effects.layout(art, (cursor + 3) & ~3)
     put(bytes(placed.offset - cursor) + placed.data)
     script_at = placed.script - placed.offset
     shape = {
-        rel: int.from_bytes(placed.data[script_at + 4 * i : script_at + 4 * i + 4], "big")
-        for i, rel in enumerate(rels)
+        key: int.from_bytes(placed.data[script_at + 4 * i : script_at + 4 * i + 4], "big")
+        for i, key in enumerate(keys)
     }
 
     def script(words: list[int]) -> int:
@@ -397,8 +409,8 @@ def place_art(
     # Frames shown by the close-range check steps appear once each (one advance per step);
     # the rest at ``rate``; the loop goes back to the donor's loop frame (MKT acid: 0x31B0).
     early = len(step.get("checks", []))
-    flight_words = [shape[r] for r in flight.frames[:early]]
-    flight_words += [shape[r] for r in flight.frames[early:] for _ in range(rate)]
+    flight_words = [shape["flight", r] for r in flight.frames[:early]]
+    flight_words += [shape["flight", r] for r in flight.frames[early:] for _ in range(rate)]
     loop_word = (flight.loop_from if flight.loop_from < early
                  else early + (flight.loop_from - early) * rate)  # fmt: skip
     flight_at = cursor
@@ -407,7 +419,7 @@ def place_art(
     entries = [(slots[0] if slots else 0, flight_at)]
     if impact is not None:
         impact_rate = _int(impact_step["rate"])
-        impact_words = [shape[r] for r in impact.frames for _ in range(impact_rate)]
+        impact_words = [shape["impact", r] for r in impact.frames for _ in range(impact_rate)]
         impact_ticks = len(impact_words)
         impact_at = cursor
         script(impact_words + [1, impact_at + 4 * (impact_ticks - 1)])  # hold the last frame
@@ -420,7 +432,7 @@ def place_art(
         # owner's current body pose (:func:`emit_helper`), so it cannot drift from the body.
         helper_at = cursor
         n = len(helper.frames)
-        script([shape[r] for r in helper.frames] + [1, helper_at + 4 * (n - 1)])
+        script([shape["flight", r] for r in helper.frames] + [1, helper_at + 4 * (n - 1)])
         if slots is not None:
             entries.append((helper_slot, helper_at))
     virtual = slots is None
@@ -540,6 +552,10 @@ class Lowered:
     # Keep the projectile's own y at the opponent: MKT's objects share the fighters' ground y, but
     # the host projectile is raised by its offset (Acid Spit v13: splash 36 px below the hit).
     impact_keep_y: bool = False
+    # MKT's burst copies the opponent's x / y velocity into itself every tick (0x800781F0), so it
+    # rides with the push. The host: every tick the impact keeps its offset from the victim it
+    # was placed on (path position, x, y, z), until the victim's controller holds another actor.
+    impact_follow: bool = False
 
 
 def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
@@ -586,6 +602,7 @@ def lower(
         events.get("hum"), _int(step.get("hum", {}).get("every", 0)), events.get("impact"),
         meaning, checks, impact.get("at") == "opponent",
         _int(impact.get("adjust", [0, 0])[0]) * UNITS_PER_PX,
+        impact_follow=impact.get("follow") == "opponent",
     )  # fmt: skip
 
 
@@ -713,6 +730,8 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         host.load_controller(a)
         a.sw("zero", 0x14, "s1")
         if p.impact_at_opponent and p.impact_at_hit:  # on the enemy hit (see Lowered)
+            if p.impact_follow:
+                a.move("s5", "zero")  # no victim: nothing to follow
             a.lui("t0", host.hi(host.PLAYER_CTRL))
             a.lw("t0", host.lo(host.PLAYER_CTRL), "t0")
             a.lw("t0", host.CTRL_OPPONENT, "t0")
@@ -728,6 +747,11 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
             for field in fields:
                 a.lw("t1", field, "t0")
                 a.sw("t1", field, "s1")
+            if p.impact_follow:  # the victim: its controller (s4) and actor (s5)
+                a.lui("s4", host.hi(host.PLAYER_CTRL))
+                a.lw("s4", host.lo(host.PLAYER_CTRL), "s4")
+                a.lw("s4", host.CTRL_OPPONENT, "s4")
+                a.move("s5", "t0")
         elif p.impact_at_opponent:  # on the opponent, facing the attacker, MKT's adjust
             a.lw("t0", host.CTRL_OPPONENT, "s0")
             a.beqz("t0", prefix + "no_opponent")
@@ -756,9 +780,32 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
             a.li("a0", 1)
             a.li("a1", p.art.impact_slot)
             a.jal(F_SELECT)
+        follow = p.impact_follow and p.impact_at_opponent and p.impact_at_hit
+        if follow:  # the offsets from the victim, after the adjust (no victim: s5 = 0)
+            host.load_controller(a)
+            a.beqz("s5", prefix + "follow_none")
+            for k, field in enumerate(FOLLOW_FIELDS):
+                a.lw("t1", field, "s1")
+                a.lw("t2", field, "s5")
+                a.subu("t1", "t1", "t2")
+                a.sw("t1", FOLLOW_SP + 4 * k, "sp")
+            a.label(prefix + "follow_none")
         a.li("s2", p.art.impact_ticks)
         a.label(prefix + "impact_loop")
         host.load_controller(a)
+        if follow:
+            a.beqz("s5", prefix + "follow_skip")
+            a.lw("t0", host.CTRL_ACTOR, "s4")
+            a.bne("t0", "s5", prefix + "follow_lost")
+            for k, field in enumerate(FOLLOW_FIELDS):
+                a.lw("t1", field, "s5")
+                a.lw("t2", FOLLOW_SP + 4 * k, "sp")
+                a.addu("t1", "t1", "t2")
+                a.sw("t1", field, "s1")
+            a.beq("zero", "zero", prefix + "follow_skip")
+            a.label(prefix + "follow_lost")
+            a.move("s5", "zero")  # the victim gone: stay put
+            a.label(prefix + "follow_skip")
         a.move("a0", "s1")
         a.jal(F_ADVANCE)
         a.li("a0", 1)
@@ -1000,27 +1047,43 @@ def emit_blink_start(a: Assembler, blink: str, then: str) -> None:
 
 def emit_blink(a: Assembler, label: str, rgb: tuple[int, int, int], count: int, every: int) -> None:
     """Process ``label``: ``count`` times, every ``every`` ticks, the victim's colour alternates
-    between ``rgb`` and normal, then normal; it stops touching the victim as soon as its
+    between ``rgb`` (lighting paused, the corner colours written) and its own (the lighting bit
+    as it was, or the unlit colour), then its own; it stops touching the victim as soon as its
     controller holds another actor (the victim gone)."""
+
+    def colours(values: tuple[int, int, int]) -> None:
+        for base, value in zip(ACTOR_VERTEX_RGB, values):
+            a.li("t1", value)
+            for corner in range(4):
+                a.sb("t1", base + corner, "s3")
+
+    def own(relight: str) -> None:  # the lighting bit back (lit actors), or the unlit colour
+        a.bnez("s6", relight)
+        colours((NORMAL_RGB,) * 3)
+        a.label(relight)
+        a.lhu("t1", ACTOR_FLAGS, "s3")
+        a.or_("t1", "t1", "s6")
+        a.sh("t1", ACTOR_FLAGS, "s3")
 
     a.label(label)
     host.load_controller(a)
     a.lw("s2", 0x6F4, "s0")  # the victim's controller
     a.lw("s3", host.CTRL_ACTOR, "s2")  # its actor, as at the start
+    a.lhu("s6", ACTOR_FLAGS, "s3")
+    a.andi("s6", "s6", ACTOR_LIT_BIT)  # lit by the stage
     a.li("s4", count)
-    a.move("s5", "zero")  # 0: tint next, 1: normal next
+    a.move("s5", "zero")  # 0: tint next, 1: own next
     a.label(label + "_step")
     a.lw("t0", host.CTRL_ACTOR, "s2")
     a.bne("t0", "s3", label + "_exit")
-    a.bnez("s5", label + "_normal")
-    for field, value in zip(ACTOR_RGB, rgb):
-        a.li("t1", value)
-        a.sh("t1", field, "s3")
+    a.bnez("s5", label + "_own")
+    a.lhu("t1", ACTOR_FLAGS, "s3")
+    a.andi("t1", "t1", 0xFFFF ^ ACTOR_LIT_BIT)
+    a.sh("t1", ACTOR_FLAGS, "s3")
+    colours(rgb)
     a.beq("zero", "zero", label + "_set")
-    a.label(label + "_normal")
-    a.li("t1", NORMAL_RGB)
-    for field in ACTOR_RGB:
-        a.sh("t1", field, "s3")
+    a.label(label + "_own")
+    own(label + "_relight")
     a.label(label + "_set")
     a.li("t1", 1)
     a.xor("s5", "s5", "t1")
@@ -1030,9 +1093,7 @@ def emit_blink(a: Assembler, label: str, rgb: tuple[int, int, int], count: int, 
     a.bnez("s4", label + "_step")
     a.lw("t0", host.CTRL_ACTOR, "s2")
     a.bne("t0", "s3", label + "_exit")
-    a.li("t1", NORMAL_RGB)
-    for field in ACTOR_RGB:
-        a.sh("t1", field, "s3")
+    own(label + "_relight_end")
     a.label(label + "_exit")
     a.jal(F_EXIT)
 

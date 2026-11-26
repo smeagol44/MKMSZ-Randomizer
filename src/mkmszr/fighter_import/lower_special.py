@@ -90,7 +90,10 @@ FACING_BIT = 0x10
 # specials proof v15: "the roundhouse kick one, not the uppercut"). ``uppercut``: 0x800507D0,
 # Runtime-confirmed (Sektor teleport).
 STOCK_REACTIONS = {"launch": 0x0C, "uppercut": 0x08}
-SOLID_BIT = 0x1000  # actor +0x8C: Freeze on Contact clears it while it runs (0x80034740 / 0x80034658)
+# actor +0x8C: the draw takes the actor's colours from the stage lighting while it is set
+# (0x800188B4 -> 0x80024F74); Freeze on Contact clears it while it runs (0x80034740 / 0x80034658).
+# Named LIT_BIT until specials proof v17: the pass-through does not depend on it.
+LIT_BIT = 0x1000
 
 
 def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
@@ -253,7 +256,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     separation is not located). Specials proof v15 stopped at the victim. From v16 each
     pass-through tick clears actor ``+0x8C`` bit ``0x1000`` as stock Freeze on Contact does while
     Sub-Zero runs through enemies, and re-applies the move's last speed (kept in ``s5``); ``end``
-    sets the bit again (Hypothesis until runtime-tested)."""
+    sets the bit again (Runtime-confirmed together, Reptile v16). The bit's only reader is the
+    draw's stage lighting (:data:`LIT_BIT`), so the speed is what lets him through (inference)."""
 
     records: list[tuple[str, bytes]] = []
     shakers: list[tuple[str, dict[str, Any]]] = []
@@ -370,7 +374,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             elif op == "pass_through":  # see the docstring
                 host.load_controller(a)
                 a.lhu("t0", lp.ACTOR_FLAGS, "s1")
-                a.andi("t0", "t0", 0xFFFF ^ SOLID_BIT)
+                a.andi("t0", "t0", 0xFFFF ^ LIT_BIT)
                 a.sh("t0", lp.ACTOR_FLAGS, "s1")
                 if moves:
                     a.move("a0", "s1")
@@ -535,7 +539,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 if passes:
                     host.load_controller(a)
                     a.lhu("t0", lp.ACTOR_FLAGS, "s1")
-                    a.ori("t0", "t0", SOLID_BIT)
+                    a.ori("t0", "t0", LIT_BIT)
                     a.sh("t0", lp.ACTOR_FLAGS, "s1")
                 if moves:  # MKT's reaction_exit leaves no motion behind
                     host.load_controller(a)

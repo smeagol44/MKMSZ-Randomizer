@@ -164,6 +164,51 @@ def test_shock_stagger_starts_the_blink_then_the_stumble(roms: tuple[bytes, byte
     assert 0x24040100 in head  # addiu a0, zero, 0x100: the blink process
     assert 0xAC5006F4 in head  # sw s0, 0x6F4(v0): the victim's controller as its argument
     assert any((w >> 26) == 2 for w in head)  # j: on into the stumble, as the reaction itself
+    # v17 (owner: no blink in v16): the draw tints through the per-vertex colours +0xA0..+0xAB
+    # and recomputes them from the stage lighting while actor +0x8C bit 0x1000 is set
+    assert 0x3129EFFF in ws  # andi t1, t1, 0xEFFF: lighting paused
+    assert {0xA26900A0 + k for k in range(12)} <= set(ws)  # sb t1, 0xA0..0xAB(s3)
+    assert 0x01364825 in ws  # or t1, t1, s6: the lighting bit back as it was
+    assert not {0xA66900FC, 0xA66900FE, 0xA6690100} & set(ws)  # v16's sh t1, +0xFC..(s3)
+
+
+@needs_roms
+def test_lightning_burst_follows_the_victim(roms: tuple[bytes, bytes]) -> None:
+    """v17 (owner: the burst should follow the pushed enemy): MKT's burst copies the opponent's
+    velocity every tick (0x800781F0); the host burst keeps its offset from the victim (path
+    position, x, y, z) every tick."""
+
+    built = fb.build(*roms, "rayden")
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    for k, field in enumerate((0xE0, 0x2C, 0x30, 0x34)):
+        assert 0xAFA90024 + 4 * k in ws  # sw t1, 0x24+4k(sp): the offset
+        assert 0x8EA90000 + field in ws  # lw t1, field(s5): the victim's
+        assert 0x8FAA0024 + 4 * k in ws  # lw t2, 0x24+4k(sp)
+
+
+@needs_roms
+def test_a_frame_shared_by_flight_and_impact_is_drawn_twice(roms: tuple[bytes, bytes]) -> None:
+    """v17 (owner video: the bolt jumped ahead once per loop): Rayden's donor frame 0x2024 ends
+    the flight loop and opens the burst; the burst's copy (mirrored, its own palette) replaced
+    the flight's. Each part now has its own drawn frames."""
+
+    from mkmszr.fighter_import import components
+    from mkmszr.fighter_import import lower_projectile as lp
+
+    moves, _ = components.load_programs("rayden")
+    step = next(s for m in moves if m.name == "lightning" for s in m.steps if s["op"] == "projectile")
+    file87 = bytearray(0x200)
+    art = lp.place_art(file87, roms[1], 24, step, None, 1 << 24, impact_mirror=True)
+
+    def script(at: int) -> set[int]:
+        words = []
+        while (w := int.from_bytes(file87[at : at + 4], "big")) != 1:
+            words.append(w)
+            at += 4
+        return set(words)
+
+    assert len(script(art.flight_at)) == 6 and len(script(art.impact_at)) == 7
+    assert not script(art.flight_at) & script(art.impact_at)
 
 
 @needs_roms
