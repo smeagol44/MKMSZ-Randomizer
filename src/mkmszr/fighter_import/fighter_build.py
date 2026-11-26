@@ -80,6 +80,26 @@ class BuildError(ValueError):
     pass
 
 
+def with_hover(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A move tuned ``airborne`` (it may start in the air, Rayden's torpedo) flies level on the
+    host: ``hover`` (no gravity, no y motion, the airborne counter kept) after its begin and on
+    every tick of its hit windows and carries. MKT's objects do not fall during a special, so
+    this is the host's, not part of the move program (generator step 4, 2026-11-26)."""
+
+    out: list[dict[str, Any]] = []
+    for s in steps:
+        s = dict(s)
+        for key in ("on_hit", "on_block", "steps"):
+            if key in s:
+                s[key] = with_hover(s[key])
+        if s["op"] in ("strike", "carry"):
+            s["every_tick"] = [{"op": "hover"}, *with_hover(s.get("every_tick", []))]
+        out.append(s)
+        if s["op"] == "begin":
+            out.append({"op": "hover"})
+    return out
+
+
 def impact_mirror(proj: dict[str, Any], ptune: dict[str, Any]) -> bool:
     """Host corrections for an "at opponent" impact, on by default since specials proof v19
     (Reptile, after Rayden v09-v18): MKT's ``flip_single`` faces it to the attacker, and the host
@@ -219,6 +239,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             steps = [dict(s, ticks=_int(tune["sleep_ticks"])) if s["op"] == "sleep" else s for s in steps]
         if "strike_ticks" in tune:  # owner: a longer hit window (Rayden's torpedo, specials proof v05)
             steps = [dict(s, ticks=_int(tune["strike_ticks"])) if s["op"] == "strike" else s for s in steps]
+        if tune.get("airborne"):  # level flight while it may have started in the air (host detail)
+            steps = with_hover(steps)
         ticks_per = _int(tune.get("donor_ticks", 1))
         if ticks_per > 1:  # projectile frame rates are donor ticks too (Rayden's lightning, v09)
             steps = [_projectile_rates(s, ticks_per) if s["op"] == "projectile" else s for s in steps]

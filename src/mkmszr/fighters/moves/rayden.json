@@ -77,6 +77,26 @@
             "reaction": "shock_stagger",
             "blocked_reaction": "blocked"
           },
+          "checks": [
+            {
+              "box": [
+                101,
+                36,
+                64,
+                16
+              ],
+              "after": 1
+            },
+            {
+              "box": [
+                101,
+                36,
+                64,
+                16
+              ],
+              "after": 2
+            }
+          ],
           "palette": "0x800B9B04",
           "impact": {
             "anim": {
@@ -100,6 +120,7 @@
             "rate": "MKT 0x80077FF0",
             "strike": "MKT 0x800B0164",
             "palette": "MKT 0x800B9B04",
+            "checks": "MKT 0x80078230",
             "impact": "MKT 0x80078124",
             "follow": "MKT 0x800781F0",
             "reaction": "MKT 0x800539A8"
@@ -141,9 +162,6 @@
             "face": "MKT 0x800504A0",
             "stop": "MKT 0x80045184"
           }
-        },
-        {
-          "op": "hover"
         },
         {
           "op": "sound",
@@ -198,11 +216,6 @@
             "blocked_reaction": "blocked"
           },
           "ticks": 26,
-          "every_tick": [
-            {
-              "op": "hover"
-            }
-          ],
           "on_hit": [
             {
               "op": "sound",
@@ -217,9 +230,6 @@
               "op": "carry",
               "ticks": 32,
               "every_tick": [
-                {
-                  "op": "hover"
-                },
                 {
                   "op": "pass_through",
                   "ticks": 1,

@@ -73,6 +73,8 @@ Globals: `0x8014C31C` current process (`+0x418` object, `+0x3BC` opponent object
 
 **Strike record** (`0x10` bytes, from `strike_box_check` and the [elbow-dash records](MKT-Adapter-Primitives#strike-and-reaction-translation)): box `x, y, w, h` (4 × u16); u16 reactions (high byte = victim reaction, table `0x800A8AE0`; low byte = blocked reaction, table `0x800A8D28`); u16 damage (high byte = damage, low byte = block damage); u16 `1`; u16 `0`.
 
+- Projectile rules (2026-11-26, Static-confirmed): `char_ani_part2` `0x8000D12C` (`get_char_ani(0, slot)`, then the cursor past part 1), `proj_strike_check` `0x8007F878` (object, strike index: one check), `proj_object_here` `0x8007F9E8` (the projectile object from the current selection's first frame, matched to the owner; process `+0x440`), `his_ft_sound` `0x80005810` (`ft_sound` as the opponent's fighter: in a victim reaction, the attacker's sound). `proj_process` (`0x8007F014`) hands the child the parent's `+0x3BC`, `+0x3C0` and `+0x440` (as the child's object `+0x418`); the parent then writes the child's `+0x440` itself.
+
 ## Reptile (MKT fighter 19)
 
 Commands. Masks are button bits; tokens are newest first and as facing right. `0x40` is Low Kick (cross-checked); the other button names are lineage **Hypothesis**: `0x80` LP, `0x10` HP, `0x20` HK, `0x08` Block. Token `9` = toward, `8` = away, `7` = Down; `6` = Up is **Hypothesis**.

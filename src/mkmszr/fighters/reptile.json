@@ -94,7 +94,11 @@
           "0x0D",
           "0x12"
         ],
-        "helper_slot": "0x26"
+        "helper_slot": "0x26",
+        "offset_px": [
+          -30,
+          -36
+        ]
       }
     },
     "forceball_slow": {
@@ -104,7 +108,11 @@
           "0x0D",
           "0x12"
         ],
-        "helper_slot": "0x26"
+        "helper_slot": "0x26",
+        "offset_px": [
+          -30,
+          -36
+        ]
       }
     },
     "acid_spit": {

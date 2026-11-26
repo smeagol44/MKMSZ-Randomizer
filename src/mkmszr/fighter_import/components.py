@@ -122,7 +122,7 @@ COMPONENTS: dict[str, dict[str, str]] = {
         "impact": "impact",
     },
     # state
-    "stealth": {"ticks": "ticks"},
+    "stealth": {},  # its length: the description's Ice-paid timer (specials.<move>.stealth)
     "stamp": {"key": "str"},
 }
 

@@ -52,7 +52,19 @@ REGISTRY: dict[int, MktRoutine] = {
     0x800052CC: _e("random_group_sound", "", "random sound from a two-entry group"),
     0x800054A8: _e("triple_sound", "a0 = entry", "sound from table 0x800A1AA8 with position pan"),
     0x80005760: _e("ft_sound", "a0 = entry", "per-fighter sound: table 0x800A1ED4[fighter][entry]"),
+    0x80005810: _e(
+        "his_ft_sound",
+        "a0 = entry",
+        "ft_sound as the opponent's fighter (in a victim reaction: the attacker's sound)",
+        _M,
+    ),
     # -- animation --------------------------------------------------------------------------
+    0x8000D12C: _e(
+        "char_ani_part2",
+        "a0 = slot",
+        "get_char_ani(0, slot), then the cursor past part 1 (to part 2); Rayden's bolt and burst",
+        _M,
+    ),
     0x8000D1A4: _e(
         "skip_frame", "", "advance the animation cursor (+0x41C) past the next zero word", _M
     ),
@@ -343,6 +355,19 @@ REGISTRY: dict[int, MktRoutine] = {
         "proj_object", "", "create the projectile object and match_ani_points to the owner"
     ),
     0x8007F860: _e("proj_recover", "", "attacker recovery after a projectile"),
+    0x8007F878: _e(
+        "proj_strike_check",
+        "a0 = object, a1 = strike index",
+        "one strike check of a projectile object with the fighter's strike record a1 (0x8000: hit)",
+        _M,
+    ),
+    0x8007F9E8: _e(
+        "proj_object_here",
+        "a0 = owner object",
+        "create the projectile object from the current selection's first frame (its palette), "
+        "matched to the owner (process +0x440)",
+        _M,
+    ),
     # -- Sektor (frozen legacy; readings in MKT-Adapter-Primitives) -----------------------------
     0x80057B08: _e("r_rocket", "", "rocket reaction (victim)"),
     0x80057BEC: _e("zap_stumble", "", "stumble reaction"),
