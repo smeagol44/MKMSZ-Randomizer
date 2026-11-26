@@ -115,9 +115,7 @@
           -30,
           -36
         ],
-        "box": "centre_on_art",
-        "impact_flip": false,
-        "impact_keep_y": true
+        "box": "centre_on_art"
       }
     },
     "elbow_dash": {

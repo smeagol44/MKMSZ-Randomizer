@@ -23,6 +23,35 @@ V22_PAYLOAD_SHA256 = "bdff766ee9a94fd7d2c869029f9167ca89066db0497d81727a395a2737
 # still reproduces V22_PAYLOAD_SHA256.
 PAYLOAD_SHA256 = "9b8f6f00e04dd1889dd41550b4edf8a6801d5c8442fbdf17f1e5d89b3b51f1d6"
 V22_FILE87_SHA256 = "71bf66f35be7a6fe4c65cfddd318e30a83b892693cfe6dd0bb806ef8733a32be"
+# Reptile specials proof v23 (owner, 2026-11-26: "Acid spit works now"): the impact defaults
+# (the enemy hit, MKT's flip with the art mirrored, the spit's own height). With his earlier
+# acid settings (ACCEPTED_ACID_TUNING) the build still gives PAYLOAD_SHA256 / V22_FILE87_SHA256.
+V23_PAYLOAD_SHA256 = "0249818fe8126966d4fd49545682758b82005776f829d13c56f30cf19fbdaaea"
+V23_FILE87_SHA256 = "64e6d394ef95aad23ad45eb522c28d4ad3d88730919ade2b786d705cb2784bab"
+
+
+# Reptile's Acid Spit placement before v23 (his proofs v11-v22): the flip dropped, the impact
+# at the player's opponent, unmirrored. Proof v23 took the defaults Rayden needed (accepted).
+ACCEPTED_ACID_TUNING = {"impact_flip": False, "impact_keep_y": True, "impact_at_hit": False,
+                        "impact_mirror": False}  # fmt: skip
+
+
+def accepted_acid(monkeypatch: pytest.MonkeyPatch) -> None:
+    import dataclasses
+
+    from mkmszr.fighter_import import description
+
+    real = description.load
+
+    def load(name: str):  # type: ignore[no-untyped-def]
+        d = real(name)
+        if name != "reptile":
+            return d
+        specials = {k: dict(v) for k, v in d.specials.items()}
+        specials["acid_spit"]["projectile"] = {**specials["acid_spit"]["projectile"], **ACCEPTED_ACID_TUNING}
+        return dataclasses.replace(d, specials=specials)
+
+    monkeypatch.setattr(description, "load", load)
 
 
 @pytest.fixture(scope="module")
@@ -33,11 +62,20 @@ def roms() -> tuple[bytes, bytes]:
 @needs_roms
 def test_generic_build_reproduces_the_accepted_reptile(roms: tuple[bytes, bytes]) -> None:
     built = fb.build(*roms, "reptile")
-    assert hashlib.sha256(built.payload).hexdigest() == PAYLOAD_SHA256
-    assert hashlib.sha256(built.file87).hexdigest() == V22_FILE87_SHA256
+    assert hashlib.sha256(built.payload).hexdigest() == V23_PAYLOAD_SHA256
+    assert hashlib.sha256(built.file87).hexdigest() == V23_FILE87_SHA256
     assert built.selectors == {"forceball_fast": 3, "forceball_slow": 4, "acid_spit": 5, "elbow_dash": 6,
                                "invisibility": 7}  # fmt: skip
     assert sorted(built.reactions.values()) == [0x23, 0x2B, 0x4C]
+
+
+@needs_roms
+def test_with_the_earlier_acid_settings_the_build_is_composition_v03(
+        roms: tuple[bytes, bytes], monkeypatch: pytest.MonkeyPatch) -> None:  # fmt: skip
+    accepted_acid(monkeypatch)
+    built = fb.build(*roms, "reptile")
+    assert hashlib.sha256(built.payload).hexdigest() == PAYLOAD_SHA256
+    assert hashlib.sha256(built.file87).hexdigest() == V22_FILE87_SHA256
 
 
 @needs_roms
@@ -62,6 +100,7 @@ def test_without_the_morph_the_build_is_the_accepted_one(roms: tuple[bytes, byte
                                                          monkeypatch: pytest.MonkeyPatch) -> None:  # fmt: skip
     from mkmszr.fighter_import import lower_projectile as lp
 
+    accepted_acid(monkeypatch)
     spec = {k: v for k, v in lp.REACTION_LOWERING["knockback_arc"].items() if k != "morph"}
     monkeypatch.setitem(lp.REACTION_LOWERING, "knockback_arc", spec)
     assert hashlib.sha256(fb.build(*roms, "reptile").payload).hexdigest() == V22_PAYLOAD_SHA256
@@ -232,3 +271,15 @@ def test_somersault_anchors_move_to_the_body(roms: tuple[bytes, bytes]) -> None:
                            ("reptile", [])):  # fmt: skip
         body = fb.body_build.build_body(fb.fd.load(name), clean, mkt, fb.body_build.Extras())
         assert [line for line in body.log if "SOMERSAULT" in line] == expected
+
+
+@needs_roms
+def test_reptile_acid_takes_the_impact_defaults(roms: tuple[bytes, bytes]) -> None:
+    """Reptile specials proof v23 (accepted): Acid Spit's splash goes to the enemy hit, at its
+    whole position (as Rayden's burst, v12), with MKT's flip and the art mirrored."""
+
+    built = fb.build(*roms, "reptile")
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    i = next(k for k, w in enumerate(ws) if w == 0x8D081AC0 and ws[k + 1] == 0x8D080640)
+    copies = [w for w in ws[i : i + 20] if (w >> 16) == 0x8D09]  # lw t1, field(t0)
+    assert [w & 0xFFFF for w in copies] == [0xDC, 0xE0, 0x2C, 0x34]

@@ -80,6 +80,18 @@ class BuildError(ValueError):
     pass
 
 
+def impact_mirror(proj: dict[str, Any], ptune: dict[str, Any]) -> bool:
+    """Host corrections for an "at opponent" impact, on by default since specials proof v19
+    (Reptile, after Rayden v09-v18): MKT's ``flip_single`` faces it to the attacker, and the host
+    then draws it the other way, so its art is mirrored (``place_art``); the impact also goes to
+    the enemy the strike hit, at its whole position (``impact_at_hit``), and keeps the
+    projectile's own height (``impact_keep_y``). A description can still turn each off."""
+
+    at_opponent = proj.get("impact", {}).get("at") == "opponent"
+    flip = bool(ptune.get("impact_flip", True))
+    return bool(ptune.get("impact_mirror", at_opponent and flip))
+
+
 def _int(v: Any) -> int:
     return int(v, 0) if isinstance(v, str) else int(v)
 
@@ -232,7 +244,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                                    helper=helper,
                                    helper_slot=_int(ptune["helper_slot"]) if "helper_slot" in ptune else None,
                                    throw_rate=int(throw["rate"]),
-                                   impact_mirror=bool(ptune.get("impact_mirror", False)))  # fmt: skip
+                                   impact_mirror=impact_mirror(proj, ptune))  # fmt: skip
                 needed = len(lp.projectile_sounds(proj))
                 events, samples_end = lp.install_sounds(
                     rom, clean, mkt, donor_id, proj, tuple(chains.take() for _ in range(needed)),
@@ -333,10 +345,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         if g is not None:
             ptune = tune.get("projectile", {})
             low = lp.lower(projectile_of[move], g.art, g.events, g.reaction_slot, clean)
-            if {"impact_flip", "impact_keep_y", "impact_at_hit"} & set(ptune):
-                low = dataclasses.replace(low, impact_flip=bool(ptune.get("impact_flip", True)),
-                                          impact_keep_y=bool(ptune.get("impact_keep_y", False)),
-                                          impact_at_hit=bool(ptune.get("impact_at_hit", False)))  # fmt: skip
+            low = dataclasses.replace(low, impact_flip=bool(ptune.get("impact_flip", True)),
+                                      impact_keep_y=bool(ptune.get("impact_keep_y", True)),
+                                      impact_at_hit=bool(ptune.get("impact_at_hit", True)))  # fmt: skip
             if "impact_toward_px" in ptune:  # owner: the impact nearer the attacker (facing him)
                 low = dataclasses.replace(low, impact_dx=low.impact_dx
                                           + _int(ptune["impact_toward_px"]) * lp.UNITS_PER_PX)  # fmt: skip
