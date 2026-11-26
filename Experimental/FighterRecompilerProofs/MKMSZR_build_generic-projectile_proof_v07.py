@@ -50,6 +50,13 @@ def projectile_step(move: str = "forceball_fast") -> dict:  # type: ignore[type-
     moves, _ = components.load_programs("reptile")
     (m,) = [m for m in moves if m.name == move]
     (step,) = [s for s in m.steps if s["op"] == "projectile"]
+    # Since generator step 4 the owner's spawn offset is in Reptile's description, as the generic
+    # build applies it (fighter_build: specials.<move>.projectile.offset_px)
+    from mkmszr.fighter_import import description
+
+    tune = description.load("reptile").specials.get(move, {}).get("projectile", {})
+    if "offset_px" in tune:
+        step = dict(step, offset=list(tune["offset_px"]))
     return step
 
 
