@@ -77,6 +77,26 @@
             "reaction": "shock_stagger",
             "blocked_reaction": "blocked"
           },
+          "checks": [
+            {
+              "box": [
+                101,
+                36,
+                64,
+                16
+              ],
+              "after": 1
+            },
+            {
+              "box": [
+                101,
+                36,
+                64,
+                16
+              ],
+              "after": 2
+            }
+          ],
           "palette": "0x800B9B04",
           "impact": {
             "anim": {
@@ -100,6 +120,7 @@
             "rate": "MKT 0x80077FF0",
             "strike": "MKT 0x800B0164",
             "palette": "MKT 0x800B9B04",
+            "checks": "MKT 0x80078230",
             "impact": "MKT 0x80078124",
             "follow": "MKT 0x800781F0",
             "reaction": "MKT 0x800539A8"

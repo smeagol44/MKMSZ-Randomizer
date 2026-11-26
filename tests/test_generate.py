@@ -85,15 +85,15 @@ def projectile_of(steps: list[dict]) -> dict:
 
 
 @needs_mkt
-def test_lightning_differs_by_mkt_close_range_checks_only(mkt: bytes) -> None:
+def test_lightning_equals_the_accepted_program(mkt: bytes) -> None:
     """Projectile rules (generator step 3): the bolt process folds on the lightning's argument
     (0 for D,F, handed to the child in +0x440); MKT checks close range with strike 0x10 twice
-    before the flight (0x80078230), which the accepted program leaves out (owner to decide)."""
+    before the flight (0x80078230); the owner had them added (2026-11-26, specials proof v19)."""
 
     g = gen.Generator(mkt, 24).move(0x8004FA44)  # the command's own entry (do_special 0x2E)
     made = projectile_of(g.steps)
-    assert made.pop("checks") == [{"box": [101, 36, 64, 16], "after": 1}, {"box": [101, 36, 64, 16], "after": 2}]
-    assert gen.compare(g.steps, accepted("rayden", "lightning")) == []
+    assert made["checks"] == [{"box": [101, 36, 64, 16], "after": 1}, {"box": [101, 36, 64, 16], "after": 2}]
+    assert gen.compare(g.steps, accepted("rayden", "lightning")) == []  # owner: add them (specials v19)
     assert g.unknown == []
 
 
