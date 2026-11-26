@@ -140,15 +140,19 @@ def _free_from(file87: bytearray, start: int) -> int:
 
 @dataclass
 class _Group:
-    """A projectile art shared by the moves whose projectile step has the same donor art."""
+    """The moves whose projectile step has the same donor art and victim reaction (the art is
+    placed once per donor art: Rayden's lightning and reversed lightning share it, but react
+    differently, MKT 0x80 / 0x81)."""
 
     key: tuple[int, int, int]
+    reaction: str
     moves: list[str]
     art: lp.ArtLayout
     events: dict[str, int]
     reaction_slot: int
     helper: str | None
     lowered: lp.Lowered | None = None
+    first: bool = True  # the first group of its art (its labels and report key, as before)
 
 
 @dataclass
@@ -224,7 +228,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
 
     # ---- projectile groups and art (fighter-file tail) -------------------------------------
     reactions = _Pool(REACTION_POOL, "spare reaction-table entries")
-    groups: dict[tuple[int, int, int], _Group] = {}
+    groups: dict[tuple[tuple[int, int, int], str], _Group] = {}
+    art_of: dict[tuple[int, int, int], tuple[lp.ArtLayout, dict[str, int], str | None]] = {}
     steps_of: dict[str, list[dict[str, Any]]] = {}
     projectile_of: dict[str, dict[str, Any]] = {}
     placed_at = body.chain_start
@@ -239,6 +244,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             steps = [dict(s, ticks=_int(tune["sleep_ticks"])) if s["op"] == "sleep" else s for s in steps]
         if "strike_ticks" in tune:  # owner: a longer hit window (Rayden's torpedo, specials proof v05)
             steps = [dict(s, ticks=_int(tune["strike_ticks"])) if s["op"] == "strike" else s for s in steps]
+        if tune.get("turn_back"):  # owner: after turning around, turn back rather than face
+            steps = [dict(s, op="flip") if s["op"] == "face" else s for s in steps]  # (reversed lightning)
         if tune.get("airborne"):  # level flight while it may have started in the air (host detail)
             steps = with_hover(steps)
         ticks_per = _int(tune.get("donor_ticks", 1))
@@ -254,9 +261,16 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 proj = lp.centre_on_art(donor, proj)
             projectile_of[move] = proj
             anim = proj["art"]
-            gkey = (_int(anim["table"]), _int(anim["slot"]), _int(anim.get("part", 1)))
+            akey = (_int(anim["table"]), _int(anim["slot"]), _int(anim.get("part", 1)))
+            gkey = (akey, proj["strike"]["reaction"])
             if gkey in groups:
                 groups[gkey].moves.append(move)
+            elif akey in art_of:  # the art and sounds placed for another reaction
+                art, events, helper_label = art_of[akey]
+                stock = lp.host_reaction(proj["strike"]["reaction"])
+                groups[gkey] = _Group(akey, proj["strike"]["reaction"], [move], art, events,
+                                      stock if stock is not None else reactions.take(), helper_label,
+                                      first=False)  # fmt: skip
             else:
                 throw = next(s for s in steps if s["op"] == "animate")
                 helper = lp.donor_helper(donor, throw["anim"])
@@ -273,8 +287,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                     (samples_end + 0xF) & ~0xF,
                 )  # fmt: skip
                 stock = lp.host_reaction(proj["strike"]["reaction"])
-                groups[gkey] = _Group(gkey, [move], art, events, stock if stock is not None else reactions.take(),
-                                      f"{move}_helper" if helper is not None else None)  # fmt: skip
+                helper_label = f"{move}_helper" if helper is not None else None
+                art_of[akey] = (art, events, helper_label)
+                groups[gkey] = _Group(akey, proj["strike"]["reaction"], [move], art, events,
+                                      stock if stock is not None else reactions.take(), helper_label)  # fmt: skip
         for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
             if s["op"] == "sound":
                 first = _int(s["sound"]["fighter"])
@@ -376,7 +392,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             g.lowered = low
             lp.emit_process(a, low, child=f"{move}_ball", prefix=f"{move}_", data=f"g{_gid(g)}_",
                             alive=f"{move}_alive")  # fmt: skip
-            if move == g.moves[-1] and g.helper is not None:
+            if move == g.moves[-1] and g.helper is not None and g.first:  # once per art
                 throw = next(s for s in steps if s["op"] == "animate")
                 body_slot = animations[(_int(throw["anim"]["table"]), _int(throw["anim"]["slot"]))]
                 dy = low.dy + HELPER_DY_PX * lp.UNITS_PER_PX
@@ -409,7 +425,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                                     _int(spec["reserve"]))  # fmt: skip
     host.emit_sound_player(a)
     for g in groups.values():
-        if g.helper is not None:
+        if g.helper is not None and g.first:
             lp.emit_helper_data(a, g.helper)
     for m in projectile_of:
         a.label(f"{m}_alive")
@@ -460,13 +476,17 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                   commands=low_cmd.report, samples_end=samples_end)  # fmt: skip
     return Built(
         bytes(rom), bytes(payload), link_va, bytes(file87), (SAMPLE_ROM, samples_end), dict(low_cmd.moved),
-        selectors, dict(custom_reactions) | {f"projectile {g.key}": g.reaction_slot for g in groups.values()},
+        selectors, dict(custom_reactions) | {_report_key(g, groups): g.reaction_slot for g in groups.values()},
         {f"fighter sound {n}": e for n, e in fighter_sounds.items()}, report,
     )  # fmt: skip
 
 
 def _gid(g: _Group) -> str:
-    return f"{g.key[0]}_{g.key[1]}_{g.key[2]}"
+    return f"{g.key[0]}_{g.key[1]}_{g.key[2]}" + ("" if g.first else f"_{g.reaction}")
+
+
+def _report_key(g: _Group, groups: dict) -> str:
+    return f"projectile {g.key}" + ("" if g.first else f" {g.reaction}")
 
 
 def _combo_slot(d: fd.FighterDescription) -> tuple[int | None]:
@@ -480,6 +500,8 @@ def _projectile_rates(step: dict[str, Any], ticks_per: int) -> dict[str, Any]:
     out = dict(step, rate=max(1, -(-_int(step["rate"]) // ticks_per)))
     if "impact" in step and "rate" in step["impact"]:
         out["impact"] = dict(step["impact"], rate=max(1, -(-_int(step["impact"]["rate"]) // ticks_per)))
+    if "wrap" in step:
+        out["wrap"] = {"cooldown": max(1, -(-_int(step["wrap"]["cooldown"]) // ticks_per))}
     return out
 
 

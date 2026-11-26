@@ -75,7 +75,9 @@ HOST_POWERS = {
 }
 # Sub-Zero powers with no command record (Ice Shatter is contextual, after two Ice Blasts). A
 # move may take one only with its own special (``lower(overrides=...)``): its record is new.
-COMMANDLESS_POWERS = ("ice_shatter",)
+# Air Ice Blast is Ice Blast's airborne branch (its own tier gate, no record of its own): Rayden's
+# reversed lightning takes its slot (Amendment 1) with a new record.
+COMMANDLESS_POWERS = ("ice_shatter", "ice_blast_air")
 
 
 class CommandError(ValueError):

@@ -40,6 +40,7 @@ REACTION_MEANINGS = {
     0x74: "elbow_hold",  # Reptile's elbow first contact
     0x7F: "launch",  # Rayden's torpedo victim (the carry is the attacker's): stand-in
     0x80: "shock_stagger",  # Rayden's lightning: stagger back, cyan blink (0x800539A8)
+    0x81: "shock_stagger_toward",  # his reversed lightning: the same, pushed towards him
 }
 
 
@@ -208,8 +209,11 @@ class _Walk:
                 for kept, first in ((self.g.notes, step.pop("_notes", [])), (self.g.unknown, step.pop("_unknown", []))):
                     kept[:] = [x for x in kept if x not in first]  # the provisional reading's
                 refilled = _read_projectile(self, child, fields)
+                src = step.get("src", {})
                 step.clear()
                 step.update(refilled)
+                if src:
+                    step["src"] = {k: next(iter(src.values())) for k in refilled if k not in _NO_SRC}
             else:
                 self.unknown(f"0x{s.pc:08X}: projectile process field +0x440 = {s.value}")
             return []
@@ -274,7 +278,7 @@ class _Walk:
         a = [v.const() for v in c.args]
         rule = CALL_RULES.get(n)
         if rule is not None:
-            return rule(self, c, a)
+            return _provenance(rule(self, c, a), c.pc)
         entry = REGISTRY.get(c.target or 0)
         if c.target and (entry is None or entry.follow):  # a move body or an unnamed routine
             if entry is None and not self._is_move_code(c.target):
@@ -426,6 +430,20 @@ _OBJECT_CALLS = {"stop_me": 0, "do_next_a9_frame": 0, "face_opponent": 0}
 def _victim(v: dc.Value) -> bool:
     text = str(v)
     return "proc+0x3BC" in text or "proc+0x3C0" in text
+
+
+_NO_SRC = ("op", "src", "steps", "every_tick", "on_hit", "on_block", "_notes", "_unknown")
+
+
+def _provenance(steps: list[dict], pc: int) -> list[dict]:
+    """Each parameter of a step a rule made comes from the MKT call it read (the move-program
+    format's ``src``); a step that already names its sources keeps them."""
+
+    for step in steps:
+        params = [k for k in step if k not in _NO_SRC]
+        if params and "src" not in step:
+            step["src"] = {k: f"MKT 0x{pc:08X}" for k in params}
+    return steps
 
 
 def _clean(steps: list[dict]) -> list[dict]:
@@ -654,6 +672,15 @@ def _read_projectile(w: _Walk, child: int, fields: dict[tuple[int, int], int]) -
     return step
 
 
+def _flip(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    """flip_single(self): the fighter turns around (Rayden's reversed lightning)."""
+
+    if c.args[0] == dc.SELF:
+        return [{"op": "flip"}]
+    w.note(f"MKT turns another object around (flip_single {c.args[0]}, 0x{c.pc:08X})")
+    return []
+
+
 def _stamp(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     """stamp_tick(word, self): the tick of this use, which the command's cooldown condition
     reads (the condition names the same word)."""
@@ -727,9 +754,9 @@ def projectile(w: _Walk, child: int, fields: dict[tuple[int, int], int]) -> dict
                 sizzle = gen.reaction_sound(gen.strike_raw(a[1])[8])
             flown = True
         elif x.kind == "store" and x.base == dc.PROC and x.off == 0x438 and x.value.const():
-            hum = _hum(w, x.value.const() & 0xFFFFFFFF)
-            if hum is not None:
-                step["hum"] = hum
+            key, value = _callback(w, x.value.const() & 0xFFFFFFFF)
+            if key is not None:
+                step[key] = value
         elif x.kind == "call" and x.target and _readable(x.target):
             check = _check(w, x, len(checks) + 1)
             if check is not None:
@@ -805,8 +832,15 @@ def _walk_calls(stmts: list) -> list:
     return out
 
 
-def _hum(w: _Walk, callback: int) -> dict[str, Any] | None:
-    """A flight callback that plays a sound each time its counter (process +0x440) runs out."""
+def _callback(w: _Walk, callback: int) -> tuple[str | None, Any]:
+    """A flight callback (process +0x438, run each flight tick):
+
+    * ``hum``: it plays a sound each time its counter (process +0x440) runs out;
+    * ``wrap``: when the object has left the screen (``proj_offscreen``) it moves it past the
+      opposite edge (its x, ``+0x14``), then counts ``cooldown`` ticks and switches itself off
+      (process +0x3CC = 0), so the flight deletes the object the next time it leaves (MKT's
+      flight keeps an offscreen object while this callback is on: Rayden's reversed lightning,
+      ``0x80078070``)."""
 
     body = dc.decompile(w.gen.mkt, callback)
     for x in body:
@@ -814,9 +848,17 @@ def _hum(w: _Walk, callback: int) -> dict[str, Any] | None:
             sound = next((y for y in x.then if y.kind == "call" and w.name(y) == "ft_sound"), None)
             reset = next((y for y in x.then if y.kind == "store" and y.base == dc.PROC and y.off == 0x440), None)
             if sound is not None and reset is not None and reset.value.const():
-                return {"sound": {"fighter": sound.args[0].const()}, "every": reset.value.const()}
+                return "hum", {"sound": {"fighter": sound.args[0].const()}, "every": reset.value.const()}
+    every = _walk_all(body)
+    if any(x.kind == "call" and w.name(x) == "proj_offscreen" for x in every) and any(
+        x.kind == "store" and x.base == dc.SELF and x.off == 0x14 for x in every
+    ):
+        cooldown = next((x.value.const() for x in every if x.kind == "store" and x.base == dc.PROC
+                         and x.value.const() and x.off != 0x3CC), None)  # fmt: skip
+        if cooldown is not None:
+            return "wrap", {"cooldown": cooldown}
     w.unknown(f"0x{callback:08X}: flight callback")
-    return None
+    return None, None
 
 
 def _object_palette(w: _Walk, art: dict[str, int] | None) -> int | None:
@@ -918,7 +960,7 @@ CALL_RULES = {
     "do_special": _dispatch,
     "do_body_propell": _dispatch,
     "do_quick_special": _dispatch,
-    "flip_single": _note_only("MKT turns the fighter around (flip_single) at the start"),
+    "flip_single": _flip,
     "context_jump": _context_jump,
     "randu": _randu,
     "give_routine": _note_only(

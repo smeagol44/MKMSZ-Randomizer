@@ -65,3 +65,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v17.py` | `MKMSZR_rayden-specials_common_proof_v17.z64` | v16 with the bolt's flight frames kept apart from the burst's, the blink on the vertex colours (lighting paused), and the burst following the victim |
 | `MKMSZR_build_rayden-specials_proof_v18.py` | `MKMSZR_rayden-specials_common_proof_v18.z64` | v17 with the burst 6 px nearer Rayden and the blink at half speed |
 | `MKMSZR_build_rayden-specials_proof_v19.py` | `MKMSZR_rayden-specials_common_proof_v19.z64` | v18 with MKT's two close-range checks before the lightning's flight |
+| `MKMSZR_build_rayden-specials_proof_v20.py` | `MKMSZR_rayden-specials_common_proof_v20.z64` | v19 plus the generated reversed lightning (D,B + LP) in Air Ice Blast's slot, with MKT's screen wrap |

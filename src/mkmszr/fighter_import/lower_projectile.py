@@ -124,6 +124,12 @@ REACTION_LOWERING["shock_stagger"] = {
     # owner on v17 (2026-11-26): half the speed, cyan and normal two frames each (every 2: one)
     "blink": {"colour": (0x20, 0xFF, 0xFF), "count": 8, "every": 4},
 }
+# MKT reaction 0x81 (0x80053A48, the reversed lightning's strikes): 0x80 with towards_x_vel, the
+# victim pushed towards the attacker (hit from behind, it goes the bolt's way).
+REACTION_LOWERING["shock_stagger_toward"] = {
+    **REACTION_LOWERING["shock_stagger"],
+    "donor_push": -0x26666,  # MKT 0x80053A88: towards_x_vel 0x26666
+}
 BLINK_PROCESS_ID = 0x100  # as the stealth timer
 ACTOR_LIT_BIT = 0x1000  # actor +0x8C: colours from the stage lighting every draw
 ACTOR_VERTEX_RGB = (0xA0, 0xA4, 0xA8)  # four corner bytes each
@@ -154,8 +160,8 @@ def lift_stumble(clean: bytes, meaning: str, dst_va: int) -> bytes:
     spec = REACTION_LOWERING[meaning]
     base, end = spec["base"], spec["end"]
     code = clean[base - 0x7FFFF400 : end - 0x7FFFF400]
-    push = stumble_push(meaning)
-    neg = -push & 0xFFFFFFFF
+    push = stumble_push(meaning) & 0xFFFFFFFF  # negative: towards the attacker (MKT 0x81)
+    neg = -stumble_push(meaning) & 0xFFFFFFFF
     up, uo, dn, do = spec["push"]
     stock = {up: 0x3C020005, uo: 0x34426666, dn: 0x3C02FFFA, do: 0x3442999A, spec["pause"]: 0x0C00A1E5}
     for va, word in stock.items():
@@ -557,6 +563,10 @@ class Lowered:
     # rides with the push. The host: every tick the impact keeps its offset from the victim it
     # was placed on (path position, x, y, z), until the victim's controller holds another actor.
     impact_follow: bool = False
+    # MKT's wrap (Rayden's reversed lightning, flight callback 0x80078070): the first time the
+    # projectile leaves the screen it re-enters past the opposite edge; for ``wrap_cooldown``
+    # ticks the flight keeps it, then it ends at the next exit as usual (0 = no wrap).
+    wrap_cooldown: int = 0
 
 
 def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
@@ -604,6 +614,7 @@ def lower(
         meaning, checks, impact.get("at") == "opponent",
         _int(impact.get("adjust", [0, 0])[0]) * UNITS_PER_PX,
         impact_follow=impact.get("follow") == "opponent",
+        wrap_cooldown=_int(step["wrap"]["cooldown"]) if "wrap" in step else 0,
     )  # fmt: skip
 
 
@@ -704,6 +715,8 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         velocity()
         select(p.art.flight_slot, p.art.flight_at)
     a.li("s3", 0)
+    if p.wrap_cooldown:
+        a.li("s6", WRAP_ARMED)
     a.label(prefix + "fly")
     if p.hum_event is not None:
         a.addiu("s3", "s3", 1)
@@ -719,6 +732,22 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.li("a0", 1)
     a.jal(F_SLEEP)
     host.load_controller(a)
+    if p.wrap_cooldown:  # s6: armed, then the cooldown ticks, then 0 (wrapped: exits end it)
+        a.li("t0", WRAP_ARMED)
+        a.beq("s6", "t0", prefix + "wrap_armed")
+        a.beqz("s6", prefix + "exit_check")
+        a.addiu("s6", "s6", -1)  # cooldown: the flight keeps it
+        a.beq("zero", "zero", prefix + "fly")
+        a.label(prefix + "wrap_armed")
+        a.move("a0", "s1")
+        a.li("a1", OFFSCREEN_MARGIN)
+        a.jal(F_OFFSCREEN)
+        a.beqz("v0", prefix + "fly")
+        host.load_controller(a)
+        emit_screen_mirror(a, "s1")
+        a.li("s6", p.wrap_cooldown)
+        a.beq("zero", "zero", prefix + "fly")
+        a.label(prefix + "exit_check")
     a.move("a0", "s1")
     a.li("a1", OFFSCREEN_MARGIN)
     a.jal(F_OFFSCREEN)
@@ -826,6 +855,48 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.jal(F_EXIT)
     a.label(prefix + "child_hang")
     a.beq("zero", "zero", prefix + "child_hang")
+
+
+# The host camera (Static-confirmed, the offscreen test 0x80035088): view = M * (world >> 8 + T)
+# / 4096, with M a 3x3 rotation of halfwords (4.12) at 0x8009A930 (row 0: view x) and T the
+# words at 0x8009A944/48/4C; the visible half-width at a depth is compared with view x.
+CAMERA_VIEW = 0x8009A930
+CAMERA_T = 0x14  # the translation, after the 3x3 matrix (+ 2 bytes padding)
+WRAP_ARMED = 0x100
+
+
+def emit_screen_mirror(a: Assembler, actor: str) -> None:
+    """Move ``actor`` to the mirror of its position across the camera's vertical centre plane:
+    view x -> -view x at the same depth and height, so an actor just past one screen edge is just
+    past the other (MKT's wrap is the 2D same: x to the opposite edge). In world fixed8 units:
+    p -= (view_x * M0) >> 3 (2 * view_x * M0 / 4096, << 8)."""
+
+    fields = (host.ACTOR_X, host.ACTOR_Y, host.ACTOR_Z)
+    a.lui("t9", host.hi(CAMERA_VIEW))
+    a.addiu("t9", "t9", host.lo(CAMERA_VIEW))
+    a.move("t2", "zero")
+    for k, field in enumerate(fields):
+        a.lw("t0", field, actor)
+        a.sra("t0", "t0", 8)
+        a.lw("t1", CAMERA_T + 4 * k, "t9")
+        a.addu("t0", "t0", "t1")
+        a.lh("t1", 2 * k, "t9")
+        a.mult("t0", "t1")
+        a.mflo("t0")
+        a.nop()
+        a.nop()
+        a.addu("t2", "t2", "t0")
+    a.sra("t2", "t2", 12)  # view x
+    for k, field in enumerate(fields):
+        a.lh("t1", 2 * k, "t9")
+        a.mult("t2", "t1")
+        a.mflo("t0")
+        a.nop()
+        a.nop()
+        a.sra("t0", "t0", 3)
+        a.lw("t1", field, actor)
+        a.subu("t1", "t1", "t0")
+        a.sw("t1", field, actor)
 
 
 HELPER_IDLE, HELPER_SHOWN, HELPER_LAUNCH = 0, 1, 2

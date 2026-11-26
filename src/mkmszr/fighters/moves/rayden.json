@@ -139,6 +139,146 @@
       ]
     },
     {
+      "name": "reversed_lightning",
+      "command": {
+        "buttons": "0x80",
+        "tokens": [
+          8,
+          7
+        ],
+        "window": 16,
+        "src": "MKT 0x800ABA80"
+      },
+      "steps": [
+        {
+          "op": "begin",
+          "face": false,
+          "stop": true,
+          "action_mkt": "0x31",
+          "src": {
+            "face": "MKT 0x80077E30",
+            "stop": "MKT 0x80077E30",
+            "action_mkt": "MKT 0x80077E30"
+          }
+        },
+        {
+          "op": "flip"
+        },
+        {
+          "op": "sound",
+          "sound": {
+            "fighter": 2
+          },
+          "src": {
+            "sound": "MKT 0x80077EB0"
+          }
+        },
+        {
+          "op": "animate",
+          "anim": {
+            "table": 0,
+            "slot": 36
+          },
+          "rate": 3,
+          "until": "phase_end",
+          "src": {
+            "anim": "MKT 0x80077EC4",
+            "rate": "MKT 0x80077EC4",
+            "until": "MKT 0x80077EC4"
+          }
+        },
+        {
+          "op": "projectile",
+          "speed": "0x80000",
+          "rate": 3,
+          "wrap": {
+            "cooldown": 10
+          },
+          "strike": {
+            "box": [
+              133,
+              36,
+              60,
+              16
+            ],
+            "damage": 22,
+            "block_damage": 4,
+            "reaction": "shock_stagger_toward",
+            "blocked_reaction": "blocked"
+          },
+          "art": {
+            "table": 0,
+            "slot": 67,
+            "part": 3
+          },
+          "offset": [
+            0,
+            0
+          ],
+          "checks": [
+            {
+              "box": [
+                101,
+                36,
+                64,
+                16
+              ],
+              "after": 1
+            },
+            {
+              "box": [
+                101,
+                36,
+                64,
+                16
+              ],
+              "after": 2
+            }
+          ],
+          "palette": "0x800b9b04",
+          "impact": {
+            "at": "opponent",
+            "end": "animation",
+            "adjust": [
+              -115,
+              0
+            ],
+            "rate": 4,
+            "follow": "opponent",
+            "anim": {
+              "table": 0,
+              "slot": 67,
+              "part": 4
+            }
+          },
+          "src": {
+            "speed": "MKT 0x80077ED0",
+            "rate": "MKT 0x80077ED0",
+            "wrap": "MKT 0x80077ED0",
+            "strike": "MKT 0x80077ED0",
+            "art": "MKT 0x80077ED0",
+            "offset": "MKT 0x80077ED0",
+            "checks": "MKT 0x80077ED0",
+            "palette": "MKT 0x80077ED0",
+            "impact": "MKT 0x80077ED0"
+          }
+        },
+        {
+          "op": "sleep",
+          "ticks": 48,
+          "src": {
+            "ticks": "MKT 0x80077EF0"
+          }
+        },
+        {
+          "op": "face"
+        },
+        {
+          "op": "end"
+        }
+      ]
+    },
+    {
       "name": "torpedo",
       "movement": true,
       "command": {

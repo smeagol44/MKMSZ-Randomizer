@@ -361,6 +361,13 @@ REGISTRY: dict[int, MktRoutine] = {
         "one strike check of a projectile object with the fighter's strike record a1 (0x8000: hit)",
         _M,
     ),
+    0x8007F8F4: _e(
+        "proj_offscreen",
+        "a0 = object",
+        "0x4000 when the object has left the screen on the side it moves to (camera x 0x8015D6D8, "
+        "320 px)",
+        _M,
+    ),
     0x8007F9E8: _e(
         "proj_object_here",
         "a0 = owner object",

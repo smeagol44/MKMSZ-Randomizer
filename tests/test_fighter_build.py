@@ -134,8 +134,8 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     # toggle); impact_mirror mirrors its frames in the art instead (v10-v12 flipped the actor
     # back, mirroring it around an anchor outside its box); the torpedo's three jumps (bounce,
     # bounce, drop) take the air map
-    assert ws.count(0x012A4826) == 1  # xor t1, t1, t2 (the facing bit)
-    assert ws.count(0x2739B05C) == 5  # input map: two begins without a turn, three jumps
+    assert ws.count(0x012A4826) == 2  # xor t1, t1, t2 (the facing bit): each lightning's burst
+    assert ws.count(0x2739B05C) == 6  # input map: three begins without a turn (both lightnings, torpedo), three jumps
     # v11-v12 (owner screenshots, Wind): the burst goes to the enemy hit (the player's +0x640,
     # set by the collision core), at its whole position: path, path position, x, z; v15: the
     # bolt's own height kept (impact_keep_y), not the enemy's feet
@@ -300,3 +300,18 @@ def test_airborne_moves_hover_where_the_program_flew_level() -> None:
     assert window["every_tick"] == [{"op": "hover"}]
     carry = next(s for s in window["on_hit"] if s["op"] == "carry")
     assert [s["op"] for s in carry["every_tick"]] == ["hover", "pass_through"]
+
+
+@needs_roms
+def test_reversed_lightning_in_the_air_ice_blast_slot(roms: tuple[bytes, bytes]) -> None:
+    """Generator step 5 (specials proof v20): the generated D,B + LP program in Air Ice Blast's
+    slot (a new LP record), sharing the lightning's art with its own reaction (MKT 0x81); the
+    bolt wraps once at the screen edge by mirroring across the camera's centre."""
+
+    built = fb.build(*roms, "rayden")
+    assert built.selectors["reversed_lightning"] == 4
+    assert "projectile (0, 67, 3) shock_stagger_toward" in built.reactions
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    assert 0x24160100 in ws  # li s6, WRAP_ARMED
+    assert 0x8F290014 in ws and 0x87290000 in ws  # lw t1, 0x14(t9) (camera T), lh t1, 0(t9) (M00)
+    assert 0x2739188C in ws  # the turn 0x8003188C (flip), through t9

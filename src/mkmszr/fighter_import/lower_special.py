@@ -69,6 +69,7 @@ ICE_BLAST_GATE, ICE_BLAST_STOCK_TIER = 0x8004A418, 1
 SLTI_T0_V0 = 0x2848
 COSTS = {
     "ice_blast": 0x20,
+    "ice_blast_air": 0x20,  # the same LP condition as Ice Blast (0x8004A304: meter < 0x20 refuses)
     "directional_ice_up": 0x20,
     "directional_ice_down": 0x60,
     "ice_clone": 0x60,
@@ -80,6 +81,7 @@ COSTS = {
 # 1000 is below a0. A sound step with ``random: k`` picks one of k donor sounds evenly (MKT
 # ``ft_sound(randu(k) + n)``, Rayden's torpedo start).
 F_RANDPER = 0x80016008
+F_TURN = 0x8003188C  # (actor): turn it around (face_opponent 0x80031EF0 calls it when needed)
 MOVEMENT_COST = 0  # movement abilities cost no Ice (owner rule, 2026-11-24; move program "movement")
 BLOCKED_FLAG = 0x802ECD88  # halfword: the collision core sets it on a blocked contact
 F_SET_XVEL = 0x8002B1EC  # (actor, x speed): actor +0x14 and +0x58
@@ -458,6 +460,11 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             elif op == "face":
                 host.load_controller(a)
                 host.face_opponent(a)
+                host.load_controller(a)
+            elif op == "flip":  # turn around: the host's own turn (0x80031EF0 calls it)
+                host.load_controller(a)
+                a.move("a0", "s1")
+                a.jal(F_TURN)
                 host.load_controller(a)
             elif op == "shake_screen":
                 shaker = fresh("shaker")
