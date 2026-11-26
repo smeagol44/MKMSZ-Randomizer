@@ -315,3 +315,9 @@ def test_reversed_lightning_in_the_air_ice_blast_slot(roms: tuple[bytes, bytes])
     assert 0x24160100 in ws  # li s6, WRAP_ARMED
     assert 0x8F290014 in ws and 0x87290000 in ws  # lw t1, 0x14(t9) (camera T), lh t1, 0(t9) (M00)
     assert 0x2739188C in ws  # the turn 0x8003188C (flip), through t9
+    # v21 (owner on v20: "The bolt passes through enemies"; "with the zoomed out camera it
+    # doesn't spawn off screen"): its strike checks run with the player-actor pointer holding the
+    # bolt (sw s1 / sw s7 at 0x802E73DC), and the edge is judged at the bolt's own depth (view
+    # row 2 halfwords at +0xC: lh t1, 0xC(t9); the focal 0x8009A8E8)
+    assert ws.count(0xAD1173DC) >= 3 and ws.count(0xAD1773DC) >= 3  # 2 checks + the flight
+    assert 0x8729000C in ws and 0x8D08A8E8 in ws

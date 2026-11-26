@@ -669,8 +669,15 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         a.lui("t0", KSEG1_TO_KSEG0 >> 16)
         a.subu("a0", "a0", "t0")  # KSEG0 alias: the collision core rejects other records
         a.sw("a0", 0x638, "s0")
+        if p.wrap_cooldown:  # victims ahead of the projectile, not of the player (see PLAYER_ACTOR)
+            a.lui("t0", host.hi(PLAYER_ACTOR))
+            a.lw("s7", host.lo(PLAYER_ACTOR), "t0")
+            a.sw("s1", host.lo(PLAYER_ACTOR), "t0")
         a.move("a1", "zero")
         a.jal(F_COLLIDE)
+        if p.wrap_cooldown:
+            a.lui("t0", host.hi(PLAYER_ACTOR))
+            a.sw("s7", host.lo(PLAYER_ACTOR), "t0")
         a.andi("v0", "v0", 0xFFFF)
         a.li("t0", 0x8000)
         a.beq("v0", "t0", hit)
@@ -717,6 +724,8 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.li("s3", 0)
     if p.wrap_cooldown:
         a.li("s6", WRAP_ARMED)
+        a.li("t0", 0x7FFF)
+        a.sw("t0", WRAP_LAST_SP, "sp")  # |view x| last tick (none yet)
     a.label(prefix + "fly")
     if p.hum_event is not None:
         a.addiu("s3", "s3", 1)
@@ -739,11 +748,8 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         a.addiu("s6", "s6", -1)  # cooldown: the flight keeps it
         a.beq("zero", "zero", prefix + "fly")
         a.label(prefix + "wrap_armed")
-        a.move("a0", "s1")
-        a.li("a1", OFFSCREEN_MARGIN)
-        a.jal(F_OFFSCREEN)
-        a.beqz("v0", prefix + "fly")
-        host.load_controller(a)
+        emit_past_screen_edge(a, "s1", "t5", prefix + "edge_done")  # out past the edge, own depth
+        a.beqz("t5", prefix + "fly")
         emit_screen_mirror(a, "s1")
         a.li("s6", p.wrap_cooldown)
         a.beq("zero", "zero", prefix + "fly")
@@ -863,6 +869,69 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
 CAMERA_VIEW = 0x8009A930
 CAMERA_T = 0x14  # the translation, after the 3x3 matrix (+ 2 bytes padding)
 WRAP_ARMED = 0x100
+WRAP_LAST_SP = 0x34  # the child's frame, after the follow offsets (0x24..0x33)
+WRAP_MARGIN = OFFSCREEN_MARGIN  # past the visible edge, as the offscreen test (v20: right at normal zoom)
+CAMERA_FOCAL = 0x8009A8E8  # the offscreen test: half-width = depth * 80 / focal
+PLAYER_ACTOR = 0x802E73DC
+# The enemy-victim scan (0x8002CC4C) skips an enemy that is not ahead of the player actor by the
+# player's facing bit and x: fine for projectiles that fly forward. A wrapping projectile can
+# meet enemies behind the player (Rayden's reversed lightning, specials proof v20: it never
+# hit), so for its strike check the pointer holds the projectile's actor (a clone of the
+# player's: the scan's other read, its type +0x78, is the same), then the player's again.
+
+
+def _view(a: Assembler, actor: str, row: int, out: str) -> None:
+    """``out`` = view coordinate ``row`` (0: x, 2: depth) of ``actor``, world units (t9: the
+    camera view; uses t0, t1)."""
+
+    a.move(out, "zero")
+    for k, field in enumerate((host.ACTOR_X, host.ACTOR_Y, host.ACTOR_Z)):
+        a.lw("t0", field, actor)
+        a.sra("t0", "t0", 8)
+        a.lw("t1", CAMERA_T + 4 * k, "t9")
+        a.addu("t0", "t0", "t1")
+        a.lh("t1", 6 * row + 2 * k, "t9")
+        a.mult("t0", "t1")
+        a.mflo("t0")
+        a.nop()
+        a.nop()
+        a.addu(out, out, "t0")
+    a.sra(out, out, 12)
+
+
+def emit_past_screen_edge(a: Assembler, actor: str, out: str, done: str) -> None:
+    """``out`` = 1 when ``actor`` is more than WRAP_MARGIN past the visible half-width at its own
+    depth (view depth * 80 / focal) and moving further out (|view x| grew since last tick),
+    else 0. The host's offscreen test 0x80035088 takes one fixed depth (0x802C1BB4) for all
+    actors, which does not follow a zoomed-out camera (specials proof v20: the bolt wrapped
+    while still on screen)."""
+
+    a.lui("t9", host.hi(CAMERA_VIEW))
+    a.addiu("t9", "t9", host.lo(CAMERA_VIEW))
+    _view(a, actor, 0, "t2")
+    _view(a, actor, 2, "t3")
+    a.sra("t0", "t2", 31)  # |view x|
+    a.xor("t2", "t2", "t0")
+    a.subu("t2", "t2", "t0")
+    a.lw("t4", WRAP_LAST_SP, "sp")
+    a.sw("t2", WRAP_LAST_SP, "sp")
+    a.move(out, "zero")
+    a.slt("t0", "t4", "t2")  # moving out
+    a.beqz("t0", done)
+    a.li("t0", 80)
+    a.mult("t3", "t0")
+    a.mflo("t3")
+    a.nop()
+    a.nop()
+    a.lui("t0", host.hi(CAMERA_FOCAL))
+    a.lw("t0", host.lo(CAMERA_FOCAL), "t0")
+    a.div("t3", "t0")
+    a.mflo("t3")
+    a.nop()
+    a.nop()
+    a.addiu("t3", "t3", WRAP_MARGIN)
+    a.slt(out, "t3", "t2")
+    a.label(done)
 
 
 def emit_screen_mirror(a: Assembler, actor: str) -> None:
