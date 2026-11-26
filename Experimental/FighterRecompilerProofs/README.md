@@ -73,3 +73,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v25.py` | `MKMSZR_rayden-specials_common_proof_v25.z64` | v24 plus the Shocker (HP held, released) in Ice Shatter's slot: release commands, the hold count, the shock-hold reaction |
 | `MKMSZR_build_rayden-specials_proof_v26.py` | `MKMSZR_rayden-specials_common_proof_v26.z64` | v25 with the Shocker's box in front of him (MKT's grab range) and MKT's full miss (15 frames of shaking) |
 | `MKMSZR_build_rayden-specials_proof_v27.py` | `MKMSZR_rayden-specials_common_proof_v27.z64` | v26 with the Shocker's two-track grab sound, the victim held at his hands, unblockable, costing twice Ice Blast |
+| `MKMSZR_build_rayden-specials_proof_v28.py` | `MKMSZR_rayden-specials_common_proof_v28.z64` | v27 with the Shocker's shaking as long as the hold (MKT's 32 frames in 48 ticks) and MKT's full miss |

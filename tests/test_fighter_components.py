@@ -150,3 +150,18 @@ def test_grab_flag_and_unblockable_strike() -> None:
     next(s for s in raw["moves"][0]["steps"] if s["op"] == "strike")["strike"]["unblockable"] = 1
     with pytest.raises(cp.ProgramError, match="unblockable is true or false"):
         cp.validate_programs(raw)
+
+
+
+def test_a_timed_repeat_keeps_mkt_frames_and_time() -> None:
+    """32 x [sleep 3, next_frame] at 2 donor ticks per host tick: 32 frames in 48 host ticks
+    (sleeps 2, 1 alternating); a per-tick loop (a body under one host tick) keeps scaling."""
+
+    from mkmszr.fighter_import import lower_special as ls
+
+    step = {"op": "repeat", "count": 32, "steps": [{"op": "sleep", "ticks": 3}, {"op": "next_frame"}]}
+    count, bodies = ls._timed_repeat(step, 2)  # type: ignore[misc]
+    sleeps = [s["_host_ticks"] for b in bodies for s in b if s["op"] == "sleep"]
+    assert (count, sleeps) == (16, [2, 1]) and count * sum(sleeps) == 48
+    assert ls._timed_repeat(step, 1) is None
+    assert ls._timed_repeat({**step, "steps": [{"op": "sleep", "ticks": 1}]}, 2) is None

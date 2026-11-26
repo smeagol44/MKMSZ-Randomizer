@@ -388,6 +388,13 @@ def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> 
     assert all(built.link_va <= h < built.link_va + len(built.payload) for h in hooks)
     ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
     assert 0x2908001C in ws  # slti t0, t0, 28: the hold gate (56 donor ticks at 2 per host tick)
+    # v28 (owner on v27: "the enemies are being held for too long"): MKT holds the victim 96 donor
+    # ticks while he plays 32 frames, 3 ticks each (0x80073378(8)). The victim's hold is 48 host
+    # ticks; his shaking was 16 frames in 32 (the repeat count was scaled), so the victim stayed
+    # held after he stopped. Now 32 frames in 48: 16 passes of [sleep 2, frame, sleep 1, frame];
+    # the miss 7 passes (14 frames, MKT 0x8000E0C0(3, 0xF)).
+    assert 0x24120030 in ws  # addiu s2, zero, 48: the victim's hold
+    assert 0x24140010 in ws and 0x24140007 in ws  # addiu s4, zero, 16 / 7: the two repeats
     # v27: sound 5 (MKT event 0x205, two tracks) is ported: one chain per track, both tracks in one
     # host event read from the sample area
     from mkmszr.fighter_import import sound

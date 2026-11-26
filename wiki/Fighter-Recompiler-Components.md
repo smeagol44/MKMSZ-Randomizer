@@ -43,7 +43,7 @@ A move program is data (`src/mkmszr/fighters/moves/<fighter>.json`, format 1):
 | `end` | Return control | — | the move | *existing*: exit action `0x800328FC` |
 | `sleep` | Wait | `ticks` | after the time | *existing*: `process_sleep` `0x80028794` |
 | `wait` | Wait for a state | `until`: `opponent_settled` | when true | *new* (host opponent-state check to be found) |
-| `repeat` | Loop | `count`, `steps` | after `count` | backend loop |
+| `repeat` | Loop | `count`, `steps` | after `count` | backend loop. A per-tick loop (its body under one host tick) scales its count with the fighter's donor ticks. From Rayden specials proof v28, a body that sleeps at least one host tick keeps MKT's count, and its sleeps are rounded on the running total (MKT 3-tick frames at 2 donor ticks per host tick: 2, 1, 2, 1, …), so both the frame count and the time are MKT's (`_timed_repeat`). |
 | `animate` | Select a body animation | `anim`, `rate`, `until`: `phase_end` (play it out) / `running` (rate-gated, advanced by the host each tick) / `manual` (advanced by `next_frame`) | per `until` | *existing*: cursor + `animation_rate_init` / `animation_advance`; `phase_end` via `0x80031070` A table-0 animation with no secondary script plays the body's own primary slot (host primary *k* = MKT table-0 index *k*), selected from table 0 (Rayden's teleport reappear = his getup, v24). |
 | `pose` | Show one frame | `anim` (with `offset`) | at once | *existing*: set cursor + advance |
 | `next_frame` | Advance one step | — | at once | *existing*: `animation_advance` `0x800304C0` |

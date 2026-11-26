@@ -414,6 +414,41 @@ def _scale(n: int, donor_ticks: int) -> int:
     return max(1, -(-n // donor_ticks))
 
 
+def _timed_repeat(step: dict[str, Any], donor_ticks: int) -> tuple[int, list[list[dict[str, Any]]]] | None:
+    """A ``repeat`` whose body sleeps at least one host tick (Rayden's Shocker: 32 x [sleep 3,
+    next_frame] at 2 donor ticks per host tick): MKT's iteration count and its total time. The
+    body is emitted ``k`` times per loop pass (``k`` = the passes after which the donor time is
+    whole host ticks again), its sleeps rounded on the running total (3, 3 -> 2, 1 host ticks),
+    so 32 frames take 48 host ticks; scaling the count instead showed 16 frames in 32 ticks.
+    None for a per-tick loop (a body shorter than a host tick), whose count scales."""
+
+    from math import gcd
+
+    body = step["steps"]
+    if donor_ticks <= 1 or any(s["op"] == "repeat" for s in body):
+        return None
+    sleeps = [int(s["ticks"]) for s in body if s["op"] == "sleep"]
+    total = sum(sleeps)
+    if total < donor_ticks:
+        return None
+    k = donor_ticks // gcd(total, donor_ticks)
+    count = int(step["count"])
+    if count % k:
+        return None
+    bodies, donor, host_done = [], 0, 0
+    for _ in range(k):
+        out = []
+        for s in body:
+            if s["op"] == "sleep":
+                donor += int(s["ticks"])
+                end = -(-donor // donor_ticks)
+                s = {**s, "_host_ticks": max(1, end - host_done)}
+                host_done = end
+            out.append(s)
+        bodies.append(out)
+    return count // k, bodies
+
+
 def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: int,
                 animations: dict[tuple[int, int], int | tuple[str, int]], child: str | None = None,
                 helper: str | None = None, sounds: dict[int, int] | None = None,
@@ -531,8 +566,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                     a.label(skip)
         host.load_controller(a)
 
-    def sleep(ticks: int) -> None:
-        host.sleep_ticks(a, _scale(ticks, donor_ticks), fresh("sleep"))
+    def sleep(ticks: int, host_ticks: int | None = None) -> None:
+        n = _scale(ticks, donor_ticks) if host_ticks is None else host_ticks
+        host.sleep_ticks(a, n, fresh("sleep"))
         host.load_controller(a)
 
     def emit(steps: list[dict[str, Any]], after: str | None) -> None:
@@ -698,10 +734,18 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                         a.jal(host.F_OFFSET)
                         sleep(int(step["ticks"]))
             elif op == "repeat":
-                loop, count = fresh("repeat"), _scale(int(step["count"]), donor_ticks)
-                a.li("s4", count)
-                a.label(loop)
-                emit(step["steps"], None)
+                timed = _timed_repeat(step, donor_ticks)
+                loop = fresh("repeat")
+                if timed is None:  # a per-tick loop: the count scales with the ticks
+                    a.li("s4", _scale(int(step["count"]), donor_ticks))
+                    a.label(loop)
+                    emit(step["steps"], None)
+                else:  # MKT's count, the sleeps spread so the total time is MKT's (see below)
+                    count, bodies = timed
+                    a.li("s4", count)
+                    a.label(loop)
+                    for body in bodies:
+                        emit(body, None)
                 a.addiu("s4", "s4", -1)
                 a.bnez("s4", loop)
             elif op == "strike":
@@ -733,7 +777,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                     host.load_controller(a)
                 lp.emit_spawn(a, child, after=fresh("spawned"))
             elif op == "sleep":
-                sleep(int(step["ticks"]))
+                sleep(int(step["ticks"]), step.get("_host_ticks"))
             elif op == "finish":
                 a.li("a0", _scale(int(step["rate"]), donor_ticks))
                 a.jal(F_TO_PHASE_END)
