@@ -130,3 +130,16 @@ def test_icon_palette_reduction_is_deterministic() -> None:
     assert a == pi.median_cut(list(reversed(colours)), 63) and len(a) == 63
     for word in (0x0000, 0x7FFF, 0x52BB, 0x0890):
         assert pi.rgb_to_bgr555(pi.bgr555_to_rgb(word)) == word
+
+
+def test_outfit_on_a_blue_fighter() -> None:
+    """Rayden (own colour blue): vanilla keeps his tunic; red and green are absolute hues (a
+    red/green channel swap would leave a blue tunic blue)."""
+
+    from mkmszr.patches import palette as pal
+
+    blue = pal.encode_bgr555(0, 13, 17, 0x8000)
+    assert outfit.transform(blue, "vanilla", own="blue") == blue
+    for mode, hue in (("red", 0.0), ("green", 120.0)):
+        assert outfit.transform(blue, mode, own="blue") == pal.make_hue(blue, hue) != blue
+    assert outfit.transform(blue, "red", own="red") == blue  # a red fighter's own colour

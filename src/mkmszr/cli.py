@@ -39,9 +39,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--fighter",
-        choices=("sub-zero", "sektor", "reptile"),
+        choices=("sub-zero", "sektor", "reptile", "rayden"),
         default="sub-zero",
-        help="player fighter; sektor and reptile are imported from the MKT donor (requires "
+        help="player fighter; sektor, reptile and rayden are imported from the MKT donor (requires "
         "--mkt-rom)",
     )
     parser.add_argument("--outfit", choices=modes, default="vanilla")

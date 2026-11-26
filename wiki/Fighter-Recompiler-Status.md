@@ -79,6 +79,23 @@ Steps as for Reptile: body, inputs, specials, icons and description, product opt
 | press 8/9, tokens B,B,F | `0x8004F3A0` → propell `0x1E` → `0x800450D4` | Torpedo: `towards_x_vel(…, 0x80000)`, table-1 slot 0, strike, then `do_jump(0, 0xD999, 0x6CCC)` back |
 | release HP; held ≥ `0x38` ticks (`0x80257738`) | `0x8004EBA0` → quick `0x1D` → `0x80073228` | Shocker: sounds `0xC` and 5, table-1 slot 2, an opponent hold (read in full with specials proof v25, below) |
 
+**Presentation and product option (2026-11-26, owner: "open the PR and let's do 2"; Implementation/CI-confirmed, runtime Pending):**
+
+- **Power slots** (his description): Lightning (Ice Blast), **Slide** (generic frames, the new rule above), Teleport (Directional Ice; its down record removed), reversed Lightning (Air Ice Blast), Torpedo (Ice Clone), Shocker (Ice Shatter), **Super Slide** (generic), Freeze on Contact **empty** (record removed: he has no sixth special), Polar Blast as is. Costs are the replaced slots' (Lightning and reversed Lightning `0x20`; the Teleport and Torpedo free as movement; the Shocker free, Ice Shatter's slot); owner to adjust.
+- **Help text** per slot (titles LIGHTNING, TELEPORT, REVERSE LIGHTNING, TORPEDO, SHOCKER; Slide, Super Slide and Polar Blast stock; Freeze on Contact `--`).
+- **Icons** from his MKT art (preview shown to the owner): the throw with the bolt; the slide frame (and with ghosts for Super Slide); his white silhouette beside him (Teleport); the throw and bolt **mirrored** (reversed Lightning; new generic icon-layer option `mirror`); the flat torpedo flight with ghosts; the Shocker pose with the bolt's forming sparks at his hands; a storm-blue background.
+- **Outfit:** his blue tunic, body palette entries 2–4, own colour **blue** (new generic: `own: "blue"`; vanilla keeps it, and red and green become absolute hues, 0° and 120°, because a red/green channel swap leaves blue unchanged).
+- **Product lists:** `rayden` in `RandomizerConfig.fighter`, the CLI `--fighter`, the described fighters of `FighterSwapPatch`, the web labels and title (`RAYDEN`), and the Swap window's importable cells (MKT id 24).
+- **Production placement** (two generic changes, [Memory map](Memory-and-Allocation-Map)):
+  - his payload blob (`0x3DC8` + relocation table `0x154`) no longer fits the fighter file's free body tail (his move art fills it: `0x11D4` left), so it is appended to the file, which stays inside the runtime-confirmed file budget (`body_build.SAFE_END` `0x4E544`, Sektor v49): file `0x498FC`;
+  - his donor samples (`0xB0D0`, Reptile's `0x61A0`) do not fit the generated-output tail `[0x01820000,0x0186E4C0)` even without the blob; the tail is now `[0x01820000,0x01880000)` (all `0xFF` required, as before): file `[0x01820000,0x018698FC)`, samples `[0x0186A000,0x018750D0)`.
+  - The fixed loader is `0x260` bytes (`0x801B30F0..0x801B3350`, below the pool end `0x801B3420`); it refreshes 18 stock words and two moved-table pointers, among them the new HP press/release, Up and Left/Right event hooks and the four reaction entries (`0x23`, `0x2B`, `0x4C`, `0x4E`).
+- **Reptile and Sektor unchanged:** their pinned CLI builds are byte-identical.
+
+| Test ROM | SHA-256 | Contents | State |
+|---|---|---|---|
+| `MKMSZR_rayden_product_full-seed_build_v01.z64` | `2a7c95e846a9b940e4bd4d68c87639d85b846a89078bf3b518336ca23e80dbfb` | CLI `--fighter rayden --seed RAYDEN-PROD-1` (defaults otherwise: SPECIALS CLASSIC, vanilla outfit): Rayden through the product path, 1260 words transplanted with no owner conflict, blob `0x3F1C` bytes with 84 relocations, icons in the relocated file `0x5D`. His code runs from his fighter file for the first time. | **Pending** owner full-seed run |
+
 **Body proof v01** (`MKMSZR_build_rayden-body_proof_v01.py`; his description `fighters/rayden.json`, body only):
 
 | Test ROM | SHA-256 | Contents | State |
@@ -474,6 +491,7 @@ Fighter- or move-specific code outside fighter descriptions and components (plan
   - slide is Sub-Zero's;
   - the elbow dash is the only fully new move.
 - 2026-11-10: automatic recognition of MKT machine code is deferred to milestone 6; Sektor's move modules are frozen legacy.
+- 2026-11-26 (general rule for every fighter): **Slide and Super Slide** are added to every imported fighter, as for Sektor, with the generic frames every MKT fighter shares (`common_moves` `slide`: duck frame 1, duck-turn frame 1, duck-low-kick frame 3), and get icons. Fighters with their own slide (the MKT ninjas) use theirs, as Reptile does. So most fighters fill 6–8 power slots. **Polar Blast** stays as is for every fighter for now (to be decided later, the same for all).
 - 2026-11-25: build the generator (option A; [amendment 1](Fighter-Recompiler-Amendment-1)). Current projectiles stay as they are until several fighters can be built and tested together.
 - 2026-11-25: switch Rayden's torpedo to MKT's version (random sound, speed from the lean, his bounce back). Then: "Let's go as pure MKT as we can at first": owner calibrations dropped until MKT's own behaviour is in; the auto-turn stays removed (MKT's engine, not the move; expected for many moves). The screen shake may be dropped for every move if the host cannot do it (it can: specials proof v09).
 - 2026-11-11 (projectile proofs): Reptile's forceball launches its victim toward him (v03 over v02); MKT frames and sound cadence convert at one host tick per MKT tick; the rocket speed conversion stays for now (owner: slightly off, not twice) and is to be revisited later.

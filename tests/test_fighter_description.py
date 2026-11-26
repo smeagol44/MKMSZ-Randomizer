@@ -79,7 +79,7 @@ def test_layout_rejects_bad_places_and_overlaps() -> None:
         (lambda d: d["body"].update(secondary_slots={"0x40": "table1:0x02"}), "secondary slot"),
         (lambda d: d.update(outfit={"entries": ["0x10"], "own": "red"}), "outfit"),
         (lambda d: d["body"].update(script_sounds={"0x50": 7}), "script_sounds"),
-        (lambda d: d.update(outfit={"entries": ["0x03"], "own": "blue"}), "outfit"),
+        (lambda d: d.update(outfit={"entries": ["0x03"], "own": "purple"}), "outfit"),
     ],
 )
 def test_validator_rejects(change, message) -> None:

@@ -590,7 +590,7 @@ def _all_steps(steps: list[dict[str, Any]]):
 
 # ---- production packaging (Sektor's accepted "option C" layout, made generic) ------------------
 OUTPUT_SIZE = 0x02000000
-TAIL = (0x01820000, 0x0186E4C0)  # generated-output region for the fighter file and samples
+TAIL = (0x01820000, 0x01880000)  # generated-output region for the fighter file and samples (Memory map)
 FIXED_VA = 0xA01B30F0  # production pool tail after the Inventory legend (in shared file 0x1A)
 POOL_END = 0x801B3420
 RAW_LOADER, FILE_87 = 0x80065D64, 0x87
@@ -658,9 +658,16 @@ def production(clean: bytes, mkt: bytes, name: str, *, fixed_va: int = FIXED_VA)
     file87 = bytearray(base.file87)
     table = relocate.encode(relocs)
     blob_off = _free_from(file87, base.report["chain_start"])
+    if blob_off + n + len(table) > body_build.TYPE_END:
+        # The body tail is taken (Rayden: his move art): append the blob to the file, inside the
+        # file-size budget the runtime-confirmed placement allowed (body_build.SAFE_END).
+        blob_off = (len(file87) + 0xF) & ~0xF
+        file87 += b"\xff" * (blob_off + n + len(table) - len(file87))
+        if len(file87) >= body_build.SAFE_END:
+            raise BuildError(f"payload blob (0x{n:X} + table 0x{len(table):X}) does not fit the fighter file budget")
     table_off = blob_off + n
     blob_end = table_off + len(table)
-    if blob_end > body_build.TYPE_END or set(file87[blob_off:blob_end]) != {0xFF}:
+    if set(file87[blob_off:blob_end]) != {0xFF}:
         raise BuildError(f"payload blob (0x{n:X} + table 0x{len(table):X}) does not fit the fighter file")
     file87[blob_off:table_off] = base.payload
     file87[table_off:blob_end] = table

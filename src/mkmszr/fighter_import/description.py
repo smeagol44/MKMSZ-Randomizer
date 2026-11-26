@@ -412,8 +412,8 @@ def validate(data: Any) -> FighterDescription:
         entries = raw_outfit.get("entries") if isinstance(raw_outfit, dict) else None
         own = raw_outfit.get("own") if isinstance(raw_outfit, dict) else None
         values = [_int(e, "outfit.entries", errors) for e in entries] if isinstance(entries, list) else []
-        if not values or any(v is None or not 1 <= v <= 15 for v in values) or own not in ("red", "green"):
-            errors.append("outfit: {entries: body palette indices 1..15, own: 'red' or 'green'}")
+        if not values or any(v is None or not 1 <= v <= 15 for v in values) or own not in ("red", "green", "blue"):
+            errors.append("outfit: {entries: body palette indices 1..15, own: 'red', 'green' or 'blue'}")
         else:
             outfit = {"entries": tuple(values), "own": own}  # type: ignore[misc]
     unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes",

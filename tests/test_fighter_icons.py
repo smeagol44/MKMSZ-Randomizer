@@ -47,16 +47,19 @@ def test_reptile_icons_replace_his_slots_only() -> None:
 
 
 @needs_roms
-def test_every_layer_fits_its_crop() -> None:
+@pytest.mark.parametrize(("fighter", "donor"), [("reptile", 19), ("rayden", 24)])
+def test_every_layer_fits_its_crop(fighter: str, donor: int) -> None:
     mkt = Path(MKT).read_bytes()
-    recipe = fd.load("reptile").icons
-    d = fi._Donor(mkt, 19)
+    recipe = fd.load(fighter).icons
+    d = fi._Donor(mkt, donor)
     for name, spec in recipe["slots"].items():
         if isinstance(spec, str):
             continue
         x0, y0, size = spec["crop"]
         for layer in spec["layers"]:
             f, _ = fi._layer_frame(d, layer)
+            if layer.get("mirror"):
+                f = fi._mirrored(f)
             points = [(x - f.anchor_x + int(layer.get("dx", 0)), y - f.anchor_y + int(layer.get("dy", 0)))
                       for y in range(f.height) for x in range(f.width) if f.indices[y * f.stride + x]]  # fmt: skip
             inside = sum(x0 <= x < x0 + size and y0 <= y < y0 + size for x, y in points)
@@ -108,3 +111,12 @@ def test_reptile_costs_come_from_his_description() -> None:
     data["help"]["slide"] = [["far too long a title line"]]
     with pytest.raises(fd.DescriptionError, match="help"):
         fd.validate(data)
+
+
+def test_a_mirrored_layer_faces_the_other_way() -> None:
+    """Rayden's reversed Lightning icon: ``mirror`` flips a frame about the origin."""
+
+    frame = fi.effects.EffectFrame(3, 2, 1, 0, bytes([1, 2, 3, 0, 4, 5, 6, 0]))
+    m = fi._mirrored(frame)
+    assert (m.anchor_x, m.indices) == (2, bytes([3, 2, 1, 0, 6, 5, 4, 0]))  # x in [-2, 1) after [-1, 2)
+    assert fi._mirrored(m) == frame

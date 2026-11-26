@@ -10,6 +10,8 @@ is no change, and the other of red and green swaps those two channels, the way S
 * Sektor (user decision, R4b): greys and red armour; ``RED_ENTRIES``, own colour red.
 * Reptile (owner, 2026-11-13): greens 10..14 (15 is near-black), own colour green, from his
   fighter description's ``outfit`` section.
+* Rayden (milestone 6): his blue tunic, entries 2..4, own colour blue: vanilla keeps it, and red
+  and green become absolute hues (0 and 120 degrees; a channel swap would leave blue blue).
 """
 
 from __future__ import annotations
@@ -18,6 +20,8 @@ from ..patches import palette as pal
 
 PALETTE_OFFSET = 0x4584C  # file 0x87
 RED_ENTRIES = (0x3, 0x5, 0x7, 0x9, 0xB, 0xD, 0xE)  # saturated reds; 1 is near-black
+OWN_COLOURS = ("red", "green", "blue")
+OWN_HUES = {"red": 0.0, "green": 120.0}  # red / green on a fighter whose own colour is blue
 
 
 def _swap_red_green(word: int) -> int:
@@ -32,7 +36,9 @@ def transform(word: int, mode: str, *, hue: float | None = None,
     if mode in ("vanilla", own):
         return word
     if mode in ("red", "green"):
-        return _swap_red_green(word)
+        if own in ("red", "green"):
+            return _swap_red_green(word)
+        return pal.make_hue(word, OWN_HUES[mode])  # a blue fighter (Rayden): absolute hues
     if mode in pal.PRESET_HUES:
         return pal.make_hue(word, pal.PRESET_HUES[mode])
     if mode == "hue" and hue is not None:

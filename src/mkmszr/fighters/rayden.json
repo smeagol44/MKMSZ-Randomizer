@@ -9,29 +9,394 @@
     "name": "RAYDEN"
   },
   "body": {
-    "slots": ["0x00", "0x01", "0x02", "0x03", "0x04", "0x05", "0x06", "0x07", "0x08", "0x09", "0x0A",
-              "0x0B", "0x0C", "0x0E", "0x0F", "0x10", "0x11", "0x12", "0x13", "0x14", "0x15",
-              "0x16", "0x17", "0x18", "0x19", "0x1A", "0x1B", "0x1C", "0x1D", "0x1E", "0x1F", "0x20",
-              "0x21", "0x22"],
-    "run": {"mkt_slot": "0x4A", "host_rate": 3},
-    "colour": {"depth": 16, "method": "auto"},
-    "phase_slots": {"0x23": "shift:+1"},
-    "script_sounds": {"0x21": 7, "0x22": 7},
-    "secondary_scripts": {"0x25": "table0:0x24:1", "0x40": "table1:0x00:2", "0x41": "table0:0x16:1",
-                          "0x42": "table0:0x1A:1:loop",
-                          "0x43": "table1:0x02:1:loop"},
-    "common_animations": ["death", "long_fall", "pickup", "grabbed"]
+    "slots": [
+      "0x00",
+      "0x01",
+      "0x02",
+      "0x03",
+      "0x04",
+      "0x05",
+      "0x06",
+      "0x07",
+      "0x08",
+      "0x09",
+      "0x0A",
+      "0x0B",
+      "0x0C",
+      "0x0E",
+      "0x0F",
+      "0x10",
+      "0x11",
+      "0x12",
+      "0x13",
+      "0x14",
+      "0x15",
+      "0x16",
+      "0x17",
+      "0x18",
+      "0x19",
+      "0x1A",
+      "0x1B",
+      "0x1C",
+      "0x1D",
+      "0x1E",
+      "0x1F",
+      "0x20",
+      "0x21",
+      "0x22"
+    ],
+    "run": {
+      "mkt_slot": "0x4A",
+      "host_rate": 3
+    },
+    "colour": {
+      "depth": 16,
+      "method": "auto"
+    },
+    "phase_slots": {
+      "0x23": "shift:+1"
+    },
+    "script_sounds": {
+      "0x21": 7,
+      "0x22": 7
+    },
+    "secondary_scripts": {
+      "0x25": "table0:0x24:1",
+      "0x40": "table1:0x00:2",
+      "0x41": "table0:0x16:1",
+      "0x42": "table0:0x1A:1:loop",
+      "0x43": "table1:0x02:1:loop"
+    },
+    "common_animations": [
+      "slide",
+      "death",
+      "long_fall",
+      "pickup",
+      "grabbed"
+    ]
   },
-  "commands": {"lightning": "ice_blast", "reversed_lightning": "ice_blast_air", "teleport": "directional_ice_up",
-               "torpedo": "ice_clone", "shocker": "ice_shatter"},
-  "specials": {"lightning": {"donor_ticks": 2, "projectile": {"offset_px": [-30, -36], "box": "centre_on_art",
-                                                              "impact_toward_px": 6}},
-               "reversed_lightning": {"donor_ticks": 2, "turn_back": true,
-                                      "projectile": {"offset_px": [-30, -36], "box": "centre_on_art",
-                                                     "impact_toward_px": 6}},
-               "teleport": {"donor_ticks": 2, "skip": ["sound"]},
-               "torpedo": {"face": false, "skip": ["face"], "airborne": true, "donor_ticks": 2, "air_control": true},
-               "shocker": {"donor_ticks": 2}},
+  "commands": {
+    "lightning": "ice_blast",
+    "reversed_lightning": "ice_blast_air",
+    "teleport": "directional_ice_up",
+    "torpedo": "ice_clone",
+    "shocker": "ice_shatter"
+  },
+  "remove_commands": [
+    "directional_ice_down",
+    "freeze_on_contact"
+  ],
+  "help": {
+    "ice-blast": [
+      [
+        "LIGHTNING"
+      ],
+      [
+        "DOWN, FORWARD,",
+        "LOW PUNCH."
+      ],
+      [
+        "THROWS A BOLT",
+        "THAT SHOCKS AND",
+        "PUSHES ENEMIES",
+        "BACK."
+      ]
+    ],
+    "slide": "stock",
+    "directional-ice": [
+      [
+        "TELEPORT"
+      ],
+      [
+        "DOWN, UP."
+      ],
+      [
+        "VANISHES AND",
+        "REAPPEARS BEHIND",
+        "THE NEAREST",
+        "ENEMY."
+      ]
+    ],
+    "air-ice-blast": [
+      [
+        "REVERSE LIGHTNING"
+      ],
+      [
+        "DOWN, BACK,",
+        "LOW PUNCH."
+      ],
+      [
+        "THROWS A BOLT",
+        "BEHIND HIM THAT",
+        "COMES BACK FROM",
+        "THE OTHER SIDE."
+      ]
+    ],
+    "ice-clone": [
+      [
+        "TORPEDO"
+      ],
+      [
+        "BACK, BACK,",
+        "FORWARD."
+      ],
+      [
+        "FLIES AT ENEMIES",
+        "AND CARRIES THEM",
+        "TO THE WALL.",
+        "WORKS IN THE AIR."
+      ]
+    ],
+    "ice-shatter": [
+      [
+        "SHOCKER"
+      ],
+      [
+        "HOLD HIGH PUNCH,",
+        "THEN RELEASE IT."
+      ],
+      [
+        "GRABS A CLOSE",
+        "ENEMY AND SHOCKS",
+        "IT."
+      ]
+    ],
+    "super-slide": "stock",
+    "freeze-on-contact": "empty",
+    "polar-blast": "stock"
+  },
+  "icons": {
+    "palette": "0x800B9AAC",
+    "background": [
+      "0x5A6EB4",
+      "0x0A0C22"
+    ],
+    "slots": {
+      "ice-blast": {
+        "layers": [
+          {
+            "anim": {
+              "table": 0,
+              "slot": 36,
+              "phase": 1,
+              "frame": 3
+            }
+          },
+          {
+            "anim": {
+              "table": 0,
+              "slot": 67,
+              "part": 3,
+              "frame": 0
+            },
+            "palette": "0x800B9B04"
+          }
+        ],
+        "crop": [
+          -30,
+          4,
+          120
+        ]
+      },
+      "slide": {
+        "layers": [
+          {
+            "anim": {
+              "table": 0,
+              "slot": 10,
+              "phase": 1,
+              "frame": 2
+            }
+          }
+        ],
+        "crop": [
+          -14,
+          44,
+          80
+        ]
+      },
+      "directional-ice": {
+        "layers": [
+          {
+            "anim": {
+              "table": 1,
+              "slot": 1,
+              "phase": 1,
+              "frame": 0
+            },
+            "palette": "0x800B9AF0",
+            "dx": -26,
+            "shade": 0.8
+          },
+          {
+            "anim": {
+              "table": 0,
+              "slot": 0,
+              "phase": 1,
+              "frame": 0
+            },
+            "dx": 26
+          }
+        ],
+        "crop": [
+          -56,
+          2,
+          118
+        ]
+      },
+      "air-ice-blast": {
+        "layers": [
+          {
+            "anim": {
+              "table": 0,
+              "slot": 36,
+              "phase": 1,
+              "frame": 3
+            },
+            "mirror": true
+          },
+          {
+            "anim": {
+              "table": 0,
+              "slot": 67,
+              "part": 3,
+              "frame": 0
+            },
+            "palette": "0x800B9B04",
+            "mirror": true
+          }
+        ],
+        "crop": [
+          -90,
+          4,
+          120
+        ]
+      },
+      "ice-clone": {
+        "layers": [
+          {
+            "anim": {
+              "table": 1,
+              "slot": 0,
+              "phase": 2,
+              "frame": 1
+            },
+            "ghosts": {
+              "count": 2,
+              "dx": -14
+            }
+          }
+        ],
+        "crop": [
+          -84,
+          -20,
+          150
+        ]
+      },
+      "ice-shatter": {
+        "layers": [
+          {
+            "anim": {
+              "table": 1,
+              "slot": 2,
+              "phase": 1,
+              "frame": 2
+            }
+          },
+          {
+            "anim": {
+              "table": 0,
+              "slot": 67,
+              "part": 1,
+              "frame": 2
+            },
+            "palette": "0x800B9B04",
+            "dx": 42,
+            "dy": -6
+          }
+        ],
+        "crop": [
+          -26,
+          10,
+          112
+        ]
+      },
+      "super-slide": {
+        "layers": [
+          {
+            "anim": {
+              "table": 0,
+              "slot": 10,
+              "phase": 1,
+              "frame": 2
+            },
+            "ghosts": {
+              "count": 2,
+              "dx": -14
+            }
+          }
+        ],
+        "crop": [
+          -40,
+          26,
+          104
+        ]
+      },
+      "freeze-on-contact": "empty",
+      "polar-blast": "stock"
+    }
+  },
+  "outfit": {
+    "entries": [
+      "0x02",
+      "0x03",
+      "0x04"
+    ],
+    "own": "blue"
+  },
+  "specials": {
+    "lightning": {
+      "donor_ticks": 2,
+      "projectile": {
+        "offset_px": [
+          -30,
+          -36
+        ],
+        "box": "centre_on_art",
+        "impact_toward_px": 6
+      }
+    },
+    "reversed_lightning": {
+      "donor_ticks": 2,
+      "turn_back": true,
+      "projectile": {
+        "offset_px": [
+          -30,
+          -36
+        ],
+        "box": "centre_on_art",
+        "impact_toward_px": 6
+      }
+    },
+    "teleport": {
+      "donor_ticks": 2,
+      "skip": [
+        "sound"
+      ]
+    },
+    "torpedo": {
+      "face": false,
+      "skip": [
+        "face"
+      ],
+      "airborne": true,
+      "donor_ticks": 2,
+      "air_control": true
+    },
+    "shocker": {
+      "donor_ticks": 2
+    }
+  },
   "legacy": [],
-  "notes": "Milestone 6 (owner, 2026-11-13): Rayden is the next fighter. Body first."
+  "notes": "Milestone 6 (owner, 2026-11-13): Rayden is the next fighter. Body first. Product (2026-11-26): eight power slots: his five specials, the generic slide and super slide (owner rule for every fighter), Polar Blast as is; Freeze on Contact empty."
 }
