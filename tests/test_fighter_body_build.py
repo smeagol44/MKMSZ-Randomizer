@@ -255,10 +255,11 @@ def test_rayden_body_builds() -> None:
     # 0x15DC holds one more row than its descriptor shows (cropped, as MKT draws it), his
     # palette ramps rise, and his codec-15 silhouettes use their own palette 0x800B9AF0; his
     # throw (phase_slots) skips draw-order callback 37, and his getup scripts start with the
-    # script sound (callback 2, spare descriptor 0x2A).
+    # script sound (callback 2, spare descriptor 0x2A). The Shocker's pose (secondary 0x43,
+    # MKT table 1 slot 2) adds its three frames.
     body = bb.build_body(fd.load("rayden"), Path(CLEAN).read_bytes(), Path(MKT).read_bytes(),
                          bb.Extras(), rom=bytearray(Path(CLEAN).read_bytes()))  # fmt: skip
-    assert body.report["frames"] == 155 and body.report["file_end"] <= body.report["file_budget"]
+    assert body.report["frames"] == 158 and body.report["file_end"] <= body.report["file_budget"]
 
 
 @needs_roms

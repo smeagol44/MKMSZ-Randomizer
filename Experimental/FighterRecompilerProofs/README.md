@@ -70,3 +70,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v22.py` | `MKMSZR_rayden-specials_common_proof_v22.z64` | v21 with the wrap at the real visible edge (depth × 160 / focal), right on the zoomed-out camera too |
 | `MKMSZR_build_rayden-specials_proof_v23.py` | `MKMSZR_rayden-specials_common_proof_v23.z64` | v22 plus the generated teleport (D,U) in Directional Ice Up's slot: afterimage, relocation, cooldown |
 | `MKMSZR_build_rayden-specials_proof_v24.py` | `MKMSZR_rayden-specials_common_proof_v24.z64` | v23 with one sound, the getup as the reappear, and the afterimage at his height in its white palette |
+| `MKMSZR_build_rayden-specials_proof_v25.py` | `MKMSZR_rayden-specials_common_proof_v25.z64` | v24 plus the Shocker (HP held, released) in Ice Shatter's slot: release commands, the hold count, the shock-hold reaction |

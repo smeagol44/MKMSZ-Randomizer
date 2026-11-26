@@ -49,6 +49,7 @@ REACTIONS = {
     "acid_stagger": "MKT 0x72: victim staggers back (+0x420 = 0x26666); details Pending",
     "shock_stagger": "MKT 0x80: victim staggers back (0x26666) blinking cyan (its shock palette)",
     "shock_stagger_toward": "MKT 0x81: as 0x80, pushed towards the attacker (towards_x_vel)",
+    "shock_hold": "Rayden's Shocker grab: the victim held and shocked (blinking cyan), then dropped",
     "rocket_stumble": "MKT r_rocket -> zap_stumble: stumble back",
     "uppercut": "teleport strike: host uppercut reaction 0x08 (runtime-confirmed teleport)",
     "blocked": "the stock blocked reaction",
@@ -61,6 +62,8 @@ CONDITIONS = {
     "cooldown": "at least `ticks` since `key` was stamped for this player",
     "opponent_state": "opponent-state guard read from the donor; meaning Pending (see Wiki)",
     "projectiles_below": "fewer than `count` live projectiles of this fighter",
+    "held_for": "the command's button was held at least `ticks` before its release (MKT "
+                "ticks_since on the press stamp; a ``release`` command)",
 }
 
 # op -> {param: kind}; a trailing "?" marks an optional parameter.

@@ -113,10 +113,12 @@ def test_rayden_lightning_goes_to_its_event_button() -> None:
     found = cmds.donor_commands(mkt, moves, fd.load("rayden").commands)
     assert [(c.name, c.calls, c.buttons, c.stick) for c in found] == [
         ("lightning", "ice_blast", 0x80, False), ("reversed_lightning", "ice_blast_air", 0x80, False),
-        ("teleport", "directional_ice_up", 0, True), ("torpedo", "ice_clone", 0, True)]  # fmt: skip
+        ("teleport", "directional_ice_up", 0, True), ("torpedo", "ice_clone", 0, True),
+        ("shocker", "ice_shatter", 0x10, False)]  # fmt: skip
+    assert [c.release for c in found] == [False] * 4 + [True]
     overrides = {"torpedo": (1, 0xA01B0000, 0xA01B0100), "reversed_lightning": (0, 0xA01B0200, 0xA01B0300),
-                 "teleport": (0, 0xA01B0400, 0xA01B0500)}  # fmt: skip
-    low = cmds.lower(clean, found, set(), 0xA01AF420, 0xA01AF520, overrides)
+                 "teleport": (0, 0xA01B0400, 0xA01B0500), "shocker": (0, 0xA01B0600, 0xA01B0700)}  # fmt: skip
+    low = cmds.lower(clean, found, set(), 0xA01AF420, 0xA01AF520, overrides, hold_word=0xA01B0800)
     lp = low.tables["LP"]
     # Ice Clone's record taken; the reversed lightning (Air Ice Blast's slot, no record of its own:
     # its own special) is a second LP record
@@ -133,8 +135,8 @@ def test_rayden_torpedo_is_a_stick_command(tmp_path: Path) -> None:
     moves, _ = components.load_programs("rayden")
     found = cmds.donor_commands(mkt, moves, fd.load("rayden").commands)
     overrides = {"torpedo": (1, 0xA01B0000, 0xA01B0100), "reversed_lightning": (0, 0xA01B0200, 0xA01B0300),
-                 "teleport": (0, 0xA01B0400, 0xA01B0500)}  # fmt: skip
-    low = cmds.lower(clean, found, set(), 0xA01AF420, 0xA01AF520, overrides)
+                 "teleport": (0, 0xA01B0400, 0xA01B0500), "shocker": (0, 0xA01B0600, 0xA01B0700)}  # fmt: skip
+    low = cmds.lower(clean, found, set(), 0xA01AF420, 0xA01AF520, overrides, hold_word=0xA01B0800)
     tele, rec = low.tables["STICK"]  # by donor record: the teleport (D,U) first
     # D,U ends with Up: its record takes the Up/Down mask and the checker also hooks event 6
     assert tele[:4] == bytes.fromhex("50005000") and tele[16:22] == bytes.fromhex("001000060007")
@@ -151,3 +153,31 @@ def test_rayden_torpedo_is_a_stick_command(tmp_path: Path) -> None:
     up = cmds.UPDOWN_EVENT_RECORDS[6] + cmds.PLAYER_TYPE_SLOT - cmds.VA_TO_ROM
     assert int.from_bytes(clean[up : up + 4], "big") == cmds.EMPTY_CALLBACK  # the stock stub
     assert int.from_bytes(rom[up : up + 4], "big") == 0xA01AF520
+
+
+@needs_roms
+def test_rayden_shocker_is_a_high_punch_release_command() -> None:
+    # MKT 0x800AB9F4: HP released after a hold of 0x38 donor ticks. Its record goes into a
+    # release table run by the HP release event (stock: no player callback); the HP press
+    # callback is wrapped to restart the hold count, then runs the stock HP table.
+    clean, mkt = Path(CLEAN).read_bytes(), Path(MKT).read_bytes()  # type: ignore[arg-type]
+    moves, _ = components.load_programs("rayden")
+    found = cmds.donor_commands(mkt, moves, fd.load("rayden").commands)
+    overrides = {"torpedo": (1, 0xA01B0000, 0xA01B0100), "reversed_lightning": (0, 0xA01B0200, 0xA01B0300),
+                 "teleport": (0, 0xA01B0400, 0xA01B0500), "shocker": (0, 0xA01B0600, 0xA01B0700)}  # fmt: skip
+    with pytest.raises(cmds.CommandError, match="hold-count word"):
+        cmds.lower(clean, found, set(), 0xA01AF420, 0xA01AF520, overrides)
+    low = cmds.lower(clean, found, set(), 0xA01AF420, 0xA01AF520, overrides, hold_word=0xA01B0800)
+    (rec,) = low.tables["RELEASE"]
+    assert rec[:16] == bytes.fromhex("0010001000000000a01b0600a01b0700")  # HP masks, mode 0
+    assert all(rec[:4] != r[:4] or r[8:16] != rec[8:16] for r in low.tables["HP"])  # not a press
+    assert low.release_checker and low.press_wrapper
+    rom = bytearray(clean)
+    cmds.install(rom, clean, low, 0xF10000, 0xA01AF420)
+    slot = lambda record: record + cmds.PLAYER_TYPE_SLOT - cmds.VA_TO_ROM
+    word = lambda data, record: int.from_bytes(data[slot(record) : slot(record) + 4], "big")
+    assert word(clean, cmds.HP_RELEASE_RECORD) == 0 and word(clean, cmds.HP_PRESS_RECORD) == cmds.HP_PRESS_STOCK
+    assert word(rom, cmds.HP_RELEASE_RECORD) == low.release_checker
+    assert word(rom, cmds.HP_PRESS_RECORD) == low.press_wrapper
+    at = 0xF10000 + low.moved["RELEASE"] - 0xA01AF420
+    assert rom[at : at + cmds.RECORD] == rec and rom[at + cmds.RECORD : at + cmds.RECORD + 4] == bytes(4)

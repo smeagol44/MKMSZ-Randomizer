@@ -157,3 +157,17 @@ def test_teleport_reads_the_afterimage_and_the_relocation(mkt: bytes) -> None:
     assert g.steps[3]["anim"] == {"table": 1, "slot": 1} and g.steps[3]["rate"] == 2
     assert g.steps[4]["dx"] == 67 and g.steps[6]["sound"] == {"fighter": 7}
     assert g.unknown == []
+
+
+@needs_mkt
+def test_shocker_reading_names_the_grab_it_cannot_lower(mkt: bytes) -> None:
+    """HP release (quick special 0x1D -> 0x80073228): the generator reads the begin, the sounds
+    and the pose, and reports the grab it has no rule for (the grab test 0x8006CBE4, the damage
+    0x8006D824, the victim's routine); the program in moves/rayden.json is hand-written from this
+    reading (specials proof v25). A grab rule should empty this list."""
+
+    g = gen.Generator(mkt, 24).move(0x80073228)
+    assert [s["op"] for s in g.steps][:2] == ["begin", "sound"]
+    assert g.steps[0]["action_mkt"] == "0x122" and g.steps[1]["sound"] == {"fighter": 12}
+    calls = {u.split("call ")[1] for u in g.unknown if "call " in u}
+    assert {"0x8006CBE4", "0x8006D824", "0x80005140"} <= calls

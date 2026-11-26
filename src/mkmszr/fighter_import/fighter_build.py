@@ -69,8 +69,9 @@ FIRST_SELECTOR = 3  # stock transfer selectors 0..2
 TRANSFER_BOUND_ROM, TRANSFER_BOUND_STOCK = 0x4B654, 0x2CC20003  # sltiu v0, a2, 3
 TRANSFER_ENTRIES_FREE = 5  # 0x800A105C..0x800A106C: zero and unreferenced (Memory map)
 # Spare reaction-table entries (stock 0x8004E0C0 endless sleep, no strike record uses them;
-# Wiki Memory-and-Allocation-Map): 0x2B, 0x23, then byte 0x4C past the 64 reactions.
-REACTION_POOL = (0x2B, 0x23, 0x4C)
+# Wiki Memory-and-Allocation-Map): 0x2B, 0x23, then bytes 0x4C and 0x4E past the 64 reactions
+# (blocked entries 0x0C and 0x0E).
+REACTION_POOL = (0x2B, 0x23, 0x4C, 0x4E)
 VOICE_CHAINS = sound.ISOLATED_CHAINS[:10]
 EXTRA_CHAINS = sound.ISOLATED_CHAINS[10:]
 HELPER_DY_PX = -2  # throw helper above its projectile (owner fine-tune, specials proofs v09/v11)
@@ -312,6 +313,21 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         cool = next((c for c in programs[move].command.get("conditions", []) if c["kind"] == "cooldown"), None)
         if cool is not None and proj is None:  # projectiles: the host one-projectile rule instead
             cooldown_of[move] = max(1, -(-_int(cool["ticks"]) // ticks_per))
+        unported: set[int] = set()
+        for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
+            if s["op"] == "sound" and "random" not in s["sound"]:
+                n = _int(s["sound"]["fighter"])
+                if n not in fighter_sounds and n not in unported:
+                    try:
+                        donor_sound = bank.event(bank.fighter_event(donor_id, n))
+                    except ValueError:  # several tracks (Rayden's 5, event 0x205): not ported yet
+                        unported.add(n)
+                        report.setdefault("unported_sounds", []).append((move, n))
+                        continue
+                    fighter_sounds[n] = install(donor_sound)
+        if unported:
+            steps = _without_sounds(steps, unported)
+            steps_of[move] = steps
         for s in _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
             if s["op"] == "sound":
                 first = _int(s["sound"]["fighter"])
@@ -362,9 +378,14 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             alive = (f"{move}_alive", *(f"{m}_alive" for m in shared_limit))
         refuse = (lower_special.CTRL_STEALTH, lower_special.STEALTH_BIT) if "stealth" in tune else None
         relocates = any(s["op"] == "relocate" for s in _all_steps(steps))
+        held_cond = next((c for c in programs[move].command.get("conditions", []) if c["kind"] == "held_for"), None)
+        held = None
+        if held_cond is not None:  # MKT counts donor ticks; the hold counter host ticks
+            held = ("hold_hp_count", max(1, -(-_int(held_cond["ticks"]) // _int(tune.get("donor_ticks", 1)))))
         lower_special.emit_gate_condition(a, f"{move}_cond", gate, costs[move], default=default,
                                           cooldown=f"{move}_cooldown_word" if move in cooldown_of else None,
                                           target_range=lower_special.RELOCATE_RANGE if relocates else None,
+                                          held=held,
                                           alive=alive, refuse_if=refuse,
                                           airborne=bool(tune.get("airborne")))  # fmt: skip
         g = group_of.get(move)
@@ -467,6 +488,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         lp.emit_data(a, g.lowered, link_va, clean, data=f"g{_gid(g)}_")  # type: ignore[arg-type]
     for _, records in report.get("strike_records", []):
         lower_special.emit_strike_data(a, records, link_va)
+    if any(programs[m].command.get("release") for m in order):
+        while a.pc() & 3:
+            a.nop()
+        a.label("hold_hp_count")  # High Punch hold, in host ticks (commands' counter process)
+        a.raw(0)
     main = a.link()
     # Transfer mode 0 refuses an airborne start, mode 1 does not (Wiki Player-Actions "Descriptor
     # selector and condition"): moves tuned "airborne" (Rayden's torpedo) take mode 1.
@@ -474,8 +500,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                  for m in order}  # fmt: skip
     cmds = commands.donor_commands(mkt, moves, d.commands)
     stub_base = (link_va + TABLE_RESERVE + len(main) + 0xF) & ~0xF
-    low_cmd = commands.lower(clean, cmds, set(d.remove_commands), link_va, stub_base, overrides)
-    if any(v + commands.RECORD * 5 + 4 > link_va + TABLE_RESERVE for v in low_cmd.moved.values()):
+    low_cmd = commands.lower(clean, cmds, set(d.remove_commands), link_va, stub_base, overrides,
+                             hold_word=a.labels.get("hold_hp_count"))  # fmt: skip
+    if any(v + commands.RECORD * len(low_cmd.tables[k]) + 4 > link_va + TABLE_RESERVE
+           for k, v in low_cmd.moved.items()):  # fmt: skip
         raise BuildError("moved command tables do not fit their reserve")
     end = stub_base - link_va + len(low_cmd.stubs)
     if end > PAYLOAD_LIMIT:
@@ -535,6 +563,21 @@ def _projectile_rates(step: dict[str, Any], ticks_per: int) -> dict[str, Any]:
         out["impact"] = dict(step["impact"], rate=max(1, -(-_int(step["impact"]["rate"]) // ticks_per)))
     if "wrap" in step:
         out["wrap"] = {"cooldown": max(1, -(-_int(step["wrap"]["cooldown"]) // ticks_per))}
+    return out
+
+
+def _without_sounds(steps: list[dict[str, Any]], numbers: set[int]) -> list[dict[str, Any]]:
+    """The steps without the sound steps of ``numbers`` (sounds the importer cannot port yet)."""
+
+    out = []
+    for s in steps:
+        if s["op"] == "sound" and _int(s["sound"].get("fighter", -1)) in numbers and "random" not in s["sound"]:
+            continue
+        s = dict(s)
+        for key in ("steps", "every_tick", "on_hit", "on_block"):
+            if key in s:
+                s[key] = _without_sounds(s[key], numbers)
+        out.append(s)
     return out
 
 

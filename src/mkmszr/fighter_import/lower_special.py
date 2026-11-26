@@ -101,7 +101,8 @@ LIT_BIT = 0x1000
 def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
                         default: int | None = None, alive: tuple[str, ...] = (),
                         refuse_if: tuple[int, int] | None = None, airborne: bool = False,
-                        cooldown: str | None = None, target_range: int | None = None) -> None:  # fmt: skip
+                        cooldown: str | None = None, target_range: int | None = None,
+                        held: tuple[str, int] | None = None) -> None:  # fmt: skip
     """``label() -> 0x8000 / 0x4000`` (see the module notes). With ``default``, the gate word
     is used only when it is ``slti t0, v0, N`` (Ice Blast's rewritten tail), else ``default``.
     With ``alive`` (labels of words that projectiles set while they live,
@@ -114,7 +115,9 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     ``cooldown``: the label of a word the move's ``stamp`` keeps set for its cooldown (MKT's
     ticks_since condition): refuse while it is set. ``target_range``: refuse unless an enemy is
     within that range on the player's path (as Sektor's teleport condition, which avoids a
-    teleport with nobody to reach)."""
+    teleport with nobody to reach). ``held`` (word label, host ticks): refuse unless the word
+    (the High Punch hold count, ``commands``) is at least that (MKT ``ticks_since`` on the press
+    stamp: Rayden's Shocker)."""
 
     a.label(label)
     a.addiu("sp", "sp", -0x20)
@@ -125,6 +128,11 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     if cooldown is not None:
         a.la("t0", cooldown)
         a.lw("t0", 0, "t0")
+        a.bnez("t0", label + "_no")
+    if held is not None:
+        a.la("t0", held[0])
+        a.lw("t0", 0, "t0")
+        a.slti("t0", "t0", held[1])
         a.bnez("t0", label + "_no")
     a.lui("t0", hi(PLAYER_ACTOR))
     a.lw("t0", lo(PLAYER_ACTOR), "t0")
@@ -1034,6 +1042,85 @@ def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
     a.j_label(release)  # the throw, as the reaction itself (same sp and ra)
 
 
+# Shock hold (Rayden's Shocker, MKT 0x80073228 on a grab): the victim gets a waiting routine
+# (0x8005A1B8), is posed in its slot 0x20 at his hands (0x800733F8, per-fighter offsets) and, 8
+# times, its shock palette goes on and off (0x8000FD28 / 0x8000F9B0, the cyan palette reaction 0x80
+# uses) while it is moved 4 px and back every 3 donor ticks (0x800735BC); then it drops and lands
+# knocked down (0x800734CC -> 0x80058728). The host: the victim stops and shows its root 0x20, is
+# held where the grab found it (no gravity, its airborne counter counting, as the carry) for the
+# hold, moved 4 px down and back every ``every`` ticks, blinks cyan (the lightning's blink
+# helper), then falls into the torpedo victim's release (the lifted knockback with no push).
+SHOCK_ROOT = 0x20
+SHOCK_HOLD_DONOR_TICKS = 8 * 2 * 6  # 8 shocks, each 2 halves of 2 x 3 donor ticks
+SHOCK_JIGGLE_DONOR_TICKS = 3
+SHOCK_JIGGLE_PX = 4
+
+
+def emit_shock_hold_reaction(a: Assembler, label: str, release: str, morphs: tuple[int, ...],
+                             ticks: int, every: int, blink: str) -> None:  # fmt: skip
+    """Victim reaction ``shock_hold`` (see the notes above); ``ticks``, ``every`` in host ticks;
+    ``blink``: the label of its blink process (``lower_projectile.emit_blink``)."""
+
+    frame = 0x30
+    a.label(label)
+    a.addiu("sp", "sp", -frame)
+    a.sw("ra", 0x28, "sp")
+    for k, reg in enumerate(("s0", "s1", "s2", "s3")):
+        a.sw(reg, 0x18 + 4 * k, "sp")
+    for target in morphs:
+        host.load_controller(a)
+        a.move("a0", "s1")
+        a.jal(target)
+    host.load_controller(a)
+    host.stop(a)
+    a.move("a0", "zero")
+    a.li("a1", SHOCK_ROOT)
+    a.jal(lp.F_SELECT)
+    host.load_controller(a)
+    host.advance_animation(a)
+    a.li("a0", lp.BLINK_PROCESS_ID)  # the cyan blink, with this controller as its argument
+    a.la("a1", blink)
+    a.jal(lp.F_CLONE)
+    a.beqz("v0", label + "_noblink")
+    a.sw("s0", 0x6F4, "v0")
+    a.label(label + "_noblink")
+    host.load_controller(a)
+    a.lw("s3", host.ACTOR_Y, "s1")  # its height, held
+    a.li("s2", ticks)
+    a.label(label + "_loop")
+    host.load_controller(a)
+    a.li("t0", every)  # down 4 px on every other ``every`` ticks
+    a.div("s2", "t0")
+    a.mflo("t1")
+    a.nop()
+    a.nop()
+    a.andi("t1", "t1", 1)
+    a.li("t2", SHOCK_JIGGLE_PX * lp.UNITS_PER_PX << 8)
+    a.mult("t1", "t2")
+    a.mflo("t1")
+    a.nop()
+    a.nop()
+    a.addu("t1", "t1", "s3")  # y grows downward
+    a.sw("t1", host.ACTOR_Y, "s1")
+    a.sw("t1", ACTOR_PREV_Y, "s1")
+    a.sw("zero", host.ACTOR_GRAVITY, "s1")
+    a.sw("zero", host.ACTOR_YVEL, "s1")
+    a.lhu("t1", host.CTRL_AIRBORNE, "s0")
+    a.addiu("t1", "t1", 1)
+    a.sh("t1", host.CTRL_AIRBORNE, "s0")
+    host.sleep_tick(a)
+    a.addiu("s2", "s2", -1)
+    a.bnez("s2", label + "_loop")
+    host.load_controller(a)
+    a.sw("s3", host.ACTOR_Y, "s1")
+    a.sw("s3", ACTOR_PREV_Y, "s1")
+    for k, reg in enumerate(("s0", "s1", "s2", "s3")):
+        a.lw(reg, 0x18 + 4 * k, "sp")
+    a.lw("ra", 0x28, "sp")
+    a.addiu("sp", "sp", frame)
+    a.j_label(release)  # the drop, as the reaction itself (same sp and ra)
+
+
 # Screen shake (MKT 0x8002A750(amplitude, count): a process that, every 3 ticks, moves the
 # camera's vertical offset by the amplitude and flips its sign, count times). The host keeps
 # camera shake offsets at 0x8009A928 (vertical) and 0x8009A92C (horizontal): the camera update
@@ -1102,9 +1189,23 @@ def _emit_carry(a: Assembler, label: str, ctx: ReactionContext) -> None:
     a.raw(0)
 
 
+def _emit_shock_hold(a: Assembler, label: str, ctx: ReactionContext) -> None:
+    ticks = _scale(SHOCK_HOLD_DONOR_TICKS, ctx.donor_ticks)
+    every = _scale(SHOCK_JIGGLE_DONOR_TICKS, ctx.donor_ticks)
+    release, blink = label + "_release", label + "_blink"
+    emit_shock_hold_reaction(a, label, release, lp.REACTION_LOWERING["torpedo_carry_release"]["morph"],
+                             ticks, every, blink)  # fmt: skip
+    a.label(release)
+    for w in lp.lifted_reaction(ctx.clean, "torpedo_carry_release"):
+        a.raw(w)
+    # the palette goes on and off once per 6-donor-tick half (0x800735BC), 8 times each
+    lp.emit_blink(a, blink, (0x20, 0xFF, 0xFF), 16, _scale(2 * SHOCK_JIGGLE_DONOR_TICKS, ctx.donor_ticks))
+
+
 VICTIM_REACTIONS: dict[str, VictimReaction] = {
     "elbow_hold": VictimReaction("hold", _emit_hold),
     "torpedo_carry": VictimReaction("carry", _emit_carry, word=True),
+    "shock_hold": VictimReaction("shock", _emit_shock_hold),
 }
 
 

@@ -120,7 +120,7 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     words = [int.from_bytes(built.file87[at + 4 * i : at + 4 * i + 4], "big") for i in range(n)]
     assert n == 6 and words[2] == words[5] == 0  # two phases of two frames, nothing borrowed
     slot = built.reactions["torpedo_carry"]
-    (_, records), = built.report["strike_records"]
+    records = dict(built.report["strike_records"])["torpedo"]
     assert records[0][1][8] == slot  # the strike's reaction byte
     entry = lp.REACTION_TABLE - 0x7FFFF400 + 4 * slot
     target = int.from_bytes(built.rom[entry : entry + 4], "big")
@@ -135,7 +135,8 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     # back, mirroring it around an anchor outside its box); the torpedo's three jumps (bounce,
     # bounce, drop) take the air map
     assert ws.count(0x012A4826) == 2  # xor t1, t1, t2 (the facing bit): each lightning's burst
-    assert ws.count(0x2739B05C) == 7  # input map: four begins without a turn (both lightnings, teleport, torpedo), three jumps
+    # input map: five begins without a turn (both lightnings, teleport, torpedo, Shocker), three jumps
+    assert ws.count(0x2739B05C) == 8
     # v11-v12 (owner screenshots, Wind): the burst goes to the enemy hit (the player's +0x640,
     # set by the collision core), at its whole position: path, path position, x, z; v15: the
     # bolt's own height kept (impact_keep_y), not the enemy's feet
@@ -353,3 +354,30 @@ def test_teleport_reappears_with_the_getup_and_its_own_sound(roms: tuple[bytes, 
     k = next(i for i, w in enumerate(ws) if w == 0x00002021 and ws[i + 1] == 0x24050022)  # a0 = 0, a1 = 0x22
     assert ws[k + 2 : k + 4] == [0x3C198003, 0x2739FE54]  # the select 0x8002FE54, through t9
     assert 0x8E2600D8 in ws  # lw a2, 0xD8(s1): the owner's draw offset for the afterimage
+
+
+@needs_roms
+def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> None:
+    """Specials proof v25: the Shocker (MKT 0x800AB9F4, HP released after 0x38 donor ticks)
+    sits in a release table hooked into the HP release event; the HP press callback is
+    wrapped to count the hold; the strike selects the shock-hold reaction in spare entry
+    0x4E (blocked entry 0x0E), whose routine is in the payload; sound 5 (two tracks) is
+    not ported yet."""
+
+    from mkmszr.fighter_import import commands as cmds
+    from mkmszr.fighter_import import lower_projectile as lp
+
+    built = fb.build(*roms, "rayden")
+    assert built.reactions["shock_hold"] == 0x4E
+    ((_, record),) = dict(built.report["strike_records"])["shocker"]
+    assert record[8:12] == bytes((0x4E, 0x05, 0x20, 0x00))  # reaction, blocked, damage 32, no chip
+    entry = lp.REACTION_TABLE - 0x7FFFF400 + 4 * 0x4E
+    target = int.from_bytes(built.rom[entry : entry + 4], "big")
+    assert built.link_va <= target < built.link_va + len(built.payload)
+    slot = lambda record: record + cmds.PLAYER_TYPE_SLOT - cmds.VA_TO_ROM
+    hooks = [int.from_bytes(built.rom[slot(r) : slot(r) + 4], "big")
+             for r in (cmds.HP_RELEASE_RECORD, cmds.HP_PRESS_RECORD)]  # fmt: skip
+    assert all(built.link_va <= h < built.link_va + len(built.payload) for h in hooks)
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    assert 0x2908001C in ws  # slti t0, t0, 28: the hold gate (56 donor ticks at 2 per host tick)
+    assert built.report["unported_sounds"] == [("shocker", 5)]

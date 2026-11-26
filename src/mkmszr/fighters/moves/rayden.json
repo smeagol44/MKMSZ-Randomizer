@@ -622,6 +622,147 @@
           "op": "end"
         }
       ]
+    },
+    {
+      "name": "shocker",
+      "command": {
+        "buttons": "0x10",
+        "release": true,
+        "tokens": [],
+        "window": 0,
+        "src": "MKT 0x800AB9F4",
+        "conditions": [
+          {
+            "kind": "held_for",
+            "ticks": 56,
+            "src": "MKT 0x80051008"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "op": "begin",
+          "action_mkt": "0x122",
+          "face": false,
+          "stop": true,
+          "src": {
+            "action_mkt": "MKT 0x800732B8",
+            "face": "MKT 0x8007323C",
+            "stop": "MKT 0x8007323C"
+          }
+        },
+        {
+          "op": "sound",
+          "sound": {
+            "fighter": 12
+          },
+          "src": {
+            "sound": "MKT 0x80073244"
+          }
+        },
+        {
+          "op": "strike",
+          "strike": {
+            "box": [
+              0,
+              0,
+              61,
+              120
+            ],
+            "damage": 32,
+            "block_damage": 0,
+            "reaction": "shock_hold",
+            "blocked_reaction": "blocked"
+          },
+          "ticks": 1,
+          "on_hit": [
+            {
+              "op": "sound",
+              "sound": {
+                "fighter": 5
+              },
+              "src": {
+                "sound": "MKT 0x800732CC"
+              }
+            },
+            {
+              "op": "pose",
+              "anim": {
+                "table": 1,
+                "slot": 2
+              },
+              "src": {
+                "anim": "MKT 0x80073304"
+              }
+            },
+            {
+              "op": "repeat",
+              "count": 32,
+              "steps": [
+                {
+                  "op": "sleep",
+                  "ticks": 3,
+                  "src": {
+                    "ticks": "MKT 0x800735EC"
+                  }
+                },
+                {
+                  "op": "next_frame"
+                }
+              ],
+              "src": {
+                "count": "MKT 0x80073348"
+              }
+            },
+            {
+              "op": "end"
+            }
+          ],
+          "src": {
+            "strike": "MKT 0x8006CBE4",
+            "ticks": "MKT 0x80073250"
+          }
+        },
+        {
+          "op": "pose",
+          "anim": {
+            "table": 1,
+            "slot": 2
+          },
+          "src": {
+            "anim": "MKT 0x80073534"
+          }
+        },
+        {
+          "op": "repeat",
+          "count": 2,
+          "steps": [
+            {
+              "op": "sleep",
+              "ticks": 3,
+              "src": {
+                "ticks": "MKT 0x80073540"
+              }
+            },
+            {
+              "op": "next_frame"
+            }
+          ],
+          "src": {
+            "count": "MKT 0x80073540"
+          }
+        },
+        {
+          "op": "sleep",
+          "ticks": 3,
+          "src": {
+            "ticks": "MKT 0x80073540"
+          }
+        },
+        {
+          "op": "end"
+        }
+      ]
     }
   ],
   "gaps": [
