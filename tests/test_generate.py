@@ -62,7 +62,8 @@ def test_decompile_folds_a_known_argument(mkt: bytes) -> None:
 @needs_mkt
 @pytest.mark.parametrize(
     ("fighter", "fid", "move", "entry", "args"),
-    [("reptile", 19, "elbow_dash", 0x800467D0, ())],
+    [("reptile", 19, "elbow_dash", 0x800467D0, ()),
+     ("reptile", 19, "acid_spit", 0x8004F904, ())],  # its command's entry (do_special 0x23)
 )
 def test_generated_equals_accepted(mkt: bytes, fighter: str, fid: int, move: str, entry: int, args: tuple) -> None:
     g = gen.Generator(mkt, fid).move(entry, args)
@@ -79,12 +80,35 @@ def test_invisibility_differs_by_the_owner_length_only(mkt: bytes) -> None:
     ]
 
 
+def projectile_of(steps: list[dict]) -> dict:
+    return next(s for s in steps if s["op"] == "projectile")
+
+
 @needs_mkt
-def test_lightning_differs_by_the_projectile_only(mkt: bytes) -> None:
+def test_lightning_differs_by_mkt_close_range_checks_only(mkt: bytes) -> None:
+    """Projectile rules (generator step 3): the bolt process folds on the lightning's argument
+    (0 for D,F, handed to the child in +0x440); MKT checks close range with strike 0x10 twice
+    before the flight (0x80078230), which the accepted program leaves out (owner to decide)."""
+
     g = gen.Generator(mkt, 24).move(0x8004FA44)  # the command's own entry (do_special 0x2E)
-    diff = changed(gen.compare(g.steps, accepted("rayden", "lightning")))
-    assert len(diff) == 1 and diff[0].startswith("-projectile ")
-    assert any("projectile process" in u for u in g.unknown)
+    made = projectile_of(g.steps)
+    assert made.pop("checks") == [{"box": [101, 36, 64, 16], "after": 1}, {"box": [101, 36, 64, 16], "after": 2}]
+    assert gen.compare(g.steps, accepted("rayden", "lightning")) == []
+    assert g.unknown == []
+
+
+@needs_mkt
+@pytest.mark.parametrize(("move", "entry"), [("forceball_fast", 0x8004F9A4), ("forceball_slow", 0x8004F8E4)])
+def test_forceballs_differ_by_the_owner_offset_only(mkt: bytes, move: str, entry: int) -> None:
+    """The forceball speed reaches the process through the parent's +0x440 (0x59999 / 0x26666);
+    the hum is its flight callback (sound 0x12 every 3 ticks). The spawn offset (-30, -36) is the
+    owner's (generator step 4 moves it to the description); MKT starts at the owner's point."""
+
+    g = gen.Generator(mkt, 19).move(entry)
+    assert projectile_of(g.steps)["offset"] == [0, 0]
+    projectile_of(g.steps)["offset"] = [-30, -36]
+    assert gen.compare(g.steps, accepted("reptile", move)) == []
+    assert g.unknown == []
 
 
 @needs_mkt
@@ -102,3 +126,15 @@ def test_canonical_ignores_provenance_and_number_spelling() -> None:
     a = [{"op": "sleep", "ticks": 36, "src": {"ticks": "MKT 0x80077F08"}}]
     b = [{"op": "sleep", "ticks": "0x24"}]
     assert gen.compare(a, b) == []
+
+
+@needs_mkt
+def test_a_known_process_field_folds_the_bolt(mkt: bytes) -> None:
+    """The decompiler takes known process fields: Rayden's bolt with +0x442 = 0 (D,F) uses strike
+    0x11 and checks 0x10; with 1 (D,B), 0x13 and 0x12."""
+
+    for flag, strike, check in ((0, 0x11, 0x10), (1, 0x13, 0x12)):
+        stmts = dc.decompile(mkt, 0x80077F2C, (), {(0x442, 2): flag})
+        calls = [s for s in stmts if s.kind == "call"]
+        assert calls[0].args[0].const() == strike  # proj_set_strike
+        assert [c.args[0].const() for c in calls if c.target == 0x80078230] == [check, check]

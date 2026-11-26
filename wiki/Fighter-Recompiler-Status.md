@@ -10,7 +10,7 @@
 
 1. One table for builder-supplied victim reactions (`lower_special.VICTIM_REACTIONS`; done, outputs unchanged).
 2. **Generator v0** (`fighter_import.decompile`, `fighter_import.generate`): MKT routine → structured IR → move program, with a golden comparison against the accepted programs. In progress (below).
-3. Projectile rules (Lightning's bolt, Reptile's forceballs and acid), then the remaining moves of the roster that the rules reach.
+3. Projectile rules (Lightning's bolt, Reptile's forceballs and acid), then the remaining moves of the roster that the rules reach. **Done for the four accepted projectiles** (2026-11-26, below); the roster sweep goes with step 5.
 4. Owner adjustments out of the move programs into the descriptions (forceball spawn offsets, the 1200-tick stealth), and host details (`hover` for airborne moves) derived from the tuning in the backend.
 5. Builds from generated programs: Rayden's teleport, reversed Lightning and Shocker as the first unseen moves; then several fighters per ROM for testing projectiles together (owner).
 
@@ -24,10 +24,21 @@
 |---|---|
 | Reptile elbow dash | **identical** |
 | Reptile invisibility | identical except the stealth length (owner: 1200 ticks) |
-| Rayden Lightning | identical except the projectile (projectile rules: next) |
+| Rayden Lightning | identical except MKT's close-range checks, which the accepted program leaves out (owner to decide, below) |
+| Reptile Acid Spit | **identical** (since the projectile rules) |
+| Reptile forceballs (fast, slow) | identical except the spawn offset (owner: (−30, −36); MKT starts at his animation point; step 4 moves it to the description) |
 | Rayden torpedo | identical since specials proof v08 (the owner switched to MKT's version, below) |
 | Rayden reversed Lightning, teleport, Shocker | generated from his command records; the teleport and the Shocker report unknown routines (relocation, the getup helper, the Shocker's range checks) |
 
+- **Projectile rules (2026-11-26; Implementation/CI-confirmed, static).** `proj_process(child)` becomes a `projectile` step read from the child process (`generate.projectile`):
+  - **art**: `get_char_ani` / `find_part` / `skip_frame`, and `char_ani_part2` (`0x8000D12C`: table 0, cursor at part 2; Rayden). A part played to its end with `mframew` before the flight is the forming part: the program starts at the next one (noted);
+  - **checks** before the flight: a call to a routine that steps one frame, sleeps and strike-checks, with the box it passes (`strike_box_check`, Reptile's acid arc steps) or its record's (`proj_strike_check` `0x8007F878`, Rayden);
+  - **flight**: `proj_set_xvel` (speed, frame rate), `proj_flight` (the strike record), process `+0x438` a flight callback (a hum when it plays a sound each time its counter runs out: the forceballs' `0x12` every 3);
+  - **impact** (inline or the routine after the flight): `match_me_to_opponent` (at the opponent), `multi_adjust_xy` (adjust), its art and rate (`mframew` / `init_anirate`), sound, effect, `follow` when it copies the opponent's velocity (`+0xC` / `+0x10` from `+0x3BC`) each tick. A victim reaction that plays the attacker's sound (`his_ft_sound` `0x80005810`) puts it on the impact, as a host victim reaction plays none (Reptile's acid sizzle, reaction `0x72`);
+  - **palette**: the one of the frame the object is made from (descriptor `+0x14`): a throw helper (token 11; Reptile's `0x315C` → `0x800BEC14`, `0x2FD4` → `0x800BECE4`) or the selection `proj_object_here` (`0x8007F9E8`) takes (Rayden's slot `0x43` → `0x800B9B04`);
+  - **values from the parent**: the parent writes the child process's `+0x440` after `proj_process` (Rayden: his argument, 0 for D,F; Reptile: the forceball speed). The decompiler now takes known process fields (`decompile(..., fields)`), and folds a branch with a known condition to that path's values; an unconditional jump to the end of a branch arm (IDO's ternary) is no longer unstructured;
+  - also: a `begin_special` that names its action keeps it when MKT changes the action later (Acid Spit's `0x604`: noted), and `stamp_tick` becomes `stamp` (its key the stamped word).
+- **MKT fact for the owner (Static-confirmed): the lightning's close-range checks.** Before the flight, MKT's bolt process calls `0x80078230` twice: one frame, then a strike check with record `0x10` (box 101, 36, 64, 16) on each of two ticks; a hit there goes straight to the impact. The accepted program has no checks, so a bolt thrown at an enemy standing inside its spawn point may pass through him. Adding them is a behaviour change, so it waits for the owner. (D,B uses `0x12`, and its flight `0x13`, reaction `0x81`.)
 - **MKT facts the generator found in the torpedo** (Static-confirmed). The accepted program (proofs v03–v07) differed; owner, 2026-11-25: "Let's switch to MKT's version" (specials proof v08):
   - the start sound is random **10–12**: `randu(n)` (`0x8006E490`) returns 1..n, and the routine adds 9. The hand reading said 9–11 and the program plays 9;
   - the speed is restored after the take-off phase, so he moves during the lean (the program starts it after the lean);

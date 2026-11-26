@@ -373,6 +373,9 @@ class Decompiler:
                 out.append(Return(pc))
                 return out, st, False
             if ins.op == "j" or (ins.is_branch and ins.op == "beq" and ins.rs == 0 and ins.rt == 0):
+                if ins.target == end:  # to the end of this arm: IDO's ternary (both arms jump on)
+                    self.step(self.insns[pc + 4], st, out)
+                    return out, st, True
                 out.append(Unstructured(pc, f"jump to 0x{ins.target:08X}"))
                 return out, st, False
             if ins.is_branch:
@@ -433,6 +436,9 @@ class Decompiler:
                     then, fall, ft1 = self.block(pc + 8, t, fall)
                     other, ft2 = prefix, True
                 out.append(If(pc, self.negate(cond), then, other))
+                known = cond.const()
+                if known is not None:  # decided (a known argument or field): that path's values
+                    ft1, ft2 = ft1 and not known, ft2 and bool(known)
                 if ft1 and ft2:
                     st = _merge(fall, taken)
                 elif ft1:
@@ -464,12 +470,15 @@ class Decompiler:
                 regs.add(ins.rd)
         return regs
 
-    def run(self, args: tuple[int, ...] = ()) -> list:
+    def run(self, args: tuple[int, ...] = (), fields: dict[tuple[int, int], int] | None = None) -> list:
         """``args``: known constant arguments a0, a1, ... (a routine entered with them, such as
-        Rayden's lightning ``0x80077DF8(0)``); branches on them fold away."""
+        Rayden's lightning ``0x80077DF8(0)``); branches on them fold away. ``fields``: known
+        values of the current process's fields, ``(offset, width) -> value`` (a projectile
+        process whose parent wrote its ``+0x440``)."""
 
         regs: dict[int, Value] = {4 + i: Const(v) for i, v in enumerate(args)}
-        stmts, _, _ = self.block(self.entry, self.end, State(regs, {}, {}))
+        mem = {(str(PROC), off, width): Const(v) for (off, width), v in (fields or {}).items()}
+        stmts, _, _ = self.block(self.entry, self.end, State(regs, mem, {}))
         return stmts
 
 
@@ -486,8 +495,9 @@ def routine_end(rom: bytes, entry: int, limit: int = 0x800) -> int:
     return end
 
 
-def decompile(rom: bytes, entry: int, args: tuple[int, ...] = ()) -> list:
-    return Decompiler(rom, entry, routine_end(rom, entry)).run(args)
+def decompile(rom: bytes, entry: int, args: tuple[int, ...] = (),
+              fields: dict[tuple[int, int], int] | None = None) -> list:  # fmt: skip
+    return Decompiler(rom, entry, routine_end(rom, entry)).run(args, fields)
 
 
 def render(stmts: list, names: dict[int, str] | None = None, indent: str = "") -> str:
