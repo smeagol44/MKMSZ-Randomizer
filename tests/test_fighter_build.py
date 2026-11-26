@@ -170,6 +170,17 @@ def test_shock_stagger_starts_the_blink_then_the_stumble(roms: tuple[bytes, byte
     assert {0xA26900A0 + k for k in range(12)} <= set(ws)  # sb t1, 0xA0..0xAB(s3)
     assert 0x01364825 in ws  # or t1, t1, s6: the lighting bit back as it was
     assert not {0xA66900FC, 0xA66900FE, 0xA6690100} & set(ws)  # v16's sh t1, +0xFC..(s3)
+    assert 0x24040004 in ws  # v18 (owner): addiu a0, zero, 4: two frames cyan, two normal
+
+
+@needs_roms
+def test_lightning_burst_sits_six_pixels_nearer(roms: tuple[bytes, bytes]) -> None:
+    """v18 (owner: the burst "a bit too far past the enemy"): MKT's adjust -115 px, then
+    ``impact_toward_px`` 6 toward Rayden: -109 px, -218 world units for the offset call."""
+
+    built = fb.build(*roms, "rayden")
+    ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
+    assert 0x2405FF26 in ws and 0x2405FF1A not in ws  # addiu a1, zero, -218 (not -230)
 
 
 @needs_roms

@@ -62,3 +62,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v15.py` | `MKMSZR_rayden-specials_common_proof_v15.z64` | v14 with one mirror axis for the whole burst animation and the bolt's height kept |
 | `MKMSZR_build_rayden-specials_proof_v16.py` | `MKMSZR_rayden-specials_common_proof_v16.z64` | v15 with MKT's lightning reaction (stagger with a cyan blink) and the somersault anchors moved to his body |
 | `MKMSZR_build_rayden-specials_proof_v17.py` | `MKMSZR_rayden-specials_common_proof_v17.z64` | v16 with the bolt's flight frames kept apart from the burst's, the blink on the vertex colours (lighting paused), and the burst following the victim |
+| `MKMSZR_build_rayden-specials_proof_v18.py` | `MKMSZR_rayden-specials_common_proof_v18.z64` | v17 with the burst 6 px nearer Rayden and the blink at half speed |

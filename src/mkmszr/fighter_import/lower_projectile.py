@@ -121,7 +121,8 @@ REACTION_LOWERING["acid_stagger"] = {
 REACTION_LOWERING["shock_stagger"] = {
     **REACTION_LOWERING["acid_stagger"],
     "donor_push": 0x26666,  # MKT 0x800539E8: away_x_vel 0x26666
-    "blink": {"colour": (0x20, 0xFF, 0xFF), "count": 8, "every": 2},
+    # owner on v17 (2026-11-26): half the speed, cyan and normal two frames each (every 2: one)
+    "blink": {"colour": (0x20, 0xFF, 0xFF), "count": 8, "every": 4},
 }
 BLINK_PROCESS_ID = 0x100  # as the stealth timer
 ACTOR_LIT_BIT = 0x1000  # actor +0x8C: colours from the stage lighting every draw

@@ -66,7 +66,8 @@ Body fields:
   (owner calibrations such as offsets, facing, recovery, the per-move projectile limit,
   stealth drain, effects, `face` (turn at the start), `skip` (step kinds left out), `air_control` (steer the closing drop), recovery
   `sleep_ticks`, hit window `strike_ticks` in donor ticks, the
-  torpedo carry's grab point `carry`: `dx_px`, `dy_px`), in the
+  torpedo carry's grab point `carry`: `dx_px`, `dy_px`; `projectile`: `impact_toward_px`,
+  the impact moved that many pixels toward the attacker), in the
   order the moves are built.
 * ``costs`` (optional): move name -> Ice cost, where it differs from the replaced Sub-Zero
   power's (``lower_special.COSTS``); owner decisions, e.g. Reptile's halved forceballs.

@@ -337,6 +337,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 low = dataclasses.replace(low, impact_flip=bool(ptune.get("impact_flip", True)),
                                           impact_keep_y=bool(ptune.get("impact_keep_y", False)),
                                           impact_at_hit=bool(ptune.get("impact_at_hit", False)))  # fmt: skip
+            if "impact_toward_px" in ptune:  # owner: the impact nearer the attacker (facing him)
+                low = dataclasses.replace(low, impact_dx=low.impact_dx
+                                          + _int(ptune["impact_toward_px"]) * lp.UNITS_PER_PX)  # fmt: skip
             g.lowered = low
             lp.emit_process(a, low, child=f"{move}_ball", prefix=f"{move}_", data=f"g{_gid(g)}_",
                             alive=f"{move}_alive")  # fmt: skip
