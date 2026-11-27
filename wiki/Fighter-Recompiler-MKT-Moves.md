@@ -222,7 +222,17 @@ These are static donor facts. The host-side comparisons (MKMSZ Quan Chi forcebal
 
 ## Sektor (MKT fighter 7)
 
-Commands: straight rocket (`do_robo_zap` `0x8007BF84`), double rocket (`0x8007BFC8`), homing rocket (`do_robo_zap2` `0x8007BF38`) and teleport (`command_transfer(1, …)` → propell 8 → `0x80048368`). All read with no unknown calls at the move-body level. Their detailed readings, translations and runtime history are in [MKT adapter primitives](MKT-Adapter-Primitives) (rocket and teleport sections) and stay frozen legacy.
+Commands: straight rocket (`do_robo_zap` `0x8007BF84`), double rocket (`0x8007BFC8`), homing rocket (`do_robo_zap2` `0x8007BF38`) and teleport (`command_transfer(1, …)` → propell 8 → `0x80048368`).
+
+**Inline commands (SMRE step 3, 2026-11-27; static reading).** His handlers call the matcher `0x8004BFD4(mask, mask, table)` and then guard before `command_transfer` `0x8004FDDC`. The command tables are LP `0x800AB250` (F,F) and `0x800AB26C` (B,B,F), HP `0x800AB288` (F,D,B) and LK `0x800AB2C0` (F,F).
+
+| Guard | Address | Reading |
+|---|---|---|
+| Missiles (LP) | `0x8004E6C8`, `0x8004E73C` | `process_exist(0x705 or 0x805, 0xFFFF)` (`0x8005A614`: the first other process whose id `+0x40C` & mask matches): refused while his projectile process lives |
+| Homing (HP) | `0x8004E7D4..0x8004E818` | Counts processes `0x704`/`0x804` (player 2 when the opponent's `+0x30` is 2); refused at 3 |
+| Teleport (LK) | `0x8004E8F4`, `0x8004E900` | The opponent's action `+0x3F6` is not `0x616`, and its `+0x408` < 2 |
+| Refusal | `0x8005A69C` | `process_suicide` |
+ All read with no unknown calls at the move-body level. Their detailed readings, translations and runtime history are in [MKT adapter primitives](MKT-Adapter-Primitives) (rocket and teleport sections) and stay frozen legacy.
 
 ## Provenance convention
 

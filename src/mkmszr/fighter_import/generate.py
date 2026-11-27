@@ -21,6 +21,8 @@ from typing import Any
 
 from . import decompile as dc
 from . import reading
+from .mkt_fighter import INLINE_DISPATCH as TRANSFER
+from .mkt_fighter import INLINE_MATCHER as MATCHER
 from .mkt_fighter import MktRom
 from .mkt_registry import REGISTRY
 
@@ -56,6 +58,13 @@ OWN_CONDITIONS = ("forceball_",)  # registry-named fighter condition helpers, re
 OTHER_GUARD_FIELDS = {0x38: "the opponent's fighter id", 0x408: "the opponent's reaction state",
                       0x3F6: "the opponent's action"}  # fmt: skip
 MOVEMENT_OPS = {"relocate", "velocity"}
+# Inline commands (Sektor's handlers: the matcher, then guards, then the transfer): the guard
+# ``process_exist(id)`` on the player's projectile process (0x705 player 1, 0x805 player 2)
+# refuses while one of his projectiles lives.
+PROCESS_EXIST = 0x8005A614  # (id, mask) -> another process whose id & mask matches, or 0
+PROJECTILE_PROCESSES = {0x705, 0x805}
+PROCESS_SUICIDE = 0x8005A69C  # an inline handler's refusal
+PROCESS_ID = 0x40C  # process +0x40C: its id
 # Grabs (SMRE step 2): the routine a grab gives the opponent at its release -> the victim reaction
 # meaning that plays the whole hold (components.REACTIONS). Rayden's Shocker: 0x800734CC drops the
 # victim (0x80058728) after its hold at his hands and the shocks (lower_special.shock_hold).
@@ -169,6 +178,8 @@ class Generator:
         * ``conditions``: read from the condition routine (:meth:`conditions`)."""
 
         rom = MktRom(self.mkt)
+        if self.inline(record):
+            return self.inline_command(record)
         rec = rom.record(record)
         same = [(g, e) for g, e, va in rom.record_sites(self.fighter) if _same_command(rom.record(va), rec)]
         if not same:
@@ -198,6 +209,77 @@ class Generator:
             conds, notes = self.conditions(rec.condition)
             if conds:
                 cmd["conditions"] = conds
+        return cmd, notes
+
+    def inline(self, table: int) -> list[tuple[Any, Any]]:
+        """``(handler, inline command)`` for each inline matcher call on the compact command
+        table at ``table`` in the fighter's imperative handlers (Sektor's specials)."""
+
+        rom = MktRom(self.mkt)
+        return [(h, c) for h in rom.handlers(self.fighter) for c in h.inline if c.table == table]
+
+    def inline_command(self, table: int) -> tuple[dict[str, Any], list[str]]:
+        """The ``command`` block of an inline command (:meth:`inline`): buttons from the events
+        whose handlers match it, within its mask; tokens and window from its compact table;
+        conditions from the handler's guards between the matcher call and the transfer
+        (``process_exist`` on his projectile process: ``projectiles_below`` 1; other calls and
+        guard fields are noted)."""
+
+        hits = self.inline(table)
+        events = {h.event for h, _ in hits}
+        if {h.grid for h, _ in hits} != {"press"}:
+            raise ValueError(f"inline command 0x{table:08X}: only press handlers are read")
+        unknown = events - set(EVENT_BUTTONS)
+        if unknown:
+            raise ValueError(f"inline command 0x{table:08X}: input events {sorted(unknown)} have no host button")
+        first = hits[0][1]
+        buttons = 0
+        for h, c in hits:
+            buttons |= EVENT_BUTTONS[h.event] & c.mask
+        cmd: dict[str, Any] = {"buttons": f"0x{buttons:X}", "tokens": list(first.right), "window": first.window,
+                               "src": f"MKT 0x{table:08X}"}  # fmt: skip
+        conds: list[dict] = []
+        notes: list[str] = []
+        r = reading.read(self.mkt, hits[0][0].address)
+        insns = r.insns
+        regs: dict[int, int] = {}
+        start = None
+        for k, ins in enumerate(insns):
+            if ins.op == "lui":
+                regs[ins.rt] = (ins.imm & 0xFFFF) << 16
+            elif ins.op in ("addiu", "ori"):
+                base = 0 if ins.rs == 0 else regs.get(ins.rs, 0)
+                regs[ins.rt] = ((base + ins.imm) if ins.op == "addiu" else (base | (ins.imm & 0xFFFF))) & 0xFFFFFFFF
+            if ins.op != "jal":
+                if start is not None and ins.op in ("lhu", "lh", "lw") and ins.imm in OTHER_GUARD_FIELDS:
+                    notes.append(f"0x{ins.pc:08X}: {OTHER_GUARD_FIELDS[ins.imm]} (not lowered)")
+                if start is not None and ins.op == "lhu" and ins.imm == PROCESS_ID:  # a count of
+                    limit = next((x for x in insns[k:k + 12] if x.op == "slti"), None)  # processes
+                    if limit is not None and not any("live processes" in n for n in notes):
+                        ids = sorted({x.imm for x in insns[start:k] if x.op == "addiu" and x.rs == 0 and x.imm >> 8 in (7, 8)})
+                        notes.append(f"0x{ins.pc:08X}: fewer than {limit.imm} live processes with ids "
+                                     f"{', '.join(f'0x{v:X}' for v in ids)} (not lowered)")  # fmt: skip
+                continue
+            delay = insns[k + 1] if k + 1 < len(insns) else None
+            if delay is not None and delay.op == "addiu":
+                base = 0 if delay.rs == 0 else regs.get(delay.rs, 0)
+                regs[delay.rt] = (base + delay.imm) & 0xFFFFFFFF
+            if ins.target == MATCHER and start is None and regs.get(6) == table:
+                start = k
+            elif start is not None and ins.target == TRANSFER:
+                break
+            elif start is not None and ins.target == PROCESS_EXIST:
+                ids = {v for v in (0x705, 0x805) if any(x.op in ("addiu", "ori") and x.imm == v for x in insns[start:k + 2])}
+                if ids & PROJECTILE_PROCESSES:
+                    conds.append({"kind": "projectiles_below", "count": 1, "src": f"MKT 0x{ins.pc:08X}"})
+                else:
+                    notes.append(f"0x{ins.pc:08X}: process_exist (not lowered)")
+            elif start is not None and ins.target != PROCESS_SUICIDE:  # (suicide: the refusal)
+                notes.append(f"0x{ins.pc:08X}: {self.names.get(ins.target, f'0x{ins.target:08X}')} (not lowered)")
+        if start is None:
+            raise ValueError(f"inline command 0x{table:08X}: its matcher call was not found")
+        if conds:
+            cmd["conditions"] = conds
         return cmd, notes
 
     def conditions(self, entry: int, args: tuple[int | None, ...] = (), depth: int = 0) -> tuple[list[dict], list[str]]:
@@ -273,7 +355,8 @@ class Generator:
         (a ``relocate`` or ``velocity`` step: the owner's no-Ice rule for moving abilities)."""
 
         cmd, notes = self.command(record)
-        g = self.move(MktRom(self.mkt).record(record).action)
+        inline = self.inline(record)
+        g = self.move(inline[0][1].dispatch if inline else MktRom(self.mkt).record(record).action)
         prog: dict[str, Any] = {"name": name, "command": cmd, "steps": g.steps}
         if any(s["op"] in MOVEMENT_OPS for s in _all(g.steps)):
             prog["movement"] = True

@@ -20,7 +20,7 @@ def _raw(fighter: str) -> dict:
 
 
 def test_packaged_descriptions_load() -> None:
-    assert fd.available() == ["rayden", "reptile", "sektor"]
+    assert fd.available() == ["rayden", "reptile", "sektor", "sektor-smre"]
     rayden = fd.load("rayden")  # milestone 6: body, inputs, the five specials
     assert (rayden.donor_fighter_id, rayden.title, rayden.commands) == (24, "RAYDEN", {"lightning": "ice_blast", "reversed_lightning": "ice_blast_air",
                                                                          "teleport": "directional_ice_up", "torpedo": "ice_clone",
@@ -28,6 +28,9 @@ def test_packaged_descriptions_load() -> None:
     sektor, reptile = fd.load("sektor"), fd.load("reptile")
     assert (sektor.donor_fighter_id, sektor.donor_name, sektor.title) == (7, "SEKTOR", "SEKTOR")
     assert (reptile.donor_fighter_id, reptile.donor_name, reptile.legacy) == (19, "REPTILE", ())
+    migrating = fd.load("sektor-smre")  # SMRE step 3: Sektor on the generic build, no legacy
+    assert (migrating.donor_fighter_id, migrating.legacy, migrating.body.layout) == (7, (), None)
+    assert migrating.body.phase_slots == {0x23: "scale"} and migrating.body.colour == sektor.body.colour
     assert sektor.body.run_slot == reptile.body.run_slot == 0x4A
 
 
