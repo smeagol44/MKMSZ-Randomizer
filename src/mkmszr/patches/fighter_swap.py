@@ -234,6 +234,19 @@ def _apply_described(fighter: str, mkt: bytes, rom: RomImage, outfit_config: Out
     if set(data[TAIL[0] : TAIL[1]]) != {0xFF}:
         raise PatchError("fighter tail region is not free in the randomizer ROM")
     data[TAIL[0] : TAIL[1]] = image[TAIL[0] : TAIL[1]]
+    # Sound chains appended to the bank: the bank and event module of this ROM (other owners'
+    # edits kept), enlarged, in SOUND_REGION; the audio heap must stay within its budget.
+    from ..fighter_import import sound_bank
+
+    if man["sound_ext"] is not None:
+        try:
+            sound_bank.relocate(data, man["sound_ext"], *man["sound_region"])
+        except ValueError as e:
+            raise PatchError(f"fighter sound bank: {e}") from e
+    try:
+        heap = sound_bank.check_heap(bytes(data), clean)
+    except ValueError as e:
+        raise PatchError(str(e)) from e
 
     d = description.load(fighter)
     for off, blob in fighter_help.edits(bytes(data), clean, d.help).items():
@@ -260,6 +273,8 @@ def _apply_described(fighter: str, mkt: bytes, rom: RomImage, outfit_config: Out
             f"file 0x1A end 0x{f1a_end:X} -> 0x{at + len(made.fixed):X}"
         ),
         f"payload blob 0x{man['blob_end'] - man['blob_off']:X} bytes in the fighter file, {man['relocs']} relocations",
+        f"audio heap +0x{heap:X} (sound bank enlarged by {len(man['sound_ext'].records)} chains)"
+        if man["sound_ext"] is not None else f"audio heap +0x{heap:X}",
         f"Power Ups icons: file 0x5D 0x{icon_span[0]:X}-0x{icon_span[1]:X}",
     )
 

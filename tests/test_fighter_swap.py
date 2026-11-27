@@ -179,7 +179,7 @@ def test_cli_rayden_build_places_his_blob_and_samples(tmp_path: Path) -> None:
     entry = 0x000A5010 + 0x87 * 12
     start, end = (int.from_bytes(rom[entry + k : entry + k + 4], "big") for k in (0, 4))
     assert start == TAIL[0] and body_build.FILE87_SIZE < end - start < body_build.SAFE_END
-    assert set(rom[TAIL[1] : TAIL[1] + 0x1000]) == {0xFF}
+    assert rom[TAIL[1] : TAIL[1] + 4] == b"SN64"  # the enlarged sound bank follows (his grab voice)
     vanilla, red = rom[start:end], build("red")[start:end]
     changed = {(i - PALETTE_OFFSET) // 2 for i in range(len(vanilla)) if vanilla[i] != red[i]}
     assert changed == {2, 3, 4}  # his blue tunic only
