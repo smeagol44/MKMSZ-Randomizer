@@ -44,6 +44,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="player fighter; sektor, reptile and rayden are imported from the MKT donor (requires "
         "--mkt-rom)",
     )
+    parser.add_argument(
+        "--no-randomizer",
+        action="store_true",
+        help="turn off the randomizer: the imported --fighter on a vanilla game, with his outfit, "
+        "the audio fix, the logo bypass and the title branding; other settings are ignored",
+    )
     parser.add_argument("--outfit", choices=modes, default="vanilla")
     parser.add_argument("--hue", type=float, help="hue in degrees for --outfit hue")
     parser.add_argument("--rgb", type=_parse_rgb, help="RRGGBB color for --outfit rgb")
@@ -139,6 +145,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--custom-required-powers must be from 0 to 9")
     if args.fighter != "sub-zero" and args.mkt_rom is None:
         parser.error(f"--fighter {args.fighter} requires --mkt-rom")
+    if args.no_randomizer and args.fighter == "sub-zero":
+        parser.error("--no-randomizer needs an imported --fighter")
     if args.fighter not in OUTFIT_FIGHTERS and args.outfit != "vanilla":
         parser.error(f"--fighter {args.fighter} has no outfit recolour; use --outfit vanilla")
     if not 1 <= args.lives <= 10:
@@ -164,6 +172,7 @@ def main(argv: list[str] | None = None) -> int:
         debug_all_keys=args.debug_all_keys,
         audio_fifo_fix=not args.no_audio_fifo_fix,
         fighter=args.fighter,
+        randomizer=not args.no_randomizer,
     )
 
     try:

@@ -716,3 +716,13 @@ body::before {
   .fighter-control { grid-template-columns: 1fr; }
   .fighter-dialog-footer button { flex: 1 1 100%; }
 }
+
+/* "Turn off randomizer": its row sits between the fighter settings and the feature groups; the
+   groups it locks are dimmed. */
+.randomizer-off-row {
+  margin: 0 0 16px;
+}
+
+.settings-group.is-locked {
+  opacity: 0.5;
+}

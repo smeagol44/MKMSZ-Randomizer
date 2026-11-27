@@ -36,6 +36,10 @@ const persistHp = document.querySelector("#persistHp");
 const debugAllKeys = document.querySelector("#debugAllKeys");
 const disableAudioFix = document.querySelector("#disableAudioFix");
 const debugOptionsSummary = document.querySelector("#debugOptionsSummary");
+const randomizerOff = document.querySelector("#randomizerOff");
+// "Turn off randomizer": these groups are locked while it is on (a vanilla game + the fighter).
+const RANDOMIZER_GROUPS = ["#randomizerFeaturesGroup", "#runSettingsGroup", "#gameSettingsGroup",
+  "#debugOptionsGroup"].map((selector) => document.querySelector(selector));
 const randomizerFeaturesSummary = document.querySelector("#randomizerFeaturesSummary");
 const runSettingsSummary = document.querySelector("#runSettingsSummary");
 const gameSettingsSummary = document.querySelector("#gameSettingsSummary");
@@ -200,6 +204,30 @@ function updatePatchButton() {
     !donorIsUsable();
 }
 
+function updateRandomizerOffUi() {
+  const imported = selectedFighter !== "sub-zero";
+  if (!imported) randomizerOff.checked = false;
+  randomizerOff.disabled = !imported || isBuilding;
+  const off = randomizerOff.checked;
+  for (const group of RANDOMIZER_GROUPS) {
+    group.classList.toggle("is-locked", off);
+    for (const control of group.querySelectorAll("input, select")) {
+      if (off && !control.dataset.randomizerOff) {
+        control.dataset.randomizerOff = control.disabled ? "was-disabled" : "locked";
+        control.disabled = true;
+      } else if (!off && control.dataset.randomizerOff) {
+        control.disabled = control.dataset.randomizerOff === "was-disabled";
+        delete control.dataset.randomizerOff;
+      }
+    }
+  }
+  if (!off) {  // their own rules again (Specials Modern, Jump, custom powers)
+    updateGameSettingsUi();
+    updateRequiredPowersUi();
+  }
+  updateSummaries();
+}
+
 function updateGameSettingsUi() {
   const imported = selectedFighter !== "sub-zero";
   if (imported) specialsModern.checked = false;
@@ -295,6 +323,11 @@ function updateSummaries() {
       (persistHp.checked ? "persistent HP" : "full HP re-entry"),
     gameSettingsSummary.textContent
   ].join(" · ");
+  if (randomizerOff.checked) {
+    for (const summary of [randomizerFeaturesSummary, runSettingsSummary, gameSettingsSummary,
+      debugOptionsSummary]) summary.textContent = "Not used: randomizer off";
+    buildSummaryRun.textContent = "Randomizer off: vanilla game with the swapped character";
+  }
 }
 
 async function copyText(value, button) {
@@ -561,6 +594,7 @@ function setFighter(fighter) {
   updateModeUi();
   updateFighterUi();
   updateGameSettingsUi();
+  updateRandomizerOffUi();
 }
 
 function updateFighterUi() {
@@ -911,7 +945,8 @@ async function patchRom() {
       persistHp: persistHp.checked,
       debugAllKeys: debugAllKeys.checked,
       disableAudioFix: disableAudioFix.checked,
-      fighter: selectedFighter
+      fighter: selectedFighter,
+      randomizerOff: randomizerOff.checked
     }
   });
 }
@@ -957,6 +992,7 @@ startingContinues.addEventListener("input", updateSummaries);
 persistHp.addEventListener("change", updateSummaries);
 debugAllKeys.addEventListener("change", updateSummaries);
 disableAudioFix.addEventListener("change", updateSummaries);
+randomizerOff.addEventListener("change", updateRandomizerOffUi);
 globalCompletionMode.addEventListener("change", updateSummaries);
 customRequiredPowers.addEventListener("input", updateSummaries);
 seed.addEventListener("input", updateSummaries);

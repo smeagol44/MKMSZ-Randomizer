@@ -309,6 +309,8 @@ def patch_rom(
     fighter_donor: bytes | None = None,
 ) -> BuildResult:
     """Patch an already-validated ROM image without re-hashing its source."""
+    if not config.randomizer:
+        return _patch_fighter_only(rom, config, fighter_donor)
     required_count, required_xp = resolve_required_powers(
         config.required_powers_mode, config.custom_required_powers, config.seed
     )
@@ -355,6 +357,33 @@ def patch_rom(
             config.global_completion_mode if global_run is not None else None
         ),
     )
+
+
+def _patch_fighter_only(rom: RomImage, config: RandomizerConfig, fighter_donor: bytes | None) -> BuildResult:
+    """Randomizer off: the imported fighter on a vanilla game, with the audio fix, the logo
+    bypass and the title branding (``patches.fighter_only``)."""
+
+    from .patches.fighter_only import FighterOnlyPatch
+
+    if fighter_donor is None:
+        raise PatchError(f"fighter {config.fighter} requires the MKT donor ROM")
+    validate_mkt_n64_rev2(fighter_donor)
+    patches = [
+        FighterOnlyPatch(config.fighter, fighter_donor, config.outfit),
+        BootBrandingPatch(config.edition_name),
+        BootLogoBypassPatch(),
+        TitleBrandingPatch(config.edition_name, config.outfit),
+    ]
+    if config.audio_fifo_fix:
+        patches.append(AudioFifoReservePatch())
+    results = PatchPipeline(patches).apply(rom, PatchContext(seed=config.seed))
+    crc1, crc2 = rom.update_header_crc()
+    _, stock_xp = resolve_required_powers("vanilla", None, config.seed)  # the stock Fortress gate
+    return BuildResult(
+        data=rom.to_bytes(), crc1=crc1, crc2=crc2, output_sha256=rom.output_sha256,
+        changed_spans=rom.changed_spans(), patches=results, required_powers_count=None,
+        required_powers_xp=stock_xp, global_attempt_index=None, global_completion_mode=None,
+    )  # fmt: skip
 
 
 def patch_bytes(

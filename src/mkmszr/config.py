@@ -54,10 +54,18 @@ class RandomizerConfig:
     debug_all_keys: bool = False
     audio_fifo_fix: bool = True
     fighter: Fighter = "sub-zero"
+    # False: "Turn off randomizer" (owner, 2026-11-27): a vanilla game with the imported fighter
+    # and his outfit, the audio fix, the logo bypass and the title branding; every randomizer
+    # setting is ignored. Only with an imported fighter.
+    randomizer: bool = True
 
     def __post_init__(self) -> None:
         if self.fighter not in ("sub-zero", "sektor", "reptile", "rayden"):
             raise ValueError("fighter must be sub-zero, sektor, reptile or rayden")
+        if type(self.randomizer) is not bool:
+            raise ValueError("randomizer must be a boolean")
+        if not self.randomizer and self.fighter == "sub-zero":
+            raise ValueError("turning the randomizer off needs an imported fighter")
         if self.fighter != "sub-zero" and self.game_settings.specials_modern:
             raise ValueError("an imported fighter requires SPECIALS: CLASSIC")
         if self.fighter not in OUTFIT_FIGHTERS and self.outfit.mode.lower() != "vanilla":

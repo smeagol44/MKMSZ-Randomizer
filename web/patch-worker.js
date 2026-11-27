@@ -60,6 +60,7 @@ const PATCH_PY = [
   "    debug_all_keys=bool(web_debug_all_keys),",
   "    audio_fifo_fix=not bool(web_disable_audio_fix),",
   "    fighter=str(web_fighter),",
+  "    randomizer=not bool(web_randomizer_off),",
   "    game_settings=GameSettingsConfig(",
   "        turn_lock=bool(web_turn_lock),",
   "        attack_modern=bool(web_attack_modern),",
@@ -250,6 +251,7 @@ function setPatchGlobals(config, hasDonor) {
   pyodide.globals.set("web_debug_all_keys", config.debugAllKeys);
   pyodide.globals.set("web_disable_audio_fix", config.disableAudioFix);
   pyodide.globals.set("web_fighter", config.fighter ?? "sub-zero");
+  pyodide.globals.set("web_randomizer_off", Boolean(config.randomizerOff));
 }
 
 async function patchRom(message) {

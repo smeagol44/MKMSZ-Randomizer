@@ -176,3 +176,38 @@ def test_cli_rayden_build_places_his_blob_and_samples(tmp_path: Path) -> None:
     vanilla, red = rom[start:end], build("red")[start:end]
     changed = {(i - PALETTE_OFFSET) // 2 for i in range(len(vanilla)) if vanilla[i] != red[i]}
     assert changed == {2, 3, 4}  # his blue tunic only
+
+
+def test_randomizer_off_needs_an_imported_fighter() -> None:
+    with pytest.raises(ValueError, match="imported fighter"):
+        RandomizerConfig(randomizer=False)
+    assert not RandomizerConfig(fighter="sektor", randomizer=False).randomizer
+    with pytest.raises(SystemExit):
+        main(["in.z64", "out.z64", "--no-randomizer"])
+
+
+@needs_roms
+def test_cli_randomizer_off_is_a_vanilla_game_with_the_fighter(tmp_path: Path) -> None:
+    """--no-randomizer (owner, 2026-11-27): the 16 MiB fighter build and its payload transport
+    (the fighter proofs' file 0x1B raw load, without their stage select, max EXP or EXP caps),
+    the logo bypass, the audio fix and the title branding; no randomizer owner."""
+
+    from mkmszr.fighter_import import fighter_build as fb
+    from mkmszr.patches import fighter_only
+
+    out = tmp_path / "sektor-vanilla.z64"
+    assert main(["--mkt-rom", DONOR, "--fighter", "sektor", "--no-randomizer", CLEAN, str(out)]) == 0
+    rom, clean = out.read_bytes(), Path(CLEAN).read_bytes()
+    assert len(rom) == fighter_only.CLEAN_SIZE
+    for off, (_, new) in fighter_only.transport_edits(fb.LINK_VA & ~0x20000000, fb.PAYLOAD_LIMIT,
+                                                      fb.SCRATCH_ROM).items():  # fmt: skip
+        new = new if isinstance(new, bytes) else bytes.fromhex(new)
+        assert rom[off : off + len(new)] == new
+    # the proof harness's debug stage select and EXP caps are not there (its boot skip site
+    # 0x7A3F4 is the logo bypass's, which this build keeps)
+    for off in (0xE028, 0x15CD0, 0xA6FFC):
+        assert rom[off : off + 4] == clean[off : off + 4]
+    # nothing past the clean image (no randomizer expansion), no shared file 0x1A
+    entry_1a = 0x000A5010 + 0x1A * 12
+    assert rom[entry_1a : entry_1a + 8] == clean[entry_1a : entry_1a + 8]
+
