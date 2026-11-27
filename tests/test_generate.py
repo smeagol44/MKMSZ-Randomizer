@@ -224,6 +224,7 @@ def test_smre_reads_commands_and_conditions(mkt: bytes) -> None:
         ray.command(0x800AC810)
 
 
+@needs_mkt
 def test_smre_reads_inline_commands(mkt: bytes) -> None:
     """Sektor's specials are inline matcher calls in imperative handlers (SMRE step 3): buttons
     from the handler's event within the matcher's mask, tokens and window from the compact
