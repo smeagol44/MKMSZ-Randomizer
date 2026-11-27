@@ -135,7 +135,16 @@ The 16 isolated chains limit how many sounds a fighter can bring; Rayden uses th
 - **The ROM bank's place** is read only through the code at `0x800013FC` (`lui`/`addiu` `0x947C80`) and the word at ROM `0xA57B8`. The bank can therefore move to the generated-output region and grow there, with no ROM limit.
 - **The cost is audio heap.** A new chain needs 4 (patch) + 20 (subpatch) + 24 (waveform) + 264 (predictor book) + 16 (event definition) + `0x20` (track) bytes, about 360. Samples stay in ROM.
 
-**Pending:** the heap's use after boot. It is the word at `0x802ECCB4` (the current end) against `0x801AE420`, readable from any save state; static summing of every boot allocation was not attempted. Next: the control-bank header format (counts and sizes per table), then a bounded proof that adds chains for Rayden's grab voice.
+**The heap after boot (2026-11-27).** Owner save state: vanilla ROM, stage 1, enemies loaded; Mupen64Plus `M64+SAVE`, RDRAM at `+0x1BC`, little-endian words.
+- **Measured:** the descriptor holds `{0x80112020, 0x801ADC00, 0x9C400}`. Used `0x9BBE0`, **free `0x820` (2,080 bytes)**. The tail `[0x801ADC00, 0x801AE420)` is all zero. Game data follows at once (enemy records from `0x801AE46C`), so the heap cannot grow in place.
+- **Allocations happen at boot only (Static-confirmed).** Every caller of `0x80088DF0` traces back to boot audio setup (`0x800012EC` → `0x8007CCEC`); the sequencer init `0x80088D00` runs once (flag `0x800A8210`). The free space is therefore the same on every stage.
+- **The ROM-dependent part is computable (Static-confirmed).** It is align16(bank size, header `+0x18`) + align16(sequence-module size, `0x976D40 + 0x18`) + align16(event pool). Each event takes align8(12 × tracks) + its length (`0x800887A8`). Clean ROM: `0x6BBD0`. The rest, `0x30010`, is the synthesizer's and does not change.
+- **What builds use now:** Rayden's production ROM `+0x50` (the Shocker's second track), Reptile's and Sektor's `0`.
+- **What a new chain costs:** a patch, subpatch, waveform and book appended to the bank (312 bytes) and an event (16 + `0x30`), about 376 bytes. The 2 KB left is **about five extra chains per fighter build**, not more.
+- **No free records to recombine.** A track-aware scan of every event's header patch and in-stream patch changes leaves about one waveform that no track reaches, and Toasty already hosts it. The bank is essentially fully used, so new chains must be appended.
+- **Predictor books** cannot be shared to save heap. Waveforms find their book by index; 558 of 598 books are distinct.
+
+Larger gains would need the audio heap somewhere else, such as the Expansion Pak's upper 4 MB (a product requirement), or less loaded audio data. **Pending:** owner decision. Next: bank growth with a build-time heap guard (the computed use must stay within `0x820` less a margin), then a bounded proof with Rayden's grab voice.
 
 ## Function-semantics ownership
 
