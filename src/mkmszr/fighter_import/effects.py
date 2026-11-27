@@ -544,6 +544,7 @@ def emit_process(
     a: Assembler,
     label: str = "fx_process",
     follow: tuple[str, str, int, int] | None = None,
+    render_position: bool = False,
 ) -> None:
     """The effect process entry (never returns). ``s0`` slot, ``s1`` controller,
     ``s2`` actor, ``s3`` file base, ``s4`` descriptor.
@@ -609,6 +610,8 @@ def emit_process(
     a.move("a0", "s2")
     a.jal(F_OFFSET)  # facing bit clear here: a1 is along the copied rotation's +x
     a.label(label + "_placed")
+    if render_position:  # the position the frame is drawn at, before the movement pass sets it
+        emit_render_position(a, "s2")
     a.li("t0", 0x40)  # bind requests a texture decode (+0xFA)
     a.sh("t0", 0x8C, "s2")
     a.lw("t0", 0, "s4")
@@ -643,6 +646,20 @@ def emit_process(
     a.label(label + "_exit")
     a.jal(F_PROCESS_EXIT)
     a.beq("zero", "zero", label + "_exit")
+
+
+# Actor +0x38/+0x3C/+0x40: the position its frame is drawn at, copied from +0x2C/+0x30/+0x34 by
+# the movement pass. An actor inserted on the tick the game is paused keeps 0, 0, 0 there while
+# the pause stops that pass, so it is drawn at the stage's origin (Static analysis of the owner's
+# save state, Sektor SMRE proof v10: the newest smoke puff, on the wall above PAUSED, only where
+# the camera shows the stage's left end).
+RENDER_POSITION = ((0x2C, 0x38), (0x30, 0x3C), (0x34, 0x40))
+
+
+def emit_render_position(a: Assembler, actor: str) -> None:
+    for src, dst in RENDER_POSITION:
+        a.lw("t0", src, actor)
+        a.sw("t0", dst, actor)
 
 
 def _emit_follow(a: Assembler, label: str, follow: str, heartbeat: str, dx: int, dy: int) -> None:

@@ -565,3 +565,26 @@ def test_sektor_missile_matches_the_accepted_legacy_rocket(roms: tuple[bytes, by
     assert low.behind_owner
     chest = [s for s in prog["steps"] if s["op"] == "animate"]
     assert [s.get("reverse", False) for s in chest] == [False, True] and chest[0]["rate_reacting"] == 2
+
+
+def test_effect_render_position_is_set_before_insertion() -> None:
+    """Sektor SMRE proof v10 (owner: a smoke ring on the wall "only showing up when I pause"; save
+    state): a puff inserted on the tick the game paused kept its render position (+0x38/+0x3C/
+    +0x40) at 0, 0, 0, so it was drawn at the stage's origin. With ``render_position`` the effect
+    process copies +0x2C/+0x30/+0x34 there before inserting its actor; without it (Reptile's fire,
+    as accepted) the code is unchanged."""
+
+    from mkmszr.fighter_import import effects
+    from mkmszr.fighter_import.mips import Assembler
+
+    def words(flag: bool) -> list[int]:
+        a = Assembler(0xA01AF420)
+        effects.emit_process(a, render_position=flag)
+        return list(a.code)
+
+    plain, fixed = words(False), words(True)
+    lw_sw = [0x8E480000 | src for src, _ in effects.RENDER_POSITION]  # lw t0, src(s2)
+    assert len(fixed) == len(plain) + 6
+    for src, dst in effects.RENDER_POSITION:
+        k = fixed.index(0x8E480000 | src, fixed.index(lw_sw[0]))
+        assert fixed[k + 1] == 0xAE480000 | dst  # sw t0, dst(s2)

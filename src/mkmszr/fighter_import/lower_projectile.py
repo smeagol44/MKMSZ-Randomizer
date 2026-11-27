@@ -605,6 +605,9 @@ class Lowered:
     behind_owner: bool = False
     # MKT rocket_smoke toggles: its first puff comes on the second flight tick
     trail_skip_first: bool = True
+    # Its render position set as it is placed (effects.RENDER_POSITION: paused on its first tick,
+    # it would be drawn at the stage's origin)
+    render_position: bool = False
 
 
 def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
@@ -861,6 +864,9 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.li("a1", p.dx)
     a.li("a2", p.dy)
     a.jal(F_OFFSET)
+    if p.render_position:
+        host.load_controller(a)
+        effects.emit_render_position(a, "s1")
     if p.launch_event is not None:  # MKT rocket1_proc: its sound as it starts
         host.play_sound(a, p.launch_event, player)
     if p.speeds:  # s4: this tick's speed in the table (the reacting one if he is reacting)
