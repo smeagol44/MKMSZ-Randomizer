@@ -16,6 +16,7 @@ program against an accepted hand-written one so differences are seen and decided
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -38,6 +39,7 @@ MAX_DEPTH = 4
 # equivalent (owner-accepted stand-ins are marked).
 REACTION_MEANINGS = {
     0x24: "launch",  # generic damaging launch (Reptile's elbow return hit)
+    0x3D: "uppercut",  # Sektor's teleport uppercut: the host's stock uppercut (runtime-confirmed v08)
     0x71: "knockback_arc",  # Reptile's forceballs
     0x72: "acid_stagger",  # Reptile's acid
     0x74: "elbow_hold",  # Reptile's elbow first contact
@@ -64,6 +66,12 @@ MOVEMENT_OPS = {"relocate", "velocity"}
 PROCESS_EXIST = 0x8005A614  # (id, mask) -> another process whose id & mask matches, or 0
 PROJECTILE_PROCESSES = {0x705, 0x805}
 PROCESS_SUICIDE = 0x8005A69C  # an inline handler's refusal
+# Motion loops (Sektor's teleport uppercut, MKT 0x80048368): object +0x10 y velocity and +0x8
+# gravity set, then one tick at a time until the object's y (+0x18, growing downward) passes the
+# screen's bottom line (SCREEN_BOTTOM: "below_screen") or rises to its floor (process +0x3F8:
+# "surface").
+SCREEN_BOTTOM = 0x802576CE
+JUMP_KEEP = 0xD  # do_jump: "keep the current value" (0x8006EC50)
 PROCESS_ID = 0x40C  # process +0x40C: its id
 # Grabs (SMRE step 2): the routine a grab gives the opponent at its release -> the victim reaction
 # meaning that plays the whole hold (components.REACTIONS). Rayden's Shocker: 0x800734CC drops the
@@ -87,6 +95,15 @@ def _tree_text(s: Any) -> str:
 
 def _same_command(a: Any, b: Any) -> bool:
     return (a.masks, a.condition, a.action, a.right) == (b.masks, b.condition, b.action, b.right)
+
+
+def _walk_stmts(stmts: list):
+    """Every decompiled statement, nested ones too."""
+
+    for s in stmts:
+        yield s
+        for key in ("then", "other", "body"):
+            yield from _walk_stmts(getattr(s, key, []) or [])
 
 
 def _all(steps: list[dict[str, Any]]):
@@ -122,9 +139,9 @@ class Generator:
 
         if not (isinstance(rec, dc.Load) and isinstance(rec.base, dc.Load)):
             return None
-        table = rec.base.base
+        table = rec.base.base  # (STRIKE_TABLE + fighter * 4), the low half sometimes in the load
         if not (isinstance(table, dc.Bin) and table.op == "+" and table.a.const() is not None
-                and table.a.const() & 0xFFFFFFFF == STRIKE_TABLE):  # fmt: skip
+                and (table.a.const() + rec.base.off) & 0xFFFFFFFF == STRIKE_TABLE):  # fmt: skip
             return None
         addr = self.word(self.word(STRIKE_TABLE + 4 * self.fighter) + rec.off)
         o = addr - VA_BASE
@@ -400,6 +417,11 @@ class _Walk:
         self.matched = False  # match_me_to_opponent ran: an offset next is a relocation
         self.edges = False  # an arena-edge test ran in this routine (MKT's teleport side)
         self.grab: dict[str, Any] | None = None  # a grab's hit path is being read (damage, release)
+        self.yvel: int | None = None  # object +0x10 / +0x8 set by the move (motion loops, do_jump)
+        self.gravity: int | None = None
+        self.gravity_hit: int | None = None  # the gravity after the move's strike hit
+        self.anirate: int | None = None  # init_anirate: the rate next_anirate steps the selection at
+        self.callback: int | None = None  # process +0x438: the routine the next jump runs each tick
 
     def name(self, c: dc.Call) -> str:
         return self.gen.names.get(c.target, f"0x{c.target:08X}" if c.target else "jalr")
@@ -434,6 +456,11 @@ class _Walk:
                 count = self._count(stmts[:i], s)
                 if count is not None:
                     out += self.loop(s, count, out)
+                    i += 1
+                    continue
+                motion = self.motion_loop(s)
+                if motion is not None:
+                    out += motion
                     i += 1
                     continue
             out += self.stmt(s)
@@ -502,6 +529,21 @@ class _Walk:
             # the saved velocity source written back (torpedo: after the take-off phase)
             v, self.velocity = self.velocity, None
             return [{"op": "velocity", "x": hex(v)}]
+        if s.base == dc.SELF and s.off in (0x10, 0x8) and s.value.const() is not None:
+            v = s.value.const() & 0xFFFFFFFF
+            v = v - (1 << 32) if v & 0x80000000 else v
+            if s.off == 0x10:
+                self.yvel = v
+            else:
+                self.gravity = v
+            return []
+        if s.base == dc.SELF and s.off == 0x18 and f"0x{SCREEN_BOTTOM:08X}" in str(s.value):
+            self.note("MKT starts the rise at the screen's bottom line (object +0x18 = "
+                      f"[0x{SCREEN_BOTTOM:08X}]); the host rise starts below the floor")  # fmt: skip
+            return []
+        if s.base == dc.PROC and s.off == 0x438 and s.value.const() is not None:
+            self.callback = s.value.const() & 0xFFFFFFFF  # the jump's per-tick callback
+            return []
         if s.base == dc.SELF and s.off == 0x18 and "proc+0x3F8" in str(s.value):
             self.note("MKT puts the fighter on his floor (object +0x18 = process +0x3F8); the host "
                       "relocation lands him on the floor")  # fmt: skip
@@ -527,6 +569,13 @@ class _Walk:
             # the fighter id (object +0x38): decided by the generated fighter
             same = s.cond.b.const() == self.gen.fighter
             return self.stmts(s.then if same == (s.cond.op == "==") else s.other)
+        if "+0x3D0" in text and isinstance(s.cond, dc.Bin) and s.cond.op == "==":
+            sides = [[x for x in b if x.kind != "break"] for b in (s.then, s.other)]
+            if all(len(b) == 1 and b[0].kind == "store" and b[0].base == dc.SELF and b[0].off == 0x8
+                   and b[0].value.const() is not None for b in sides):  # fmt: skip
+                # the gravity by whether the move's strike hit (process +0x3D0, set by the check)
+                self.gravity, self.gravity_hit = (b[0].value.const() for b in sides)
+                return []
         if self.edges and "?" in text:  # the rest of the edge test (its distance, < 103 px)
             return self.stmts(s.then)
         if "0x802576F0" in text or "0x802576EC" in text:
@@ -535,6 +584,10 @@ class _Walk:
                       "relocation picks it by the room there (walls, floor)")  # fmt: skip
             return self.stmts(s.then)
         call = self._tested_call(s.cond)
+        if call == "proc_flag1":
+            self.note("MKT's landing leaves by another route when process +0x3FA bit 0 is set "
+                      f"(0x{s.pc:08X}); the host landing ends the move")  # fmt: skip
+            return self.stmts(s.other)
         if call == "is_airborne":
             self.note("MKT runs part of the move only when airborne (is_airborne); the program "
                       "runs it always (on the ground the drop ends at once)")  # fmt: skip
@@ -628,6 +681,64 @@ class _Walk:
                      "every_tick": [{"op": "pass_through", "ticks": 1, "src": {"ticks": at}}]}]  # fmt: skip
         steps = self.stmts(body)
         return [{"op": "repeat", "count": count, "steps": steps, "src": {"count": at}}]
+
+    def motion_loop(self, loop: dc.Loop) -> list[dict] | None:
+        """A loop of single ticks that moves the object until its y passes the screen's bottom
+        line (``below_screen``) or reaches its floor (``surface``), with the velocity and gravity
+        the move set: a ``jump`` step. The loop's rate-stepped animation (init_anirate /
+        next_anirate) is an ``animate`` before it; a strike check made in the loop only within N
+        px of the floor (``if (y - floor < N) strike``) is the jump's ``strike`` with
+        ``strike_near_px``."""
+
+        text = str(loop.cond)
+        if "self+0x18" not in text or self.yvel is None or self.gravity is None:
+            return None
+        until = "below_screen" if f"0x{SCREEN_BOTTOM:08X}" in text else "surface" if "proc+0x3F8" in text else None
+        if until is None:
+            return None
+        at = f"MKT 0x{loop.pc:08X}"
+        out: list[dict] = []
+        if self.pending is not None and self.anirate is not None:
+            anim, self.pending = self.pending, None
+            out.append({"op": "animate", "anim": anim, "rate": self.anirate, "until": "running",
+                        "src": {"anim": at, "rate": at, "until": at}})  # fmt: skip
+        else:
+            out += self.show_pending()
+        step: dict[str, Any] = {"op": "jump", "x": "0x0", "y": hex(self.yvel), "gravity": hex(self.gravity),
+                                "until": until}  # fmt: skip
+        for x in loop.body:
+            if x.kind == "call" and self.name(x) in ("process_sleep", "next_anirate"):
+                continue
+            near = self._near_strike(x)
+            if near is not None:
+                step["strike"], step["strike_near_px"] = near
+                continue
+            self.unknown(f"0x{x.pc:08X}: {x.kind} in a motion loop")
+        step["src"] = {k: at for k in step if k != "op"}
+        return out + [step]
+
+    def _near_strike(self, x: Any) -> tuple[dict, int] | None:
+        """``if (self+0x18 - proc+0x3F8 < N) strike_routine()``: (strike, N)."""
+
+        if x.kind != "if" or x.other or len(x.then) != 1 or x.then[0].kind != "call":
+            return None
+        m = re.search(r"\) < (0x[0-9A-F]+|\d+)\)", str(x.cond))
+        if m is None or "proc+0x3F8" not in str(x.cond):
+            return None
+        strike = self._routine_strike(x.then[0].target)
+        return None if strike is None else (strike, int(m.group(1), 0))
+
+    def _routine_strike(self, target: int | None) -> dict | None:
+        """The strike a small routine checks (``strike_check_a0`` on the fighter's strike table)."""
+
+        if not target:
+            return None
+        body = dc.decompile(self.gen.mkt, target)
+        calls = [y for y in _walk_stmts(body) if y.kind == "call" and self.gen.names.get(y.target) == "strike_check_a0"]
+        if len(calls) != 1:
+            return None
+        decoded = self.gen.strike(calls[0].args[0])
+        return None if decoded is None else decoded[0]
 
     def grab_shape(self, stmts: list, i: int) -> list[dict] | None:
         """A grab (Rayden's Shocker, MKT 0x80073228)::
@@ -868,6 +979,35 @@ def _select(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     return out
 
 
+def _last_frame(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    """find_last_frame: the pending selection's cursor on the last frame of its first part (the
+    offset counts its frames: the host copies a donor script's frames, tokens dropped)."""
+
+    if w.pending is None:
+        w.unknown(f"0x{c.pc:08X}: find_last_frame without a selection")
+        return []
+    from . import body_build
+    from .mkt_fighter import MktRom
+
+    donor = body_build.Donor(w.gen.mkt, w.gen.fighter)
+    t1 = MktRom(w.gen.mkt).table1(w.gen.fighter)
+    root = (donor.table0 if w.pending["table"] == 0 else t1)[w.pending["slot"]]
+    phases = body_build.donor_frames_by_phase(donor, root, set(donor.table0) | set(t1))
+    w.offset = len(phases[0]) - 1
+    return []
+
+
+def _anirate(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    w.anirate = a[0]
+    return []
+
+
+def _follow(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    """A named engine routine whose steps are the move's (teleport_land: the landing poses)."""
+
+    return w.gen.routine(c.target, tuple(x for x in a if x is not None), w.g, w.depth + 1)
+
+
 def _randu(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     _RANDU[c.pc] = a[0]
     return []
@@ -918,6 +1058,8 @@ def _stop(w: _Walk, c: dc.Call, a: list) -> list[dict]:
 
 def _jump(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     x, y, g = a[1], a[2], a[3]
+    if JUMP_KEEP in (y, g) and x is not None:  # keep the move's current velocity / gravity
+        return w.show_pending() + _kept_jump(w, c, x, y, g)
     if None in (x, y, g):
         w.unknown(f"0x{c.pc:08X}: jump {c.args}")
         return []
@@ -926,6 +1068,35 @@ def _jump(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     if rate is not None and 0 < rate < 0x100:  # do_jump animates the selection at this rate
         step["rate"] = rate
     return w.show_pending() + [step]
+
+
+def _kept_jump(w: _Walk, c: dc.Call, x: int, y: int, g: int) -> list[dict]:
+    """do_jump with ``JUMP_KEEP`` (0xD) for the y velocity and/or gravity: the jump goes on from
+    the velocity the move left (no ``y``) with the gravity it set (``gravity_on_hit``: the other
+    one after its strike hit). A per-tick callback (process +0x438) that strikes while the object
+    rises (``if (self+0x10 < 0) strike``) is the jump's ``strike`` with ``strike_while: rising``."""
+
+    gravity = w.gravity if g == JUMP_KEEP else g
+    if gravity is None:
+        w.unknown(f"0x{c.pc:08X}: jump keeps a gravity the move did not set")
+        return []
+    step: dict[str, Any] = {"op": "jump", "x": hex(x), "gravity": hex(gravity), "until": "landing"}
+    if y != JUMP_KEEP:
+        step["y"] = hex(y)
+    if w.gravity_hit is not None and g == JUMP_KEEP:
+        step["gravity_on_hit"] = hex(w.gravity_hit)
+    if w.callback is not None:
+        body = dc.decompile(w.gen.mkt, w.callback)
+        ifs = [s for s in body if s.kind == "if"]
+        if len(ifs) == 1 and "self+0x10" in str(ifs[0].cond) and "<0 0" in str(ifs[0].cond) and len(ifs[0].then) == 1:
+            strike = w._routine_strike(ifs[0].then[0].target)
+            if strike is not None:
+                step["strike"], step["strike_while"] = strike, "rising"
+        if "strike" not in step:
+            w.unknown(f"0x{c.pc:08X}: jump callback 0x{w.callback:08X}")
+        w.callback = None
+    step["src"] = {k: f"MKT 0x{c.pc:08X}" for k in step if k != "op"}
+    return [step]
 
 
 def _end(w: _Walk, c: dc.Call, a: list) -> list[dict]:
@@ -1086,6 +1257,11 @@ def _adjust(w: _Walk, c: dc.Call, a: list) -> list[dict]:
         return []
     w.matched = False
     v = c.args[1]
+    lead = re.search(r"proc\+0x3BC\+0xC\b.*\+ (-?0x[0-9A-F]+)\)", str(v))
+    if lead is not None:  # dx = (the opponent's x velocity * 16 ticks) + constant (Sektor: -12)
+        w.note(f"MKT adds the opponent's x velocity over 16 ticks to the offset (0x{c.pc:08X}); the host "
+               "relocation omits that lead (Sektor's teleport, accepted v08)")  # fmt: skip
+        return [{"op": "relocate", "to": "behind_opponent", "dx": abs(int(lead.group(1), 0))}]
     values = v.values if isinstance(v, dc.Phi) else (v.const(),)
     if None in values:
         w.unknown(f"0x{c.pc:08X}: offset {v}")
@@ -1417,6 +1593,15 @@ CALL_RULES = {
     "strike_check_a0": _ignore,  # outside a window: handled by loops
     "stamp_tick": _stamp,
     "link_object": _ignore,
+    "find_last_frame": _last_frame,
+    "init_anirate": _anirate,
+    "next_anirate": _ignore,  # in a motion loop: the animate step's rate
+    "teleport_strike_check": _ignore,  # read by its loop or jump (motion_loop, _kept_jump)
+    "teleport_land": _follow,
+    "triple_sound": _note_only("MKT's landing thud (triple_sound 0x18): the host's own landing sound "
+                               "plays (owner, Sektor teleport v10)"),
+    "land_reset": _ignore,  # the host's end of the move resets the fighter
+    "proc_flag1": _ignore,  # tested by its branch
 }
 
 
