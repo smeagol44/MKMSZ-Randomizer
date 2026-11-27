@@ -21,6 +21,11 @@ from .mips import Assembler
 # Globals
 CURRENT_CTRL = 0x802ECE20  # current controller (process) pointer
 PLAYER_CTRL = 0x802C1AC0  # player controller pointer
+# Free-running video-frame clock (60 Hz NTSC): the retrace handler 0x80015950 adds 1 at 0x80015998,
+# the only store to it in the ROM (Static-confirmed, 2026-11-27). MKT's ticks are 60 Hz (owner's
+# Shocker comparison), so MKT ``ticks_since`` maps onto it tick for tick. Stamps hold clock + 1
+# (0: never stamped) and are compared unsigned, so a clock reset reads as "long ago".
+VI_CLOCK = 0x802E7DC0
 SPECIAL_LOCK = 0x800BF308  # native special-action lock (halfword)
 SOUND_PARAMS = 0x802C1188  # parameter block used by 0x80064C18
 
@@ -331,3 +336,35 @@ def opponent_reacting(a: Assembler, ctrl: str, out: str, label: str) -> None:
     a.beqz("t9", label)
     a.li(out, 1)
     a.label(label)
+
+
+def emit_stamp_now(a: Assembler, word: str | int) -> None:
+    """Store the clock + 1 in ``word`` (a payload label or an address); t0, t1."""
+
+    a.lui("t0", (VI_CLOCK + 0x8000) >> 16 & 0xFFFF)
+    a.lw("t0", ((VI_CLOCK & 0xFFFF) ^ 0x8000) - 0x8000, "t0")
+    a.addiu("t0", "t0", 1)
+    if isinstance(word, str):
+        a.la("t1", word)
+    else:
+        a.lui("t1", (word + 0x8000) >> 16 & 0xFFFF)
+        a.addiu("t1", "t1", ((word & 0xFFFF) ^ 0x8000) - 0x8000)
+    a.sw("t0", 0, "t1")
+
+
+def emit_since(a: Assembler, word: str, ticks: int, refuse: str, *, unset_refuses: bool) -> None:
+    """Branch to ``refuse`` while fewer than ``ticks`` clock ticks passed since ``word``'s stamp
+    (unsigned); an unset word (0) refuses when ``unset_refuses``, else passes. t0-t2."""
+
+    passes = f"{refuse}_{word}_passed"
+    a.la("t0", word)
+    a.lw("t0", 0, "t0")
+    a.beqz("t0", refuse if unset_refuses else passes)
+    a.lui("t1", (VI_CLOCK + 0x8000) >> 16 & 0xFFFF)
+    a.lw("t1", ((VI_CLOCK & 0xFFFF) ^ 0x8000) - 0x8000, "t1")
+    a.addiu("t1", "t1", 1)
+    a.subu("t1", "t1", "t0")
+    a.li("t2", ticks)
+    a.sltu("t2", "t1", "t2")  # unsigned: a clock reset reads as "long ago"
+    a.bnez("t2", refuse)
+    a.label(passes)

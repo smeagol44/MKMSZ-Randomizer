@@ -82,7 +82,7 @@ A move program is data (`src/mkmszr/fighters/moves/<fighter>.json`, format 1):
 | `uppercut` | teleport strike | host reaction `0x08` (*existing*) |
 | `blocked`, `none` | stock blocked reaction / no reaction | — |
 
-**Command conditions:** `buttons_held` (mask held exactly), `holding_away`, `cooldown` (`key`, `ticks`), `held_for` (`ticks`: the button held at least this long before its release, MKT `ticks_since` of the press stamp; lowered to a hold count the HP press restarts and a counter process advances, checked against `ceil(ticks / donor_ticks)` host ticks), `projectiles_below` (`count`) and `opponent_state` (donor guards whose meaning is still Pending, kept as text).
+**Command conditions:** `buttons_held` (mask held exactly), `holding_away`, `cooldown` (`key`, `ticks`; from proof v30 a stamp of the 60 Hz clock written by the move's `stamp` step, refused until `ticks` have passed, MKT's own count; v23–v29 a word cleared by a timer process), `held_for` (`ticks`: the button held at least this long before its release, MKT `ticks_since` of the press stamp; lowered to a stamp of the 60 Hz clock `0x802E7DC0` by the High Punch press wrapper, its age compared at the release (from Rayden specials proof v30; v25–v29 counted in a process whose running flag a stock process kill could leave stuck)), `projectiles_below` (`count`) and `opponent_state` (donor guards whose meaning is still Pending, kept as text).
 
 ## Coverage
 

@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from . import host
 from .mips import Assembler
 
 RECORD = 0x2C
@@ -275,72 +276,22 @@ def lower(clean: bytes, commands: list[Command], remove: set[str], storage: int,
 
 
 # High Punch hold timing (Rayden's Shocker, MKT ``ticks_since`` on the HP press stamp 0x80257738):
-# the press callback is wrapped; it zeroes the count word and starts a counter process (when none
-# runs) that adds 1 each tick while HP is held (0x800BF2EE & 0x10), then ends. The command's
-# condition reads the count when HP is released.
+# the press callback is wrapped; it stamps the clock (``host.VI_CLOCK``, 60 Hz, as MKT's ticks) in
+# the hold word, then runs the stock press. The command's condition compares the stamp's age at
+# the release. Specials proofs v25-v29 counted the hold in a process guarded by a running flag;
+# a stock process kill while HP was held left the flag set until the next stage load (the
+# Shocker then never came out, owner 2026-11-27). A stamp needs no process.
 HP_PRESS_RECORD, HP_RELEASE_RECORD = 0x800A049C, 0x800A0A6C  # events 0 (High Punch)
 HP_PRESS_STOCK = 0x8003C870  # the stock HP press callback (the HP table through the parser)
-HOLD_PROCESS_ID = 0x100
-F_CLONE, F_SLEEP, F_EXIT = 0x8002830C, 0x80028794, 0x80028564
 
 
-def _emit_hold_counter(a: Assembler, count: int) -> int:
-    """Emit the press wrapper (returned VA), the counter process and its running word."""
-
-    def la(reg: str, va: int) -> None:
-        a.lui(reg, ((va + 0x8000) >> 16) & 0xFFFF)
-        a.addiu(reg, reg, ((va & 0xFFFF) ^ 0x8000) - 0x8000)
+def _emit_hold_counter(a: Assembler, stamp: int) -> int:
+    """Emit the press wrapper (returned VA): the clock stamp, then the stock press (a0-a3 kept)."""
 
     wrapper = a.pc()
-    a.addiu("sp", "sp", -0x28)
-    a.sw("ra", 0x24, "sp")
-    for k, r in enumerate(("a0", "a1", "a2", "a3")):
-        a.sw(r, 0x10 + 4 * k, "sp")
-    la("t0", count)
-    a.sw("zero", 0, "t0")  # a new press: count from zero
-    a.la("t0", "hold_running")
-    a.lw("t1", 0, "t0")
-    a.bnez("t1", "hold_started")
-    a.li("t1", 1)
-    a.sw("t1", 0, "t0")
-    a.li("a0", HOLD_PROCESS_ID)
-    a.la("a1", "hold_counter")
-    a.jal(F_CLONE)
+    host.emit_stamp_now(a, stamp)
+    a.j(HP_PRESS_STOCK)
     a.nop()
-    a.bnez("v0", "hold_started")
-    a.la("t0", "hold_running")
-    a.sw("zero", 0, "t0")  # no process left: no count (the command stays refused)
-    a.label("hold_started")
-    for k, r in enumerate(("a0", "a1", "a2", "a3")):
-        a.lw(r, 0x10 + 4 * k, "sp")
-    a.lw("ra", 0x24, "sp")
-    a.addiu("sp", "sp", 0x28)
-    a.j(HP_PRESS_STOCK)  # then the stock press: the HP button table
-    a.nop()
-    a.label("hold_counter")
-    a.label("hold_loop")
-    a.lui("t0", ((HELD_BUTTONS + 0x8000) >> 16) & 0xFFFF)
-    a.lhu("t0", ((HELD_BUTTONS & 0xFFFF) ^ 0x8000) - 0x8000, "t0")
-    a.andi("t0", "t0", BUTTONS["HP"])
-    a.beqz("t0", "hold_done")
-    a.nop()
-    la("t0", count)
-    a.lw("t1", 0, "t0")
-    a.slti("t2", "t1", 0x7FFF)
-    a.addu("t1", "t1", "t2")  # saturating
-    a.sw("t1", 0, "t0")
-    a.li("a0", 1)
-    a.jal(F_SLEEP)
-    a.nop()
-    a.beq("zero", "zero", "hold_loop")
-    a.nop()
-    a.label("hold_done")
-    a.la("t0", "hold_running")
-    a.sw("zero", 0, "t0")
-    a.jal(F_EXIT)
-    a.nop()
-    a.label("hold_running")
-    a.raw(0)
     return wrapper
 
 

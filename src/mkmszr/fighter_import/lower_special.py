@@ -102,7 +102,7 @@ LIT_BIT = 0x1000
 def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
                         default: int | None = None, alive: tuple[str, ...] = (),
                         refuse_if: tuple[int, int] | None = None, airborne: bool = False,
-                        cooldown: str | None = None, target_range: int | None = None,
+                        cooldown: tuple[str, int] | None = None, target_range: int | None = None,
                         held: tuple[str, int] | None = None) -> None:  # fmt: skip
     """``label() -> 0x8000 / 0x4000`` (see the module notes). With ``default``, the gate word
     is used only when it is ``slti t0, v0, N`` (Ice Blast's rewritten tail), else ``default``.
@@ -113,12 +113,14 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     ``refuse_if`` (controller offset, mask): refuse while that halfword of the player's
     controller has a bit of the mask set (Invisibility: already stealthed). ``airborne``: also
     accept in the air (no fall-speed or floor check; Rayden's torpedo, owner 2026-11-24).
-    ``cooldown``: the label of a word the move's ``stamp`` keeps set for its cooldown (MKT's
-    ticks_since condition): refuse while it is set. ``target_range``: refuse unless an enemy is
-    within that range on the player's path (as Sektor's teleport condition, which avoids a
-    teleport with nobody to reach). ``held`` (word label, host ticks): refuse unless the word
-    (the High Punch hold count, ``commands``) is at least that (MKT ``ticks_since`` on the press
-    stamp: Rayden's Shocker)."""
+    ``cooldown`` (stamp label, ticks): refuse until that many clock ticks (``host.VI_CLOCK``,
+    60 Hz, as MKT's) have passed since the move's ``stamp`` (MKT's ticks_since condition).
+    ``target_range``: refuse unless an enemy is within that range on the player's path (as
+    Sektor's teleport condition, which avoids a teleport with nobody to reach). ``held`` (stamp
+    label, ticks): refuse unless the High Punch press stamp (``commands``) is at least that old
+    at the release (MKT ``ticks_since`` on the press stamp: Rayden's Shocker). Both are
+    timestamps since v30: v25-v29 used a counter process with a running flag and a timer
+    process, which a stock process kill could leave stuck until the next stage load."""
 
     a.label(label)
     a.addiu("sp", "sp", -0x20)
@@ -126,15 +128,10 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     if target_range is not None:  # find_target uses s1 / s4
         a.sw("s1", 0x18, "sp")
         a.sw("s4", 0x14, "sp")
-    if cooldown is not None:
-        a.la("t0", cooldown)
-        a.lw("t0", 0, "t0")
-        a.bnez("t0", label + "_no")
-    if held is not None:
-        a.la("t0", held[0])
-        a.lw("t0", 0, "t0")
-        a.slti("t0", "t0", held[1])
-        a.bnez("t0", label + "_no")
+    if cooldown is not None:  # refuse until the cooldown has passed since the move's stamp
+        host.emit_since(a, cooldown[0], cooldown[1], label + "_no", unset_refuses=False)
+    if held is not None:  # refuse unless High Punch was pressed that long before its release
+        host.emit_since(a, held[0], held[1], label + "_no", unset_refuses=True)
     a.lui("t0", hi(PLAYER_ACTOR))
     a.lw("t0", lo(PLAYER_ACTOR), "t0")
     if not airborne:
@@ -219,35 +216,10 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
 
 
 # ---- cooldowns (MKT stamp_tick + ticks_since) ---------------------------------------------------
-COOLDOWN_PROCESS_ID = 0x100  # as the blink and stealth timer
-
-
-def emit_cooldown(a: Assembler, label: str, ticks: int) -> None:
-    """Process ``label``: keep the word ``label_word`` set for ``ticks`` host ticks, then clear
-    it (the move's ``stamp`` starts it; its condition refuses while the word is set)."""
-
-    a.label(label)
-    a.li("a0", ticks)
-    a.jal(F_SLEEP)
-    a.la("t0", label + "_word")
-    a.sw("zero", 0, "t0")
-    a.jal(lp.F_EXIT)
-    a.label(label + "_word")
-    a.raw(0)
-
-
 def emit_stamp(a: Assembler, cooldown: str, skip: str) -> None:
-    """In the move: set the cooldown word and start its timer process (none left: no cooldown)."""
+    """In the move: stamp the clock in the cooldown word (its condition compares the time)."""
 
-    a.la("t0", cooldown + "_word")
-    a.li("t1", 1)
-    a.sw("t1", 0, "t0")
-    a.li("a0", COOLDOWN_PROCESS_ID)
-    a.la("a1", cooldown)
-    a.jal(lp.F_CLONE)
-    a.bnez("v0", skip)
-    a.la("t0", cooldown + "_word")
-    a.sw("zero", 0, "t0")
+    host.emit_stamp_now(a, cooldown)
     a.label(skip)
     host.load_controller(a)
 
@@ -483,7 +455,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     the word a ``carry`` step shares with the victim's ``torpedo_carry`` reaction
     (:func:`emit_carry_reaction`); ``air_control``: ``jump`` steps let the player steer (see
     :data:`AIR_MAP`); ``cooldown``: the label of the move's cooldown process
-    (:func:`emit_cooldown`), started by its ``stamp`` step; ``afterimage``: the label of the
+    (the clock stamp its ``stamp`` step writes, :func:`emit_stamp`); ``afterimage``: the label of the
     afterimage process (``lower_projectile.emit_afterimage_process``) for ``afterimage`` steps;
     ``relocate`` steps call the ``relocate`` subroutine (:func:`emit_relocate_routine`).
 

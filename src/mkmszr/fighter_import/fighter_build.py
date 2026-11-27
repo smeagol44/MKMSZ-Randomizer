@@ -238,7 +238,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     groups: dict[tuple[tuple[int, int, int], str], _Group] = {}
     art_of: dict[tuple[int, int, int], tuple[lp.ArtLayout, dict[str, int], str | None]] = {}
     afterimage_of: dict[str, tuple[str, lp.ArtLayout, int]] = {}  # move -> (process, art, ticks)
-    cooldown_of: dict[str, int] = {}  # move -> host ticks (MKT ticks_since conditions)
+    cooldown_of: dict[str, int] = {}  # move -> clock ticks (MKT ticks_since conditions, 60 Hz)
     steps_of: dict[str, list[dict[str, Any]]] = {}
     projectile_of: dict[str, dict[str, Any]] = {}
     placed_at = body.chain_start
@@ -315,7 +315,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 afterimage_of[move] = (f"{move}_afterimage", art, frames * rate)
         cool = next((c for c in programs[move].command.get("conditions", []) if c["kind"] == "cooldown"), None)
         if cool is not None and proj is None:  # projectiles: the host one-projectile rule instead
-            cooldown_of[move] = max(1, -(-_int(cool["ticks"]) // ticks_per))
+            cooldown_of[move] = _int(cool["ticks"])  # the clock runs at MKT's rate
         unported: set[int] = set()
         silent = "sound" in tune.get("skip", ())  # owner: the move's sounds left out (no chains)
         for s in [] if silent else _all_steps(steps):  # nested steps too (Rayden's torpedo: on_hit)
@@ -395,10 +395,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         relocates = any(s["op"] == "relocate" for s in _all_steps(steps))
         held_cond = next((c for c in programs[move].command.get("conditions", []) if c["kind"] == "held_for"), None)
         held = None
-        if held_cond is not None:  # MKT counts donor ticks; the hold counter host ticks
-            held = ("hold_hp_count", max(1, -(-_int(held_cond["ticks"]) // _int(tune.get("donor_ticks", 1)))))
+        if held_cond is not None:  # MKT ticks_since on the press stamp: the clock runs at MKT's rate
+            held = ("hold_hp_stamp", _int(held_cond["ticks"]))
         lower_special.emit_gate_condition(a, f"{move}_cond", gate, costs[move], default=default,
-                                          cooldown=f"{move}_cooldown_word" if move in cooldown_of else None,
+                                          cooldown=(f"{move}_cooldown", cooldown_of[move]) if move in cooldown_of else None,
                                           target_range=lower_special.RELOCATE_RANGE if relocates else None,
                                           held=held,
                                           alive=alive, refuse_if=refuse,
@@ -474,8 +474,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         if move in afterimage_of:
             label, art, ticks = afterimage_of[move]
             lp.emit_afterimage_process(a, label, art, ticks)
-        if move in cooldown_of:
-            lower_special.emit_cooldown(a, f"{move}_cooldown", cooldown_of[move])
+        if move in cooldown_of:  # its clock stamp (the move's ``stamp`` step writes it)
+            while a.pc() & 3:
+                a.nop()
+            a.label(f"{move}_cooldown")
+            a.raw(0)
         if relocates and "relocate" not in a.labels:
             lower_special.emit_relocate_routine(a)
         if "stealth" in tune:
@@ -506,7 +509,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     if any(programs[m].command.get("release") for m in order):
         while a.pc() & 3:
             a.nop()
-        a.label("hold_hp_count")  # High Punch hold, in host ticks (commands' counter process)
+        a.label("hold_hp_stamp")  # the High Punch press, clock + 1 (commands' press wrapper)
         a.raw(0)
     main = a.link()
     # Transfer mode 0 refuses an airborne start, mode 1 does not (Wiki Player-Actions "Descriptor
@@ -516,7 +519,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     cmds = commands.donor_commands(mkt, moves, d.commands)
     stub_base = (link_va + TABLE_RESERVE + len(main) + 0xF) & ~0xF
     low_cmd = commands.lower(clean, cmds, set(d.remove_commands), link_va, stub_base, overrides,
-                             hold_word=a.labels.get("hold_hp_count"))  # fmt: skip
+                             hold_word=a.labels.get("hold_hp_stamp"))  # fmt: skip
     if any(v + commands.RECORD * len(low_cmd.tables[k]) + 4 > link_va + TABLE_RESERVE
            for k, v in low_cmd.moved.items()):  # fmt: skip
         raise BuildError("moved command tables do not fit their reserve")

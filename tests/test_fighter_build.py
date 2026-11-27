@@ -339,7 +339,10 @@ def test_teleport_relocates_with_an_afterimage_and_a_cooldown(roms: tuple[bytes,
     assert built.selectors["teleport"] == 5
     ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
     assert 0x24040015 in ws  # li a0, 0x15: the afterimage process class
-    assert 0x24040020 in ws  # li a0, 32: the cooldown, in host ticks
+    # MKT's cooldown as a clock stamp (v30): the move stamps the 60 Hz clock, the condition
+    # refuses until 0x40 ticks have passed (v23-v29: a timer process of 32 host ticks)
+    assert 0x240A0040 in ws and 0x012A502B in ws  # li t2, 0x40; sltu t2, t1, t2
+    assert ws.count(0x3C09802E) == 2  # lui t1, 0x802E: each condition reads the clock
     assert 0x24040086 in ws  # li a0, 134: the relocation distance (67 px)
     assert lower_special.RELOCATE_RANGE == 592
 
@@ -387,7 +390,9 @@ def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> 
              for r in (cmds.HP_RELEASE_RECORD, cmds.HP_PRESS_RECORD)]  # fmt: skip
     assert all(built.link_va <= h < built.link_va + len(built.payload) for h in hooks)
     ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
-    assert 0x2908001C in ws  # slti t0, t0, 28: the hold gate (56 donor ticks at 2 per host tick)
+    # v30: the hold is MKT's 0x38 ticks on the 60 Hz clock, since the press stamp (v25-v29: a
+    # counter process whose running flag a stock process kill could leave stuck)
+    assert 0x240A0038 in ws  # li t2, 0x38
     # v28 (owner on v27: "the enemies are being held for too long"): MKT holds the victim 96 donor
     # ticks while he plays 32 frames, 3 ticks each (0x80073378(8)). The victim's hold is 48 host
     # ticks; his shaking was 16 frames in 32 (the repeat count was scaled), so the victim stayed
