@@ -47,7 +47,7 @@ The generator is named the **Special Move Recompile Engine (SMRE)** (owner). Bef
 |---|---|---|---|
 | `MKMSZR_sektor-smre_common_proof_v01.z64` | `63887e4b53b7b35f3db30a1022c81717c11e6356a7b17e41a5b94e92e6c01d6b` | Sektor's base on the generic build (`sektor-smre`), no specials: computed layout, MKT throw with the arm flattened on (`scale`), MKT combos (seventh record in the payload). Builder `Experimental/FighterRecompilerProofs/MKMSZR_build_sektor-smre_proof_v01.py`. | **Runtime-confirmed (bounded)** (owner, 2026-11-27): throw, combos and body "all looking good"; the throw had no sound (v02). |
 | `MKMSZR_sektor-smre_common_proof_v02.z64` | `87e092bb26f8946e5926e04aa580bd7edc435fdc5efb86ccb9bd278a89306374` | v01 with the throw's sounds: MKT's grab voice and his arm out / throw / in at the grab, throw and release (`throw_sounds`, `body.throw_voice`). Builder `MKMSZR_build_sektor-smre_proof_v02.py`. | **Superseded** (v03: grab voice dropped before testing). |
-| `MKMSZR_sektor-smre_common_proof_v03.z64` | `e8441f2d9e065982d607f4ee22f9bd3369b10cbd41184b2f992dc419acbf6106` | v02 without the grab voice (owner dropped grab sounds); his arm out / throw / in stay. Builder `MKMSZR_build_sektor-smre_proof_v03.py`. | **Pending**. |
+| `MKMSZR_sektor-smre_common_proof_v03.z64` | `e8441f2d9e065982d607f4ee22f9bd3369b10cbd41184b2f992dc419acbf6106` | v02 without the grab voice (owner dropped grab sounds); his arm out / throw / in stay. Builder `MKMSZR_build_sektor-smre_proof_v03.py`. | **Runtime-confirmed (bounded)** (owner, 2026-11-27): "It has the sound, it's actually really good." |
 
 ### Generator — agreed tasks (owner, 2026-11-25: option A)
 
