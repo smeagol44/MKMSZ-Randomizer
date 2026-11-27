@@ -158,23 +158,53 @@ class Lowered:
     roots: tuple[int, int]  # host VAs
     strings: tuple[str, ...]  # human-readable strings (entry button first)
     strikes: dict[int, int]  # donor -> host strike selectors used
+    overflow: bytes = b""  # records past the host graph, at the caller's ``overflow_va``
 
 
-def lower(graph: Graph, table1_slot: int | None, slots: set[int], capacity: int = HOST_CAPACITY) -> Lowered:
+def overflow_size(graph: Graph, capacity: int = HOST_CAPACITY) -> int:
+    """Bytes of the option lists that do not fit the host graph (:func:`lower` places lists in
+    order; a list that does not fit whole goes past the graph)."""
+
+    used = extra = 0
+    for lst in graph.lists:
+        if used + len(lst) <= capacity:
+            used += len(lst)
+        else:
+            extra += len(lst)
+    return 16 * extra
+
+
+def lower(graph: Graph, table1_slot: int | None, slots: set[int], capacity: int = HOST_CAPACITY,
+          overflow_va: int | None = None) -> Lowered:  # fmt: skip
     """The host records for ``graph``. ``table1_slot``: the donor table-1 slot that host
-    primary :data:`COMBO_SLOT` holds; ``slots``: the imported host primary slots."""
+    primary :data:`COMBO_SLOT` holds; ``slots``: the imported host primary slots.
 
-    n = sum(len(lst) for lst in graph.lists)
-    if n > capacity:
+    Option lists go into the host graph in order; a list that does not fit whole goes to
+    ``overflow_va`` (the fighter's payload) when given. Sektor's seven MKT records on the
+    host's six: his last list (``HP, HP, HK, HK, B+HK``'s finisher) is past the graph, as his
+    legacy build kept his HK,HK record in its payload arena (Sektor v62, Runtime-confirmed)."""
+
+    if overflow_size(graph, capacity) and overflow_va is None:
+        n = sum(len(lst) for lst in graph.lists)
         raise ComboError(f"{n} combo records do not fit the host graph ({capacity})")
     place: dict[int, int] = {}
-    va = HOST_RECORDS_VA
+    va, extra_va, used = HOST_RECORDS_VA, overflow_va, 0
+    host_lists, extra_lists = [], []
     for lst in graph.lists:
-        for rec in lst:
-            place[rec] = va
-            va += 16
-    out, strikes = bytearray(), {}
-    for lst in graph.lists:
+        if used + len(lst) <= capacity:
+            used += len(lst)
+            host_lists.append(lst)
+            for rec in lst:
+                place[rec] = va
+                va += 16
+        else:
+            extra_lists.append(lst)
+            for rec in lst:
+                place[rec] = extra_va
+                extra_va += 16  # type: ignore[operator]
+    records: dict[int, bytes] = {}
+    strikes: dict[int, int] = {}
+    for lst in [*host_lists, *extra_lists]:
         for donor_va in lst:
             rec = bytearray(graph.records[donor_va])
             where = f"record 0x{donor_va:08X}"
@@ -190,9 +220,11 @@ def lower(graph: Graph, table1_slot: int | None, slots: set[int], capacity: int 
             nxt = _u32(rec, 12)
             if nxt >= 0x80000000:
                 rec[12:16] = place[nxt].to_bytes(4, "big")
-            out += rec
-    return Lowered(bytes(out), (place[graph.roots[0]], place[graph.roots[1]]),
-                   tuple(strings(graph)), strikes)  # fmt: skip
+            records[donor_va] = bytes(rec)
+    out = b"".join(records[r] for lst in host_lists for r in lst)
+    extra = b"".join(records[r] for lst in extra_lists for r in lst)
+    return Lowered(out, (place[graph.roots[0]], place[graph.roots[1]]),
+                   tuple(strings(graph)), strikes, extra)  # fmt: skip
 
 
 def strings(graph: Graph) -> list[str]:

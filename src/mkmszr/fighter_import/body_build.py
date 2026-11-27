@@ -695,6 +695,7 @@ KEPT_CALLBACKS = {1, 18, 19}
 # throw keeps its own script.
 DROPPED_CALLBACKS = {37}
 DROPPED_TOKENS = {7, 13, 15}
+HELPER_TOKENS = {11, 12, 14}  # phase slots only: flattened onto the owner (phase_slot_frames)
 MAX_SCRIPT_WORDS = 64
 
 
@@ -702,9 +703,12 @@ class LayoutError(ValueError):
     pass
 
 
-def linearise(donor: Donor, slot: int, starts: set[int], root: int | None = None) -> list:
+def linearise(donor: Donor, slot: int, starts: set[int], root: int | None = None,
+              helpers: bool = False, max_words: int = 0) -> list:  # fmt: skip
     """MKT table 0 ``slot``'s script (or the script at ``root``) as host words: ints,
-    ``("frame", rel)`` and ``("jump", index)``.
+    ``("frame", rel)`` and ``("jump", index)``. With ``helpers``, the helper tokens (11 create
+    from a frame, 12 step, 14 step counted as the shown frame) come out as ``("helper", 11,
+    rel)``, ``("helper", 12)`` and ``("helper", 14)``: :func:`phase_slot_frames` flattens them.
 
     A jump into another script that this copy has not reached yet is followed inline (the host
     script carries its own copy): Rayden's sweep getup (slot ``0x22``) shows one frame, then
@@ -715,8 +719,8 @@ def linearise(donor: Donor, slot: int, starts: set[int], root: int | None = None
     pos = donor.table0[slot] if root is None else root
     jumps = []
     while True:
-        if len(out) > MAX_SCRIPT_WORDS:
-            raise LayoutError(f"slot 0x{slot:02X}: script longer than {MAX_SCRIPT_WORDS} words")
+        if len(out) > (max_words or MAX_SCRIPT_WORDS):
+            raise LayoutError(f"slot 0x{slot:02X}: script longer than {max_words or MAX_SCRIPT_WORDS} words")
         at.setdefault(pos, len(out))
         v = donor.m32(pos)
         if v == 0:
@@ -748,6 +752,10 @@ def linearise(donor: Donor, slot: int, starts: set[int], root: int | None = None
             continue
         if v == 6 and ops[0] in DROPPED_CALLBACKS:
             pos += 8
+            continue
+        if helpers and v in HELPER_TOKENS:
+            out.append(("helper", v, *ops))
+            pos += 4 * (1 + len(ops))
             continue
         if v == 6 and ops[0] not in KEPT_CALLBACKS:
             raise LayoutError(f"slot 0x{slot:02X}: callback {ops[0]} at 0x{pos:X} has no rule")
@@ -807,7 +815,15 @@ VIRTUAL_SCRIPT = 0x40  # body.secondary_scripts keys from here: no table-1 entry
 
 def phase_slot_frames(donor: Donor, slots, sources: dict | None = None) -> dict[int, list[list[int]]]:
     """Per phase slot, the donor script's frames grouped by phase (table 0 index *slot*, or
-    ``sources[slot] = (table, index)``)."""
+    ``sources[slot] = (table, index)``).
+
+    A script with a helper object (MKT token 11: Sektor's mechanical arm in his throw, drawn by
+    a second actor with its own palette) shows, at each counted step, the owner's frame and the
+    helper's. The host slot gets one flattened frame per such step, keyed
+    ``("helper", owner frame, helper frame, helper palette)`` (:func:`helper_composite`). The
+    frame after a helper step (12, 14) is the helper's; a step with 14 counts as the shown
+    frame, so the owner's last frame shows with the new helper frame. The helper's palette is
+    the one its creating frame names (MKT ``0x8006DA14``; Sektor's ``MECARM_P``)."""
 
     if not slots:
         return {}
@@ -817,14 +833,44 @@ def phase_slot_frames(donor: Donor, slots, sources: dict | None = None) -> dict[
     for slot in slots:
         table, index = (sources or {}).get(slot, (0, slot))
         root = (donor.table0 if table == 0 else table1)[index]
-        phases: list[list[int]] = [[]]
-        for w in linearise(donor, slot, starts, root):
+        phases: list[list] = [[]]
+        owner = helper = palette = None
+        step = None  # the helper token whose frame comes next
+        # (only its frames are read: the host script is kept, so its length does not matter)
+        for w in linearise(donor, slot, starts, root, helpers=True, max_words=4 * MAX_SCRIPT_WORDS):
             if w == 0:
                 phases.append([])
+            elif isinstance(w, tuple) and w[0] == "helper":
+                if w[1] == 11:
+                    helper, palette = w[2], donor.frame(w[2]).get("own_palette")
+                    if palette is None:
+                        raise LayoutError(f"slot 0x{slot:02X}: helper frame 0x{w[2]:X} names no palette")
+                else:
+                    step = w[1]
             elif isinstance(w, tuple) and w[0] == "frame" and donor.is_shape(w[1]):
-                phases[-1].append(w[1])
+                if step is not None:
+                    helper, counted, step = w[1], step == 14, None
+                    if not counted:
+                        continue
+                else:
+                    owner = w[1]
+                if helper is None:
+                    phases[-1].append(owner)
+                elif owner is None:
+                    raise LayoutError(f"slot 0x{slot:02X}: a helper frame before any owner frame")
+                else:
+                    phases[-1].append(("helper", owner, helper, palette))
         out[slot] = [p for p in phases if p]
     return out
+
+
+def helper_composite(owner: dict, helper: dict, owner_map, helper_map) -> dict:
+    """A helper key's frame: the helper's pixels (``helper_map``: its palette to body colours)
+    over the owner's (``owner_map``), both placed by their anchors."""
+
+    o = dict(owner, padded=bytes(owner_map[p] for p in owner["padded"]))
+    h = dict(helper, padded=bytes(helper_map[p] for p in helper["padded"]))
+    return composite(o, h, codec="flattened-helper")
 
 
 # The host mirrors a sprite around its anchor when the fighter turns, also in mid-air (the turn
@@ -931,7 +977,11 @@ def phase_fill(clean_file: bytes, slot: int, phases: list[list[int]], mode: str 
     phases, shows frame *p + N* of the donor's phases but the last (its retract) in order;
     before them ``stance``, after them the retract scaled over the remaining positions.
     Sektor's accepted throw (proof v55) has its visuals two places late (``shift:-2``);
-    Reptile's MKT throw lands right one place early (owner, inputs proofs v01-v02)."""
+    Reptile's MKT throw lands right one place early (owner, inputs proofs v01-v02).
+    ``scale``: the host positions of every phase but the last show the donor frames of every
+    phase but the last (its retract), scaled by position; the last host phase shows the
+    retract, scaled. For a donor throw much longer than the host's: Sektor's MKT throw (4
+    windup, 4 arm-out, 8 swing and 8 retract frames) on the host's 2 + 5 + 2 positions."""
 
     root = be32(clean_file, (4 * slot) if table == 0 else (0x104 + 4 * slot))
     _, entries = _host_layout(clean_file)  # every table entry starts a script (the throw ends at +0x928)
@@ -962,6 +1012,17 @@ def phase_fill(clean_file: bytes, slot: int, phases: list[list[int]], mode: str 
                 k, n = after.index(p), len(after)
                 seq.append(retract[0] if n == 1 else retract[round(k * (len(retract) - 1) / (n - 1))])
         return dict(zip(positions, seq, strict=True))
+    if mode == "scale":
+        hosts = [ph for ph in host if ph]
+        lead = [p for ph in (hosts[:-1] if len(hosts) > 1 else hosts) for p in ph]
+        frames = [r for p in (phases[:-1] if len(phases) > 1 else phases) for r in p]
+        spans = [(lead, frames)] + ([(hosts[-1], phases[-1])] if len(hosts) > 1 and len(phases) > 1 else [])
+        out = {}
+        for positions, src in spans:
+            n = len(positions)
+            for i, pos in enumerate(positions):
+                out[pos] = src[0] if n == 1 else src[round(i * (len(src) - 1) / (n - 1))]
+        return out
     out = {}
     for k, positions in enumerate(p for p in host if p):
         src = phases[min(k, len(phases) - 1)]
@@ -1312,12 +1373,20 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         _starts = set(donor.table0) | set(_t1)
     new_scripts = {s: donor_frames_by_phase(donor, (donor.table0 if t == 0 else _t1)[i], _starts)[:n]
                    for s, (t, i, n) in body_d.secondary_scripts.items()}  # fmt: skip
-    for phases in [*phase_sources.values(), *secondary_sources.values(), *new_scripts.values()]:
+    # Helper composites (phase slots): only the ones the host positions show.
+    stance_first = translated_first_frame(slot_cfg, donor)
+    shown = {slot: set(phase_fill(clean_file, slot, phases, body_d.phase_slots[slot], stance_first).values())
+             for slot, phases in phase_sources.items()}  # fmt: skip
+    for slot, phases in [*phase_sources.items(), *secondary_sources.items(), *new_scripts.items()]:
         for rel in (r for p in phases for r in p):
+            if isinstance(rel, tuple) and rel not in shown.get(slot, ()):
+                continue
             if rel not in old_shapes:
                 old_shapes.append(rel)
     run_rels = donor.frames(body_d.run_slot) if layout is None or layout.run_frames is None else list(layout.run_frames)
-    frame_cache = {rel: donor.frame(rel) for rel in old_shapes}
+    helper_keys = [k for k in old_shapes if isinstance(k, tuple) and k[0] == "helper"]
+    frame_cache = {rel: donor.frame(rel) for rel in old_shapes if rel not in helper_keys}
+    parts = {r: donor.frame(r) for k in helper_keys for r in k[1:3]}  # owner and helper frames
     for r in run_rels:
         frame_cache[r] = donor.frame(r)
     sets = dict(extras.sets)
@@ -1339,6 +1408,8 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         for fr in frame_cache.values():
             if not fr.get("own_palette"):  # drawn with its own palette, mapped below
                 usage.update(fr["padded"])
+        for k in helper_keys:  # a composite's owner pixels follow the fighter's palette
+            usage.update(parts[k[1]]["padded"])
         donor_palette = donor.palette()
         index_map, words16 = reduce_palette(donor_palette, usage)
         if max(usage) >= len(index_map):
@@ -1364,6 +1435,17 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         fr["blocks"] = make_blocks(fr["padded"], fr["stride"], fr["eh"])
         frame_cache[k] = fr
         assert max(fr["padded"]) < 16
+    if helper_keys:  # each helper palette colour to the nearest body colour (1..15)
+        from .effects import mkt_palette
+        from .power_icons import bgr555_to_rgb
+
+        body_rgb = [bgr555_to_rgb(int.from_bytes(palette[2 * i : 2 * i + 2], "big")) for i in range(16)]
+        helper_maps = {k[3]: [0] + [_nearest(bgr555_to_rgb(c), body_rgb) for c in mkt_palette(donor.mkt, k[3])[1:]]
+                       for k in helper_keys}  # fmt: skip
+        for k in helper_keys:
+            frame_cache[k] = helper_composite(parts[k[1]], parts[k[2]], index_map, helper_maps[k[3]])
+        log.append(f"HELPER {len(helper_keys)} owner+helper frames flattened; palettes "
+                   + ", ".join(f"0x{v:08X}" for v in helper_maps))  # fmt: skip
 
     inherited_groups = layout.inherited_groups if layout else min(56, max(1, len(old_shapes) // 3))
     run_groups_n = layout.run_groups if layout else min(4, len(run_rels))
@@ -1499,7 +1581,7 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
                 put32(file87, off, target + 4 * phase_starts[min(phase, len(phase_starts) - 1)])
                 log.append(f"ALIAS table 0x{off:X} -> slot 0x{slot:02X} phase {phase}")
 
-    stance_rel = translated_first_frame(slot_cfg, donor)
+    stance_rel = stance_first
     for slot, phases in phase_sources.items():
         mode = body_d.phase_slots[slot]
         for pos, rel in phase_fill(clean_file, slot, phases, mode, stance_rel).items():

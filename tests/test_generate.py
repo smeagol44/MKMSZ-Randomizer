@@ -222,3 +222,27 @@ def test_smre_reads_commands_and_conditions(mkt: bytes) -> None:
     assert len(notes) == 2  # the opponent's fighter id and reaction state
     with pytest.raises(ValueError, match="not one of fighter"):
         ray.command(0x800AC810)
+
+
+def test_smre_reads_inline_commands(mkt: bytes) -> None:
+    """Sektor's specials are inline matcher calls in imperative handlers (SMRE step 3): buttons
+    from the handler's event within the matcher's mask, tokens and window from the compact
+    table, and the guards between the matcher and the transfer: ``process_exist`` on his
+    projectile process (0x705/0x805) is ``projectiles_below`` 1; the Homing Missile's count of
+    processes 0x704/0x804 (< 3) and the teleport's opponent guards are notes. The action is the
+    transfer's wrapper (Sektor's teleport uppercut: ``do_body_propell(8)``)."""
+
+    sek = gen.Generator(mkt, 7)
+    cmd, notes = sek.command(0x800AB250)  # straight missile, F,F + LP
+    assert cmd == {"buttons": "0x80", "tokens": [9, 9], "window": 32, "src": "MKT 0x800AB250",
+                   "conditions": [{"kind": "projectiles_below", "count": 1, "src": "MKT 0x8004E73C"}]}  # fmt: skip
+    assert notes == []
+    cmd, notes = sek.command(0x800AB26C)  # double missile, B,B,F + LP
+    assert (cmd["tokens"], cmd["conditions"][0]["kind"]) == ([9, 8, 8], "projectiles_below")
+    cmd, notes = sek.command(0x800AB288)  # homing missile, F,D,B + HP
+    assert (cmd["buttons"], cmd["tokens"], cmd["window"], "conditions" in cmd) == ("0x10", [8, 7, 9], 22, False)
+    assert notes == ["0x8004E7EC: fewer than 3 live processes with ids 0x704, 0x804 (not lowered)"]
+    cmd, notes = sek.command(0x800AB2C0)  # teleport uppercut, F,F + LK
+    assert (cmd["buttons"], cmd["tokens"], cmd["window"]) == ("0x40", [9, 9], 24) and len(notes) == 2
+    prog, _, _ = sek.program("teleport_uppercut", 0x800AB2C0)
+    assert prog["steps"][0]["action_mkt"] == "0x208" and prog["steps"][1]["sound"] == {"fighter": 7}
