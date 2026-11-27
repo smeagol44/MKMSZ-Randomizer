@@ -144,7 +144,15 @@ The 16 isolated chains limit how many sounds a fighter can bring; Rayden uses th
 - **No free records to recombine.** A track-aware scan of every event's header patch and in-stream patch changes leaves about one waveform that no track reaches, and Toasty already hosts it. The bank is essentially fully used, so new chains must be appended.
 - **Predictor books** cannot be shared to save heap. Waveforms find their book by index; 558 of 598 books are distinct.
 
-Larger gains would need the audio heap somewhere else, such as the Expansion Pak's upper 4 MB (a product requirement), or less loaded audio data. **Pending:** owner decision. Next: bank growth with a build-time heap guard (the computed use must stay within `0x820` less a margin), then a bounded proof with Rayden's grab voice.
+Larger gains would need the audio heap somewhere else, such as the Expansion Pak's upper 4 MB (a product requirement), or less loaded audio data.
+
+**Bank growth prototyped, then stopped (owner, 2026-11-27: "If this effort is only to fit just ONE more sound, then let's stop here").** Implementation/static-confirmed, not merged, not runtime-tested. Facts it established:
+- The driver's module init (`0x80086688`) derives every table from the counts and gives waveform *i* the book `books + 264 × i` (`0x800868F8`).
+- The extra data is an 8-byte header (`+4`: 60 loops of `0x30`), the loops, then the books.
+- The event loader takes the track base as module `+ 0x20 +` the definitions' size (`0x800886F4`).
+- Rebuilding both modules with no extra chain gives the stock bank byte for byte, and moving them leaves the heap use unchanged.
+
+The prototype moved both modules to `[0x01880000, 0x01900000)` (32 MiB output; free above the fighter tail in a product build) and appended Rayden's grab voice as event 590 (heap +`0x170`; +`0x1C0` with his Shocker). Rayden's throw therefore stays without a grab voice (`throw_grab_voice_skipped` in his build report).
 
 ## Function-semantics ownership
 
