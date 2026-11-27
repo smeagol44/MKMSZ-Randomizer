@@ -93,6 +93,7 @@ def test_generic_build_reproduces_the_accepted_reptile(roms: tuple[bytes, bytes]
                                                       monkeypatch: pytest.MonkeyPatch) -> None:  # fmt: skip
     built = fb.build(*roms, "reptile")
     assert hashlib.sha256(built.payload).hexdigest() == V24_PAYLOAD_SHA256
+    assert "throw_sounds" not in built.report  # his MKT throw plays no sounds of its own
     assert hashlib.sha256(built.file87).hexdigest() == V23_FILE87_SHA256
     accepted_turn(monkeypatch)
     assert hashlib.sha256(fb.build(*roms, "reptile").payload).hexdigest() == V23_PAYLOAD_SHA256
@@ -464,3 +465,150 @@ def test_rayden_and_reptile_moves_come_from_smre(roms: tuple[bytes, bytes]) -> N
     assert all(v["record"].startswith("0x800AB") for v in built.report["smre"].values())
     rep = fb.fd.load("reptile")
     assert set(rep.smre) == {"acid_spit", "forceball_fast", "forceball_slow", "elbow_dash", "invisibility"}
+
+
+@needs_roms
+def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
+    """SMRE step 3, proof v01: Sektor from ``sektor-smre`` with no specials. His seventh MKT combo
+    record follows the stubs in the payload; the host graph's sixth record names it, and in
+    production that stock word is a payload reference the fixed loader refreshes."""
+
+    built = fb.build(*roms, "sektor")
+    assert built.selectors == {"teleport_uppercut": 3, "straight_rocket": 4, "double_rocket": 5,
+                               "homing_rocket": 6} and built.report["combos"] == (
+        "HP, HP, HK, B+HK", "HP, HP, HK, HK, B+HK", "HP, HP, D+LP", "HK, HK")
+    rom = built.rom
+    pointer = int.from_bytes(rom[0xB1D0C:0xB1D10], "big")  # the sixth record's next pointer
+    at = pointer - built.link_va
+    assert 0 < at < len(built.payload) and built.payload[at : at + 12].hex() == "800913030103100204010000"
+    made = fb.production(*roms, "sektor")
+    assert any(r[0] == 0x800B110C for r in made.manifest["refs"])
+    # proof v06: the teleport uppercut's Low Kick record from MKT's compact table (v04-v05 read it
+    # as a 0x2C-byte record: no command matched); mode 1 (it may start in the air, v05)
+    lk = built.rom[0x800B0F68 - fb.VA_TO_ROM :][: 0x2C]
+    words = [int.from_bytes(lk[k : k + 2], "big") for k in range(0x10, 0x2C, 2)]
+    assert lk[:8] == bytes.fromhex("0040004000000001") and words[:3] == [24, 9, 9] and words[7:9] == [8, 8]
+    # proof v04: the teleport uppercut (SMRE), free (a movement ability)
+    assert built.report["costs"]["teleport_uppercut"] == 0 and built.report["smre"]["teleport_uppercut"]["unknown"] == []
+    # proof v08: the straight missile (SMRE) in Ice Blast's slot, at its cost; MKT's smoke (fx 4)
+    # and explosion (fx 5) art in the fighter file
+    assert built.report["costs"]["straight_rocket"] == 0x20
+    assert built.report["smre"]["straight_rocket"]["unknown"] == []
+    # proof v13: the double missile (B,B,F + LP): two of the same missile, 10 donor ticks apart,
+    # sharing its art, sounds and effects; the product's slot (Ice Shatter) and cost (0x30)
+    assert built.report["costs"]["double_rocket"] == 0x30
+    # the product's Super Slide tier (owner, 2026-11-09): its gate takes Freeze on Contact's threshold
+    assert built.rom[0x3D728:0x3D72C] == bytes.fromhex("28420008")  # slti v0, v0, 8
+    made_derived = fb.production(*roms, "sektor").manifest["derived"]
+    assert made_derived == [0x3D728]
+    assert built.report["smre"]["double_rocket"]["unknown"] == []
+    # proof v14: the homing missile (F,D,B + HP, Air Ice Blast's slot, cost 0x40 as the product)
+    assert built.report["costs"]["homing_rocket"] == 0x40
+    assert built.report["smre"]["homing_rocket"]["unknown"] == []
+    assert [(m, role, fx) for m, role, fx, *_ in built.report["mkt_effects"]] == [
+        ("straight_rocket", "trail", 4), ("straight_rocket", "impact", 5)]
+    # proof v02/v03: his throw's sounds (MKT 0x80042498: arm out / throw / in)
+    assert [len(built.report["throw_sounds"][k]) for k in ("grab", "throw", "release")] == [1, 1, 1]
+    for site in (0x8005BCD4, 0x8005BDC8, 0x8005BDF8):  # jal into the payload, relocated in production
+        word = int.from_bytes(rom[site - fb.VA_TO_ROM : site - fb.VA_TO_ROM + 4], "big")
+        assert word >> 26 == 3 and 0 < (((word & 0x03FFFFFF) << 2) | 0xA0000000) - built.link_va < len(built.payload)
+        assert hex(site - fb.VA_TO_ROM) in made.manifest["jal_sites"]
+
+
+@needs_roms
+def test_throw_sounds_come_from_the_mkt_throw_routine(roms: tuple[bytes, bytes]) -> None:
+    """MKT's throw table 0x800A7ED8 (by fighter id): Sektor's 0x80042498 plays his sounds 0 at
+    the grab, 1 before the throw and 2 after the victim's transfer; Reptile's and Rayden's play
+    none, so their builds get no throw hooks (MKT's grab voice is left out: owner, 2026-11-27)."""
+
+    from mkmszr.fighter_import import throw_sounds as ts
+
+    mkt = roms[1]
+    assert ts.read(mkt, 7) == {"grab": [0], "throw": [1], "release": [2]}
+    assert ts.read(mkt, 19) == ts.read(mkt, 24) == {"grab": [], "throw": [], "release": []}
+    assert "throw_sounds" not in fb.build(*roms, "reptile").report
+    assert "throw_sounds" not in fb.build(*roms, "rayden").report
+
+
+def test_motion_depths_follow_the_mkt_curve() -> None:
+    """Sektor's teleport (proof v04): MKT's sink (0x5F333, 0x9599 a donor tick, 2 donor ticks a
+    host tick) to past 320 px, near the accepted legacy depths (13, 28, 46, 66, 89 ...); the rise
+    (-0x7A666, -0x5199) from MKT's bottom line 150 px below the floor reaches it at ~12.7 px a
+    donor tick (the legacy surface speed 0xC6666 = 12.4)."""
+
+    sink, _ = fb._depths(0x5F333, 0x9599, 2, 0, lambda d: d >= fb.SINK_HIDDEN_PX)
+    assert sink[:5] == [12, 27, 44, 64, 86] and sink[-1] >= fb.SINK_HIDDEN_PX and len(sink) == 13
+    rise, v = fb._depths(-0x7A666, -0x5199, 2, fb.SCREEN_BOTTOM_PX, lambda d: d <= 0)
+    assert len(rise) == 8 and rise[-1] <= 0 and -13 < v < -12.4
+
+
+@needs_roms
+def test_sektor_missile_matches_the_accepted_legacy_rocket(roms: tuple[bytes, bytes]) -> None:
+    """Proof v08: what the generic build reads from MKT for the straight missile equals the accepted
+    legacy rocket's hand-written values (``actions.robo_zap``): the smoke and explosion art
+    (create_fx 4 and 5, read from their routines), the smoke 19 px behind it, behind the fighters,
+    the explosion in front, and the host speed tables (0x33333 or 0x59999 while the opponent
+    reacts, v += v >> 4 a donor tick up to 0xB3333)."""
+
+    from mkmszr.fighter_import import generate, mkt_effects
+    from mkmszr.fighter_import import lower_projectile as lp
+    from mkmszr.fighter_import.actions import robo_zap as zap
+
+    mkt = roms[1]
+    own = mkt[0x906A90:0x906B90]  # Sektor's dictionary (MktRom.dictionary(7))
+    shared = mkt[mkt_effects.SHARED_DICTIONARY - 0x80000000 :][:0x100]
+    smoke, boom = mkt_effects.read(mkt, 4, 3), mkt_effects.read(mkt, 5)
+    assert (smoke.dx, smoke.dy, smoke.front, smoke.ticks_per_frame) == (zap.SMOKE_OFFSET, 0, False, 4)
+    assert (boom.dx, boom.front, boom.ticks_per_frame) == (0, True, 4)
+    assert mkt_effects.art(mkt, smoke, [own, shared]) == zap.smoke_art(mkt, own)
+    assert mkt_effects.art(mkt, boom, [own, shared]) == zap.explosion_art(mkt, own)
+    prog, _, _ = generate.Generator(mkt, 7).program("straight_rocket", 0x800AB250)
+    step = next(s for s in prog["steps"] if s["op"] == "projectile")
+    assert step["trail"] == {"effect": {"mkt_fx": 4, "place": 3}, "every": 2}
+    # proof v09 (owner on v08: "transparent red instead of its grey, yellow and red"): ROCKET_P,
+    # named by slot 0x43's first frame (the vertical rocket), as the legacy build's v87
+    assert step["palette"] == "0x800bc3ac" and step["offset"] == [5, 38]
+    # proof v10 (owner on v09: "should be drawn behind Sektor"): make_rocket's object depth 0
+    assert step["behind"] is True
+    art = lp.ArtLayout(0, 0, None, 0, 8, 8)
+    low = lp.lower(step, art, {}, 0x20, roms[0])
+    assert list(low.speeds) == zap.host_speeds(zap.SPEED_NORMAL)
+    assert list(low.speeds_reacting) == zap.host_speeds(zap.SPEED_REACTING)
+    assert low.behind_owner
+    chest = [s for s in prog["steps"] if s["op"] == "animate"]
+    assert [s.get("reverse", False) for s in chest] == [False, True] and chest[0]["rate_reacting"] == 2
+
+
+def test_effect_render_position_is_set_before_insertion() -> None:
+    """Sektor SMRE proof v10 (owner: a smoke ring on the wall "only showing up when I pause"; save
+    state): a puff inserted on the tick the game paused kept its render position (+0x38/+0x3C/
+    +0x40) at 0, 0, 0, so it was drawn at the stage's origin. With ``render_position`` the effect
+    process copies +0x2C/+0x30/+0x34 there before inserting its actor; without it (Reptile's fire,
+    as accepted) the code is unchanged."""
+
+    from mkmszr.fighter_import import effects
+    from mkmszr.fighter_import.mips import Assembler
+
+    def words(flag: bool) -> list[int]:
+        a = Assembler(0xA01AF420)
+        effects.emit_process(a, render_position=flag)
+        return list(a.code)
+
+    plain, fixed = words(False), words(True)
+    lw_sw = [0x8E480000 | src for src, _ in effects.RENDER_POSITION]  # lw t0, src(s2)
+    assert len(fixed) == len(plain) + 6
+    for src, dst in effects.RENDER_POSITION:
+        k = fixed.index(0x8E480000 | src, fixed.index(lw_sw[0]))
+        assert fixed[k + 1] == 0xAE480000 | dst  # sw t0, dst(s2)
+
+
+@needs_roms
+def test_tier_moves_follow_the_shuffled_thresholds(roms: tuple[bytes, bytes]) -> None:
+    """A kept power's moved tier (Sektor: Super Slide on Freeze on Contact's) is read from the ROM
+    it is applied to, so it follows a power-order shuffle (which rewrites only the thresholds)."""
+
+    clean = bytearray(roms[0])
+    assert fb.tier_edits(bytes(clean), {"super_slide": "freeze_on_contact"}) == {0x3D728: (0x28420007, 0x28420008)}
+    clean[0x5B5DC:0x5B5E0] = bytes.fromhex("28420005")  # Freeze on Contact shuffled to tier 5
+    assert fb.tier_edits(bytes(clean), {"super_slide": "freeze_on_contact"}) == {0x3D728: (0x28420007, 0x28420005)}
+

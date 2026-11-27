@@ -283,3 +283,25 @@ def test_later_landing_phases_show_the_lying_frame() -> None:
     words = bb.lying_landing(bb.linearise(donor, 0x1E, starts))
     frames = [w[1] for w in words if isinstance(w, tuple)]
     assert frames == [0x1B90, 0x1BA4, 0x1BB8, 0x1BCC] + [0x1BF4] * 5
+
+
+@needs_roms
+def test_helper_objects_are_flattened_onto_the_throw() -> None:
+    """Sektor's MKT throw draws his mechanical arm as a helper actor (token 11 from frame 0x2300,
+    which names MECARM_P 0x800BC310; tokens 12/14 step it). Each counted step is one key (owner
+    frame, helper frame, palette); a 14-step shows the owner's last frame with the new helper
+    frame. ``scale`` puts the windup, arm-out and swing frames over the host's first seven
+    positions and the retract over its last two (SMRE step 3, proof v01)."""
+
+    mkt, clean = Path(MKT).read_bytes(), Path(CLEAN).read_bytes()
+    donor = bb.Donor(mkt, 7)
+    phases = bb.phase_slot_frames(donor, {0x23: "scale"})[0x23]
+    assert [len(p) for p in phases] == [4, 4, 8, 8]
+    assert phases[0] == [0x17A8, 0x22EC, 0x22EC, 0x22EC]
+    assert phases[1][1] == ("helper", 0x22EC, 0x2318, 0x800BC310) and phases[2][0] == ("helper", 0x22EC, 0x2340, 0x800BC310)
+    cf = clean[bb.FILE87_ROM : bb.FILE87_ROM + bb.FILE87_SIZE]
+    fill = bb.phase_fill(cf, 0x23, phases, "scale")
+    shown = [fill[p][2] if isinstance(fill[p], tuple) else fill[p] for p in sorted(fill)]
+    assert shown == [0x17A8, 0x22EC, 0x2318, 0x2340, 0x2368, 0x2390, 0x23CC, 0x23E0, 0x241C]
+    body = bb.build_body(fd.load("sektor"), clean, mkt, bb.Extras(), rom=bytearray(clean))
+    assert any(line.startswith("HELPER 7 owner+helper frames flattened; palettes 0x800BC310") for line in body.log)

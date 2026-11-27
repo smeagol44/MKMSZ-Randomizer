@@ -247,29 +247,38 @@ def heap_descriptor_frame(heap: bytes, descriptor: int, dictionary: bytes) -> Ef
     return frame
 
 
-def mkt_animation_art(mkt: bytes, animation: int, dictionary: int) -> EffectArt:
+def mkt_animation_art(mkt: bytes, animation: int, dictionary: int | bytes,
+                      compressed: bool | None = True) -> EffectArt:  # fmt: skip
     """A shared MKT effect animation (``create_fx``) as host art: ``animation`` is the
-    zero-terminated list of one-part shapes ``{descriptor, 0}``, each descriptor
-    ``{image, h << 16 | w, anchor x, anchor y}``; the first descriptor's fifth word is the
-    palette record (MKT token-13 style); ``dictionary`` is the 0x100-byte pair dictionary of
-    its codec-14/19/22/24 images. Reptile's invisibility fire (``create_fx(30)``, routine
-    ``0x8002E050``: animation ``0x800CC924..`` through ``0x800CC77C``, dictionary
-    ``0x800CCA88``) is the first use."""
+    zero-terminated list of one-part shapes ``{descriptor, 0}`` (MKT ``mframew``) or of image
+    descriptors (``framew``: Sektor's rocket puff), each descriptor
+    ``{image, h << 16 | w, anchor x, anchor y}``; the first descriptor's fourth word is the
+    palette record (MKT token-13 style); ``dictionary`` (its address, or its 0x100 bytes) is the
+    pair dictionary of its codec-14/19/22/24 images. Reptile's invisibility fire
+    (``create_fx(30)``, routine ``0x8002E050``: animation ``0x800CC924..`` through
+    ``0x800CC77C``, dictionary ``0x800CCA88``) is the first use. ``compressed=None``: type-4
+    host images only when the MKT images are dictionary-coded (the legacy rocket puff, codec 16,
+    is raw)."""
 
+    if isinstance(dictionary, int):
+        dictionary = mkt[dictionary - 0x80000000 : dictionary - 0x80000000 + 0x100]
     frames = []
     palette_va = None
+    coded = False
     va = animation
-    while (shape := _mkt_u32(mkt, va)) != 0:
-        if _mkt_u32(mkt, shape + 4) != 0:
-            raise ValueError(f"MKT effect shape {shape:#x} is not one-part")
-        descriptor = _mkt_u32(mkt, shape)
+    while (entry := _mkt_u32(mkt, va)) != 0:
+        second = _mkt_u32(mkt, entry + 4)
+        if second >> 24 == 0x80:
+            raise ValueError(f"MKT effect shape {entry:#x} is not one-part")
+        descriptor = _mkt_u32(mkt, entry) if second == 0 else entry
         if palette_va is None:
             palette_va = _mkt_u32(mkt, descriptor + 12)
-        frames.append(mkt_frame(mkt, descriptor, mkt[dictionary - 0x80000000 : dictionary - 0x80000000 + 0x100]))
+        coded |= mkt[_mkt_u32(mkt, descriptor) - 0x80000000] & 0x3F in (14, 19, 22, 23, 24)
+        frames.append(mkt_frame(mkt, descriptor, dictionary))
         va += 4
     if palette_va is None or not 0x80000000 <= palette_va < 0x80400000:
         raise ValueError("MKT effect animation has no palette")
-    return EffectArt(tuple(frames), mkt_palette(mkt, palette_va), compressed=True)
+    return EffectArt(tuple(frames), mkt_palette(mkt, palette_va), compressed=coded if compressed is None else compressed)
 
 
 def mkt_palette(mkt: bytes, va: int) -> tuple[int, ...]:
@@ -535,6 +544,7 @@ def emit_process(
     a: Assembler,
     label: str = "fx_process",
     follow: tuple[str, str, int, int] | None = None,
+    render_position: bool = False,
 ) -> None:
     """The effect process entry (never returns). ``s0`` slot, ``s1`` controller,
     ``s2`` actor, ``s3`` file base, ``s4`` descriptor.
@@ -600,6 +610,8 @@ def emit_process(
     a.move("a0", "s2")
     a.jal(F_OFFSET)  # facing bit clear here: a1 is along the copied rotation's +x
     a.label(label + "_placed")
+    if render_position:  # the position the frame is drawn at, before the movement pass sets it
+        emit_render_position(a, "s2")
     a.li("t0", 0x40)  # bind requests a texture decode (+0xFA)
     a.sh("t0", 0x8C, "s2")
     a.lw("t0", 0, "s4")
@@ -634,6 +646,20 @@ def emit_process(
     a.label(label + "_exit")
     a.jal(F_PROCESS_EXIT)
     a.beq("zero", "zero", label + "_exit")
+
+
+# Actor +0x38/+0x3C/+0x40: the position its frame is drawn at, copied from +0x2C/+0x30/+0x34 by
+# the movement pass. An actor inserted on the tick the game is paused keeps 0, 0, 0 there while
+# the pause stops that pass, so it is drawn at the stage's origin (Static analysis of the owner's
+# save state, Sektor SMRE proof v10: the newest smoke puff, on the wall above PAUSED, only where
+# the camera shows the stage's left end).
+RENDER_POSITION = ((0x2C, 0x38), (0x30, 0x3C), (0x34, 0x40))
+
+
+def emit_render_position(a: Assembler, actor: str) -> None:
+    for src, dst in RENDER_POSITION:
+        a.lw("t0", src, actor)
+        a.sw("t0", dst, actor)
 
 
 def _emit_follow(a: Assembler, label: str, follow: str, heartbeat: str, dx: int, dy: int) -> None:

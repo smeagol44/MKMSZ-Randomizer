@@ -16,11 +16,14 @@ program against an accepted hand-written one so differences are seen and decided
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
 from . import decompile as dc
 from . import reading
+from .mkt_fighter import INLINE_DISPATCH as TRANSFER
+from .mkt_fighter import INLINE_MATCHER as MATCHER
 from .mkt_fighter import MktRom
 from .mkt_registry import REGISTRY
 
@@ -36,6 +39,8 @@ MAX_DEPTH = 4
 # equivalent (owner-accepted stand-ins are marked).
 REACTION_MEANINGS = {
     0x24: "launch",  # generic damaging launch (Reptile's elbow return hit)
+    0x3B: "rocket_stumble",  # Sektor's rockets: r_rocket -> zap_stumble (push 0x33333)
+    0x3D: "uppercut",  # Sektor's teleport uppercut: the host's stock uppercut (runtime-confirmed v08)
     0x71: "knockback_arc",  # Reptile's forceballs
     0x72: "acid_stagger",  # Reptile's acid
     0x74: "elbow_hold",  # Reptile's elbow first contact
@@ -56,6 +61,19 @@ OWN_CONDITIONS = ("forceball_",)  # registry-named fighter condition helpers, re
 OTHER_GUARD_FIELDS = {0x38: "the opponent's fighter id", 0x408: "the opponent's reaction state",
                       0x3F6: "the opponent's action"}  # fmt: skip
 MOVEMENT_OPS = {"relocate", "velocity"}
+# Inline commands (Sektor's handlers: the matcher, then guards, then the transfer): the guard
+# ``process_exist(id)`` on the player's projectile process (0x705 player 1, 0x805 player 2)
+# refuses while one of his projectiles lives.
+PROCESS_EXIST = 0x8005A614  # (id, mask) -> another process whose id & mask matches, or 0
+PROJECTILE_PROCESSES = {0x705, 0x805}
+PROCESS_SUICIDE = 0x8005A69C  # an inline handler's refusal
+# Motion loops (Sektor's teleport uppercut, MKT 0x80048368): object +0x10 y velocity and +0x8
+# gravity set, then one tick at a time until the object's y (+0x18, growing downward) passes the
+# screen's bottom line (SCREEN_BOTTOM: "below_screen") or rises to its floor (process +0x3F8:
+# "surface").
+SCREEN_BOTTOM = 0x802576CE
+JUMP_KEEP = 0xD  # do_jump: "keep the current value" (0x8006EC50)
+PROCESS_ID = 0x40C  # process +0x40C: its id
 # Grabs (SMRE step 2): the routine a grab gives the opponent at its release -> the victim reaction
 # meaning that plays the whole hold (components.REACTIONS). Rayden's Shocker: 0x800734CC drops the
 # victim (0x80058728) after its hold at his hands and the shocks (lower_special.shock_hold).
@@ -78,6 +96,15 @@ def _tree_text(s: Any) -> str:
 
 def _same_command(a: Any, b: Any) -> bool:
     return (a.masks, a.condition, a.action, a.right) == (b.masks, b.condition, b.action, b.right)
+
+
+def _walk_stmts(stmts: list):
+    """Every decompiled statement, nested ones too."""
+
+    for s in stmts:
+        yield s
+        for key in ("then", "other", "body"):
+            yield from _walk_stmts(getattr(s, key, []) or [])
 
 
 def _all(steps: list[dict[str, Any]]):
@@ -113,9 +140,9 @@ class Generator:
 
         if not (isinstance(rec, dc.Load) and isinstance(rec.base, dc.Load)):
             return None
-        table = rec.base.base
+        table = rec.base.base  # (STRIKE_TABLE + fighter * 4), the low half sometimes in the load
         if not (isinstance(table, dc.Bin) and table.op == "+" and table.a.const() is not None
-                and table.a.const() & 0xFFFFFFFF == STRIKE_TABLE):  # fmt: skip
+                and (table.a.const() + rec.base.off) & 0xFFFFFFFF == STRIKE_TABLE):  # fmt: skip
             return None
         addr = self.word(self.word(STRIKE_TABLE + 4 * self.fighter) + rec.off)
         o = addr - VA_BASE
@@ -169,6 +196,8 @@ class Generator:
         * ``conditions``: read from the condition routine (:meth:`conditions`)."""
 
         rom = MktRom(self.mkt)
+        if self.inline(record):
+            return self.inline_command(record)
         rec = rom.record(record)
         same = [(g, e) for g, e, va in rom.record_sites(self.fighter) if _same_command(rom.record(va), rec)]
         if not same:
@@ -198,6 +227,77 @@ class Generator:
             conds, notes = self.conditions(rec.condition)
             if conds:
                 cmd["conditions"] = conds
+        return cmd, notes
+
+    def inline(self, table: int) -> list[tuple[Any, Any]]:
+        """``(handler, inline command)`` for each inline matcher call on the compact command
+        table at ``table`` in the fighter's imperative handlers (Sektor's specials)."""
+
+        rom = MktRom(self.mkt)
+        return [(h, c) for h in rom.handlers(self.fighter) for c in h.inline if c.table == table]
+
+    def inline_command(self, table: int) -> tuple[dict[str, Any], list[str]]:
+        """The ``command`` block of an inline command (:meth:`inline`): buttons from the events
+        whose handlers match it, within its mask; tokens and window from its compact table;
+        conditions from the handler's guards between the matcher call and the transfer
+        (``process_exist`` on his projectile process: ``projectiles_below`` 1; other calls and
+        guard fields are noted)."""
+
+        hits = self.inline(table)
+        events = {h.event for h, _ in hits}
+        if {h.grid for h, _ in hits} != {"press"}:
+            raise ValueError(f"inline command 0x{table:08X}: only press handlers are read")
+        unknown = events - set(EVENT_BUTTONS)
+        if unknown:
+            raise ValueError(f"inline command 0x{table:08X}: input events {sorted(unknown)} have no host button")
+        first = hits[0][1]
+        buttons = 0
+        for h, c in hits:
+            buttons |= EVENT_BUTTONS[h.event] & c.mask
+        cmd: dict[str, Any] = {"buttons": f"0x{buttons:X}", "tokens": list(first.right), "window": first.window,
+                               "src": f"MKT 0x{table:08X}"}  # fmt: skip
+        conds: list[dict] = []
+        notes: list[str] = []
+        r = reading.read(self.mkt, hits[0][0].address)
+        insns = r.insns
+        regs: dict[int, int] = {}
+        start = None
+        for k, ins in enumerate(insns):
+            if ins.op == "lui":
+                regs[ins.rt] = (ins.imm & 0xFFFF) << 16
+            elif ins.op in ("addiu", "ori"):
+                base = 0 if ins.rs == 0 else regs.get(ins.rs, 0)
+                regs[ins.rt] = ((base + ins.imm) if ins.op == "addiu" else (base | (ins.imm & 0xFFFF))) & 0xFFFFFFFF
+            if ins.op != "jal":
+                if start is not None and ins.op in ("lhu", "lh", "lw") and ins.imm in OTHER_GUARD_FIELDS:
+                    notes.append(f"0x{ins.pc:08X}: {OTHER_GUARD_FIELDS[ins.imm]} (not lowered)")
+                if start is not None and ins.op == "lhu" and ins.imm == PROCESS_ID:  # a count of
+                    limit = next((x for x in insns[k:k + 12] if x.op == "slti"), None)  # processes
+                    if limit is not None and not any("live processes" in n for n in notes):
+                        ids = sorted({x.imm for x in insns[start:k] if x.op == "addiu" and x.rs == 0 and x.imm >> 8 in (7, 8)})
+                        notes.append(f"0x{ins.pc:08X}: fewer than {limit.imm} live processes with ids "
+                                     f"{', '.join(f'0x{v:X}' for v in ids)} (not lowered)")  # fmt: skip
+                continue
+            delay = insns[k + 1] if k + 1 < len(insns) else None
+            if delay is not None and delay.op == "addiu":
+                base = 0 if delay.rs == 0 else regs.get(delay.rs, 0)
+                regs[delay.rt] = (base + delay.imm) & 0xFFFFFFFF
+            if ins.target == MATCHER and start is None and regs.get(6) == table:
+                start = k
+            elif start is not None and ins.target == TRANSFER:
+                break
+            elif start is not None and ins.target == PROCESS_EXIST:
+                ids = {v for v in (0x705, 0x805) if any(x.op in ("addiu", "ori") and x.imm == v for x in insns[start:k + 2])}
+                if ids & PROJECTILE_PROCESSES:
+                    conds.append({"kind": "projectiles_below", "count": 1, "src": f"MKT 0x{ins.pc:08X}"})
+                else:
+                    notes.append(f"0x{ins.pc:08X}: process_exist (not lowered)")
+            elif start is not None and ins.target != PROCESS_SUICIDE:  # (suicide: the refusal)
+                notes.append(f"0x{ins.pc:08X}: {self.names.get(ins.target, f'0x{ins.target:08X}')} (not lowered)")
+        if start is None:
+            raise ValueError(f"inline command 0x{table:08X}: its matcher call was not found")
+        if conds:
+            cmd["conditions"] = conds
         return cmd, notes
 
     def conditions(self, entry: int, args: tuple[int | None, ...] = (), depth: int = 0) -> tuple[list[dict], list[str]]:
@@ -273,7 +373,8 @@ class Generator:
         (a ``relocate`` or ``velocity`` step: the owner's no-Ice rule for moving abilities)."""
 
         cmd, notes = self.command(record)
-        g = self.move(MktRom(self.mkt).record(record).action)
+        inline = self.inline(record)
+        g = self.move(inline[0][1].dispatch if inline else MktRom(self.mkt).record(record).action)
         prog: dict[str, Any] = {"name": name, "command": cmd, "steps": g.steps}
         if any(s["op"] in MOVEMENT_OPS for s in _all(g.steps)):
             prog["movement"] = True
@@ -317,6 +418,15 @@ class _Walk:
         self.matched = False  # match_me_to_opponent ran: an offset next is a relocation
         self.edges = False  # an arena-edge test ran in this routine (MKT's teleport side)
         self.grab: dict[str, Any] | None = None  # a grab's hit path is being read (damage, release)
+        self.yvel: int | None = None  # object +0x10 / +0x8 set by the move (motion loops, do_jump)
+        self.gravity: int | None = None
+        self.gravity_hit: int | None = None  # the gravity after the move's strike was blocked
+        self.anirate: int | None = None  # init_anirate: the rate next_anirate steps the selection at
+        self.callback: int | None = None  # process +0x438: the routine the next jump runs each tick
+        self.last_anim: dict[str, int] | None = None  # the selection last shown
+        self.saved: tuple[dict[str, int], int] | None = None  # cursor saved at process +0x440
+        self.proj_offset: list[int] | None = None  # multi_adjust_xy on the projectile object
+        self.proj_depth: int | None = None  # the projectile object's depth (+0x1C; make_rocket: 0)
 
     def name(self, c: dc.Call) -> str:
         return self.gen.names.get(c.target, f"0x{c.target:08X}" if c.target else "jalr")
@@ -351,6 +461,11 @@ class _Walk:
                 count = self._count(stmts[:i], s)
                 if count is not None:
                     out += self.loop(s, count, out)
+                    i += 1
+                    continue
+                motion = self.motion_loop(s)
+                if motion is not None:
+                    out += motion
                     i += 1
                     continue
             out += self.stmt(s)
@@ -398,6 +513,10 @@ class _Walk:
             else:
                 self.unknown(f"0x{s.pc:08X}: projectile process field +0x440 = {s.value}")
             return []
+        if (isinstance(s.base, dc.Load) and s.base.base == dc.PROC and s.base.off == 0x440 and s.off == 0x1C
+                and s.width == 2 and s.value.const() is not None):  # fmt: skip
+            self.proj_depth = s.value.const()  # the projectile object's depth (make_rocket: 0, behind)
+            return []
         if s.base == dc.PROC and s.off == 0x8 and s.value.const() is not None:
             self.target = s.value.const() & 0xFFFFFFFF
             return []
@@ -407,6 +526,18 @@ class _Walk:
                 self.note("MKT's invisibility (object flag 0x20) has no timer in the move: the "
                           "stealth length is the owner's (description)")  # fmt: skip
                 return [{"op": "stealth"}]
+        if s.base == dc.PROC and s.off == 0x440 and isinstance(s.value, dc.Load) and s.value.off == 0x41C:
+            anim = self.pending if self.pending is not None else self.last_anim
+            if anim is not None:  # the animation cursor saved (teleport_land, MKT 0x80076ED4)
+                self.saved = (dict(anim), self.offset)
+                return []
+        if s.base == dc.PROC and s.off == 0x41C and isinstance(s.value, dc.Load) and s.value.off == 0x41C:
+            # the cursor restored from +0x440 (the decompiler forwards the saved value: the cursor
+            # as it was when saved); the next frame shown is the saved one again
+            if self.saved is None:  # saved outside this routine (Rayden's Shocker): as before
+                return []
+            self.pending, self.offset = dict(self.saved[0]), self.saved[1]
+            return []
         if s.base == dc.PROC and s.off == 0x41C and isinstance(s.value, dc.Bin):
             step = s.value.b.const()
             if s.value.op == "+" and step is not None and self.pending is not None:
@@ -419,6 +550,21 @@ class _Walk:
             # the saved velocity source written back (torpedo: after the take-off phase)
             v, self.velocity = self.velocity, None
             return [{"op": "velocity", "x": hex(v)}]
+        if s.base == dc.SELF and s.off in (0x10, 0x8) and s.value.const() is not None:
+            v = s.value.const() & 0xFFFFFFFF
+            v = v - (1 << 32) if v & 0x80000000 else v
+            if s.off == 0x10:
+                self.yvel = v
+            else:
+                self.gravity = v
+            return []
+        if s.base == dc.SELF and s.off == 0x18 and f"0x{SCREEN_BOTTOM:08X}" in str(s.value):
+            self.note("MKT starts the rise at the screen's bottom line (object +0x18 = "
+                      f"[0x{SCREEN_BOTTOM:08X}]); the host rise starts below the floor")  # fmt: skip
+            return []
+        if s.base == dc.PROC and s.off == 0x438 and s.value.const() is not None:
+            self.callback = s.value.const() & 0xFFFFFFFF  # the jump's per-tick callback
+            return []
         if s.base == dc.SELF and s.off == 0x18 and "proc+0x3F8" in str(s.value):
             self.note("MKT puts the fighter on his floor (object +0x18 = process +0x3F8); the host "
                       "relocation lands him on the floor")  # fmt: skip
@@ -444,6 +590,14 @@ class _Walk:
             # the fighter id (object +0x38): decided by the generated fighter
             same = s.cond.b.const() == self.gen.fighter
             return self.stmts(s.then if same == (s.cond.op == "==") else s.other)
+        if "+0x3D0" in text and isinstance(s.cond, dc.Bin) and s.cond.op == "==":
+            sides = [[x for x in b if x.kind != "break"] for b in (s.then, s.other)]
+            if all(len(b) == 1 and b[0].kind == "store" and b[0].base == dc.SELF and b[0].off == 0x8
+                   and b[0].value.const() is not None for b in sides):  # fmt: skip
+                # the gravity by whether the move's strike was blocked (process +0x3D0: the check
+                # copies MKT's blocked flag 0x8014C3B8 there on contact)
+                self.gravity, self.gravity_hit = (b[0].value.const() for b in sides)
+                return []
         if self.edges and "?" in text:  # the rest of the edge test (its distance, < 103 px)
             return self.stmts(s.then)
         if "0x802576F0" in text or "0x802576EC" in text:
@@ -452,12 +606,31 @@ class _Walk:
                       "relocation picks it by the room there (walls, floor)")  # fmt: skip
             return self.stmts(s.then)
         call = self._tested_call(s.cond)
+        if call == "opponent_reacting":
+            rates = [self._phase_rate(b) for b in (s.then, s.other)]
+            if None not in rates and self.pending is not None:
+                fast, normal = rates if "== 0x8000" in str(s.cond) else rates[::-1]
+                anim, self.pending = self.pending, None
+                return [{"op": "animate", "anim": anim, "rate": normal, "rate_reacting": fast, "until": "phase_end",
+                         "src": {k: f"MKT 0x{s.pc:08X}" for k in ("anim", "rate", "rate_reacting", "until")}}]  # fmt: skip
+        if call == "proc_flag1":
+            self.note("MKT's landing leaves by another route when process +0x3FA bit 0 is set "
+                      f"(0x{s.pc:08X}); the host landing ends the move")  # fmt: skip
+            return self.stmts(s.other)
         if call == "is_airborne":
             self.note("MKT runs part of the move only when airborne (is_airborne); the program "
                       "runs it always (on the ground the drop ends at once)")  # fmt: skip
             return self.stmts(s.then)
         self.unknown(f"0x{s.pc:08X}: branch on {s.cond}")
         return self.stmts(s.then)
+
+    def _phase_rate(self, branch: list) -> int | None:
+        """A branch that only plays the selection to its phase end (mframew n): n."""
+
+        calls = [x for x in branch if x.kind != "break"]
+        if len(calls) == 1 and calls[0].kind == "call" and self.name(calls[0]) == "mframew":
+            return calls[0].args[0].const()
+        return None
 
     def _tested_call(self, cond: dc.Value) -> str | None:
         if isinstance(cond, dc.Bin) and cond.op in ("==", "!="):
@@ -502,6 +675,7 @@ class _Walk:
         if self.pending is None:
             return []
         anim = dict(self.pending)
+        self.last_anim = dict(self.pending)
         if self.offset:
             anim["offset"] = self.offset
         self.pending, self.offset = None, 0
@@ -545,6 +719,64 @@ class _Walk:
                      "every_tick": [{"op": "pass_through", "ticks": 1, "src": {"ticks": at}}]}]  # fmt: skip
         steps = self.stmts(body)
         return [{"op": "repeat", "count": count, "steps": steps, "src": {"count": at}}]
+
+    def motion_loop(self, loop: dc.Loop) -> list[dict] | None:
+        """A loop of single ticks that moves the object until its y passes the screen's bottom
+        line (``below_screen``) or reaches its floor (``surface``), with the velocity and gravity
+        the move set: a ``jump`` step. The loop's rate-stepped animation (init_anirate /
+        next_anirate) is an ``animate`` before it; a strike check made in the loop only within N
+        px of the floor (``if (y - floor < N) strike``) is the jump's ``strike`` with
+        ``strike_near_px``."""
+
+        text = str(loop.cond)
+        if "self+0x18" not in text or self.yvel is None or self.gravity is None:
+            return None
+        until = "below_screen" if f"0x{SCREEN_BOTTOM:08X}" in text else "surface" if "proc+0x3F8" in text else None
+        if until is None:
+            return None
+        at = f"MKT 0x{loop.pc:08X}"
+        out: list[dict] = []
+        if self.pending is not None and self.anirate is not None:
+            anim, self.pending = self.pending, None
+            out.append({"op": "animate", "anim": anim, "rate": self.anirate, "until": "running",
+                        "src": {"anim": at, "rate": at, "until": at}})  # fmt: skip
+        else:
+            out += self.show_pending()
+        step: dict[str, Any] = {"op": "jump", "x": "0x0", "y": hex(self.yvel), "gravity": hex(self.gravity),
+                                "until": until}  # fmt: skip
+        for x in loop.body:
+            if x.kind == "call" and self.name(x) in ("process_sleep", "next_anirate"):
+                continue
+            near = self._near_strike(x)
+            if near is not None:
+                step["strike"], step["strike_near_px"] = near
+                continue
+            self.unknown(f"0x{x.pc:08X}: {x.kind} in a motion loop")
+        step["src"] = {k: at for k in step if k != "op"}
+        return out + [step]
+
+    def _near_strike(self, x: Any) -> tuple[dict, int] | None:
+        """``if (self+0x18 - proc+0x3F8 < N) strike_routine()``: (strike, N)."""
+
+        if x.kind != "if" or x.other or len(x.then) != 1 or x.then[0].kind != "call":
+            return None
+        m = re.search(r"\) < (0x[0-9A-F]+|\d+)\)", str(x.cond))
+        if m is None or "proc+0x3F8" not in str(x.cond):
+            return None
+        strike = self._routine_strike(x.then[0].target)
+        return None if strike is None else (strike, int(m.group(1), 0))
+
+    def _routine_strike(self, target: int | None) -> dict | None:
+        """The strike a small routine checks (``strike_check_a0`` on the fighter's strike table)."""
+
+        if not target:
+            return None
+        body = dc.decompile(self.gen.mkt, target)
+        calls = [y for y in _walk_stmts(body) if y.kind == "call" and self.gen.names.get(y.target) == "strike_check_a0"]
+        if len(calls) != 1:
+            return None
+        decoded = self.gen.strike(calls[0].args[0])
+        return None if decoded is None else decoded[0]
 
     def grab_shape(self, stmts: list, i: int) -> list[dict] | None:
         """A grab (Rayden's Shocker, MKT 0x80073228)::
@@ -785,6 +1017,46 @@ def _select(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     return out
 
 
+def _last_frame(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    """find_last_frame: the pending selection's cursor on the last frame of its first part (the
+    offset counts its frames: the host copies a donor script's frames, tokens dropped)."""
+
+    if w.pending is None:
+        w.unknown(f"0x{c.pc:08X}: find_last_frame without a selection")
+        return []
+    from . import body_build
+    from .mkt_fighter import MktRom
+
+    donor = body_build.Donor(w.gen.mkt, w.gen.fighter)
+    t1 = MktRom(w.gen.mkt).table1(w.gen.fighter)
+    root = (donor.table0 if w.pending["table"] == 0 else t1)[w.pending["slot"]]
+    phases = body_build.donor_frames_by_phase(donor, root, set(donor.table0) | set(t1))
+    w.offset = len(phases[0]) - 1
+    return []
+
+
+def _backward(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    """ani_backward(rate, -1): the selection from its last frame back to its first, ``rate``
+    ticks a frame (MKT 0x8000E004; Sektor's chest closing)."""
+
+    if w.pending is None or a[0] is None:
+        w.unknown(f"0x{c.pc:08X}: ani_backward without a selection")
+        return []
+    anim, w.pending = w.pending, None
+    return [{"op": "animate", "anim": anim, "rate": a[0], "until": "phase_end", "reverse": True}]
+
+
+def _anirate(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    w.anirate = a[0]
+    return []
+
+
+def _follow(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    """A named engine routine whose steps are the move's (teleport_land: the landing poses)."""
+
+    return w.gen.routine(c.target, tuple(x for x in a if x is not None), w.g, w.depth + 1)
+
+
 def _randu(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     _RANDU[c.pc] = a[0]
     return []
@@ -835,6 +1107,8 @@ def _stop(w: _Walk, c: dc.Call, a: list) -> list[dict]:
 
 def _jump(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     x, y, g = a[1], a[2], a[3]
+    if JUMP_KEEP in (y, g) and x is not None:  # keep the move's current velocity / gravity
+        return w.show_pending() + _kept_jump(w, c, x, y, g)
     if None in (x, y, g):
         w.unknown(f"0x{c.pc:08X}: jump {c.args}")
         return []
@@ -843,6 +1117,35 @@ def _jump(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     if rate is not None and 0 < rate < 0x100:  # do_jump animates the selection at this rate
         step["rate"] = rate
     return w.show_pending() + [step]
+
+
+def _kept_jump(w: _Walk, c: dc.Call, x: int, y: int, g: int) -> list[dict]:
+    """do_jump with ``JUMP_KEEP`` (0xD) for the y velocity and/or gravity: the jump goes on from
+    the velocity the move left (no ``y``) with the gravity it set (``gravity_on_block``: the
+    other one after its strike was blocked). A per-tick callback (process +0x438) that strikes while the object
+    rises (``if (self+0x10 < 0) strike``) is the jump's ``strike`` with ``strike_while: rising``."""
+
+    gravity = w.gravity if g == JUMP_KEEP else g
+    if gravity is None:
+        w.unknown(f"0x{c.pc:08X}: jump keeps a gravity the move did not set")
+        return []
+    step: dict[str, Any] = {"op": "jump", "x": hex(x), "gravity": hex(gravity), "until": "landing"}
+    if y != JUMP_KEEP:
+        step["y"] = hex(y)
+    if w.gravity_hit is not None and g == JUMP_KEEP:
+        step["gravity_on_block"] = hex(w.gravity_hit)
+    if w.callback is not None:
+        body = dc.decompile(w.gen.mkt, w.callback)
+        ifs = [s for s in body if s.kind == "if"]
+        if len(ifs) == 1 and "self+0x10" in str(ifs[0].cond) and "<0 0" in str(ifs[0].cond) and len(ifs[0].then) == 1:
+            strike = w._routine_strike(ifs[0].then[0].target)
+            if strike is not None:
+                step["strike"], step["strike_while"] = strike, "rising"
+        if "strike" not in step:
+            w.unknown(f"0x{c.pc:08X}: jump callback 0x{w.callback:08X}")
+        w.callback = None
+    step["src"] = {k: f"MKT 0x{c.pc:08X}" for k in step if k != "op"}
+    return [step]
 
 
 def _end(w: _Walk, c: dc.Call, a: list) -> list[dict]:
@@ -947,6 +1250,12 @@ def _projectile(w: _Walk, c: dc.Call, a: list) -> list[dict]:
         return []
     child = a[0] & 0xFFFFFFFF
     step = _read_projectile(w, child, {})
+    if w.proj_offset is not None:  # placed by the parent before the process (make_rocket)
+        step["offset"], w.proj_offset = w.proj_offset, None
+    depth = step.pop("_depth", w.proj_depth)  # the child's own store wins (rocket2_proc: 0x51)
+    if depth == 0:  # behind the fighters (Sektor's rocket from his chest)
+        step["behind"] = True
+    w.proj_depth = None
     w.projectiles[c.pc] = (step, child)
     return [step]
 
@@ -998,11 +1307,20 @@ def _adjust(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     opponent, facing as the opponent; a negative dx is behind it (Rayden's teleport: -0x43, or
     +0x43 by an arena edge)."""
 
+    obj = c.args[0]
+    if isinstance(obj, dc.Load) and obj.off == 0x440 and "proc" in str(obj.base) and None not in a[1:3]:
+        w.proj_offset = [a[1], a[2]]  # the projectile object placed by the fighter (Sektor's rockets)
+        return []
     if not (w.matched and c.args[0] == dc.SELF):
         w.unknown(f"0x{c.pc:08X}: offset {c.args[1]}")
         return []
     w.matched = False
     v = c.args[1]
+    lead = re.search(r"proc\+0x3BC\+0xC\b.*\+ (-?0x[0-9A-F]+)\)", str(v))
+    if lead is not None:  # dx = (the opponent's x velocity * 16 ticks) + constant (Sektor: -12)
+        w.note(f"MKT adds the opponent's x velocity over 16 ticks to the offset (0x{c.pc:08X}); the host "
+               "relocation omits that lead (Sektor's teleport, accepted v08)")  # fmt: skip
+        return [{"op": "relocate", "to": "behind_opponent", "dx": abs(int(lead.group(1), 0))}]
     values = v.values if isinstance(v, dc.Phi) else (v.const(),)
     if None in values:
         w.unknown(f"0x{c.pc:08X}: offset {v}")
@@ -1052,6 +1370,8 @@ def projectile(w: _Walk, child: int, fields: dict[tuple[int, int], int]) -> dict
     gen = w.gen
     stmts = dc.decompile(gen.mkt, child, (), fields)
     _index_calls(stmts)
+    if any(x.kind == "call" and w.name(x) == "point_rocket" for x in _walk_all(stmts)):
+        return _homing(w, child, stmts)
     flat = _flatten(w, stmts)
     step: dict[str, Any] = {"op": "projectile"}
     art: dict[str, int] | None = None
@@ -1077,6 +1397,22 @@ def projectile(w: _Walk, child: int, fields: dict[tuple[int, int], int]) -> dict
             w.note(f"MKT plays the projectile's part {art['part']} (forming) before the flight; "
                    "the program starts at the flight part")  # fmt: skip
             art["part"] += 1
+        elif n == "ft_sound" and a[0] is not None:
+            step["sound"] = {"fighter": a[0]}  # played as the projectile starts (Sektor's launch)
+        elif x.kind == "if" and w._tested_call(x.cond) == "opponent_reacting":
+            speeds = []
+            for branch in (x.then, x.other):
+                sets = [y for y in branch if y.kind == "call" and w.name(y) == "proj_set_xvel"]
+                speeds.append(sets[0].args[1].const() if len(sets) == 1 else None)
+                if len(sets) == 1 and sets[0].args[2].const() is not None:
+                    step["rate"] = sets[0].args[2].const()
+            if None in speeds:
+                w.unknown(f"0x{x.pc:08X}: speeds by the opponent's reaction")
+            else:
+                fast, normal = speeds if "== 0x8000" in str(x.cond) else speeds[::-1]
+                step["speed"], step["speed_reacting"] = hex(normal), hex(fast)
+        elif n == "opponent_reacting":
+            pass  # tested by the branch that follows
         elif n == "proj_set_xvel":
             speed = a[1]
             if speed is None and isinstance(x.args[1], dc.Load) and x.args[1].base == dc.PROC:
@@ -1096,8 +1432,7 @@ def projectile(w: _Walk, child: int, fields: dict[tuple[int, int], int]) -> dict
                 sizzle = gen.reaction_sound(gen.strike_raw(a[1])[8])
             flown = True
         elif x.kind == "store" and x.base == dc.PROC and x.off == 0x438 and x.value.const():
-            key, value = _callback(w, x.value.const() & 0xFFFFFFFF)
-            if key is not None:
+            for key, value in _callback(w, x.value.const() & 0xFFFFFFFF):
                 step[key] = value
         elif x.kind == "call" and x.target and _readable(x.target):
             check = _check(w, x, len(checks) + 1)
@@ -1174,7 +1509,7 @@ def _walk_calls(stmts: list) -> list:
     return out
 
 
-def _callback(w: _Walk, callback: int) -> tuple[str | None, Any]:
+def _callback(w: _Walk, callback: int) -> list[tuple[str, Any]]:
     """A flight callback (process +0x438, run each flight tick):
 
     * ``hum``: it plays a sound each time its counter (process +0x440) runs out;
@@ -1190,7 +1525,7 @@ def _callback(w: _Walk, callback: int) -> tuple[str | None, Any]:
             sound = next((y for y in x.then if y.kind == "call" and w.name(y) == "ft_sound"), None)
             reset = next((y for y in x.then if y.kind == "store" and y.base == dc.PROC and y.off == 0x440), None)
             if sound is not None and reset is not None and reset.value.const():
-                return "hum", {"sound": {"fighter": sound.args[0].const()}, "every": reset.value.const()}
+                return [("hum", {"sound": {"fighter": sound.args[0].const()}, "every": reset.value.const()})]
     every = _walk_all(body)
     if any(x.kind == "call" and w.name(x) == "proj_offscreen" for x in every) and any(
         x.kind == "store" and x.base == dc.SELF and x.off == 0x14 for x in every
@@ -1198,9 +1533,26 @@ def _callback(w: _Walk, callback: int) -> tuple[str | None, Any]:
         cooldown = next((x.value.const() for x in every if x.kind == "store" and x.base == dc.PROC
                          and x.value.const() and x.off != 0x3CC), None)  # fmt: skip
         if cooldown is not None:
-            return "wrap", {"cooldown": cooldown}
+            return [("wrap", {"cooldown": cooldown})]
+    out: list[tuple[str, Any]] = []
+    smoke = next((x for x in every if x.kind == "call" and w.name(x) == "rocket_smoke"), None)
+    if smoke is not None:  # MKT's smoke: create_fx(n) every other flight tick (rocket_smoke)
+        fx = next((y.args[0].const() for y in _walk_all(dc.decompile(w.gen.mkt, smoke.target))
+                   if y.kind == "call" and w.name(y) == "create_fx"), None)  # fmt: skip
+        place = smoke.args[0].const()  # its placement index (the effect's process +0x444)
+        if fx is not None:
+            effect = {"mkt_fx": fx} if place is None else {"mkt_fx": fx, "place": place}
+            out.append(("trail", {"effect": effect, "every": 2}))
+    text = " ".join(str(getattr(x, "cond", "")) for x in every)
+    shift = re.search(r"\+0xC >> (\d+)\)", text)
+    cap = re.search(r"< (0x[0-9A-F]+)\)", text)
+    if shift is not None and cap is not None and any(x.kind == "call" and w.name(x) == "proj_set_xvel" for x in every):
+        # each flight tick v += v >> shift, kept below the cap (Sektor's rocket: 4, 0xB3334)
+        out += [("accel_shift", int(shift.group(1))), ("cap", hex(int(cap.group(1), 16) - 1))]
+    if out:
+        return out
     w.unknown(f"0x{callback:08X}: flight callback")
-    return None, None
+    return []
 
 
 def _object_palette(w: _Walk, art: dict[str, int] | None) -> int | None:
@@ -1214,6 +1566,8 @@ def _object_palette(w: _Walk, art: dict[str, int] | None) -> int | None:
         if helper is not None and helper.frames:
             return donor.m32(helper.frames[0] + 0x14)
     anim = w.object_anim
+    if anim is None and art is not None:  # the object made from the art's slot (Sektor's rocket:
+        anim = art  # slot 0x43's first frame, the vertical rocket, names ROCKET_P 0x800BC3AC)
     if anim is not None:
         p = donor.m32((0 if anim["table"] == 0 else MKT_TABLE1) + 4 * anim["slot"])
         while MKT.is_token(donor.m32(p)):
@@ -1260,9 +1614,232 @@ def _impact(w: _Walk, rest: list) -> dict[str, Any] | None:
         elif n == "create_fx" and a[0] is not None:
             impact["effect"] = {"mkt_fx": a[0]}
     if anim is None:
+        if "effect" in impact:  # a shared MKT effect at the projectile (Sektor's explosion)
+            impact["end"] = "effect"
+            return impact
         return None
     impact["anim"] = anim
     return impact
+
+
+# ---- homing projectiles (Sektor's rocket2_proc) ---------------------------------------------------
+PHASE_FIELD = 0x3CC  # process: ticks left in the current phase entry
+TIMEOUT_FIELD = 0x3D8  # process: rocket_hunt's donor ticks left
+OBJECT_FIELD = 0x418  # process: its object
+DEPTH = 0x1C  # object depth (0 behind the fighters)
+
+
+def _point_direction(vx: int, vy: int) -> int:
+    """MKT point_rocket 0x8007CA34: 0 up .. 3 level by the 7/2 ratios, + 4 when moving down."""
+
+    ax, ay = abs(vx), abs(vy)
+    d = 0 if ay >= (7 * ax) >> 1 else 1 if ay >= ax else 2 if ax <= (7 * ay) >> 1 else 3
+    return d + 4 if vy > 0 else d
+
+
+def _hunt_constants(mkt: bytes, entry: int) -> dict[str, int] | None:
+    """rocket_hunt's constants from its instructions (Static-confirmed shape, 0x8007C4AC): the
+    aim (``addiu`` on the y difference, px below the opponent), the explosion distance (``slti``
+    after the first rough distance), the steering factor and the speed (the constant registers
+    of the two ``multu`` groups), the damping (``sra`` of the velocity). None if the shape
+    differs (three rough distances, one ``slti``)."""
+
+    from .mipsdis import decode
+
+    rough = next(va for va, r in REGISTRY.items() if r.name == "rough_distance")
+    consts: dict[int, int] = {}
+    seen: dict[str, Any] = {"rough": 0, "multu": []}
+    out: dict[str, int] = {}
+    va = entry
+    while va < entry + 0x400:
+        d = decode(int.from_bytes(mkt[va - 0x80000000 : va - 0x7FFFFFFC], "big"), va)
+        if d.op == "lui":
+            consts[d.rt] = (d.imm & 0xFFFF) << 16
+        elif d.op == "ori" and d.rs in consts:
+            consts[d.rt] = consts[d.rs] | (d.imm & 0xFFFF)
+        elif d.op == "addiu" and d.rs == 0:
+            consts[d.rt] = d.imm
+        elif (d.op == "addiu" and d.rs == d.rt and d.rs not in consts and d.imm > 0 and seen["rough"] == 0
+              and "aim_dy" not in out):  # fmt: skip
+            out["aim_dy"] = d.imm
+        elif d.op == "jal" and d.target == rough:
+            seen["rough"] += 1
+        elif d.op == "slti" and seen["rough"] == 1 and "explode_within" not in out:
+            out["explode_within"] = d.imm
+        elif d.op == "multu":
+            k = consts.get(d.rt, consts.get(d.rs))
+            if k is not None:
+                seen["multu"].append((seen["rough"], k))
+        elif d.op == "sra" and d.imm not in (16, 31) and "damping" not in out:
+            out["damping"] = d.imm
+        elif d.op == "jr" and d.rs == 31:
+            break
+        va += 4
+    steer = [k for r, k in seen["multu"] if r == 1]
+    speed = [k for r, k in seen["multu"] if r == 3]
+    if seen["rough"] != 3 or not steer or not speed or len(out) != 3:
+        return None
+    out.update(steer=steer[0], speed=speed[0])
+    return out
+
+
+def _homing(w: _Walk, child: int, stmts: list) -> dict[str, Any]:
+    """A homing projectile (Sektor's rocket2_proc 0x8007C25C): its start (sound, speed, strike,
+    timeout, depth), its crosshair (an object from a table-1 frame kept on the opponent at an
+    offset: rocket_marker), its direction art (point_rocket: one part of a table-0 animation per
+    direction), its smoke (rocket_smoke(direction): create_fx with the placement entry of the
+    direction) and its phase table (8-byte entries {routine, parameter, ticks}, ended by a zero
+    count: an empty routine flies straight, one that takes the parameter from the y velocity
+    climbs, rocket_hunt steers at the opponent until its timeout), then rocket_explode: the
+    strike checked once, the crosshair removed, the boom (the impact)."""
+
+    gen = w.gen
+    every = _walk_all(stmts)
+    calls = [x for x in every if x.kind == "call"]
+    step: dict[str, Any] = {"op": "projectile"}
+    homing: dict[str, Any] = {}
+    own = lambda e: isinstance(e, dc.Load) and e.base == dc.PROC and e.off == OBJECT_FIELD
+    for x in every:
+        if x.kind == "store" and x.base == dc.PROC and x.off == TIMEOUT_FIELD and x.value.const():
+            homing["timeout"] = x.value.const()
+        elif x.kind == "store" and own(x.base) and x.off == DEPTH and x.value.const() is not None:
+            step["_depth"] = x.value.const()  # its own object's depth (0x51: in front)
+    sound = next((c for c in calls if w.name(c) == "ft_sound" and c.args[0].const() is not None), None)
+    if sound is not None:
+        step["sound"] = {"fighter": sound.args[0].const()}
+    vel = next((c for c in calls if w.name(c) == "proj_set_xvel"), None)
+    if vel is None or vel.args[1].const() is None:
+        w.unknown(f"0x{child:08X}: homing projectile speed")
+    else:
+        step["speed"] = hex(vel.args[1].const())
+        if vel.args[2].const() is not None:
+            step["rate"] = vel.args[2].const()
+    strike_call = next((c for c in calls if w.name(c) == "proj_set_strike"), None)
+    strike = gen.strike_index(strike_call.args[0].const()) if strike_call is not None and strike_call.args[0].const() is not None else None
+    if strike is None:
+        w.unknown(f"0x{child:08X}: homing projectile strike")
+    else:
+        step["strike"] = strike
+    # the crosshair: get_char_ani(table, slot) before the object made from its frame, kept by
+    # rocket_marker on the opponent at multi_adjust_xy's offset
+    pick = next((c for c in calls if w.name(c) == "get_char_ani" and None not in [v.const() for v in c.args[:2]]), None)
+    marker_call = next((c for c in calls if w.name(c) == "rocket_marker"), None)
+    if pick is not None and marker_call is not None:
+        adjust = next((y for y in _walk_all(dc.decompile(gen.mkt, marker_call.target)) if y.kind == "call"
+                       and w.name(y) == "multi_adjust_xy" and None not in [v.const() for v in y.args[1:3]]), None)  # fmt: skip
+        if adjust is not None:
+            homing["marker"] = {"anim": {"table": pick.args[0].const(), "slot": pick.args[1].const()},
+                                "offset": [adjust.args[1].const(), adjust.args[2].const()]}  # fmt: skip
+    if "marker" not in homing:
+        w.unknown(f"0x{child:08X}: the homing crosshair")
+    # the direction art: point_rocket's get_char_ani(0, slot) and find_part(1..n)
+    point = next(c for c in calls if w.name(c) == "point_rocket")
+    body = _walk_all(dc.decompile(gen.mkt, point.target))
+    art = next((y for y in body if y.kind == "call" and w.name(y) == "get_char_ani"
+                and None not in [v.const() for v in y.args[:2]]), None)  # fmt: skip
+    part = next((y for y in body if y.kind == "call" and w.name(y) == "find_part"), None)
+    parts = max(getattr(part.args[0], "values", ()) or [0]) if part is not None else 0
+    if art is None or parts < 2:
+        w.unknown(f"0x{point.target:08X}: the direction art")
+    else:
+        anim = {"table": art.args[0].const(), "slot": art.args[1].const()}
+        homing["directions"] = {"anim": anim, "parts": parts}
+        start = _point_direction(int(step.get("speed", "0"), 16), 0)
+        step["art"] = {**anim, "part": start + 1}  # the start velocity's direction
+        palette = _object_palette(w, step["art"])  # the object's: its slot's first frame names it
+        if palette:
+            step["palette"] = hex(palette)
+    # the smoke: rocket_smoke(point_rocket's direction)
+    smoke = next((c for c in calls if w.name(c) == "rocket_smoke"), None)
+    if smoke is not None:
+        fx = next((y.args[0].const() for y in _walk_all(dc.decompile(gen.mkt, smoke.target))
+                   if y.kind == "call" and w.name(y) == "create_fx"), None)  # fmt: skip
+        by_direction = isinstance(smoke.args[0], dc.Bin) and isinstance(smoke.args[0].a, dc.Result)
+        if fx is not None and by_direction:  # its argument: point_rocket's result
+            step["trail"] = {"effect": {"mkt_fx": fx, "place": "direction"}, "every": 2}
+        else:
+            w.unknown(f"0x{smoke.pc:08X}: the homing smoke")
+    # the phase table: the Load of a ticks halfword at table + 8 * entry + 6
+    table = None
+    for x in every:
+        for e in _loads(x):
+            if e.off == 6 and e.width == 2 and isinstance(e.base, dc.Bin) and e.base.op == "+" and e.base.a.const():
+                table = e.base.a.const() & 0xFFFFFFFF
+    phases: list[dict[str, Any]] = []
+    hunt = None
+    u32 = lambda va: int.from_bytes(gen.mkt[va - 0x80000000 : va - 0x7FFFFFFC], "big")
+    k = 0
+    while table is not None and k < 16 and (ticks := u32(table + 8 * k + 4) & 0xFFFF):
+        routine, param = u32(table + 8 * k), u32(table + 8 * k + 4) >> 16
+        body = dc.decompile(gen.mkt, routine)
+        if gen.names.get(routine) == "rocket_hunt":
+            hunt = _hunt_constants(gen.mkt, routine)
+            if hunt is None:
+                w.unknown(f"0x{routine:08X}: rocket_hunt's constants")
+            k += 1
+            break
+        if all(y.kind == "return" for y in body):
+            phases.append({"ticks": ticks})
+        elif any(y.kind == "store" and own(y.base) and y.off == 0x10 and isinstance(y.value, dc.Bin)
+                 and y.value.op == "-" for y in body):  # fmt: skip
+            phases.append({"ticks": ticks, "climb": hex(param)})
+        else:
+            w.unknown(f"0x{routine:08X}: homing phase {k}")
+        k += 1
+    if table is None or hunt is None:
+        w.unknown(f"0x{child:08X}: the homing phase table")
+    else:
+        homing["phases"] = phases
+        homing.update({key: hunt[key] for key in ("aim_dy", "explode_within", "damping", "speed")})
+        homing["steer"] = hex(hunt["steer"])
+    step["homing"] = homing
+    # the explosion: rocket_explode's strike check, then its boom routine (the impact)
+    boom = next((c for c in calls if w.name(c) == "rocket_explode"), None)
+    if boom is None:
+        boom_target = next((va for va, r in REGISTRY.items() if r.name == "rocket_explode"), None)
+    else:
+        boom_target = boom.target
+    explode = reading.read(gen.mkt, boom_target).calls if boom_target else []  # (past a branch)
+    at = next((k for k, c in enumerate(explode) if gen.names.get(c.target) == "proj_strike_check"), None)
+    after = [c.target for c in explode[at + 1 :] if c.target and _readable(c.target)] if at is not None else []
+    fx_va = after[-1] if after else None  # its boom routine (0x8007C9F0: sound, effect, delete)
+    checked = explode[at].args[1] if at is not None else None
+    if checked is not None and strike_call is not None and checked != strike_call.args[0].const():
+        w.unknown(f"0x{boom_target:08X}: the explosion strikes with 0x{checked:X}, not the flight's")
+    impact = None
+    if fx_va is not None:
+        body = dc.decompile(gen.mkt, fx_va)
+        _index_calls(body)
+        impact = _impact(w, _flatten(w, body))
+    if impact is None:
+        w.unknown(f"0x{child:08X}: the homing explosion")
+    else:
+        step["impact"] = impact
+    w.note("MKT's explosion re-targets and restarts the rocket when the opponent is in a special "
+           "state (object +0x38 = 30 or action 0x402, 0x8007C894); not lowered")  # fmt: skip
+    w.note("rocket_hunt also ends on a global flag (0x802575D8); the host hunt ends on its timeout "
+           "or at the target")  # fmt: skip
+    return step
+
+
+def _loads(x: Any) -> list:
+    """Every Load in a statement's expressions (not nested statements)."""
+
+    out: list = []
+
+    def visit(e: Any) -> None:
+        if isinstance(e, dc.Load):
+            out.append(e)
+            visit(e.base)
+        elif isinstance(e, dc.Bin):
+            visit(e.a)
+            visit(e.b)
+
+    for key in ("cond", "value", "base"):
+        visit(getattr(x, key, None))
+    for e in getattr(x, "args", ()) or ():
+        visit(e)
+    return out
 
 
 def _walk_all(stmts: list) -> list:
@@ -1334,6 +1911,23 @@ CALL_RULES = {
     "strike_check_a0": _ignore,  # outside a window: handled by loops
     "stamp_tick": _stamp,
     "link_object": _ignore,
+    "find_last_frame": _last_frame,
+    "init_anirate": _anirate,
+    "next_anirate": _ignore,  # in a motion loop: the animate step's rate
+    "teleport_strike_check": _ignore,  # read by its loop or jump (motion_loop, _kept_jump)
+    "teleport_land": _follow,
+    "triple_sound": _note_only("MKT's landing thud (triple_sound 0x18): the host's own landing sound "
+                               "plays (owner, Sektor teleport v10)"),
+    "land_reset": _ignore,  # the host's end of the move resets the fighter
+    "proc_flag1": _ignore,  # tested by its branch
+    "opponent_reacting": _ignore,  # tested by its branch
+    "rzap3": _follow,
+    "make_rocket": _follow,
+    "robo_chest_open": _follow,
+    "robo_chest_close": _follow,
+    "ani_backward": _backward,
+    "proj_recover": _note_only("MKT sets action 0x604 for the recovery after a projectile; the program "
+                               "keeps the begin's"),
 }
 
 

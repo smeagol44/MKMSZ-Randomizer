@@ -222,3 +222,92 @@ def test_smre_reads_commands_and_conditions(mkt: bytes) -> None:
     assert len(notes) == 2  # the opponent's fighter id and reaction state
     with pytest.raises(ValueError, match="not one of fighter"):
         ray.command(0x800AC810)
+
+
+@needs_mkt
+def test_smre_reads_inline_commands(mkt: bytes) -> None:
+    """Sektor's specials are inline matcher calls in imperative handlers (SMRE step 3): buttons
+    from the handler's event within the matcher's mask, tokens and window from the compact
+    table, and the guards between the matcher and the transfer: ``process_exist`` on his
+    projectile process (0x705/0x805) is ``projectiles_below`` 1; the Homing Missile's count of
+    processes 0x704/0x804 (< 3) and the teleport's opponent guards are notes. The action is the
+    transfer's wrapper (Sektor's teleport uppercut: ``do_body_propell(8)``)."""
+
+    sek = gen.Generator(mkt, 7)
+    cmd, notes = sek.command(0x800AB250)  # straight missile, F,F + LP
+    assert cmd == {"buttons": "0x80", "tokens": [9, 9], "window": 32, "src": "MKT 0x800AB250",
+                   "conditions": [{"kind": "projectiles_below", "count": 1, "src": "MKT 0x8004E73C"}]}  # fmt: skip
+    assert notes == []
+    cmd, notes = sek.command(0x800AB26C)  # double missile, B,B,F + LP
+    assert (cmd["tokens"], cmd["conditions"][0]["kind"]) == ([9, 8, 8], "projectiles_below")
+    cmd, notes = sek.command(0x800AB288)  # homing missile, F,D,B + HP
+    assert (cmd["buttons"], cmd["tokens"], cmd["window"], "conditions" in cmd) == ("0x10", [8, 7, 9], 22, False)
+    assert notes == ["0x8004E7EC: fewer than 3 live processes with ids 0x704, 0x804 (not lowered)"]
+    cmd, notes = sek.command(0x800AB2C0)  # teleport uppercut, F,F + LK
+    assert (cmd["buttons"], cmd["tokens"], cmd["window"]) == ("0x40", [9, 9], 24) and len(notes) == 2
+    prog, _, _ = sek.program("teleport_uppercut", 0x800AB2C0)
+    assert prog["steps"][0]["action_mkt"] == "0x208" and prog["steps"][1]["sound"] == {"fighter": 7}
+
+
+@needs_mkt
+def test_smre_reads_the_teleport_uppercut(mkt: bytes) -> None:
+    """Sektor's teleport uppercut (F,F + LK -> do_body_propell(8) -> 0x80048368), nothing unknown:
+    the last frame of slot 0x0D; a sink (y 0x5F333, gravity 0x9599) until past the screen's
+    bottom line; behind the opponent (dx 12, MKT's velocity lead noted); the rise (table 1 slot 3
+    at rate 5; y -0x7A666, gravity -0x5199) to the floor, striking within 41 px of it; the flight
+    on from that velocity (gravity 0xF000, 0xB000 after a blocked strike: MKT's +0x3D0 holds the
+    blocked flag 0x8014C3B8), striking while rising; the
+    landing: slot 0x16's second frame, then (the cursor saved at +0x440 restored) its first, 3
+    ticks each (proof v07; v04-v06 showed the third, a knee-up pose: "touches the ground twice")."""
+
+    prog, g, _ = gen.Generator(mkt, 7).program("teleport_uppercut", 0x800AB2C0)
+    assert g.unknown == [] and prog["movement"]
+    steps = [{k: v for k, v in s.items() if k != "src"} for s in prog["steps"]]
+    strike = {"box": [73, -9, 73, 87], "damage": 16, "block_damage": 2, "reaction": "uppercut",
+              "blocked_reaction": "blocked"}  # fmt: skip
+    assert steps == [
+        {"op": "begin", "face": True, "stop": True, "action_mkt": "0x208"},
+        {"op": "sound", "sound": {"fighter": 7}},
+        {"op": "pose", "anim": {"table": 0, "slot": 13, "offset": 5}},
+        {"op": "jump", "x": "0x0", "y": "0x5f333", "gravity": "0x9599", "until": "below_screen"},
+        {"op": "relocate", "to": "behind_opponent", "dx": 12},
+        {"op": "face"},
+        {"op": "animate", "anim": {"table": 1, "slot": 3}, "rate": 5, "until": "running"},
+        {"op": "jump", "x": "0x0", "y": "-0x7a666", "gravity": "-0x5199", "until": "surface",
+         "strike": strike, "strike_near_px": 41},
+        {"op": "jump", "x": "0x0", "gravity": "0xf000", "until": "landing", "gravity_on_block": "0xb000",
+         "strike": strike, "strike_while": "rising"},
+        {"op": "pose", "anim": {"table": 0, "slot": 22, "offset": 1}},
+        {"op": "sleep", "ticks": 3}, {"op": "pose", "anim": {"table": 0, "slot": 22}}, {"op": "sleep", "ticks": 3},
+        {"op": "end"},
+    ]  # fmt: skip
+
+
+@needs_mkt
+def test_sektor_homing_missile(mkt: bytes) -> None:
+    """Sektor's homing missile (F,D,B + HP -> do_robo_zap2 -> rzap3(rocket2_proc 0x8007C25C)),
+    nothing unknown: the target sound 12 and the chest; the missile (his sound 4, 0x4CCCC at
+    rate 3, strike 0x12, in front: rocket2_proc's own depth 0x51 over make_rocket's 0); its
+    crosshair (table 1 slot 5 at the opponent + (-12, 27), rocket_marker 0x8007C6F0); its
+    direction art (point_rocket: table 0 slot 0x43, 8 parts) and smoke (create_fx 4 at the
+    direction's placement entry); its phase table 0x800AB220 (8 ticks straight, 16 climbing
+    by 0x8800, then rocket_hunt: aim 54 px below, explode within 6, steer 0x33333, damping
+    >> 4, speed 5, timeout 128); rocket_explode's boom (sound 10, create_fx 5)."""
+
+    prog, g, _ = gen.Generator(mkt, 7).program("homing_rocket", 0x800AB288)
+    assert g.unknown == []
+    assert prog["command"]["tokens"] == [8, 7, 9] and prog["command"]["buttons"] == "0x10"
+    steps = [{k: v for k, v in s.items() if k != "src"} for s in prog["steps"]]
+    assert [s["op"] for s in steps] == ["begin", "sound", "sound", "animate", "projectile", "sleep", "animate", "end"]
+    p = steps[4]
+    assert p["sound"] == {"fighter": 4} and p["speed"] == "0x4cccc" and p["rate"] == 3
+    assert "behind" not in p and p["offset"] == [5, 38] and p["art"] == {"table": 0, "slot": 67, "part": 4}
+    assert p["palette"] == "0x800bc3ac"  # ROCKET_P, as the straight missile (proof v15)
+    assert p["trail"] == {"effect": {"mkt_fx": 4, "place": "direction"}, "every": 2}
+    assert p["impact"] == {"at": "projectile", "end": "effect", "sound": {"fighter": 10}, "effect": {"mkt_fx": 5}}
+    assert p["homing"] == {
+        "timeout": 128, "marker": {"anim": {"table": 1, "slot": 5}, "offset": [-12, 27]},
+        "directions": {"anim": {"table": 0, "slot": 67}, "parts": 8},
+        "phases": [{"ticks": 8}, {"ticks": 16, "climb": "0x8800"}],
+        "aim_dy": 54, "explode_within": 6, "damping": 4, "speed": 5, "steer": "0x33333",
+    }  # fmt: skip

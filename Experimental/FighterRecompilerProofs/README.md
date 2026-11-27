@@ -78,3 +78,19 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v29.py` | `MKMSZR_rayden-specials_common_proof_v29.z64` | v28 with the Shocker's two frames alternating (one frame per MKT frame step) |
 | `MKMSZR_build_rayden-specials_proof_v30.py` | `MKMSZR_rayden-specials_common_proof_v30.z64` | v29 with the Shocker's hold and the Teleport's cooldown as 60 Hz clock stamps (no process to get stuck) |
 | `MKMSZR_build_rayden-specials_proof_v31.py` | `MKMSZR_rayden-specials_common_proof_v31.z64` | v30 with all five specials written by SMRE; the Shocker from the grab rule (MKT's 3-tick pause after the grab) |
+| `MKMSZR_build_sektor-smre_proof_v01.py` | `MKMSZR_sektor-smre_common_proof_v01.z64` | SMRE step 3: Sektor's base on the generic build (`sektor-smre`), no specials: MKT throw with the arm flattened on (`scale`), MKT combos (seventh record in the payload) |
+| `MKMSZR_build_sektor-smre_proof_v02.py` | `MKMSZR_sektor-smre_common_proof_v02.z64` | v01 with the throw's sounds: MKT's grab voice and his arm out / throw / in (`throw_sounds`, `body.throw_voice`) |
+| `MKMSZR_build_reptile-specials_proof_v25.py` | `MKMSZR_reptile-specials_common_proof_v25.z64` | **Withdrawn** (owner dropped grab sounds): v24 with his MKT grab voice at the throw (commit `9dd5ebe`) |
+| `MKMSZR_build_sektor-smre_proof_v03.py` | `MKMSZR_sektor-smre_common_proof_v03.z64` | v02 without the grab voice (owner dropped grab sounds); his arm sounds stay |
+| `MKMSZR_build_sektor-smre_proof_v04.py` | `MKMSZR_sektor-smre_common_proof_v04.z64` | v03 with the teleport uppercut written by SMRE (sink / rise aliases, the striking flight on the stock jump) |
+| `MKMSZR_build_sektor-smre_proof_v05.py` | `MKMSZR_sektor-smre_common_proof_v05.z64` | v04 with the teleport uppercut startable in the air (falls on its sink curve first), as MKT |
+| `MKMSZR_build_sektor-smre_proof_v06.py` | `MKMSZR_sektor-smre_common_proof_v06.z64` | v05 with the Low Kick record built from MKT's compact table (v04-v05: no command matched) |
+| `MKMSZR_build_sektor-smre_proof_v07.py` | `MKMSZR_sektor-smre_common_proof_v07.z64` | v06 with MKT's landing (frame 2, then 1, in 3 host ticks): no knee-up second touch |
+| `MKMSZR_build_sektor-smre_proof_v08.py` | `MKMSZR_sektor-smre_common_proof_v08.z64` | v07 with the straight missile (F,F + LP) written by SMRE: chest, launch sound, MKT speeds, smoke, explosion, stumble |
+| `MKMSZR_build_sektor-smre_proof_v09.py` | `MKMSZR_sektor-smre_common_proof_v09.z64` | v08 with ROCKET_P, MKT's spawn (5, 38) px at the owner's draw offset, and the smoke placed 19 px behind by the missile's own offset |
+| `MKMSZR_build_sektor-smre_proof_v10.py` | `MKMSZR_sektor-smre_common_proof_v10.z64` | v09 with the missile drawn behind Sektor (MKT depth 0: his layer + 1), the smoke behind it, and no puff on its first flight tick |
+| `MKMSZR_build_sektor-smre_proof_v11.py` | `MKMSZR_sektor-smre_common_proof_v11.z64` | v10 with each new puff's (and the missile's) render position set as it is placed: no puff at the stage's origin on pause |
+| `MKMSZR_build_sektor-smre_proof_v12.py` | `MKMSZR_sektor-smre_common_proof_v12.z64` | v11 with each puff placed from the missile's drawn position (19 px behind it: on the flame) |
+| `MKMSZR_build_sektor-smre_proof_v13.py` | `MKMSZR_sektor-smre_common_proof_v13.z64` | v12 with the double missile (B,B,F + LP) written by SMRE: two missiles 10 donor ticks apart |
+| `MKMSZR_build_sektor-smre_proof_v14.py` | `MKMSZR_sektor-smre_common_proof_v14.z64` | v13 with the homing missile (F,D,B + HP) written by SMRE: crosshair, climb, hunt, explosion at the target |
+| `MKMSZR_build_sektor-smre_proof_v15.py` | `MKMSZR_sektor-smre_common_proof_v15.z64` | v14 with the homing missile in ROCKET_P and hitting what it touches while it flies (owner adjustment) |

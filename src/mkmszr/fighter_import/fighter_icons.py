@@ -169,10 +169,15 @@ def build(mkt: bytes, fighter: int, recipe: dict[str, Any], stock: dict[int, byt
     return icons, [rgb_to_bgr555(c) for c in shared]
 
 
-def apply(rom: bytearray, mkt: bytes, fighter: int, recipe: dict[str, Any]) -> tuple[int, int]:
+def apply(rom: bytearray, mkt: bytes, fighter: int, recipe: dict[str, Any] | str) -> tuple[int, int]:
     """Write the icons into file 0x5D of ``rom`` and the shared palette, as ``power_icons.apply``
     does for Sektor (in place in the package's slot: the inventory HUD's owned capacity when
     production relocated it, else the stock slot). Returns the package's new ROM span."""
+
+    if recipe == "sektor":  # Sektor's accepted hand-composed set (R4b), kept from the legacy build
+        from . import power_icons
+
+        return power_icons.apply(rom, mkt)
 
     from ..data.addresses import FILE_TABLE_ENTRY_SIZE, FILE_TABLE_ROM
     from ..patches.inventory_hud import (

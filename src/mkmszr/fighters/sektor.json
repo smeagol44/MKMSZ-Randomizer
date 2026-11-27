@@ -25,6 +25,7 @@
       "0x0C",
       "0x0E",
       "0x0F",
+      "0x10",
       "0x11",
       "0x12",
       "0x13",
@@ -94,221 +95,154 @@
       "pickup",
       "grabbed"
     ],
-    "layout": {
-      "inherited_groups": 58,
-      "run_groups": 4,
-      "dead_regions": [
-        [
-          "0x4E0",
-          "0x504"
-        ],
-        [
-          "0x634",
-          "0x684"
-        ],
-        [
-          "0x798",
-          "0x7E8"
-        ],
-        [
-          "0x810",
-          "0x84C"
-        ]
-      ],
-      "slots": {
-        "0x00": {
-          "mode": "inplace",
-          "words": [
-            "0x1768",
-            "0x1780",
-            "0x1794",
-            "0x17A8",
-            "0x17BC",
-            1,
-            "0x1D4"
-          ],
-          "capacity": 11
-        },
-        "0x01": {
-          "mode": "inplace",
-          "n": 9,
-          "capacity": 11
-        },
-        "0x02": {
-          "mode": "inplace",
-          "n": 9,
-          "capacity": 11
-        },
-        "0x03": {
-          "mode": "inplace",
-          "n": 5,
-          "capacity": 5
-        },
-        "0x04": {
-          "mode": "inplace",
-          "n": 4,
-          "capacity": 4
-        },
-        "0x05": {
-          "mode": "inplace",
-          "n": 6,
-          "capacity": 7
-        },
-        "0x06": {
-          "mode": "inplace",
-          "n": 4,
-          "capacity": 4
-        },
-        "0x07": {
-          "mode": "inplace",
-          "n": 4,
-          "capacity": 5
-        },
-        "0x08": {
-          "mode": "inplace",
-          "n": 8,
-          "capacity": 8
-        },
-        "0x09": {
-          "mode": "relocated",
-          "n": 10,
-          "place": "0x798"
-        },
-        "0x0A": {
-          "mode": "inplace",
-          "n": 8,
-          "capacity": 8
-        },
-        "0x0B": {
-          "mode": "inplace",
-          "n": 9,
-          "capacity": 9
-        },
-        "0x0C": {
-          "mode": "inplace",
-          "n": 4,
-          "capacity": 4
-        },
-        "0x0E": {
-          "mode": "inplace",
-          "n": 28,
-          "capacity": 28,
-          "hybrid": true
-        },
-        "0x0F": {
-          "mode": "inplace",
-          "n": 27,
-          "capacity": 27,
-          "hybrid": true
-        },
-        "0x11": {
-          "mode": "packed",
-          "n": 13
-        },
-        "0x12": {
-          "mode": "relocated",
-          "n": 13,
-          "place": "0x810"
-        },
-        "0x13": {
-          "mode": "inplace",
-          "n": 7,
-          "capacity": 7
-        },
-        "0x14": {
-          "mode": "inplace",
-          "n": 12,
-          "capacity": 12,
-          "hybrid": true
-        },
-        "0x15": {
-          "mode": "inplace",
-          "n": 10,
-          "capacity": 10
-        },
-        "0x16": {
-          "mode": "inplace",
-          "n": 4,
-          "capacity": 4
-        },
-        "0x17": {
-          "mode": "inplace",
-          "n": 7,
-          "capacity": 7
-        },
-        "0x18": {
-          "mode": "inplace",
-          "n": 7,
-          "capacity": 7
-        },
-        "0x19": {
-          "mode": "inplace",
-          "n": 7,
-          "capacity": 7
-        },
-        "0x1A": {
-          "mode": "relocated",
-          "n": 8,
-          "place": "0x4E0"
-        },
-        "0x1B": {
-          "mode": "relocated",
-          "n": 8,
-          "place": "0x7C0"
-        },
-        "0x1C": {
-          "mode": "inplace",
-          "n": 5,
-          "capacity": 5
-        },
-        "0x1D": {
-          "mode": "inplace",
-          "n": 5,
-          "capacity": 5
-        },
-        "0x1E": {
-          "mode": "inplace",
-          "n": 9,
-          "capacity": 9
-        },
-        "0x1F": {
-          "mode": "inplace",
-          "n": 9,
-          "capacity": 9
-        },
-        "0x20": {
-          "mode": "relocated",
-          "n": 17,
-          "place": "0x634"
-        },
-        "0x21": {
-          "mode": "inplace",
-          "n": 7,
-          "capacity": 7
-        },
-        "0x22": {
-          "mode": "inplace",
-          "n": 6,
-          "capacity": 8
-        }
-      },
-      "frame_edits": {
-        "0x6A0": "0x1DD8",
-        "0x6A4": "0x1DC4",
-        "0x6AC": "0x1D74",
-        "0x6C4": "0x17A8",
-        "0x6D0": "0x1D60",
-        "0x6D4": "0x1D74"
+    "phase_slots": {
+      "0x23": "scale"
+    },
+    "secondary_scripts": {
+      "0x44": "table0:0x0D:1",
+      "0x45": "table1:0x03:1",
+      "0x46": "table1:0x00:1",
+      "0x47": "table1:0x00:1:reverse"
+    }
+  },
+  "commands": {
+    "straight_rocket": "ice_blast",
+    "teleport_uppercut": "directional_ice_down",
+    "homing_rocket": "ice_blast_air",
+    "double_rocket": "ice_shatter"
+  },
+  "remove_commands": [
+    "directional_ice_up",
+    "ice_clone",
+    "freeze_on_contact"
+  ],
+  "specials": {
+    "teleport_uppercut": {
+      "donor_ticks": 2,
+      "air_start": true
+    },
+    "straight_rocket": {
+      "donor_ticks": 2
+    },
+    "double_rocket": {
+      "donor_ticks": 2
+    },
+    "homing_rocket": {
+      "donor_ticks": 2,
+      "projectile": {
+        "strike_in_flight": true
       }
     }
   },
-  "legacy": [
-    "sektor-teleport",
-    "sektor-rockets",
-    "sektor-throw-arm",
-    "sektor-combos",
-    "sektor-tiers",
-    "sektor-presentation"
-  ],
-  "notes": "Index map and palette: the visually accepted 16-colour Sektor proof (MKMSZR_sektor-16color_common-proof_v01) and the native upper half of the Runtime-confirmed v53 TLUT. Layout: Sektor's accepted layout (slot script lengths, places and capacities, entropy groups, late-Knee frame edits) from Sektor build v61; other fighters get the computed layout."
+  "costs": {
+    "double_rocket": "0x30",
+    "homing_rocket": "0x40"
+  },
+  "tiers": {
+    "super_slide": "freeze_on_contact"
+  },
+  "help": {
+    "ice-blast": [
+      [
+        "STRAIGHT MISSILE"
+      ],
+      [
+        "FORWARD, FORWARD,",
+        "LOW PUNCH"
+      ],
+      [
+        "SEKTOR FIRES A",
+        "MISSILE FROM HIS",
+        "CHEST."
+      ]
+    ],
+    "slide": "stock",
+    "directional-ice": [
+      [
+        "TELEPORT",
+        "UPPERCUT"
+      ],
+      [
+        "FORWARD, FORWARD,",
+        "LOW KICK."
+      ],
+      [
+        "SEKTOR TELEPORTS",
+        "BEHIND THE NEAREST",
+        "ENEMY AND",
+        "UPPERCUTS IT."
+      ]
+    ],
+    "air-ice-blast": [
+      [
+        "HEAT-SEEKING",
+        "MISSILE"
+      ],
+      [
+        "FORWARD, DOWN,",
+        "BACK, HIGH PUNCH."
+      ],
+      [
+        "A MISSILE THAT",
+        "HUNTS DOWN THE",
+        "NEAREST ENEMY."
+      ]
+    ],
+    "ice-clone": "empty",
+    "ice-shatter": [
+      [
+        "DOUBLE MISSILE"
+      ],
+      [
+        "BACK, BACK,",
+        "FORWARD,",
+        "LOW PUNCH."
+      ],
+      [
+        "FIRES TWO",
+        "MISSILES IN A ROW."
+      ]
+    ],
+    "super-slide": "empty",
+    "freeze-on-contact": [
+      [
+        "SUPER SLIDE"
+      ],
+      [
+        "BLOCK, LOW PUNCH,",
+        "HIGH PUNCH, AND",
+        "BACK"
+      ],
+      [
+        "SAME AS NORMAL",
+        "SLIDE, EXCEPT IT",
+        "IS LONGER",
+        "REACHING AND CAN",
+        "TAKE OUT MULTIPLE",
+        "ENEMIES."
+      ]
+    ],
+    "polar-blast": "stock"
+  },
+  "icons": "sektor",
+  "outfit": {
+    "entries": [
+      "0x03",
+      "0x05",
+      "0x07",
+      "0x09",
+      "0x0B",
+      "0x0D",
+      "0x0E"
+    ],
+    "own": "red"
+  },
+  "legacy": [],
+  "notes": "Sektor on the generic build (SMRE step 3, 2026-11-27): body (computed layout, his accepted 16-colour map and palette, MKT throw with the arm flattened on), MKT combos, and his four specials written by SMRE from MKT (teleport uppercut, straight, double and homing missiles; Sektor SMRE proofs v01-v15). Slots, costs and the Super Slide tier are the product's (owner, 2026-11-09, kept 2026-11-27): straight missile on Ice Blast (0x20), teleport uppercut on Directional Ice (free), homing missile on Air Ice Blast (0x40), double missile on Ice Shatter (0x30), Super Slide on Freeze on Contact's tier, Ice Clone and Super Slide's own slot empty. Help text and icons as the accepted product presentation (R4b).",
+  "smre": {
+    "teleport_uppercut": "0x800AB2C0",
+    "straight_rocket": "0x800AB250",
+    "double_rocket": "0x800AB26C",
+    "homing_rocket": "0x800AB288"
+  }
 }

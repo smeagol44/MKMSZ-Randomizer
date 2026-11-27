@@ -20,19 +20,26 @@ def _raw(fighter: str) -> dict:
 
 
 def test_packaged_descriptions_load() -> None:
-    assert fd.available() == ["rayden", "reptile", "sektor"]
+    assert fd.available() == ["rayden", "reptile", "sektor", "sektor-legacy"]
     rayden = fd.load("rayden")  # milestone 6: body, inputs, the five specials
     assert (rayden.donor_fighter_id, rayden.title, rayden.commands) == (24, "RAYDEN", {"lightning": "ice_blast", "reversed_lightning": "ice_blast_air",
                                                                          "teleport": "directional_ice_up", "torpedo": "ice_clone",
                                                                              "shocker": "ice_shatter"})
-    sektor, reptile = fd.load("sektor"), fd.load("reptile")
-    assert (sektor.donor_fighter_id, sektor.donor_name, sektor.title) == (7, "SEKTOR", "SEKTOR")
+    legacy, reptile = fd.load("sektor-legacy"), fd.load("reptile")  # the frozen legacy Sektor
+    assert (legacy.donor_fighter_id, legacy.donor_name, legacy.title) == (7, "SEKTOR", "SEKTOR")
     assert (reptile.donor_fighter_id, reptile.donor_name, reptile.legacy) == (19, "REPTILE", ())
+    sektor = fd.load("sektor")  # SMRE step 3: Sektor on the generic build, no legacy (product since 2026-11-27)
+    assert (sektor.donor_fighter_id, sektor.legacy, sektor.body.layout) == (7, (), None)
+    assert sektor.body.phase_slots == {0x23: "scale"} and sektor.body.colour == legacy.body.colour
+    assert sektor.commands == {"straight_rocket": "ice_blast", "teleport_uppercut": "directional_ice_down",
+                               "homing_rocket": "ice_blast_air", "double_rocket": "ice_shatter"}
+    assert sektor.costs == {"double_rocket": 0x30, "homing_rocket": 0x40} and sektor.icons == "sektor"
+    assert sektor.tiers == {"super_slide": "freeze_on_contact"}  # the product's (owner, 2026-11-09)
     assert sektor.body.run_slot == reptile.body.run_slot == 0x4A
 
 
 def test_sektor_layout_covers_every_body_slot() -> None:
-    body = fd.load("sektor").body
+    body = fd.load("sektor-legacy").body
     assert body.layout is not None and set(body.layout.slots) == set(body.slots)
     modes = {s: sl.mode for s, sl in body.layout.slots.items()}
     assert {s for s, m in modes.items() if m == "relocated"} == {0x09, 0x12, 0x1A, 0x1B, 0x20}
@@ -42,15 +49,15 @@ def test_sektor_layout_covers_every_body_slot() -> None:
 
 
 def test_layout_rejects_bad_places_and_overlaps() -> None:
-    data = copy.deepcopy(_raw("sektor"))
+    data = copy.deepcopy(_raw("sektor-legacy"))
     data["body"]["layout"]["slots"]["0x09"]["place"] = "0x100"
     with pytest.raises(fd.DescriptionError, match="dead region"):
         fd.validate(data)
-    data = copy.deepcopy(_raw("sektor"))
+    data = copy.deepcopy(_raw("sektor-legacy"))
     data["body"]["layout"]["slots"]["0x1B"]["place"] = data["body"]["layout"]["slots"]["0x09"]["place"]
     with pytest.raises(fd.DescriptionError, match="overlap"):
         fd.validate(data)
-    data = copy.deepcopy(_raw("sektor"))
+    data = copy.deepcopy(_raw("sektor-legacy"))
     del data["body"]["layout"]["slots"]["0x00"]
     with pytest.raises(fd.DescriptionError, match="missing 0x00"):
         fd.validate(data)
@@ -83,7 +90,7 @@ def test_layout_rejects_bad_places_and_overlaps() -> None:
     ],
 )
 def test_validator_rejects(change, message) -> None:
-    data = copy.deepcopy(_raw("sektor"))
+    data = copy.deepcopy(_raw("sektor-legacy"))
     change(data)
     with pytest.raises(fd.DescriptionError, match=message):
         fd.validate(data)
@@ -131,7 +138,8 @@ def test_reptile_sources_and_phase_slots() -> None:
 def test_reptile_outfit_is_his_greens() -> None:
     d = fd.load("reptile")
     assert d.outfit == {"entries": (10, 11, 12, 13, 14), "own": "green"}
-    assert fd.load("sektor").outfit == {}  # Sektor's red entries stay in fighter_import.outfit
+    assert fd.load("sektor-legacy").outfit == {}  # the legacy build's red entries: fighter_import.outfit
+    assert fd.load("sektor").outfit == {"entries": (3, 5, 7, 9, 11, 13, 14), "own": "red"}  # the same
 
 
 def test_rayden_script_sounds() -> None:

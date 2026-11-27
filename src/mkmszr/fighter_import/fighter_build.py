@@ -50,14 +50,16 @@ from . import (
     effects,
     host,
     lower_special,
+    mkt_effects,
     physics,
     sound,
+    throw_sounds,
     voices,
 )
 from . import description as fd
 from . import lower_projectile as lp
 from .mips import Assembler
-from .mkt_fighter import validate_mkt_n64_rev2
+from .mkt_fighter import MktRom, validate_mkt_n64_rev2
 
 VA_TO_ROM = 0x7FFFF400
 LINK_VA = 0xA01AF420  # the proofs' payload address (any address works: production relocates)
@@ -152,6 +154,105 @@ def smre_programs(mkt: bytes, fighter: int, records: dict[str, int], stored: dic
     return {m.name: m for m in made}
 
 
+# Motions (a jump that sinks below the screen or rises to the floor; Sektor's teleport uppercut):
+# MKT moves the sprite past the screen's bottom line, with no floor clip. The host keeps the
+# fighter on his floor and draws his pose lower each tick: descriptor-only aliases of the frame
+# (the image shared, the anchor y lowered by the depth), as Sektor's runtime-confirmed legacy
+# teleport (proofs v04-v18).
+SCREEN_BOTTOM_PX = 150  # MKT's bottom line below the floor (the legacy surface speed 0xC6666, v04)
+SINK_HIDDEN_PX = 320  # the sink goes on to here (legacy: 311), then one far alias hides him
+HIDDEN_PX = 1000
+
+
+def _script_offset(file87: bytes, where: Any) -> int:
+    if isinstance(where, tuple) and where[0] == "at":
+        return where[1]
+    if isinstance(where, tuple) and where[0] == "primary":
+        return int.from_bytes(file87[4 * where[1] : 4 * where[1] + 4], "big")
+    return int.from_bytes(file87[0x104 + 4 * where : 0x108 + 4 * where], "big")
+
+
+def _depths(y: int, gravity: int, donor_ticks: int, start: float, stop: Any) -> tuple[list[int], float]:
+    """Depths (px below the floor) each host tick along MKT's curve (16.16 per donor tick: y +=
+    v, then v += g), from ``start`` until ``stop(depth)``; and the velocity at the end."""
+
+    d, v, out = start, y / 65536, []
+    while not stop(d):
+        for _ in range(donor_ticks):
+            d += v
+            v += gravity / 65536
+        out.append(round(d))
+        if len(out) > 120:
+            raise BuildError("a motion never reaches its end")
+    return out, v
+
+
+def motion_scripts(file87: bytearray, steps: list[dict[str, Any]], animations: dict, donor_ticks: int,
+                   at: int) -> tuple[dict[int, lower_special.Motion], int]:  # fmt: skip
+    """The alias scripts of a move's sinking and rising ``jump`` steps, placed from ``at`` in the
+    fighter file; returns ``id(step) -> Motion`` and the next free offset."""
+
+    out: dict[int, lower_special.Motion] = {}
+    shown: tuple[int, int] | None = None  # (script, word) of the frame on screen
+    running: int | None = None  # the running animation's script
+
+    def be32(o: int) -> int:
+        return int.from_bytes(file87[o : o + 4], "big")
+
+    def put(o: int, v: int) -> None:
+        file87[o : o + 4] = (v & 0xFFFFFFFF).to_bytes(4, "big")
+
+    def alias(shape: int, depth: int) -> int:
+        nonlocal at
+        sub, mine = be32(shape), at
+        put(mine, mine + 8)
+        put(mine + 4, 0)
+        file87[mine + 8 : mine + 18] = file87[sub : sub + 10]  # image, w, h, x
+        y = int.from_bytes(file87[sub + 10 : sub + 12], "big", signed=True)
+        file87[mine + 18 : mine + 20] = ((y - depth) & 0xFFFF).to_bytes(2, "big")
+        at += 20
+        return mine
+
+    for step in steps:
+        op = step["op"]
+        if op in ("pose", "animate"):
+            key = (int(step["anim"]["table"]), int(step["anim"]["slot"]))
+            script = _script_offset(file87, animations[key])
+            shown = (script, int(step["anim"].get("offset", 0)))
+            running = script if step.get("until") == "running" else None
+        if op != "jump" or step["until"] not in ("below_screen", "surface"):
+            continue
+        y, g = lp._int(step["y"]), lp._int(step["gravity"])
+        if step["until"] == "below_screen":
+            if shown is None:
+                raise BuildError("a sink with no pose before it")
+            shape = be32(shown[0] + 4 * shown[1])
+            depths, _ = _depths(y, g, donor_ticks, 0, lambda d: d >= SINK_HIDDEN_PX)
+            frames = [shape] + [alias(shape, d) for d in depths] + [alias(shape, HIDDEN_PX)]
+            out[id(step)] = lower_special.Motion(at, len(frames))
+        else:
+            if running is None:
+                raise BuildError("a rise with no running animation before it")
+            shape = be32(running)
+            depths, v = _depths(y, g, donor_ticks, SCREEN_BOTTOM_PX, lambda d: d <= 0)
+            frames = [alias(shape, d) for d in depths[:-1]] + [shape]
+            near = int(step.get("strike_near_px", 0))
+            near_from = next((k for k, d in enumerate(depths[:-1] + [0]) if d < near), None) if "strike" in step else None
+            out[id(step)] = lower_special.Motion(at, len(frames), near_from, round(v * 65536))
+        script = at
+        for k, f in enumerate(frames):
+            put(script + 4 * k, f)
+        if step["until"] == "below_screen":  # hold the hidden frame
+            put(script + 4 * len(frames), 1)
+            put(script + 4 * len(frames) + 4, script + 4 * (len(frames) - 1))
+            at = script + 4 * len(frames) + 8
+        else:  # then the running animation from its second frame
+            put(script + 4 * len(frames), 1)
+            put(script + 4 * len(frames) + 4, running + 4)
+            at = script + 4 * len(frames) + 8
+    return out, at
+
+
 def _free_from(file87: bytearray, start: int) -> int:
     """First 16-aligned offset after the last used byte of the body tail [start, TYPE_END)."""
 
@@ -213,8 +314,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     donor_id = d.donor_fighter_id
     donor = body_build.Donor(mkt, donor_id)
     rom = bytearray(clean)
-    moves, _ = components.load_programs(name)
-    programs = {m.name: m for m in moves}
+    try:  # stored programs (references once SMRE writes the moves)
+        stored, _ = components.load_programs(name)
+    except FileNotFoundError:  # a fighter whose moves SMRE writes, with no references
+        stored = []
+    programs = {m.name: m for m in stored}
     report: dict[str, Any] = {}
     if d.smre:  # SMRE: the programs written from MKT's own code (the stored ones are references)
         programs.update(smre_programs(mkt, donor_id, d.smre, programs, report))
@@ -229,9 +333,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         bytes(body.file), stock=body.clean_file, flipped=body.flipped,
         slide="slide" in d.body.common_animations,
     )  # fmt: skip
-    combos_low = combos.lower(combos.donor_graph(mkt, donor_id),
-                              *_combo_slot(d), set(d.body.slots))  # fmt: skip
-    combos.install(rom, combos_low)
+    combo_graph = combos.donor_graph(mkt, donor_id)
     vs, samples_end = voices.install(rom, clean, mkt, donor_id, VOICE_CHAINS, SAMPLE_ROM)
     used_voices = len(set(vs.category.values()) - {None})
     chains = _Pool(tuple(EXTRA_CHAINS) + tuple(VOICE_CHAINS[used_voices:]), "isolated sound chains")
@@ -251,9 +353,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         samples_end = sound.install(rom, clean, donor_sound, chain, (samples_end + 0xF) & ~0xF)
         return chain.event
 
-    animations: dict[tuple[int, int], int | tuple[str, int]] = {}
-    for key, (t, i, _) in d.body.secondary_scripts.items():
-        animations[(t, i)] = key if key < body_build.VIRTUAL_SCRIPT else ("at", body.script_offsets[key])
+    animations: dict[tuple, int | tuple[str, int]] = {}
+    for key, (t, i, _) in d.body.secondary_scripts.items():  # backwards ones: (t, i, "reverse")
+        where = key if key < body_build.VIRTUAL_SCRIPT else ("at", body.script_offsets[key])
+        animations[(t, i, "reverse") if key in d.body.reverse_scripts else (t, i)] = where
     animations[(0, d.body.run_slot)] = ("at", body_build.RUN_TARGET)
     for k in d.body.slots:  # host primary k holds MKT table-0 index k (the generic body rule)
         if k not in d.body.sources:  # (a slot with another source holds something else)
@@ -273,6 +376,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     fighter_sounds: dict[int, int] = dict([script_sound]) if script_sound else {}
     footsteps: dict[str, tuple[int, ...]] = {}
     effect_art: dict[int, tuple[effects.EffectArt, effects.EffectLayout, dict[str, Any]]] = {}
+    fx_info: dict[tuple[str, str], mkt_effects.MktEffect] = {}  # (move, "trail" | "impact")
+    fx_places: dict[str, list[tuple[int, int]]] = {}  # move -> its trail's offset per homing direction
+    projectile_events: dict[int, int] = {}  # projectile sounds hosted so far: fighter sound -> event
+    marker_art: dict[str, tuple[effects.EffectArt, effects.EffectLayout]] = {}  # move -> its crosshair
     report["body"] = body.report
     for move in order:
         tune = d.specials.get(move, {})
@@ -299,6 +406,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             projectile_of[move] = proj
             anim = proj["art"]
             akey = (_int(anim["table"]), _int(anim["slot"]), _int(anim.get("part", 1)))
+            if "homing" in proj:  # its own art: every direction's script (MKT point_rocket)
+                akey = (*akey, 1)  # type: ignore[assignment]
             gkey = (akey, proj["strike"]["reaction"])
             if gkey in groups:
                 groups[gkey].moves.append(move)
@@ -318,10 +427,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                                    helper_slot=_int(ptune["helper_slot"]) if "helper_slot" in ptune else None,
                                    throw_rate=int(throw["rate"]),
                                    impact_mirror=impact_mirror(proj, ptune))  # fmt: skip
-                needed = len(lp.projectile_sounds(proj))
+                needed = lp.new_sounds(proj, projectile_events)
                 events, samples_end = lp.install_sounds(
                     rom, clean, mkt, donor_id, proj, tuple(chains.take() for _ in range(needed)),
-                    (samples_end + 0xF) & ~0xF,
+                    (samples_end + 0xF) & ~0xF, projectile_events,
                 )  # fmt: skip
                 stock = lp.host_reaction(proj["strike"]["reaction"])
                 helper_label = f"{move}_helper" if helper is not None else None
@@ -382,6 +491,61 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 raise BuildError(f"{move}: effect {fx} art does not fit the fighter file")
             file87[placed.offset : placed.end] = placed.data
             effect_art[int(fx)] = (art_fx, placed, spec)
+        for fx in _unlowered_effects(projectile_of.get(move)):
+            report.setdefault("effects_not_lowered", []).append((move, fx))
+        for role, eff in _projectile_effects(projectile_of.get(move)):  # Sektor's smoke and explosion
+            fx = _int(eff["mkt_fx"])
+            if eff.get("place") == "direction":  # one placement entry per homing direction
+                parts = _int(projectile_of[move]["homing"]["directions"]["parts"])
+                placed_by = [mkt_effects.read(mkt, fx, k) for k in range(parts)]
+                fx_places[move] = [(e.dx * lp.UNITS_PER_PX, e.dy * lp.UNITS_PER_PX) for e in placed_by]
+                info = placed_by[0]
+            else:
+                info = mkt_effects.read(mkt, fx, _int(eff["place"]) if "place" in eff else None)
+            fx_info[(move, role)] = info
+            if fx in effect_art:
+                continue
+            start, end = MktRom(mkt).dictionary(donor_id)
+            shared = mkt[mkt_effects.SHARED_DICTIONARY - 0x80000000 :][:0x100]
+            art_fx = mkt_effects.art(mkt, info, [mkt[start:end], shared])
+            placed = effects.layout(art_fx, _free_from(file87, body.chain_start))
+            if placed.end > body_build.TYPE_END or set(file87[placed.offset : placed.end]) != {0xFF}:
+                raise BuildError(f"{move}: MKT effect {fx} art does not fit the fighter file")
+            file87[placed.offset : placed.end] = placed.data
+            spec = {"ticks_per_frame": max(1, info.ticks_per_frame * physics.HOST_HZ // physics.DONOR_HZ),
+                    "reserve": mkt_effects.TRAIL_RESERVE if role == "trail" else mkt_effects.EFFECT_RESERVE}  # fmt: skip
+            effect_art[fx] = (art_fx, placed, spec)
+            report.setdefault("mkt_effects", []).append((move, role, fx, hex(placed.offset), len(placed.data)))
+    for move in order:  # a homing projectile's crosshair (MKT: an object from a table-1 frame)
+        proj = projectile_of.get(move)
+        if proj is not None and "homing" in proj:
+            mark = _marker_art(mkt, donor_id, proj["homing"]["marker"]["anim"])
+            placed = effects.layout(mark, _free_from(file87, body.chain_start))
+            if placed.end > body_build.TYPE_END or set(file87[placed.offset : placed.end]) != {0xFF}:
+                raise BuildError(f"{move}: the crosshair art does not fit the fighter file")
+            file87[placed.offset : placed.end] = placed.data
+            marker_art[move] = (mark, placed)
+    # His MKT throw routine's own sounds on the host throw's three stages (Sektor's arm: out, throw,
+    # in). MKT's grab voice (voice group 3, every fighter) is left out (owner, 2026-11-27: grab
+    # sounds dropped for now; Rayden had no sound chain for his).
+    throw_events: dict[str, tuple[int, ...]] = {}
+    for stage, numbers in throw_sounds.read(mkt, donor_id).items():
+        for n in numbers:
+            if n not in fighter_sounds:
+                fighter_sounds[n] = install(bank.event(bank.fighter_event(donor_id, n)))
+        if numbers:
+            throw_events[stage] = tuple(fighter_sounds[n] for n in numbers)
+    if throw_events:
+        report["throw_sounds"] = {k: list(v) for k, v in throw_events.items()}
+    motions: dict[int, lower_special.Motion] = {}
+    for move in order:  # sinking and rising jumps: their alias scripts in the fighter file's tail
+        if any(s["op"] == "jump" and s.get("until") in ("below_screen", "surface") for s in steps_of[move]):
+            start = _free_from(file87, body.chain_start)
+            made, end_at = motion_scripts(file87, steps_of[move], animations,
+                                          _int(d.specials.get(move, {}).get("donor_ticks", 1)), start)  # fmt: skip
+            if end_at > body_build.TYPE_END:
+                raise BuildError(f"{move}: motion scripts do not fit the fighter file")
+            motions.update(made)
     if len(file87) != body_build.FILE87_SIZE:
         raise BuildError("the fighter file changed size")
     rom[body_build.FILE87_ROM : body_build.FILE87_ROM + len(file87)] = file87
@@ -390,6 +554,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     # Ice costs: the description's (owner decisions), else none for a movement ability (owner
     # rule, 2026-11-24), twice Ice Blast's for a grab (owner rule, 2026-11-26), else the replaced
     # Sub-Zero power's.
+    moves = list(programs.values())  # SMRE's where it writes them
     movement = {mv.name for mv in moves if mv.movement}
     grabs = {mv.name for mv in moves if mv.grab}
     costs = {m: d.costs.get(m, lower_special.MOVEMENT_COST if m in movement
@@ -427,10 +592,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             held = ("hold_hp_stamp", _int(held_cond["ticks"]))
         lower_special.emit_gate_condition(a, f"{move}_cond", gate, costs[move], default=default,
                                           cooldown=(f"{move}_cooldown", cooldown_of[move]) if move in cooldown_of else None,
-                                          target_range=lower_special.RELOCATE_RANGE if relocates else None,
+                                          target_range=lower_special.RELOCATE_RANGE if relocates
+                                          or "homing" in projectile_of.get(move, {}) else None,
                                           held=held,
                                           alive=alive, refuse_if=refuse,
-                                          airborne=bool(tune.get("airborne")))  # fmt: skip
+                                          airborne=bool(tune.get("airborne") or tune.get("air_start")))  # fmt: skip
         g = group_of.get(move)
         meanings = {s["strike"]["reaction"] for s in _all_steps(steps) if s["op"] == "strike"}
         reaction_map = {}
@@ -469,6 +635,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             air_control=bool(tune.get("air_control")),  # owner: steer the closing drop
             cooldown=f"{move}_cooldown" if move in cooldown_of else None,
             afterimage=afterimage_of[move][0] if move in afterimage_of else None,
+            motions=motions or None,
+            air_start=bool(tune.get("air_start")),  # MKT's command has no ground check (Sektor's teleport)
+            primary_scripts={k: int.from_bytes(file87[4 * k : 4 * k + 4], "big") for k in d.body.slots},
         )  # fmt: skip
         if g is not None:
             ptune = tune.get("projectile", {})
@@ -476,6 +645,23 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             low = dataclasses.replace(low, impact_flip=bool(ptune.get("impact_flip", True)),
                                       impact_keep_y=bool(ptune.get("impact_keep_y", True)),
                                       impact_at_hit=bool(ptune.get("impact_at_hit", True)))  # fmt: skip
+            if (move, "trail") in fx_info:  # MKT rocket_smoke: one puff every other donor tick
+                info, every = fx_info[(move, "trail")], _int(projectile_of[move]["trail"]["every"])
+                if every * physics.HOST_HZ != physics.DONOR_HZ or (info.dy and move not in fx_places):
+                    raise BuildError(f"{move}: a trail every {every} donor ticks, {info.dy} px up, is not lowered")
+                low = dataclasses.replace(low, trail=f"fx_{info.fx}", trail_dx=info.dx * lp.UNITS_PER_PX,
+                                          trail_front=info.front)  # fmt: skip
+            if "offset_px" not in ptune:  # MKT's own spawn offset: drawn as the stock token draws
+                low = dataclasses.replace(low, owner_draw=True, render_position=True)
+            if "homing" in projectile_of[move]:  # MKT's homing flight, smoke by direction, crosshair
+                homing = lp.homing_of(projectile_of[move], g.art)
+                homing = dataclasses.replace(homing, smoke=tuple(fx_places.get(move, ())),
+                                             marker=f"{move}_marker_desc" if move in marker_art else None,
+                                             strike_in_flight=bool(ptune.get("strike_in_flight")))  # fmt: skip
+                low = dataclasses.replace(low, homing=homing)
+            if (move, "impact") in fx_info:  # at the projectile (MKT rocket_explode_fx)
+                info = fx_info[(move, "impact")]
+                low = dataclasses.replace(low, impact_effect=f"fx_{info.fx}", impact_effect_front=info.front)
             if "impact_toward_px" in ptune:  # owner: the impact nearer the attacker (facing him)
                 low = dataclasses.replace(low, impact_dx=low.impact_dx
                                           + _int(ptune["impact_toward_px"]) * lp.UNITS_PER_PX)  # fmt: skip
@@ -517,13 +703,22 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             report.setdefault("strike_records", []).append((move, records))
     if effect_art:
         effects.emit_spawn(a)
-        effects.emit_process(a)
+        effects.emit_process(a, render_position=bool(fx_info))  # (Reptile's fire: as accepted)
         while a.pc() & 3:
             a.nop()
         for fx, (art_fx, placed, spec) in effect_art.items():
             effects.emit_descriptor(a, f"fx_{fx}", placed, art_fx, _int(spec["ticks_per_frame"]),
                                     _int(spec["reserve"]))  # fmt: skip
+    for move, (mark, placed) in marker_art.items():  # each crosshair follows its missile's target
+        dx, dy = lp.homing_of(projectile_of[move], lp.ArtLayout(0, 0, None, 0, 0, 0)).marker_offset
+        effects.emit_spawn(a, f"{move}_marker_spawn", process=f"{move}_marker")
+        effects.emit_process(a, f"{move}_marker", follow=(f"{move}_follow", f"{move}_heartbeat", dx, dy),
+                             render_position=True)  # fmt: skip
+        while a.pc() & 3:
+            a.nop()
+        effects.emit_descriptor(a, f"{move}_marker_desc", placed, mark, 1, mkt_effects.EFFECT_RESERVE)
     host.emit_sound_player(a)
+    throw_hooks = throw_sounds.emit_hooks(a, throw_events)
     for g in groups.values():
         if g.helper is not None and g.first:
             lp.emit_helper_data(a, g.helper)
@@ -542,7 +737,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     main = a.link()
     # Transfer mode 0 refuses an airborne start, mode 1 does not (Wiki Player-Actions "Descriptor
     # selector and condition"): moves tuned "airborne" (Rayden's torpedo) take mode 1.
-    overrides = {m: (1 if d.specials.get(m, {}).get("airborne") else 0, a.labels[f"{m}_cond"], a.labels[f"{m}_thunk"])
+    overrides = {m: (1 if d.specials.get(m, {}).get("airborne") or d.specials.get(m, {}).get("air_start") else 0,
+                     a.labels[f"{m}_cond"], a.labels[f"{m}_thunk"])
                  for m in order}  # fmt: skip
     cmds = commands.donor_commands(mkt, moves, d.commands)
     stub_base = (link_va + TABLE_RESERVE + len(main) + 0xF) & ~0xF
@@ -552,11 +748,19 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
            for k, v in low_cmd.moved.items()):  # fmt: skip
         raise BuildError("moved command tables do not fit their reserve")
     end = stub_base - link_va + len(low_cmd.stubs)
+    # Combo option lists past the host graph (Sektor's seventh record) follow the stubs.
+    combo_at = (end + 0xF) & ~0xF
+    combos_low = combos.lower(combo_graph, *_combo_slot(d), set(d.body.slots),
+                              overflow_va=link_va + combo_at)  # fmt: skip
+    combos.install(rom, combos_low)
+    if combos_low.overflow:
+        end = combo_at + len(combos_low.overflow)
     if end > PAYLOAD_LIMIT:
         raise BuildError(f"payload 0x{end:X} > 0x{PAYLOAD_LIMIT:X}")
     payload = bytearray(end)
     payload[TABLE_RESERVE : TABLE_RESERVE + len(main)] = main
-    payload[stub_base - link_va : end] = low_cmd.stubs
+    payload[stub_base - link_va : stub_base - link_va + len(low_cmd.stubs)] = low_cmd.stubs
+    payload[combo_at : combo_at + len(combos_low.overflow)] = combos_low.overflow
     rom[SCRATCH_ROM : SCRATCH_ROM + end] = payload
     commands.install(rom, clean, low_cmd, SCRATCH_ROM, link_va, indirect=indirect)
     payload = bytearray(rom[SCRATCH_ROM : SCRATCH_ROM + end])  # with the moved tables
@@ -565,6 +769,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     _guarded(rom, TRANSFER_BOUND_ROM, TRANSFER_BOUND_STOCK, TRANSFER_BOUND_STOCK - 3 + FIRST_SELECTOR + len(order))
     for m in order:
         _guarded(rom, host.TRANSFER_TABLE - VA_TO_ROM + 4 * selectors[m], 0, a.labels[f"{m}_root"])
+    for off, (old, new) in tier_edits(bytes(rom), d.tiers).items():  # derived: see tier_edits
+        _guarded(rom, off, old, new)
+    for stage, label in throw_hooks.items():  # the stock jal enters the payload's KSEG0 alias
+        site, stock, _, _ = throw_sounds.SITES[stage]
+        _guarded(rom, site - VA_TO_ROM, stock, 0x0C000000 | ((a.labels[label] >> 2) & 0x03FFFFFF))
     for g in groups.values():
         reaction_label = f"g{_gid(g)}_reaction"
         if reaction_label not in a.labels:  # a stock (host-kind) reaction
@@ -589,7 +798,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
 
 
 def _gid(g: _Group) -> str:
-    return f"{g.key[0]}_{g.key[1]}_{g.key[2]}" + ("" if g.first else f"_{g.reaction}")
+    homing = "_h" if len(g.key) > 3 else ""  # a homing projectile's own art (directions)
+    return f"{g.key[0]}_{g.key[1]}_{g.key[2]}{homing}" + ("" if g.first else f"_{g.reaction}")
 
 
 def _report_key(g: _Group, groups: dict) -> str:
@@ -599,6 +809,61 @@ def _report_key(g: _Group, groups: dict) -> str:
 def _combo_slot(d: fd.FighterDescription) -> tuple[int | None]:
     table, index = d.body.sources.get(combos.COMBO_SLOT, (0, combos.COMBO_SLOT))
     return (index if table == 1 else None,)
+
+
+# Kept Sub-Zero powers whose tier a description may move (``tiers``): power -> ROM of its gate
+# ``slti v0, v0, N`` (Static-confirmed; Sektor's legacy R4 edit, sektor_tiers.SUPER_SLIDE_GATE_ROM).
+TIER_SITES = {"super_slide": 0x3D728}  # 0x8003CB28, the Super Slide recogniser 0x8003CAF4
+
+
+def tier_edits(rom: bytes, tiers: dict[str, str]) -> dict[int, tuple[int, int]]:
+    """ROM offset -> (word, new word): each moved power's gate takes the threshold of the named
+    slot's gate in ``rom`` (the clean ROM, or the randomized one after any power-order shuffle,
+    which rewrites only the thresholds). A derived edit: the product recomputes it from the
+    randomized ROM (``patches.fighter_swap``)."""
+
+    from .actions.sektor_tiers import SLTI_V0, _gate
+
+    word = lambda off: int.from_bytes(rom[off : off + 4], "big")
+    edits = {}
+    for power, slot in tiers.items():
+        site, source = TIER_SITES[power], lower_special.GATES[slot] - VA_TO_ROM
+        edits[site] = (word(site), SLTI_V0 | _gate(word(source)))
+        _gate(word(site))
+    return edits
+
+
+def _marker_art(mkt: bytes, donor_id: int, anim: dict[str, Any]) -> effects.EffectArt:
+    """A homing crosshair: the first word of the donor's table-1 script names its image
+    descriptor, whose fourth word is its palette (Sektor's 0x2C64, 0x800BC3D0)."""
+
+    rom = MktRom(mkt)
+    heap = rom.heap_bytes(donor_id)
+    table = rom.table1(donor_id) if _int(anim["table"]) == 1 else rom.table0(donor_id)
+    descriptor = int.from_bytes(heap[table[_int(anim["slot"])] :][:4], "big")
+    start, end = rom.dictionary(donor_id)
+    frame = effects.heap_descriptor_frame(heap, descriptor, mkt[start:end])
+    palette = int.from_bytes(heap[descriptor + 12 : descriptor + 16], "big")
+    return effects.EffectArt((frame,), effects.mkt_palette(mkt, palette))
+
+
+def _projectile_effects(step: dict[str, Any] | None) -> list[tuple[str, dict[str, Any]]]:
+    """("trail" | "impact", effect) a projectile step starts that the backend lowers: its trail,
+    and its impact when the impact is that effect (``end: effect``, Sektor's explosion). An
+    effect beside an impact animation (Reptile's acid droplets, ``create_fx(0x2F)``) is not
+    lowered yet (:func:`_unlowered_effects`)."""
+
+    if step is None:
+        return []
+    impact = step.get("impact", {})
+    found = [("trail", step.get("trail", {}).get("effect")),
+             ("impact", impact.get("effect") if impact.get("end") == "effect" else None)]  # fmt: skip
+    return [(role, eff) for role, eff in found if eff is not None]
+
+
+def _unlowered_effects(step: dict[str, Any] | None) -> list[int]:
+    impact = (step or {}).get("impact", {})
+    return [_int(impact["effect"]["mkt_fx"])] if "effect" in impact and impact.get("end") != "effect" else []
 
 
 def _projectile_rates(step: dict[str, Any], ticks_per: int) -> dict[str, Any]:
@@ -769,5 +1034,6 @@ def production(clean: bytes, mkt: bytes, name: str, *, fixed_va: int = FIXED_VA)
         "refs": [[r.address, r.offset, r.kseg0] for r in refs], "jal_sites": {hex(o): b for o, b in jal_sites.items()},
         "file87_rom": f87_rom, "file87_size": len(file87), "samples_rom": samples_rom,
         "samples_end": samples_rom + len(samples), "tail": TAIL, "slack": body_build.TYPE_END - blob_end,
+        "derived": sorted(tier_edits(clean, fd.load(name).tiers)),
     }  # fmt: skip
     return Production(bytes(image), fixed, manifest)

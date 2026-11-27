@@ -425,6 +425,175 @@ def _timed_repeat(step: dict[str, Any], donor_ticks: int) -> tuple[int, list[lis
     return count // k, bodies
 
 
+INSTANT_OPS = {"pose", "next_frame", "sound", "face", "flip"}
+
+
+def _sleep_runs(steps: list[dict[str, Any]], donor_ticks: int) -> list[dict[str, Any]]:
+    """Sleeps with only instant steps between them, rounded on their running total (as
+    :func:`_timed_repeat` does within a repeat): Sektor's landing, two frames of 3 donor ticks
+    each, takes 3 host ticks (MKT's 0.1 s), not 2 + 2 (proof v07; the owner's LK after the
+    uppercut). A lone sleep keeps its own rounding."""
+
+    if donor_ticks <= 1:
+        return steps
+    out = list(steps)
+    run: list[int] = []
+
+    def close() -> None:
+        if len(run) > 1:
+            donor = done = 0
+            for i in run:
+                donor += int(out[i]["ticks"])
+                end = (2 * donor + donor_ticks) // (2 * donor_ticks)  # nearest, halves up
+                out[i] = {**out[i], "_host_ticks": max(1, end - done)}
+                done = end
+        run.clear()
+
+    for k, s in enumerate(out):
+        if s["op"] == "sleep" and "_host_ticks" not in s:
+            run.append(k)
+        elif s["op"] not in INSTANT_OPS:
+            close()
+    close()
+    return out
+
+
+@dataclass(frozen=True)
+class Motion:
+    """A ``jump`` step that sinks below the screen or rises to the floor, as an alias script: one
+    frame per host tick (``steps``), the fighter's pose moved down by the donor curve's depth
+    (``fighter_build.motion_scripts``). ``near_from``: the first step within the strike's reach
+    of the floor (a rise); ``surface_velocity``: MKT's y velocity when the rise reaches the
+    floor (donor units), the flight's start."""
+
+    script: int
+    steps: int
+    near_from: int | None = None
+    surface_velocity: int | None = None
+
+
+def _emit_fall_then_sink(a: Assembler, motion: Motion, y: int, gravity: int, tag: str) -> None:
+    """A sink that may start in the air: while above his floor the fighter falls on the sink's
+    own curve (MKT's velocity and gravity, converted), showing its first frame, counting ticks
+    (``s7``); then the alias script goes on from that tick (capped at its last frame)."""
+
+    host.set_cursor(a, motion.script)
+    host.advance_animation(a)
+    a.move("s7", "zero")
+    a.lw("t0", host.ACTOR_Y, "s1")
+    a.lw("t1", host.CTRL_GROUND, "s0")
+    a.slt("t2", "t0", "t1")  # y grows downward: above the floor
+    a.beqz("t2", tag + "_grounded")
+    a.li("t0", physics.convert_velocity(y))
+    a.sw("t0", host.ACTOR_YVEL, "s1")
+    a.li("t0", physics.convert_acceleration(gravity))
+    a.sw("t0", host.ACTOR_GRAVITY, "s1")
+    a.li("s2", 60)  # at most 2 s
+    a.label(tag)
+    host.sleep_tick(a)
+    host.load_controller(a)
+    a.addiu("s7", "s7", 1)
+    a.lw("t0", host.ACTOR_Y, "s1")
+    a.lw("t1", host.CTRL_GROUND, "s0")
+    a.slt("t2", "t0", "t1")
+    a.beqz("t2", tag + "_fallen")
+    a.addiu("s2", "s2", -1)
+    a.bnez("s2", tag)
+    a.label(tag + "_fallen")
+    host.stop(a)
+    a.sw("zero", host.ACTOR_GRAVITY, "s1")
+    a.sw("zero", host.ACTOR_YVEL, "s1")
+    a.sh("zero", host.CTRL_AIRBORNE, "s0")
+    a.label(tag + "_grounded")
+    a.li("t0", motion.steps - 1)
+    a.slt("t1", "t0", "s7")
+    a.beqz("t1", tag + "_index")
+    a.move("s7", "t0")  # capped at the last frame
+    a.label(tag + "_index")
+    a.lw("t0", host.ACTOR_FILE_BASE, "s1")  # the cursor on frame s7 of the script
+    a.sll("t1", "s7", 2)
+    a.addu("t0", "t0", "t1")
+    a.li("t1", motion.script)
+    a.addu("t0", "t0", "t1")
+    a.sw("t0", host.CTRL_SCRIPT_CURSOR, "s0")
+    host.advance_animation(a)
+    a.li("s2", motion.steps - 1)
+    a.subu("s2", "s2", "s7")  # the ticks left
+    a.beqz("s2", tag + "_done")
+    a.label(tag + "_sink")
+    host.sleep_tick(a)
+    host.load_controller(a)
+    host.advance_animation(a)
+    a.addiu("s2", "s2", -1)
+    a.bnez("s2", tag + "_sink")
+    a.label(tag + "_done")
+    host.load_controller(a)
+
+
+def _emit_strike_once(a: Assembler, label: str, record: str, hit_word: str) -> None:
+    """``label()``: the strike against every enemy unless it already connected (``hit_word``);
+    on contact sets ``hit_word`` (1 clean, 2 blocked). Saves what it uses."""
+
+    done = label + "_done"
+    a.label(label)
+    a.addiu("sp", "sp", -0x20)
+    a.sw("ra", 0x1C, "sp")
+    a.la("t0", hit_word)
+    a.lw("t0", 0, "t0")
+    a.bnez("t0", done)
+    a.la("a0", record)
+    a.lui("t0", lp.KSEG1_TO_KSEG0 >> 16)
+    a.subu("a0", "a0", "t0")  # KSEG0 alias: the collision core rejects other records
+    a.move("a1", "zero")
+    a.jal(host.F_STRIKE)
+    a.andi("v0", "v0", 0xFFFF)
+    a.li("t0", 0x8000)
+    a.bne("v0", "t0", done)
+    a.lui("t0", hi(BLOCKED_FLAG))
+    a.lhu("t0", lo(BLOCKED_FLAG), "t0")
+    a.li("t1", 1)
+    a.beqz("t0", label + "_clean")
+    a.li("t1", 2)
+    a.label(label + "_clean")
+    a.la("t0", hit_word)
+    a.sw("t1", 0, "t0")
+    a.label(done)
+    a.lw("ra", 0x1C, "sp")
+    a.jr_ra()
+    a.addiu("sp", "sp", 0x20)
+
+
+def _emit_rising_strike(a: Assembler, label: str, strike_once: str, hit_word: str,
+                        blocked_gravity: int | None) -> None:  # fmt: skip
+    """The stock jump's per-tick callback (controller ``+0x70C``, MKT process ``+0x438``): the
+    strike while the fighter rises (actor y velocity < 0); a blocked strike switches the gravity
+    (MKT ``0xB000``)."""
+
+    a.label(label)
+    a.addiu("sp", "sp", -0x20)
+    a.sw("ra", 0x1C, "sp")
+    a.sw("s1", 0x18, "sp")
+    a.sw("s0", 0x14, "sp")
+    host.load_controller(a)
+    a.lw("t0", host.ACTOR_YVEL, "s1")
+    a.bgez("t0", label + "_done")
+    a.jal_label(strike_once)
+    if blocked_gravity is not None:
+        a.la("t0", hit_word)
+        a.lw("t0", 0, "t0")
+        a.li("t1", 2)
+        a.bne("t0", "t1", label + "_done")
+        host.load_controller(a)
+        a.li("t0", blocked_gravity)
+        a.sw("t0", host.ACTOR_GRAVITY, "s1")
+    a.label(label + "_done")
+    a.lw("s0", 0x14, "sp")
+    a.lw("s1", 0x18, "sp")
+    a.lw("ra", 0x1C, "sp")
+    a.jr_ra()
+    a.addiu("sp", "sp", 0x20)
+
+
 def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: int,
                 animations: dict[tuple[int, int], int | tuple[str, int]], child: str | None = None,
                 helper: str | None = None, sounds: dict[int, int] | None = None,
@@ -436,7 +605,10 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 effects: dict[int, tuple[str, int]] | None = None,
                 skip: frozenset[str] = frozenset(),
                 carry: str | None = None, air_control: bool = False,
-                cooldown: str | None = None, afterimage: str | None = None) -> list[tuple[str, bytes]]:  # fmt: skip
+                cooldown: str | None = None, afterimage: str | None = None,
+                motions: dict[int, Motion] | None = None,
+                primary_scripts: dict[int, int] | None = None,
+                air_start: bool = False) -> list[tuple[str, bytes]]:  # fmt: skip
     """The action root for a move program (never returns). ``animations``: donor animation
     (table, slot) -> host secondary slot holding it, or ``("at", offset)`` for a body script
     without a table entry (selected by setting the cursor); ``child``: the projectile process
@@ -457,7 +629,13 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     :data:`AIR_MAP`); ``cooldown``: the label of the move's cooldown process
     (the clock stamp its ``stamp`` step writes, :func:`emit_stamp`); ``afterimage``: the label of the
     afterimage process (``lower_projectile.emit_afterimage_process``) for ``afterimage`` steps;
-    ``relocate`` steps call the ``relocate`` subroutine (:func:`emit_relocate_routine`).
+    ``relocate`` steps call the ``relocate`` subroutine (:func:`emit_relocate_routine`);
+    ``motions``: ``id(step)`` -> :class:`Motion`, the alias scripts of the ``jump`` steps that
+    sink below the screen or rise to the floor (``fighter_build.motion_scripts``);
+    ``primary_scripts``: host primary slot -> its script's file offset (a pose with an offset
+    in a body slot: Sektor's landing); ``air_start``: the move may start in the air (MKT's
+    command has no ground check), so a sink first falls on its own curve to the floor and goes
+    on from the curve tick it reached (Sektor's legacy teleport, runtime-confirmed v08).
 
     Returns the strike records ``(label, 16 bytes)`` to place with :func:`emit_strike_data`.
 
@@ -488,16 +666,21 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
         counter[0] += 1
         return f"{label}_{tag}{counter[0]}"
 
-    def anim_at(anim: dict[str, Any]) -> int | tuple[str, int]:
-        key = (int(anim["table"]), int(anim["slot"]))
+    def anim_at(anim: dict[str, Any], reverse: bool = False) -> int | tuple[str, int]:
+        key: tuple = (int(anim["table"]), int(anim["slot"]))
+        if reverse:  # its frames backwards (body.secondary_scripts ``:reverse``)
+            key = (*key, "reverse")
         if key not in animations:
             raise ValueError(f"{label}: animation {key} has no host slot")
         return animations[key]
 
     def select(where: int | tuple[str, int], offset: int = 0) -> None:
-        if isinstance(where, tuple) and where[0] == "primary":  # a body slot (Rayden's getup)
-            if offset:
+        if isinstance(where, tuple) and where[0] == "primary" and offset:  # by its script offset
+            if not primary_scripts or where[1] not in primary_scripts:
                 raise ValueError(f"{label}: a pose offset needs a script offset")
+            host.load_controller(a)
+            host.set_cursor(a, primary_scripts[where[1]] + 4 * offset)
+        elif isinstance(where, tuple) and where[0] == "primary":  # a body slot (Rayden's getup)
             a.move("a0", "zero")
             a.li("a1", where[1])
             a.jal(lp.F_SELECT)
@@ -512,6 +695,11 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             a.jal(lp.F_SELECT)
 
     stepping: list[Footsteps | None] = [None]  # the manual animation's footsteps, if any
+    running: list[int | None] = [None]  # the rate of an ``animate ... running`` animation
+    rise: list[Motion | None] = [None]  # the last rise: a jump without y goes on from it
+    hit_word = f"{label}_struck"  # a motion's strike connected (once per move)
+    motion_strike: list[str | None] = [None]  # its record label
+    callbacks: list[tuple[str, str, int | None]] = []  # (label, record, blocked gravity)
 
     def advance(times: int = 1) -> None:
         for _ in range(times):
@@ -548,7 +736,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
         host.load_controller(a)
 
     def emit(steps: list[dict[str, Any]], after: str | None) -> None:
-        for step in steps:
+        for step in _sleep_runs(steps, donor_ticks):
             op = step["op"]
             if op in skip:
                 continue
@@ -573,8 +761,15 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 host.load_controller(a)
                 emit_charge(a, cost)
             elif op == "animate":
-                where = anim_at(step["anim"])
+                where = anim_at(step["anim"], bool(step.get("reverse")))
                 until = step.get("until")
+                if until == "running":  # rate-stepped by the motion that follows (MKT next_anirate)
+                    select(where)
+                    a.li("a0", _scale(int(step["rate"]), donor_ticks))
+                    a.jal(host.F_RATE_INIT)
+                    running[0] = _scale(int(step["rate"]), donor_ticks)
+                    host.load_controller(a)
+                    continue
                 if until not in ("phase_end", "manual"):
                     raise ValueError(f"{label}: animation end {until!r} is not lowered yet")
                 if helper is not None and until == "phase_end":
@@ -586,7 +781,16 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                     a.move("s7", "zero")
                 select(where)
                 if until == "phase_end":
-                    a.li("a0", _scale(int(step["rate"]), donor_ticks))
+                    if "rate_reacting" in step:  # MKT: faster while the opponent is in a reaction
+                        quick = fresh("quick")
+                        host.load_controller(a)
+                        host.opponent_reacting(a, "s0", "t8", quick + "_read")
+                        a.li("a0", _scale(int(step["rate"]), donor_ticks))
+                        a.beqz("t8", quick)
+                        a.li("a0", _scale(int(step["rate_reacting"]), donor_ticks))
+                        a.label(quick)
+                    else:
+                        a.li("a0", _scale(int(step["rate"]), donor_ticks))
                     a.jal(F_TO_PHASE_END)
                     host.load_controller(a)
                 else:  # show the first frame (index 0); next_frame steps advance it
@@ -660,6 +864,66 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 a.la("t0", carry)
                 a.sw("zero", 0, "t0")  # release
                 host.load_controller(a)
+            elif op == "jump" and step["until"] in ("below_screen", "surface"):
+                motion = (motions or {}).get(id(step))
+                if motion is None:
+                    raise ValueError(f"{label}: jump {step['until']} has no alias script")
+                strike_at = None
+                if "strike" in step:
+                    strike_at = motion.near_from
+                    record_for(step["strike"])  # the record the strike routine checks
+                    a.la("t0", hit_word)
+                    a.sw("zero", 0, "t0")
+                if step["until"] == "surface":
+                    rise[0] = motion
+                host.load_controller(a)
+                if step["until"] == "below_screen" and air_start:
+                    _emit_fall_then_sink(a, motion, lp._int(step["y"]), lp._int(step["gravity"]), fresh("fall"))
+                    continue
+                host.set_cursor(a, motion.script)
+                host.advance_animation(a)
+                a.li("s2", motion.steps - 1)
+                tick = fresh("motion")
+                a.label(tick)
+                host.sleep_tick(a)
+                host.load_controller(a)
+                host.advance_animation(a)
+                if strike_at is not None:  # the last ``steps - near_from`` ticks: near the floor
+                    far = fresh("far")
+                    a.slti("t0", "s2", motion.steps - strike_at + 1)
+                    a.beqz("t0", far)
+                    a.jal_label(f"{label}_strike_once")
+                    a.label(far)
+                    host.load_controller(a)
+                a.addiu("s2", "s2", -1)
+                a.bnez("s2", tick)
+                host.load_controller(a)
+            elif op == "jump" and "y" not in step:  # on from the motion's velocity (a rise)
+                motion = rise[0]
+                if motion is None or motion.surface_velocity is None:
+                    raise ValueError(f"{label}: a jump without y follows no rise")
+                cb = None
+                if "strike" in step:
+                    cb = fresh("callback")
+                    blocked = physics.convert_acceleration(lp._int(step["gravity_on_block"])) if "gravity_on_block" in step else None
+                    callbacks.append((cb, record_for(step["strike"]), blocked))
+                host.load_controller(a)
+                if cb is not None:
+                    a.la("t0", cb)
+                    a.sw("t0", CTRL_JUMP_CALLBACK, "s0")  # the stock jump calls it each air tick
+                a.move("a0", "s1")
+                a.li("a1", physics.convert_velocity(lp._int(step.get("x", 0))))
+                a.li("a2", physics.convert_velocity(motion.surface_velocity))
+                a.li("a3", physics.convert_acceleration(lp._int(step["gravity"])))
+                a.li("t0", running[0] if running[0] is not None else JUMP_KEEP)
+                a.sw("t0", 0x10, "sp")
+                a.li("t0", -1)
+                a.sw("t0", 0x14, "sp")  # root: keep the current animation
+                if cb is None:
+                    a.sw("zero", CTRL_JUMP_CALLBACK, "s0")
+                a.jal(F_JUMP)
+                host.load_controller(a)
+                a.sw("zero", CTRL_JUMP_CALLBACK, "s0")
             elif op == "jump":  # the stock jump/fall to the floor (returns on landing)
                 host.load_controller(a)
                 if air_control:
@@ -791,6 +1055,18 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
         if after is not None:
             a.beq("zero", "zero", after)
 
+    def record_for(strike: dict[str, Any]) -> str:
+        """The move's one motion strike record (a rise and its flight check the same strike)."""
+
+        if motion_strike[0] is None:
+            meaning = strike["reaction"]
+            table = {**STOCK_REACTIONS, **(reactions or {})}
+            if meaning not in table:
+                raise ValueError(f"{label}: strike reaction {meaning!r} has no host reaction")
+            motion_strike[0] = fresh("record")
+            records.append((motion_strike[0], lp.strike_record(strike, table[meaning])))
+        return motion_strike[0]
+
     def _emit_strike(step: dict[str, Any]) -> None:
         strike = step["strike"]
         meaning = strike["reaction"]
@@ -837,6 +1113,14 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     host.enter_action(a, host.Frame(size=0x40, strike_offset=0x30), ())
     host.load_controller(a)
     emit(steps, None)
+    if motion_strike[0] is not None:  # after the action root, which never returns
+        _emit_strike_once(a, f"{label}_strike_once", motion_strike[0], hit_word)
+        for cb, rec, blocked in callbacks:
+            _emit_rising_strike(a, cb, f"{label}_strike_once", hit_word, blocked)
+        while a.pc() & 3:
+            a.nop()
+        a.label(hit_word)
+        a.raw(0)
     for shaker, step in shakers:  # after the action root, which never returns
         emit_screen_shake(a, shaker, int(step["amplitude"]) * lp.UNITS_PER_PX, int(step["count"]),
                           _scale(int(step["ticks"]), donor_ticks))  # fmt: skip

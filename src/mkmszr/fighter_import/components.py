@@ -14,7 +14,8 @@ Units (engine-neutral, anchored on donor values and the documented calibrations)
 * ``anim``: a donor animation ``{"table": 0|1, "slot": n}`` plus optional ``part`` (1-based)
   and ``offset`` (script words); the body builder imports the frames it names.
 * ``sound``: ``{"fighter": n}`` (the donor fighter sound table entry) or ``{"shared": n}``.
-* ``effect``: ``{"mkt_fx": n}`` (donor shared effect index).
+* ``effect``: ``{"mkt_fx": n}`` (donor shared effect index), with ``place: k`` when its routine
+  offsets it by MKT's placement entry k (the caller's argument: Sektor's ``rocket_smoke(3)``).
 * ``pxpair``: ``[x, y]`` donor pixels, x along the facing (positive forward), y positive down
   (the projectile spawn offset; proof v06: Reptile's forceball needs ``[-30, -36]``).
 * ``strike``: ``{"box": [x, y, w, h], "damage": n, "block_damage": n, "reaction": name,
@@ -49,10 +50,10 @@ REACTIONS = {
     "until a wall or the end, then it slumps where it is (MKT 0x8005391C)",
     "knockback_arc": "MKT 0x71: victim launched on an arc toward the attacker (x 0x2CCCC, y -0x6CCCC, gravity 0x5199)",
     "acid_stagger": "MKT 0x72: victim staggers back (+0x420 = 0x26666); details Pending",
+    "rocket_stumble": "MKT 0x3B (r_rocket -> zap_stumble, push 0x33333): the victim stumbles back",
     "shock_stagger": "MKT 0x80: victim staggers back (0x26666) blinking cyan (its shock palette)",
     "shock_stagger_toward": "MKT 0x81: as 0x80, pushed towards the attacker (towards_x_vel)",
     "shock_hold": "Rayden's Shocker grab: the victim held and shocked (blinking cyan), then dropped",
-    "rocket_stumble": "MKT r_rocket -> zap_stumble: stumble back",
     "uppercut": "teleport strike: host uppercut reaction 0x08 (runtime-confirmed teleport)",
     "blocked": "the stock blocked reaction",
 }
@@ -77,7 +78,9 @@ COMPONENTS: dict[str, dict[str, str]] = {
     "wait": {"until": "enum:opponent_settled"},
     "repeat": {"count": "int", "steps": "steps"},
     # animation
-    "animate": {"anim": "anim", "rate": "ticks", "until": "enum:phase_end|running|manual"},
+    "animate": {"anim": "anim", "rate": "ticks", "until": "enum:phase_end|running|manual",
+                "rate_reacting?": "ticks",  # the rate while the opponent is in a reaction (MKT 0x8007FB4C)
+                "reverse?": "bool"},  # last frame back to the first (MKT ani_backward)
     "pose": {"anim": "anim"},
     "finish": {"rate": "ticks"},
     "next_frame": {},
@@ -90,10 +93,14 @@ COMPONENTS: dict[str, dict[str, str]] = {
     "carry": {"ticks": "ticks", "every_tick?": "steps"},
     "jump": {
         "x": "vel",
-        "y": "vel",
+        "y?": "vel",  # absent: on from the velocity the move left (MKT do_jump's 0xD)
         "gravity": "accel",
         "until": "enum:landing|below_screen|surface",
         "rate?": "ticks",
+        "gravity_on_block?": "accel",  # the gravity once the jump's strike was blocked
+        "strike?": "strike",  # checked each tick (once it connects, no more)
+        "strike_near_px?": "px",  # ... only within N px of the floor (a rise)
+        "strike_while?": "enum:rising",  # ... only while rising
     },
     "shake_screen": {"amplitude": "px", "count": "int", "ticks": "ticks"},
     "shake": {"dx": "px", "dy": "px", "count": "int", "ticks": "ticks"},
@@ -121,9 +128,13 @@ COMPONENTS: dict[str, dict[str, str]] = {
         "strike": "strike",
         "palette?": "int",
         "accel?": "vel",
+        "accel_shift?": "int",  # each flight tick v += v >> n (MKT's rocket: 4), up to cap
         "cap?": "vel",
+        "speed_reacting?": "vel",  # the start speed while the opponent is in a reaction
+        "sound?": "sound",  # played as it starts (Sektor's launch)
         "hum?": "hum",
         "trail?": "trail",
+        "behind?": "bool",  # drawn behind its owner (MKT object depth +0x1C = 0: make_rocket)
         "checks?": "boxes",
         "homing?": "homing",
         "wrap?": "wrap",
@@ -185,7 +196,11 @@ def _check_value(kind: str, value: Any, where: str, errors: list[str]) -> None:
         need(isinstance(value, dict) and (set(value) in ({"fighter"}, {"shared"}, {"fighter", "random"})),
              "sound is {fighter: n}, {fighter: n, random: k} (one of n..n+k-1) or {shared: n}")  # fmt: skip
     elif kind == "effect":
-        need(isinstance(value, dict) and set(value) == {"mkt_fx"}, "effect is {mkt_fx: n}")
+        need(isinstance(value, dict) and set(value) in ({"mkt_fx"}, {"mkt_fx", "place"}),
+             "effect is {mkt_fx: n} (and place: MKT's placement index, process +0x444)")  # fmt: skip
+        if isinstance(value, dict) and "place" in value:
+            need(value["place"] == "direction" or _int(value["place"]) is not None,
+                 "effect place is an index or \"direction\" (the homing direction's entry)")  # fmt: skip
     elif kind == "strike":
         keys = {"box", "damage", "block_damage", "reaction", "blocked_reaction"}
         ok = isinstance(value, dict) and keys <= set(value) <= keys | {"unblockable"}
@@ -212,8 +227,16 @@ def _check_value(kind: str, value: Any, where: str, errors: list[str]) -> None:
         need(isinstance(value, dict) and set(value) == {"cooldown"} and _int(value["cooldown"]) is not None,
              "wrap is {cooldown}")  # fmt: skip
     elif kind == "homing":
-        need(isinstance(value, dict) and set(value) == {"aim_dy", "speed", "explode_within"},
-             "homing is {aim_dy, speed, explode_within}")  # fmt: skip
+        keys = {"phases", "aim_dy", "steer", "speed", "damping", "explode_within", "timeout",
+                "directions", "marker"}  # fmt: skip
+        need(isinstance(value, dict) and set(value) == keys, f"homing is {{{', '.join(sorted(keys))}}}")
+        if isinstance(value, dict) and set(value) == keys:
+            need(isinstance(value["phases"], list) and all(isinstance(p, dict) and set(p) <= {"ticks", "climb"}
+                 and "ticks" in p for p in value["phases"]), "homing phases are [{ticks, climb?}]")  # fmt: skip
+            need(isinstance(value["directions"], dict) and set(value["directions"]) == {"anim", "parts"},
+                 "homing directions are {anim, parts}")  # fmt: skip
+            need(isinstance(value["marker"], dict) and set(value["marker"]) == {"anim", "offset"},
+                 "homing marker is {anim, offset}")  # fmt: skip
     elif kind == "impact":
         need(isinstance(value, dict) and "end" in value and set(value) <= {
             "anim", "rate", "sound", "effect", "at", "end", "bounce", "adjust", "follow"}, "impact keys")  # fmt: skip

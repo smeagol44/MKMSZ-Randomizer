@@ -22,7 +22,10 @@ Body fields:
   phase but the last (its retract) in order over all the host's frame positions, moved N
   places earlier (N < 0: later, the stance pose first); the retract fills what is left. Used
   for the throw (0x23) to line the donor's grab up with the host's (Sektor proof v55 is two
-  places late; Reptile's, owner-tested, one place early).
+  places late; Reptile's, owner-tested, one place early). ``scale``: the donor frames of every
+  phase but the last scaled over the host positions of every phase but the last, the retract
+  over the last host phase (a donor throw much longer than the host's: Sektor's). A donor
+  helper object (MKT token 11: Sektor's arm) is flattened onto the owner's frames.
 * ``body.secondary_slots`` (optional): host secondary slot -> ``"table0:0xNN"`` or
   ``"table1:0xNN"``: the host script is kept and takes that donor script's frames phase by
   phase, scaled by position. Used where the donor has the animation a host-only state plays,
@@ -38,7 +41,9 @@ Body fields:
   dropped), for animations a host-only special plays (Reptile's forceball and acid throws).
   A ``:loop`` suffix ends it in the donor script's own loop (host token 1 to the same frame)
   instead of a phase end: an animation a rate stepper plays on its own (Rayden's bounce flip,
-  animated by the stock jump).
+  animated by the stock jump). A ``:reverse`` suffix makes it the same frames backwards, from
+  the last but one (MKT ``ani_backward`` from the frame the forward script ended on: Sektor's
+  chest closing after a missile); a move's ``animate`` step with ``reverse`` plays it.
   Keys 0x40-0x7F get no table-1 entry (the host has only four empty ones); the build reports
   their file offsets and the special sets the animation cursor by offset.
 * ``body.run``: the MKT slot with the Run poses (``0x4A`` for every MKT fighter) and the host
@@ -60,15 +65,23 @@ Body fields:
   taken only by a move with its own special. ``remove_commands``: Sub-Zero command records
   dropped although no move takes them (``fighter_import.commands``; milestone 4 step 2).
 * ``icons`` (optional): the Power Ups icon recipe, one entry per power slot
-  (``fighter_import.fighter_icons``; milestone 4 step 4).
+  (``fighter_import.fighter_icons``; milestone 4 step 4), or ``"sektor"``: Sektor's accepted
+  hand-composed set (``power_icons``, R4b), kept when his description replaced the legacy build.
+* ``tiers`` (optional): a kept Sub-Zero power -> the power slot whose threshold it takes
+  (``fighter_build.TIER_SITES``; Sektor: ``super_slide`` on ``freeze_on_contact``, owner
+  2026-11-09). The edit is recomputed from the randomized ROM (after any power-order shuffle).
 * ``help`` (optional): the Power Ups help text per power slot (``fighter_import.fighter_help``).
 * ``specials`` (optional): move name -> lowering tuning for ``fighter_import.fighter_build``
   (owner calibrations such as offsets, facing, recovery, the per-move projectile limit,
-  stealth drain, effects, `face` (turn at the start), `skip` (step kinds left out), `air_control` (steer the closing drop), recovery
+  stealth drain, effects, `face` (turn at the start), `skip` (step kinds left out), `air_control` (steer the closing drop),
+  `air_start` (the move may start in the air: MKT's command has no ground check; a sink falls to the
+  floor first: Sektor's teleport uppercut), recovery
   `sleep_ticks`, hit window `strike_ticks` in donor ticks, `turn_back` (its `face` steps turn
   back instead: the reversed lightning), the
   torpedo carry's grab point `carry`: `dx_px`, `dy_px`; `projectile`: `impact_toward_px`,
-  the impact moved that many pixels toward the attacker), in the
+  the impact moved that many pixels toward the attacker; `strike_in_flight`, a homing
+  projectile hits what it touches while it flies: Sektor's homing missile, owner 2026-11-27;
+  MKT checks its strike only when it explodes), in the
   order the moves are built.
 * ``smre`` (optional): move name -> the MKT command record its program is generated from by the
   Special Move Recompile Engine (``generate.Generator.program``: the command block from the
@@ -145,11 +158,12 @@ class Body:
     common_animations: tuple[str, ...]
     layout: Layout | None = None
     sources: dict[int, tuple[int, int]] = field(default_factory=dict)  # host slot -> (table, index)
-    phase_slots: dict[int, str] = field(default_factory=dict)  # host slot -> "phases" | "shift:N"
+    phase_slots: dict[int, str] = field(default_factory=dict)  # host slot -> "phases" | "scale" | "shift:N"
     secondary_slots: dict[int, tuple[int, int]] = field(default_factory=dict)  # host S slot -> (table, index)
     secondary_scripts: dict[int, tuple[int, int, int]] = field(default_factory=dict)  # -> (table, index, phases)
     script_sounds: dict[int, int] = field(default_factory=dict)  # host primary slot -> donor ft_sound index
     loop_scripts: frozenset[int] = frozenset()  # secondary_scripts keys that end in the donor's loop
+    reverse_scripts: frozenset[int] = frozenset()  # secondary_scripts keys played backwards
 
 
 @dataclass(frozen=True)
@@ -162,13 +176,14 @@ class FighterDescription:
     body: Body
     legacy: tuple[str, ...]
     commands: dict[str, str | None] = field(default_factory=dict)
-    icons: dict = field(default_factory=dict)  # Power Ups icon recipe (fighter_icons)
+    icons: dict | str = field(default_factory=dict)  # Power Ups icon recipe (fighter_icons) or "sektor"
     help: dict = field(default_factory=dict)  # Power Ups help text (fighter_help)
     costs: dict[str, int] = field(default_factory=dict)  # move -> Ice cost (else the replaced power's)
     specials: dict = field(default_factory=dict)  # move -> lowering tuning (fighter_build), in build order
     outfit: dict = field(default_factory=dict)  # outfit recolour: {entries (body palette), own colour}
     remove_commands: tuple[str, ...] = ()
     smre: dict = field(default_factory=dict)  # move -> MKT command record VA (programs from SMRE)
+    tiers: dict = field(default_factory=dict)  # kept power -> the power slot whose threshold it takes
 
 
 def _int(value: Any, where: str, errors: list[str]) -> int | None:
@@ -283,14 +298,14 @@ def validate(data: Any) -> FighterDescription:
     phase_slots: dict[int, str] = {}
     raw_phase = body_d.get("phase_slots", {}) if isinstance(body_d, dict) else {}
     if not isinstance(raw_phase, dict):
-        errors.append("body.phase_slots: expected an object (slot -> 'phases' or 'shift:N')")
+        errors.append("body.phase_slots: expected an object (slot -> 'phases', 'scale' or 'shift:N')")
         raw_phase = {}
     for key, mode in raw_phase.items():
         slot = _int(key, f"body.phase_slots key {key!r}", errors)
         if slot is not None and (slot in slots or not 0 <= slot <= 0x40):
             errors.append(f"body.phase_slots[{key}]: 0x{slot:02X} is a body slot or out of range")
-        elif not (mode == "phases" or (isinstance(mode, str) and re.fullmatch(r"shift:[+-]?\d{1,2}", mode))):
-            errors.append(f"body.phase_slots[{key}]: mode 'phases' or 'shift:N'")
+        elif not (mode in ("phases", "scale") or (isinstance(mode, str) and re.fullmatch(r"shift:[+-]?\d{1,2}", mode))):
+            errors.append(f"body.phase_slots[{key}]: mode 'phases', 'scale' or 'shift:N'")
         elif slot is not None:
             phase_slots[slot] = mode
     secondary: dict[int, tuple[int, int]] = {}
@@ -310,17 +325,20 @@ def validate(data: Any) -> FighterDescription:
             secondary[slot] = (int(table[-1]), idx)
     new_scripts: dict[int, tuple[int, int, int]] = {}
     loop_scripts: set[int] = set()
+    reverse_scripts: set[int] = set()
     raw_new = body_d.get("secondary_scripts", {}) if isinstance(body_d, dict) else {}
     for key, value in (raw_new if isinstance(raw_new, dict) else {}).items():
         slot = _int(key, f"body.secondary_scripts key {key!r}", errors)
-        m = re.fullmatch(r"table([01]):(0x[0-9A-Fa-f]{1,2}):([1-9])(:loop)?", str(value))
+        m = re.fullmatch(r"table([01]):(0x[0-9A-Fa-f]{1,2}):([1-9])(:loop|:reverse)?", str(value))
         if slot is None or not (0 <= slot < 0x2B or 0x40 <= slot < 0x80) or slot in secondary or not m:
             errors.append(f"body.secondary_scripts[{key}]: empty host secondary slot (or 0x40-0x7F, "
                           "no table entry) -> 'table1:0xNN:P'")  # fmt: skip
         else:
             new_scripts[slot] = (int(m.group(1)), int(m.group(2), 16), int(m.group(3)))
-            if m.group(4):
+            if m.group(4) == ":loop":
                 loop_scripts.add(slot)
+            elif m.group(4) == ":reverse":
+                reverse_scripts.add(slot)
     if not isinstance(raw_new, dict):
         errors.append("body.secondary_scripts: expected an object")
     script_sounds: dict[int, int] = {}
@@ -369,7 +387,9 @@ def validate(data: Any) -> FighterDescription:
     if len(called) != len(set(called)) or set(called) & set(remove):
         errors.append("commands: each host power is taken by one move and not removed")
     icons = data.get("icons", {})
-    if icons:
+    if icons == "sektor":
+        pass  # Sektor's accepted hand-composed set (power_icons)
+    elif icons:
         from ..patches.power_order import POWER_NAMES
 
         recipes = icons.get("slots") if isinstance(icons, dict) else None
@@ -381,6 +401,13 @@ def validate(data: Any) -> FighterDescription:
                     continue
                 if not isinstance(spec, dict) or not isinstance(spec.get("layers"), list) or len(spec.get("crop", [])) != 3:
                     errors.append(f"icons.slots.{name}: 'stock', 'empty' or {{layers, crop: [x0, y0, size]}}")
+    from .fighter_build import TIER_SITES
+    from .lower_special import GATES
+
+    tiers = data.get("tiers", {})
+    if not isinstance(tiers, dict) or any(k not in TIER_SITES or v not in GATES for k, v in tiers.items()):
+        errors.append(f"tiers: kept power ({', '.join(TIER_SITES)}) -> power slot ({', '.join(GATES)})")
+        tiers = {}
     raw_costs = data.get("costs", {})
     costs: dict[str, int] = {}
     if not isinstance(raw_costs, dict):
@@ -436,7 +463,7 @@ def validate(data: Any) -> FighterDescription:
         else:
             outfit = {"entries": tuple(values), "own": own}  # type: ignore[misc]
     unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes",
-                           "commands", "remove_commands", "icons", "help", "costs", "specials", "smre",
+                           "commands", "remove_commands", "icons", "help", "costs", "specials", "smre", "tiers",
                            "outfit"}  # fmt: skip
     if unknown:
         errors.append(f"unknown keys: {', '.join(sorted(unknown))}")
@@ -445,9 +472,9 @@ def validate(data: Any) -> FighterDescription:
     return FighterDescription(
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
         body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts, script_sounds,
-                  frozenset(loop_scripts)),
+                  frozenset(loop_scripts), frozenset(reverse_scripts)),
         legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove), smre=smre,
-        icons=icons, help=help_text, costs=costs, specials=specials, outfit=outfit,
+        icons=icons, help=help_text, costs=costs, specials=specials, outfit=outfit, tiers=dict(tiers),
     )  # fmt: skip
 
 

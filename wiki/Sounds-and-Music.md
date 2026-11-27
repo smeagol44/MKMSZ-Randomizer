@@ -124,6 +124,36 @@ The proof history also established an important namespace/liveness rule: an even
 
 These are host-side architectural conclusions. Donor-specific selectors, MKT bank addresses, waveform identities, and v01-v03 chronology belong to [Toasty audio research](Toasty-Audio-Research).
 
+## Growing the sound bank (research, 2026-11-27)
+
+The 16 isolated chains limit how many sounds a fighter can bring; Rayden uses them all, so his throw's grab voice is skipped. Owner decision (2026-11-27): find more sounds rather than drop one. **Static-confirmed facts** (clean MKMSZ USA Rev. 0):
+
+- **Boot loading** (`0x800012EC`). The audio heap descriptor `0x802ECCB0` (`{base, current, size}`) is set up by `0x80088DB0` with base `0x80112020` and size `0x9C400`, so it ends at `0x801AE420`. Boot then:
+  - sizes the control bank at ROM `0x947C80` from its own header (`0x8007E050`; `0x2F088` bytes), allocates it from that heap (`0x80088DF0`) and DMAs it (`0x8007E31C`);
+  - does the same for the sequence module at ROM `0x976D40` (`0x80088500` / `0x800885C4`), then for every event (`0x800014B8`: `0x80088B10` sizes, `0x80088DF0` allocates).
+- **The allocator** `0x80088DF0` is a bump allocator, 16-byte aligned. It returns 0 when `current + n` passes `base + size`; the boot callers do not check.
+- **The ROM bank's place** is read only through the code at `0x800013FC` (`lui`/`addiu` `0x947C80`) and the word at ROM `0xA57B8`. The bank can therefore move to the generated-output region and grow there, with no ROM limit.
+- **The cost is audio heap.** A new chain needs 4 (patch) + 20 (subpatch) + 24 (waveform) + 264 (predictor book) + 16 (event definition) + `0x20` (track) bytes, about 360. Samples stay in ROM.
+
+**The heap after boot (2026-11-27).** Owner save state: vanilla ROM, stage 1, enemies loaded; Mupen64Plus `M64+SAVE`, RDRAM at `+0x1BC`, little-endian words.
+- **Measured:** the descriptor holds `{0x80112020, 0x801ADC00, 0x9C400}`. Used `0x9BBE0`, **free `0x820` (2,080 bytes)**. The tail `[0x801ADC00, 0x801AE420)` is all zero. Game data follows at once (enemy records from `0x801AE46C`), so the heap cannot grow in place.
+- **Allocations happen at boot only (Static-confirmed).** Every caller of `0x80088DF0` traces back to boot audio setup (`0x800012EC` → `0x8007CCEC`); the sequencer init `0x80088D00` runs once (flag `0x800A8210`). The free space is therefore the same on every stage.
+- **The ROM-dependent part is computable (Static-confirmed).** It is align16(bank size, header `+0x18`) + align16(sequence-module size, `0x976D40 + 0x18`) + align16(event pool). Each event takes align8(12 × tracks) + its length (`0x800887A8`). Clean ROM: `0x6BBD0`. The rest, `0x30010`, is the synthesizer's and does not change.
+- **What builds use now:** Rayden's production ROM `+0x50` (the Shocker's second track), Reptile's and Sektor's `0`.
+- **What a new chain costs:** a patch, subpatch, waveform and book appended to the bank (312 bytes) and an event (16 + `0x30`), about 376 bytes. The 2 KB left is **about five extra chains per fighter build**, not more.
+- **No free records to recombine.** A track-aware scan of every event's header patch and in-stream patch changes leaves about one waveform that no track reaches, and Toasty already hosts it. The bank is essentially fully used, so new chains must be appended.
+- **Predictor books** cannot be shared to save heap. Waveforms find their book by index; 558 of 598 books are distinct.
+
+Larger gains would need the audio heap somewhere else, such as the Expansion Pak's upper 4 MB (a product requirement), or less loaded audio data.
+
+**Bank growth prototyped, then stopped (owner, 2026-11-27: "If this effort is only to fit just ONE more sound, then let's stop here").** Implementation/static-confirmed, not merged, not runtime-tested. Facts it established:
+- The driver's module init (`0x80086688`) derives every table from the counts and gives waveform *i* the book `books + 264 × i` (`0x800868F8`).
+- The extra data is an 8-byte header (`+4`: 60 loops of `0x30`), the loops, then the books.
+- The event loader takes the track base as module `+ 0x20 +` the definitions' size (`0x800886F4`).
+- Rebuilding both modules with no extra chain gives the stock bank byte for byte, and moving them leaves the heap use unchanged.
+
+The prototype moved both modules to `[0x01880000, 0x01900000)` (32 MiB output; free above the fighter tail in a product build) and appended Rayden's grab voice as event 590 (heap +`0x170`; +`0x1C0` with his Shocker). The prototype is parked in draft PR #220. Grab voices were then dropped for every fighter (owner: "We can get back to them later").
+
 ## Function-semantics ownership
 
 The audio chain above names `0x80064C18`, `0x80080A88`, `0x8007EC4C`, and `0x80015FD8` because their composition matters to the audio explanation. Their canonical meanings, evidence labels, and future semantic corrections are maintained only in [Function registry](Function-Registry); this page intentionally does not maintain a competing function table.

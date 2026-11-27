@@ -1,0 +1,314 @@
+{
+  "format": 1,
+  "id": "sektor-legacy",
+  "display_name": "Sektor",
+  "title": "SEKTOR",
+  "donor": {
+    "game": "MKT-N64-USA-Rev2",
+    "fighter_id": 7,
+    "name": "SEKTOR"
+  },
+  "body": {
+    "slots": [
+      "0x00",
+      "0x01",
+      "0x02",
+      "0x03",
+      "0x04",
+      "0x05",
+      "0x06",
+      "0x07",
+      "0x08",
+      "0x09",
+      "0x0A",
+      "0x0B",
+      "0x0C",
+      "0x0E",
+      "0x0F",
+      "0x11",
+      "0x12",
+      "0x13",
+      "0x14",
+      "0x15",
+      "0x16",
+      "0x17",
+      "0x18",
+      "0x19",
+      "0x1A",
+      "0x1B",
+      "0x1C",
+      "0x1D",
+      "0x1E",
+      "0x1F",
+      "0x20",
+      "0x21",
+      "0x22"
+    ],
+    "run": {
+      "mkt_slot": "0x4A",
+      "host_rate": 3
+    },
+    "colour": {
+      "depth": 16,
+      "method": "explicit",
+      "index_map_32_to_16": [
+        0,
+        12,
+        11,
+        3,
+        3,
+        14,
+        9,
+        13,
+        5,
+        5,
+        7,
+        7,
+        7,
+        7,
+        1,
+        1,
+        2,
+        2,
+        12,
+        6,
+        6,
+        10,
+        10,
+        4,
+        4,
+        15,
+        8,
+        8,
+        1,
+        1,
+        1,
+        1
+      ],
+      "palette_bgr555": "00008001f39cad79a94a8435d294842c908490b2b9cec63ce73a843a98f798c6f7bdef7be739d6b5ce73bdefb5adad6ba52998c690848c638842842180008000"
+    },
+    "common_animations": [
+      "slide",
+      "death",
+      "long_fall",
+      "pickup",
+      "grabbed"
+    ],
+    "layout": {
+      "inherited_groups": 58,
+      "run_groups": 4,
+      "dead_regions": [
+        [
+          "0x4E0",
+          "0x504"
+        ],
+        [
+          "0x634",
+          "0x684"
+        ],
+        [
+          "0x798",
+          "0x7E8"
+        ],
+        [
+          "0x810",
+          "0x84C"
+        ]
+      ],
+      "slots": {
+        "0x00": {
+          "mode": "inplace",
+          "words": [
+            "0x1768",
+            "0x1780",
+            "0x1794",
+            "0x17A8",
+            "0x17BC",
+            1,
+            "0x1D4"
+          ],
+          "capacity": 11
+        },
+        "0x01": {
+          "mode": "inplace",
+          "n": 9,
+          "capacity": 11
+        },
+        "0x02": {
+          "mode": "inplace",
+          "n": 9,
+          "capacity": 11
+        },
+        "0x03": {
+          "mode": "inplace",
+          "n": 5,
+          "capacity": 5
+        },
+        "0x04": {
+          "mode": "inplace",
+          "n": 4,
+          "capacity": 4
+        },
+        "0x05": {
+          "mode": "inplace",
+          "n": 6,
+          "capacity": 7
+        },
+        "0x06": {
+          "mode": "inplace",
+          "n": 4,
+          "capacity": 4
+        },
+        "0x07": {
+          "mode": "inplace",
+          "n": 4,
+          "capacity": 5
+        },
+        "0x08": {
+          "mode": "inplace",
+          "n": 8,
+          "capacity": 8
+        },
+        "0x09": {
+          "mode": "relocated",
+          "n": 10,
+          "place": "0x798"
+        },
+        "0x0A": {
+          "mode": "inplace",
+          "n": 8,
+          "capacity": 8
+        },
+        "0x0B": {
+          "mode": "inplace",
+          "n": 9,
+          "capacity": 9
+        },
+        "0x0C": {
+          "mode": "inplace",
+          "n": 4,
+          "capacity": 4
+        },
+        "0x0E": {
+          "mode": "inplace",
+          "n": 28,
+          "capacity": 28,
+          "hybrid": true
+        },
+        "0x0F": {
+          "mode": "inplace",
+          "n": 27,
+          "capacity": 27,
+          "hybrid": true
+        },
+        "0x11": {
+          "mode": "packed",
+          "n": 13
+        },
+        "0x12": {
+          "mode": "relocated",
+          "n": 13,
+          "place": "0x810"
+        },
+        "0x13": {
+          "mode": "inplace",
+          "n": 7,
+          "capacity": 7
+        },
+        "0x14": {
+          "mode": "inplace",
+          "n": 12,
+          "capacity": 12,
+          "hybrid": true
+        },
+        "0x15": {
+          "mode": "inplace",
+          "n": 10,
+          "capacity": 10
+        },
+        "0x16": {
+          "mode": "inplace",
+          "n": 4,
+          "capacity": 4
+        },
+        "0x17": {
+          "mode": "inplace",
+          "n": 7,
+          "capacity": 7
+        },
+        "0x18": {
+          "mode": "inplace",
+          "n": 7,
+          "capacity": 7
+        },
+        "0x19": {
+          "mode": "inplace",
+          "n": 7,
+          "capacity": 7
+        },
+        "0x1A": {
+          "mode": "relocated",
+          "n": 8,
+          "place": "0x4E0"
+        },
+        "0x1B": {
+          "mode": "relocated",
+          "n": 8,
+          "place": "0x7C0"
+        },
+        "0x1C": {
+          "mode": "inplace",
+          "n": 5,
+          "capacity": 5
+        },
+        "0x1D": {
+          "mode": "inplace",
+          "n": 5,
+          "capacity": 5
+        },
+        "0x1E": {
+          "mode": "inplace",
+          "n": 9,
+          "capacity": 9
+        },
+        "0x1F": {
+          "mode": "inplace",
+          "n": 9,
+          "capacity": 9
+        },
+        "0x20": {
+          "mode": "relocated",
+          "n": 17,
+          "place": "0x634"
+        },
+        "0x21": {
+          "mode": "inplace",
+          "n": 7,
+          "capacity": 7
+        },
+        "0x22": {
+          "mode": "inplace",
+          "n": 6,
+          "capacity": 8
+        }
+      },
+      "frame_edits": {
+        "0x6A0": "0x1DD8",
+        "0x6A4": "0x1DC4",
+        "0x6AC": "0x1D74",
+        "0x6C4": "0x17A8",
+        "0x6D0": "0x1D60",
+        "0x6D4": "0x1D74"
+      }
+    }
+  },
+  "legacy": [
+    "sektor-teleport",
+    "sektor-rockets",
+    "sektor-throw-arm",
+    "sektor-combos",
+    "sektor-tiers",
+    "sektor-presentation"
+  ],
+  "notes": "Frozen legacy Sektor (sektor_build and its actions; Sektor builds v01-v62, composition proofs). Replaced in the product by fighters/sektor.json (SMRE step 3, 2026-11-27); kept for the legacy build, its proofs and tests. Index map and palette: the visually accepted 16-colour Sektor proof (MKMSZR_sektor-16color_common-proof_v01) and the native upper half of the Runtime-confirmed v53 TLUT. Layout: Sektor's accepted layout (slot script lengths, places and capacities, entropy groups, late-Knee frame edits) from Sektor build v61; other fighters get the computed layout."
+}
