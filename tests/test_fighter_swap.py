@@ -128,7 +128,9 @@ def test_cli_sektor_build_is_pinned(tmp_path: Path) -> None:
 # Spit's splash on the enemy hit, MKT's flip and mirrored art (composition v03 was 31c22f52...).
 # Since SMRE step 1 (owner, 2026-11-27): the forceballs no longer turn at the start, pure MKT
 # (with the turn: 96fbf32a...).
-REPTILE_CLI_SHA256 = "1296f815cfcdc5a7d01d5c2ab514739d4021b934048a034d1d52d55484a53c65"
+# Since Reptile specials proof v25 (owner, 2026-11-27: throw sounds on by default): his MKT grab
+# voice at the throw (before: 1296f815...).
+REPTILE_CLI_SHA256 = "f4a9bc0d13c5566a29d4bdcd03ff018d33f2516a8c50df70304e24ac31aa24e5"
 
 
 @needs_roms

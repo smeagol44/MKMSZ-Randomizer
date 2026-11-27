@@ -97,8 +97,7 @@
     ],
     "phase_slots": {
       "0x23": "scale"
-    },
-    "throw_voice": true
+    }
   },
   "commands": {},
   "remove_commands": [

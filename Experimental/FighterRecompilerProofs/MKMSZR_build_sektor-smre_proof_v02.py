@@ -34,8 +34,8 @@ the throw and the victim's transfer; its start (``0x80042878``) plays the grab v
 New generic ``throw_sounds``: the throw routine's own sounds are read from MKT and played by
 payload hooks on the host throw's three stages (the legacy build's sites and wrappers, proof
 v41: grab voice call 0x8005BCD4, throw phase 0x8005BDC8, finish 0x8005BDF8), and
-``body.throw_voice`` adds the grab voice (on for Sektor; Reptile's and Rayden's MKT throws play
-no sounds of their own, and their grab voice is left off until the owner decides).
+the build adds the grab voice at the grab (owner: on by default, for every fighter, when a
+sound chain is free; Reptile's and Rayden's MKT throws play no sounds of their own).
 
 Usage::
 
