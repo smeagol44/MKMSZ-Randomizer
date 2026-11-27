@@ -163,5 +163,7 @@ def test_a_timed_repeat_keeps_mkt_frames_and_time() -> None:
     count, bodies = ls._timed_repeat(step, 2)  # type: ignore[misc]
     sleeps = [s["_host_ticks"] for b in bodies for s in b if s["op"] == "sleep"]
     assert (count, sleeps) == (16, [2, 1]) and count * sum(sleeps) == 48
+    # one frame per MKT frame step (v29): stepping two landed on the same frame of a 2-frame loop
+    assert [s["_times"] for b in bodies for s in b if s["op"] == "next_frame"] == [1, 1]
     assert ls._timed_repeat(step, 1) is None
     assert ls._timed_repeat({**step, "steps": [{"op": "sleep", "ticks": 1}]}, 2) is None

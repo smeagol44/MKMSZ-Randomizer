@@ -419,7 +419,9 @@ def _timed_repeat(step: dict[str, Any], donor_ticks: int) -> tuple[int, list[lis
     next_frame] at 2 donor ticks per host tick): MKT's iteration count and its total time. The
     body is emitted ``k`` times per loop pass (``k`` = the passes after which the donor time is
     whole host ticks again), its sleeps rounded on the running total (3, 3 -> 2, 1 host ticks),
-    so 32 frames take 48 host ticks; scaling the count instead showed 16 frames in 32 ticks.
+    so 32 frames take 48 host ticks; scaling the count instead showed 16 frames in 32 ticks. Its
+    ``next_frame`` steps are MKT's own frame steps: one frame each (a per-tick loop's advance by
+    the donor ticks it stands for landed on the same frame of a two-frame loop every time).
     None for a per-tick loop (a body shorter than a host tick), whose count scales."""
 
     from math import gcd
@@ -444,6 +446,8 @@ def _timed_repeat(step: dict[str, Any], donor_ticks: int) -> tuple[int, list[lis
                 end = -(-donor // donor_ticks)
                 s = {**s, "_host_ticks": max(1, end - host_done)}
                 host_done = end
+            elif s["op"] == "next_frame":  # MKT's own frame step: one frame (v29; v25-v28 two)
+                s = {**s, "_times": 1}
             out.append(s)
         bodies.append(out)
     return count // k, bodies
@@ -620,8 +624,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             elif op == "pose":
                 select(anim_at(step["anim"]), int(step["anim"].get("offset", 0)))
                 advance()
-            elif op == "next_frame":
-                advance(donor_ticks)
+            elif op == "next_frame":  # a per-tick loop advances once per donor tick it stands for
+                advance(step.get("_times", donor_ticks))
             elif op == "pass_through":  # see the docstring
                 host.load_controller(a)
                 a.lhu("t0", lp.ACTOR_FLAGS, "s1")
