@@ -179,6 +179,9 @@ class Loop:
     body: list
     cond: Value  # do { body } while (cond)
     kind: str = "loop"
+    # A register counted down by 1 from a known value (do { ...; r -= 1 } while (r > 0) or
+    # r != 0): its value before the loop, the iteration count (Rayden's 0x80073378(8)).
+    count: int | None = None
 
 
 @dataclass
@@ -381,6 +384,22 @@ class Decompiler:
             return Bin("!=", a, b)
         return Bin({"blez": "<=0", "bgtz": ">0", "bltz": "<0", "bgez": ">=0"}.get(base, base), a, Const(0))
 
+    def _counter(self, ins: Insn, st: State, start: int, close: int) -> int | None:
+        """The iteration count of a loop closed by ``ins`` when it counts a register down by 1
+        from a known positive value (``bgtz r`` or ``bne r, zero``)."""
+
+        base = ins.op.rstrip("l") if ins.op.endswith("l") else ins.op
+        if base == "bgtz" or (base == "bne" and ins.rt == 0):
+            reg = ins.rs
+        else:
+            return None
+        pre = st.get(reg).const()
+        if pre is None or pre <= 0:
+            return None
+        steps = [self.insns[p] for p in range(start, close + 8, 4)]
+        decrements = [i for i in steps if i.op == "addiu" and i.rs == reg and i.imm == -1]
+        return pre if len(decrements) == 1 else None
+
     @staticmethod
     def negate(v: Value) -> Value:
         if isinstance(v, Const):
@@ -400,6 +419,7 @@ class Decompiler:
             if pc in self.back and self.back[pc] < end and self.back[pc] >= pc:
                 close = self.back[pc]
                 ins = self.insns[close]
+                count = self._counter(ins, st, pc, close)
                 inner = st.copy()
                 written = self._written(pc, close + 8)
                 for r in written:
@@ -410,7 +430,7 @@ class Decompiler:
                 delay = self.insns[close + 4]
                 tail: list = []
                 self.step(delay, inner, tail)
-                out.append(Loop(pc, body + tail, cond))
+                out.append(Loop(pc, body + tail, cond, count=count))
                 st = inner
                 for r in written:
                     st.regs.pop(r, None)

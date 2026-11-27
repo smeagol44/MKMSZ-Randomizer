@@ -21,6 +21,7 @@ from typing import Any
 
 from . import decompile as dc
 from . import reading
+from .mkt_fighter import MktRom
 from .mkt_registry import REGISTRY
 
 VA_BASE = 0x80000000
@@ -44,12 +45,56 @@ REACTION_MEANINGS = {
 }
 
 
+# SMRE command reading (2026-11-27). MKT's input grid events -> host button bits (commands.BUTTONS):
+# 0 High Punch, 1 Low Punch, 3 High Kick, 4 Low Kick; 6-9 the stick (Up, Down, Left, Right).
+EVENT_BUTTONS = {0: 0x10, 1: 0x80, 3: 0x20, 4: 0x40}
+STICK_EVENTS = {6, 7, 8, 9}
+TICKS_SINCE = 0x8006D7E0  # (stamp pair, object) -> ticks since the stamp (mkt_registry)
+BUTTONS_HELD = 0x8004EA64  # (object, mask, mask) -> 0x8000 when exactly those buttons are held
+PRESS_STAMPS = {0x80257738: "HP"}  # button press stamps (Rayden's Shocker: HP held before release)
+OWN_CONDITIONS = ("forceball_",)  # registry-named fighter condition helpers, read through
+OTHER_GUARD_FIELDS = {0x38: "the opponent's fighter id", 0x408: "the opponent's reaction state",
+                      0x3F6: "the opponent's action"}  # fmt: skip
+MOVEMENT_OPS = {"relocate", "velocity"}
+# Grabs (SMRE step 2): the routine a grab gives the opponent at its release -> the victim reaction
+# meaning that plays the whole hold (components.REACTIONS). Rayden's Shocker: 0x800734CC drops the
+# victim (0x80058728) after its hold at his hands and the shocks (lower_special.shock_hold).
+GRAB_RELEASES = {0x800734CC: "shock_hold"}
+GRAB_BOX_HEIGHT = 120  # px: the victim's body height (MKT's grab tests only the horizontal reach)
+
+
+def _tree_text(s: Any) -> str:
+    """The conditions and calls of an ``if`` tree, as text (the grab shape's reach and guard)."""
+
+    parts = []
+    if s.kind == "if":
+        parts.append(str(s.cond))
+        for x in list(s.then) + list(s.other or []):
+            parts.append(_tree_text(x))
+    elif s.kind == "call":
+        parts.append(REGISTRY[s.target].name if s.target in REGISTRY else f"0x{s.target or 0:08X}")
+    return " ".join(parts)
+
+
+def _same_command(a: Any, b: Any) -> bool:
+    return (a.masks, a.condition, a.action, a.right) == (b.masks, b.condition, b.action, b.right)
+
+
+def _all(steps: list[dict[str, Any]]):
+    for s in steps:
+        yield s
+        for key in ("steps", "every_tick", "on_hit", "on_block"):
+            if key in s:
+                yield from _all(s[key])
+
+
 @dataclass
 class Generated:
     entry: int
     steps: list[dict[str, Any]]
     notes: list[str] = field(default_factory=list)
     unknown: list[str] = field(default_factory=list)
+    grab: bool = False  # the move is a grab (the grab rule read it)
 
 
 class Generator:
@@ -110,6 +155,132 @@ class Generator:
         return None
 
     # -- routines --------------------------------------------------------------------------------
+    # -- commands (SMRE, 2026-11-27) --------------------------------------------------------------
+    def command(self, record: int) -> tuple[dict[str, Any], list[str]]:
+        """The move program's ``command`` block from the MKT command record at ``record``, and
+        notes on the parts of its condition routine that are not lowered.
+
+        * ``buttons``: the buttons of the input events that hold this record (or an identical
+          copy: Reptile's forceballs sit in both the High Punch and Low Punch tables), within
+          the record's masks; ``"stick"`` for the stick events. Rayden's Lightning record has
+          masks 0xFC but sits only in the Low Punch event: 0x80.
+        * ``release``: the record is in the button-release grid (Rayden's Shocker).
+        * ``tokens``, ``window``: the record's (newest first, as facing right).
+        * ``conditions``: read from the condition routine (:meth:`conditions`)."""
+
+        rom = MktRom(self.mkt)
+        rec = rom.record(record)
+        same = [(g, e) for g, e, va in rom.record_sites(self.fighter) if _same_command(rom.record(va), rec)]
+        if not same:
+            raise ValueError(f"record 0x{record:08X} is not one of fighter {self.fighter}'s commands")
+        grids = {g for g, _ in same}
+        events = {e for _, e in same}
+        if len(grids) != 1:
+            raise ValueError(f"record 0x{record:08X} sits in both the press and the release grid")
+        cmd: dict[str, Any] = {}
+        if events & STICK_EVENTS:
+            if events - STICK_EVENTS:
+                raise ValueError(f"record 0x{record:08X} mixes stick and button events")
+            cmd["buttons"] = "stick"
+        else:
+            unknown = events - set(EVENT_BUTTONS)
+            if unknown:
+                raise ValueError(f"record 0x{record:08X}: input events {sorted(unknown)} have no host button")
+            buttons = 0
+            for e in events:
+                buttons |= EVENT_BUTTONS[e]
+            cmd["buttons"] = f"0x{buttons & rec.masks[0]:X}"
+        if grids == {"release"}:
+            cmd["release"] = True
+        cmd.update(tokens=list(rec.right), window=rec.window, src=f"MKT 0x{record:08X}")
+        notes: list[str] = []
+        if rec.condition:
+            conds, notes = self.conditions(rec.condition)
+            if conds:
+                cmd["conditions"] = conds
+        return cmd, notes
+
+    def conditions(self, entry: int, args: tuple[int | None, ...] = (), depth: int = 0) -> tuple[list[dict], list[str]]:
+        """Command conditions from a condition routine, by a linear read of its instructions with
+        constant tracking, following called routines with their arguments:
+
+        * ``ticks_since(stamp)`` then ``slti v0, N``: ``held_for`` N when the stamp is a button
+          press stamp (:data:`PRESS_STAMPS`), else ``cooldown`` (key = the stamp word);
+        * ``buttons_held(a0, mask)``: ``buttons_held``;
+        * any other test (airborne, the opponent's state) is noted, not lowered."""
+
+        r = reading.read(self.mkt, entry)
+        regs: dict[int, int | None] = {4 + i: a for i, a in enumerate(args)}
+        conds: list[dict] = []
+        notes: list[str] = []
+        insns = r.insns
+        k = 0
+
+        def effect(ins: Any) -> None:
+            if ins.op == "lui":
+                regs[ins.rt] = (ins.imm & 0xFFFF) << 16
+            elif ins.op in ("addiu", "ori"):
+                base = 0 if ins.rs == 0 else regs.get(ins.rs)
+                imm = ins.imm if ins.op == "addiu" else ins.imm & 0xFFFF
+                regs[ins.rt] = None if base is None else ((base + imm) if ins.op == "addiu" else (base | imm)) & 0xFFFFFFFF
+            elif ins.op == "or" and ins.rt == 0:
+                regs[ins.rd] = 0 if ins.rs == 0 else regs.get(ins.rs)
+            elif ins.op in ("lw", "lh", "lhu", "lb", "lbu", "addu", "subu", "and", "or", "sll", "srl", "sra"):
+                regs[ins.rd if ins.op in ("addu", "subu", "and", "or", "sll", "srl", "sra") else ins.rt] = None
+
+        while k < len(insns):
+            ins = insns[k]
+            if ins.op != "jal":
+                effect(ins)
+                if ins.op in ("lhu", "lh", "lw") and ins.rs != 29 and ins.imm in OTHER_GUARD_FIELDS:
+                    notes.append(f"0x{ins.pc:08X}: {OTHER_GUARD_FIELDS[ins.imm]} (not lowered)")
+                k += 1
+                continue
+            if k + 1 < len(insns):
+                effect(insns[k + 1])  # the delay slot runs first
+            target, a0, a1 = ins.target, regs.get(4), regs.get(5)
+            if target == TICKS_SINCE:
+                cmp_ = next((x for x in insns[k + 2 : k + 8] if x.op in ("slti", "sltiu") and x.rs == 2), None)
+                if a0 is None or cmp_ is None:
+                    notes.append(f"0x{ins.pc:08X}: ticks_since with an unread stamp or limit (not lowered)")
+                elif a0 in PRESS_STAMPS:
+                    conds.append({"kind": "held_for", "ticks": cmp_.imm, "src": f"MKT 0x{cmp_.pc:08X}"})
+                else:
+                    conds.append({"kind": "cooldown", "key": f"0x{a0:08X}", "ticks": cmp_.imm,
+                                  "src": f"MKT 0x{cmp_.pc:08X}"})  # fmt: skip
+            elif target == BUTTONS_HELD:
+                setter = next((x for x in reversed(insns[max(0, k - 6) : k + 2]) if x.op == "addiu" and x.rt == 5), None)
+                if a1 is None or setter is None:
+                    notes.append(f"0x{ins.pc:08X}: buttons_held with an unread mask (not lowered)")
+                else:
+                    conds.append({"kind": "buttons_held", "mask": f"0x{a1:X}", "src": f"MKT 0x{setter.pc:08X}"})
+            elif depth < 2 and target not in self.names or self.names.get(target, "").startswith(OWN_CONDITIONS):
+                more, more_notes = self.conditions(target, tuple(regs.get(4 + i) for i in range(4)), depth + 1)
+                conds += more
+                notes += more_notes
+                if not more and not more_notes:
+                    notes.append(f"0x{ins.pc:08X}: {self.names.get(target, f'0x{target:08X}')} (not lowered)")
+            else:
+                notes.append(f"0x{ins.pc:08X}: {self.names.get(target, f'0x{target:08X}')} (not lowered)")
+            for r_ in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 24, 25):
+                regs[r_] = None
+            k += 2
+        return conds, notes
+
+    def program(self, name: str, record: int) -> tuple[dict[str, Any], Generated, list[str]]:
+        """A whole move program from its MKT command record: the command, the steps of the
+        record's action (dispatchers followed), and ``movement`` when the move moves the fighter
+        (a ``relocate`` or ``velocity`` step: the owner's no-Ice rule for moving abilities)."""
+
+        cmd, notes = self.command(record)
+        g = self.move(MktRom(self.mkt).record(record).action)
+        prog: dict[str, Any] = {"name": name, "command": cmd, "steps": g.steps}
+        if any(s["op"] in MOVEMENT_OPS for s in _all(g.steps)):
+            prog["movement"] = True
+        if g.grab:
+            prog["grab"] = True
+        return prog, g, notes
+
     def move(self, entry: int, args: tuple[int, ...] = ()) -> Generated:
         self.top = entry
         g = Generated(entry, [])
@@ -145,6 +316,7 @@ class _Walk:
         self.copy: int | None = None  # pc of new_object: the fighter's copy being set up
         self.matched = False  # match_me_to_opponent ran: an offset next is a relocation
         self.edges = False  # an arena-edge test ran in this routine (MKT's teleport side)
+        self.grab: dict[str, Any] | None = None  # a grab's hit path is being read (damage, release)
 
     def name(self, c: dc.Call) -> str:
         return self.gen.names.get(c.target, f"0x{c.target:08X}" if c.target else "jalr")
@@ -170,6 +342,11 @@ class _Walk:
         i = 0
         while i < len(stmts) and not self.ended:
             s = stmts[i]
+            if s.kind == "call" and self.name(s) == "grab_refused" and self.grab is None:
+                made = self.grab_shape(stmts, i)
+                if made is not None:  # the rest of the list is the grab's hit path, read by it
+                    out += made
+                    return out
             if s.kind == "loop":
                 count = self._count(stmts[:i], s)
                 if count is not None:
@@ -200,6 +377,7 @@ class _Walk:
             self.action = s.value.const()  # the action id, kept on begin
             if self.begin is not None and not self.begin_own:
                 self.begin["action_mkt"] = hex(self.action)
+                self.begin.setdefault("src", {})["action_mkt"] = f"MKT 0x{s.pc:08X}"  # the store
             elif self.begin is not None:
                 self.note(f"MKT changes the action to 0x{self.action:X} later in the move "
                           f"(0x{s.pc:08X}); the program keeps the begin's")  # fmt: skip
@@ -251,6 +429,12 @@ class _Walk:
         c = s.cond.const()
         if c is not None:  # decided by a known argument
             return self.stmts(s.then if c else s.other)
+        ends = [x for x in s.then if x.kind != "break"]
+        if (self.grab is not None and "proc+0x3C0" in str(s.cond) and not s.other and len(ends) == 1
+                and ends[0].kind == "call" and self.name(ends[0]) == "reaction_exit"):  # fmt: skip
+            self.note(f"MKT ends the grab if the victim breaks free (0x{s.pc:08X}: {s.cond}); the host "
+                      "victim reaction holds it to the end")  # fmt: skip
+            return []
         if any(f"[0x{p:08X}]" in str(s.cond) for p in PLAYER_OBJECTS) and "self" in str(s.cond):
             # which player the fighter is (per-player tables, e.g. the torpedo's velocity source):
             # bookkeeping; both arms do the same for their player
@@ -327,8 +511,10 @@ class _Walk:
     @staticmethod
     def _count(before: list, loop: dc.Loop) -> int | None:
         """The loop's count: the constant stored to the process field its condition counts down,
-        among the stores just before it."""
+        among the stores just before it, or a register counted down from a known value."""
 
+        if loop.count is not None:
+            return loop.count
         for s in reversed(before[-4:]):
             if s.kind != "store":
                 break
@@ -343,15 +529,71 @@ class _Walk:
             # frames stepped by hand each tick: show the first where it was selected
             out.insert(self.pending_at, {"op": "animate", "anim": dict(self.pending), "rate": 1, "until": "manual"})
             self.pending = None
+        at = f"MKT 0x{loop.pc:08X}"  # steps made from the loop's shape name the loop as their source
         strike = self._find_strike(body)
         if strike is not None:
-            return [self.window(body, strike, count)]
+            step = self.window(body, strike, count)
+            if "src" not in step:  # the window's length from the loop, the rest from the strike call
+                call_at = f"MKT 0x{strike[0].pc:08X}"
+                step["src"] = {k: (at if k == "ticks" else call_at) for k in step
+                               if k not in ("op", "every_tick", "on_hit", "on_block")}  # fmt: skip
+            return [step]
         if self._carry(body):
             self.note("MKT's carry shares one velocity between the fighters and ends when either "
                       "stops (a wall); the host keeps the victim at its contact distance")  # fmt: skip
-            return [{"op": "carry", "ticks": count, "every_tick": [{"op": "pass_through", "ticks": 1}]}]
+            return [{"op": "carry", "ticks": count, "src": {"ticks": at},
+                     "every_tick": [{"op": "pass_through", "ticks": 1, "src": {"ticks": at}}]}]  # fmt: skip
         steps = self.stmts(body)
-        return [{"op": "repeat", "count": count, "steps": steps}]
+        return [{"op": "repeat", "count": count, "steps": steps, "src": {"count": at}}]
+
+    def grab_shape(self, stmts: list, i: int) -> list[dict] | None:
+        """A grab (Rayden's Shocker, MKT 0x80073228)::
+
+            r = grab_refused()
+            if (r != 0x8000) { if (|my x - his x| < N) { if (opponent settled) goto hit } }
+            miss()        (a routine that ends the move)
+            hit: ...      (damage_opponent, opponent_routine(hold), ..., opponent_routine(release))
+
+        becomes one ``strike`` of one tick: an unblockable box reaching N px in front of him
+        (the host box's first value is its front edge), MKT's damage, the reaction the release
+        routine names (:data:`GRAB_RELEASES`), the hit path as ``on_hit``; the miss routine's
+        steps follow (the strike falls through to them). The move is a ``grab`` (owner rule:
+        twice Ice Blast's Ice)."""
+
+        import re
+
+        call = stmts[i]
+        if i + 2 >= len(stmts):
+            return None
+        test, miss = stmts[i + 1], stmts[i + 2]
+        if test.kind != "if" or f"r{call.pc:08X}" not in str(test.cond) or miss.kind != "call":
+            return None
+        text = _tree_text(test)
+        reach = re.search(r"\(\? < (0x[0-9A-Fa-f]+|\d+)\)", text)
+        if reach is None or "+0x14:2 - proc+0x3BC+0x14:2" not in text:
+            self.unknown(f"0x{call.pc:08X}: grab without a horizontal reach")
+            return None
+        reach_px = int(reach.group(1), 0)
+        settled = "opponent_unsettled" in text
+        miss_steps = self.call(miss)  # first: its action id must not replace the hit's on begin
+        self.grab = {}
+        on_hit = self.stmts(stmts[i + 3 :])
+        grab, self.grab = self.grab, None
+        if "damage" not in grab or "reaction" not in grab:
+            self.unknown(f"0x{call.pc:08X}: grab without {'a damage' if 'damage' not in grab else 'a known release'}")
+            return None
+        strike = {"box": [reach_px, 0, reach_px, GRAB_BOX_HEIGHT], "damage": grab["damage"], "block_damage": 0,
+                  "reaction": grab["reaction"], "blocked_reaction": "blocked", "unblockable": True}  # fmt: skip
+        step: dict[str, Any] = {"op": "strike", "strike": strike, "ticks": 1}
+        if settled:
+            step["only_if"] = "opponent_settled"
+        step["on_hit"] = on_hit
+        step["src"] = {"strike": f"MKT 0x{call.pc:08X}", "ticks": f"MKT 0x{call.pc:08X}",
+                       **({"only_if": f"MKT 0x{test.pc:08X}"} if settled else {})}  # fmt: skip
+        self.g.grab = True
+        self.note(f"MKT's grab tests the reach between the fighters' anchors (|dx| < {reach_px}); the host "
+                  "box meets the victim's body")  # fmt: skip
+        return [step] + miss_steps
 
     def _find_strike(self, body: list, guard: str | None = None) -> tuple[dc.Call, str | None, dc.If | None] | None:
         for i, x in enumerate(body):
@@ -646,6 +888,35 @@ def _frame_at(w: _Walk, c: dc.Call, a: list) -> list[dict]:  # ani_frame_at_t0(s
 
 def _ignore(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     return []
+
+
+def _damage_opponent(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    if w.grab is None or a[0] is None:
+        w.unknown(f"0x{c.pc:08X}: damage_opponent outside a grab")
+    else:
+        w.grab["damage"] = a[0]
+    return []
+
+
+def _opponent_routine(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    routine = None if a[1] is None else a[1] & 0xFFFFFFFF
+    if w.grab is not None and routine in GRAB_RELEASES:
+        w.grab["reaction"] = GRAB_RELEASES[routine]
+    elif w.grab is None:
+        w.unknown(f"0x{c.pc:08X}: opponent_routine outside a grab")
+    return []  # the hold (a waiting routine) and the release are the victim reaction's
+
+
+def _step_frames(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    """step_frames(ticks, n) after a selection: its first frame, then n - 1 more, ``ticks`` each."""
+
+    if a[0] is None or a[1] is None or w.pending is None:
+        w.unknown(f"0x{c.pc:08X}: step_frames {c.args[0]}, {c.args[1]}")
+        return []
+    first = w.show_pending()
+    at = f"MKT 0x{c.pc:08X}"
+    body = [{"op": "sleep", "ticks": a[0], "src": {"ticks": at}}, {"op": "next_frame"}]
+    return first + [{"op": "repeat", "count": a[1] - 1, "steps": body}, {"op": "sleep", "ticks": a[0]}]
 
 
 def _note_only(text: str):
@@ -1004,6 +1275,15 @@ def _walk_all(stmts: list) -> list:
 
 
 CALL_RULES = {
+    "damage_opponent": _damage_opponent,
+    "opponent_routine": _opponent_routine,
+    "step_frames": _step_frames,
+    "opponent_voice": _note_only("MKT's grab plays the victim's voice; the host victim reaction plays its own"),
+    "count_grab_hit": _ignore,  # MKT's hit counters (no host equivalent needed)
+    "count_grab_miss": _ignore,
+    "adjust_opponent": _ignore,  # the victim's moves during a grab: the host victim reaction's
+    "match_opponent_to_me": _ignore,
+    "opponent_call": _ignore,
     "init_special_face": _begin(True),
     "init_special": _begin(False),
     "begin_special": _begin_special,
@@ -1059,7 +1339,7 @@ CALL_RULES = {
 
 # ---- comparison --------------------------------------------------------------------------------
 _KEYS = ("anim", "rate", "until", "ticks", "count", "x", "y", "gravity", "sound", "strike",
-         "only_if", "dx", "dy", "effect", "action_mkt", "amplitude",
+         "only_if", "dx", "dy", "effect", "action_mkt", "amplitude", "face", "stop",
          "art", "offset", "speed", "checks", "palette", "impact", "hum")  # fmt: skip
 _NESTED = ("steps", "every_tick", "on_hit", "on_block")
 

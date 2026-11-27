@@ -267,6 +267,20 @@ class MktRom:
         values = [self.u16(va + 2 * i) for i in range(6)]
         return tuple(values[: values.index(0)] if 0 in values else values)
 
+    def record_sites(self, fighter: int) -> tuple[tuple[str, int, int], ...]:
+        """``(grid, event, record VA)`` for every command record in the fighter's declarative
+        event handlers (a record may sit in several events: Reptile's forceballs, HP and LP)."""
+
+        sites = []
+        for grid, base, count in (("press", PRESS_GRID, 10), ("release", RELEASE_GRID, 6)):
+            for event in range(count):
+                address = self.u32(self.u32(base + 4 * event) + 4 * fighter)
+                table = self._wrapper_table(address) if address else None
+                while table is not None and self.u16(table) != 0:
+                    sites.append((grid, event, table))
+                    table += 0x2C
+        return tuple(sites)
+
     def handlers(self, fighter: int) -> tuple[Handler, ...]:
         result = []
         for grid, base, count in (("press", PRESS_GRID, 10), ("release", RELEASE_GRID, 6)):

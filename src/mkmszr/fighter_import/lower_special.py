@@ -1073,7 +1073,10 @@ def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
 # blinks cyan (the lightning's blink helper), then falls into the torpedo victim's release (the
 # lifted knockback with no push). Specials proof v25-v26 held it where the strike found it.
 SHOCK_ROOT = 0x20
-SHOCK_HOLD_DONOR_TICKS = 8 * 2 * 6  # 8 shocks, each 2 halves of 2 x 3 donor ticks
+# MKT: after the grab he shows his pose and sleeps 3 (0x80073314), then 8 shocks, each 2 halves of
+# 2 x 3 donor ticks (0x80073378(8)); the victim is released after both (SMRE step 2: the hold
+# ends with his shaking; specials proofs v25-v30 held it 96 donor ticks, without the first 3).
+SHOCK_HOLD_DONOR_TICKS = 3 + 8 * 2 * 6
 SHOCK_JIGGLE_DONOR_TICKS = 3
 SHOCK_JIGGLE_PX = 4
 # MKT 0x800733F8: match_ani_points(him, victim) gives the victim his position, flip_single turns

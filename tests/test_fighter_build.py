@@ -28,6 +28,12 @@ V22_FILE87_SHA256 = "71bf66f35be7a6fe4c65cfddd318e30a83b892693cfe6dd0bb806ef8733
 # acid settings (ACCEPTED_ACID_TUNING) the build still gives PAYLOAD_SHA256 / V22_FILE87_SHA256.
 V23_PAYLOAD_SHA256 = "0249818fe8126966d4fd49545682758b82005776f829d13c56f30cf19fbdaaea"
 V23_FILE87_SHA256 = "64e6d394ef95aad23ad45eb522c28d4ad3d88730919ade2b786d705cb2784bab"
+# SMRE step 1 (owner, 2026-11-27: "let's remove it and have it being pure MKT"): MKT's forceballs
+# do not turn to the opponent at the start (init_special); the accepted hand-written programs did.
+# The fighter file is unchanged; with the turn restored (ACCEPTED_FORCEBALL_TURN) the build gives
+# the V23 payload again.
+V24_PAYLOAD_SHA256 = "749b6da96350f91e94285d01ea042b6a7a6ffcf5ba83d2e7a6ca7dd384e0b0a4"
+ACCEPTED_FORCEBALL_TURN = {"face": True}
 
 
 # Reptile's Acid Spit placement before v23 (his proofs v11-v22): the flip dropped, the impact
@@ -49,6 +55,29 @@ def accepted_acid(monkeypatch: pytest.MonkeyPatch) -> None:
             return d
         specials = {k: dict(v) for k, v in d.specials.items()}
         specials["acid_spit"]["projectile"] = {**specials["acid_spit"]["projectile"], **ACCEPTED_ACID_TUNING}
+        for move in ("forceball_fast", "forceball_slow"):
+            specials[move].update(ACCEPTED_FORCEBALL_TURN)
+        return dataclasses.replace(d, specials=specials)
+
+    monkeypatch.setattr(description, "load", load)
+
+
+def accepted_turn(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reptile's forceballs as accepted through specials proof v23: turning at the start."""
+
+    import dataclasses
+
+    from mkmszr.fighter_import import description
+
+    real = description.load
+
+    def load(name: str):  # type: ignore[no-untyped-def]
+        d = real(name)
+        if name != "reptile":
+            return d
+        specials = {k: dict(v) for k, v in d.specials.items()}
+        for move in ("forceball_fast", "forceball_slow"):
+            specials[move].update(ACCEPTED_FORCEBALL_TURN)
         return dataclasses.replace(d, specials=specials)
 
     monkeypatch.setattr(description, "load", load)
@@ -60,10 +89,13 @@ def roms() -> tuple[bytes, bytes]:
 
 
 @needs_roms
-def test_generic_build_reproduces_the_accepted_reptile(roms: tuple[bytes, bytes]) -> None:
+def test_generic_build_reproduces_the_accepted_reptile(roms: tuple[bytes, bytes],
+                                                      monkeypatch: pytest.MonkeyPatch) -> None:  # fmt: skip
     built = fb.build(*roms, "reptile")
-    assert hashlib.sha256(built.payload).hexdigest() == V23_PAYLOAD_SHA256
+    assert hashlib.sha256(built.payload).hexdigest() == V24_PAYLOAD_SHA256
     assert hashlib.sha256(built.file87).hexdigest() == V23_FILE87_SHA256
+    accepted_turn(monkeypatch)
+    assert hashlib.sha256(fb.build(*roms, "reptile").payload).hexdigest() == V23_PAYLOAD_SHA256
     assert built.selectors == {"forceball_fast": 3, "forceball_slow": 4, "acid_spit": 5, "elbow_dash": 6,
                                "invisibility": 7}  # fmt: skip
     assert sorted(built.reactions.values()) == [0x23, 0x2B, 0x4C]
@@ -150,18 +182,18 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
 
 @needs_roms
 def test_a_pose_past_its_script_is_refused(roms: tuple[bytes, bytes], monkeypatch: pytest.MonkeyPatch) -> None:
-    from mkmszr.fighter_import import components
+    from mkmszr.fighter_import import generate
 
-    real = components.load_programs
+    real_program = generate.Generator.program
 
-    def with_bad_pose(name: str):
-        moves, gaps = real(name)
-        for m in moves:
-            if m.name == "torpedo":
-                m.steps.insert(5, {"op": "pose", "anim": {"table": 1, "slot": 0, "offset": 6}})
-        return moves, gaps
+    def with_bad_pose(self, name: str, record: int):  # type: ignore[no-untyped-def]
+        prog, g, notes = real_program(self, name, record)
+        if name == "torpedo":  # every Rayden move is written by SMRE at build time
+            prog["steps"].insert(5, {"op": "pose", "anim": {"table": 1, "slot": 0, "offset": 6},
+                                     "src": {"anim": "MKT 0x800455A8"}})  # fmt: skip
+        return prog, g, notes
 
-    monkeypatch.setattr(components, "load_programs", with_bad_pose)
+    monkeypatch.setattr(generate.Generator, "program", with_bad_pose)
     with pytest.raises(fb.BuildError, match="past the 6 words"):
         fb.build(*roms, "rayden")
 
@@ -398,8 +430,10 @@ def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> 
     # ticks; his shaking was 16 frames in 32 (the repeat count was scaled), so the victim stayed
     # held after he stopped. Now 32 frames in 48: 16 passes of [sleep 2, frame, sleep 1, frame];
     # the miss 7 passes (14 frames, MKT 0x8000E0C0(3, 0xF)).
-    assert 0x24120030 in ws  # addiu s2, zero, 48: the victim's hold
-    assert 0x24140010 in ws and 0x24140007 in ws  # addiu s4, zero, 16 / 7: the two repeats
+    # SMRE step 2 (the grab rule): MKT's pose, a 3-tick pause, then 8 shocks of [frame, 3 ticks] x 4;
+    # the victim's hold covers both (3 + 96 donor ticks = 50 host ticks)
+    assert 0x24120032 in ws  # addiu s2, zero, 50: the victim's hold
+    assert 0x24140008 in ws and 0x24140007 in ws  # addiu s4, zero, 8 / 7: the shocks, the miss
     # v27: sound 5 (MKT event 0x205, two tracks) is ported: one chain per track, both tracks in one
     # host event read from the sample area
     from mkmszr.fighter_import import sound
@@ -412,3 +446,21 @@ def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> 
     d = sound.MSZ_EVENT_DEFS + 16 * multi[0]
     at = sound.MSZ_TRACKS + int.from_bytes(built.rom[d + 8 : d + 12], "big")
     assert built.samples[0] <= at < built.samples[1] and int.from_bytes(built.rom[d + 4 : d + 8], "big") == 0x6C
+
+
+
+# SMRE (2026-11-27): all five of Rayden's moves are written by the Special Move Recompile Engine
+# at build time (his description's ``smre``). Step 1 (four moves) was byte-identical to specials
+# proof v30 (payload c97596af...); step 2's grab rule writes the Shocker with MKT's 3-tick pause
+# after the grab and a hold that ends with his shaking.
+RAYDEN_V30_PAYLOAD_SHA256 = "05458f184d51373b"
+
+
+@needs_roms
+def test_rayden_and_reptile_moves_come_from_smre(roms: tuple[bytes, bytes]) -> None:
+    built = fb.build(*roms, "rayden")
+    assert hashlib.sha256(built.payload).hexdigest().startswith(RAYDEN_V30_PAYLOAD_SHA256)
+    assert set(built.report["smre"]) == {"lightning", "reversed_lightning", "teleport", "torpedo", "shocker"}
+    assert all(v["record"].startswith("0x800AB") for v in built.report["smre"].values())
+    rep = fb.fd.load("reptile")
+    assert set(rep.smre) == {"acid_spit", "forceball_fast", "forceball_slow", "elbow_dash", "invisibility"}

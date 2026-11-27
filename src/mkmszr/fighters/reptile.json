@@ -86,6 +86,7 @@
     "elbow_dash": "ice_shatter",
     "invisibility": "freeze_on_contact"
   },
+  "smre": {"acid_spit": "0x800AC83C", "forceball_fast": "0x800AC810", "forceball_slow": "0x800AC868", "elbow_dash": "0x800ACA5C", "invisibility": "0x800AC9A8"},
   "specials": {
     "forceball_fast": {
       "limit": "per_move",

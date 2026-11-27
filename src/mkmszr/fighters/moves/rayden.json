@@ -20,13 +20,13 @@
       "steps": [
         {
           "op": "begin",
-          "action_mkt": "0x2B",
           "face": false,
           "stop": true,
+          "action_mkt": "0x2b",
           "src": {
-            "action_mkt": "MKT 0x80077E4C",
             "face": "MKT 0x80077E54",
-            "stop": "MKT 0x80050428"
+            "stop": "MKT 0x80077E54",
+            "action_mkt": "MKT 0x80077E54"
           }
         },
         {
@@ -47,22 +47,13 @@
           "rate": 3,
           "until": "phase_end",
           "src": {
-            "anim": "MKT 0x80077EBC",
-            "rate": "MKT 0x80077EC8",
-            "until": "MKT 0x8000DC24"
+            "anim": "MKT 0x80077EC4",
+            "rate": "MKT 0x80077EC4",
+            "until": "MKT 0x80077EC4"
           }
         },
         {
           "op": "projectile",
-          "art": {
-            "table": 0,
-            "slot": 67,
-            "part": 3
-          },
-          "offset": [
-            0,
-            0
-          ],
           "speed": "0x80000",
           "rate": 3,
           "strike": {
@@ -77,6 +68,15 @@
             "reaction": "shock_stagger",
             "blocked_reaction": "blocked"
           },
+          "art": {
+            "table": 0,
+            "slot": 67,
+            "part": 3
+          },
+          "offset": [
+            0,
+            0
+          ],
           "checks": [
             {
               "box": [
@@ -97,33 +97,31 @@
               "after": 2
             }
           ],
-          "palette": "0x800B9B04",
+          "palette": "0x800b9b04",
           "impact": {
-            "anim": {
-              "table": 0,
-              "slot": 67,
-              "part": 4
-            },
-            "rate": 4,
             "at": "opponent",
+            "end": "animation",
             "adjust": [
               -115,
               0
             ],
+            "rate": 4,
             "follow": "opponent",
-            "end": "animation"
+            "anim": {
+              "table": 0,
+              "slot": 67,
+              "part": 4
+            }
           },
           "src": {
-            "art": "MKT 0x80077F6C",
-            "offset": "MKT 0x8007F9E8",
-            "speed": "MKT 0x80077FE8",
-            "rate": "MKT 0x80077FF0",
-            "strike": "MKT 0x800B0164",
-            "palette": "MKT 0x800B9B04",
-            "checks": "MKT 0x80078230",
-            "impact": "MKT 0x80078124",
-            "follow": "MKT 0x800781F0",
-            "reaction": "MKT 0x800539A8"
+            "speed": "MKT 0x80077ED0",
+            "rate": "MKT 0x80077ED0",
+            "strike": "MKT 0x80077ED0",
+            "art": "MKT 0x80077ED0",
+            "offset": "MKT 0x80077ED0",
+            "checks": "MKT 0x80077ED0",
+            "palette": "MKT 0x80077ED0",
+            "impact": "MKT 0x80077ED0"
           }
         },
         {
@@ -293,11 +291,10 @@
             "kind": "cooldown",
             "key": "0x8012C668",
             "ticks": 64,
-            "src": "MKT 0x80050F28"
+            "src": "MKT 0x80050F30"
           }
         ]
       },
-      "movement": true,
       "steps": [
         {
           "op": "begin",
@@ -393,11 +390,11 @@
         {
           "op": "end"
         }
-      ]
+      ],
+      "movement": true
     },
     {
       "name": "torpedo",
-      "movement": true,
       "command": {
         "buttons": "stick",
         "tokens": [
@@ -411,14 +408,14 @@
       "steps": [
         {
           "op": "begin",
-          "action_mkt": "0x21E",
           "face": true,
           "stop": true,
           "src": {
-            "action_mkt": "MKT 0x8004510C",
-            "face": "MKT 0x800504A0",
-            "stop": "MKT 0x80045184"
-          }
+            "face": "MKT 0x80045100",
+            "stop": "MKT 0x80045100",
+            "action_mkt": "MKT 0x80045124"
+          },
+          "action_mkt": "0x21e"
         },
         {
           "op": "sound",
@@ -427,7 +424,7 @@
             "random": 3
           },
           "src": {
-            "sound": "MKT 0x80045128"
+            "sound": "MKT 0x80045130"
           }
         },
         {
@@ -439,27 +436,28 @@
           "rate": 3,
           "until": "phase_end",
           "src": {
-            "anim": "MKT 0x80045190",
+            "anim": "MKT 0x80045198",
             "rate": "MKT 0x80045198",
-            "until": "MKT 0x800451AC"
+            "until": "MKT 0x80045198"
           }
         },
         {
           "op": "velocity",
           "x": "0x80000",
           "src": {
-            "x": "MKT 0x80045140"
+            "x": "MKT 0x8004F3A8"
           }
         },
         {
           "op": "finish",
           "rate": 3,
           "src": {
-            "rate": "MKT 0x800451A4"
+            "rate": "MKT 0x800451AC"
           }
         },
         {
           "op": "strike",
+          "ticks": 26,
           "strike": {
             "box": [
               80,
@@ -472,7 +470,6 @@
             "reaction": "torpedo_carry",
             "blocked_reaction": "blocked"
           },
-          "ticks": 26,
           "on_hit": [
             {
               "op": "sound",
@@ -486,18 +483,18 @@
             {
               "op": "carry",
               "ticks": 32,
+              "src": {
+                "ticks": "MKT 0x80045498"
+              },
               "every_tick": [
                 {
                   "op": "pass_through",
                   "ticks": 1,
                   "src": {
-                    "ticks": "host"
+                    "ticks": "MKT 0x80045498"
                   }
                 }
-              ],
-              "src": {
-                "ticks": "MKT 0x80045448"
-              }
+              ]
             },
             {
               "op": "shake_screen",
@@ -505,9 +502,9 @@
               "count": 6,
               "ticks": 3,
               "src": {
-                "amplitude": "MKT 0x80045504",
-                "count": "MKT 0x8004550C",
-                "ticks": "MKT 0x8002A7C0"
+                "amplitude": "MKT 0x80045508",
+                "count": "MKT 0x80045508",
+                "ticks": "MKT 0x80045508"
               }
             },
             {
@@ -527,23 +524,23 @@
                 "offset": 1
               },
               "src": {
-                "anim": "MKT 0x800455A8"
+                "anim": "MKT 0x800455F8"
               }
             },
             {
               "op": "jump",
               "x": "0x33333",
-              "y": "-0x6CCCC",
+              "y": "-0x6cccc",
               "gravity": "0x5199",
               "until": "landing",
+              "rate": 3,
               "src": {
-                "x": "MKT 0x800455E0",
-                "y": "MKT 0x800455DC",
-                "gravity": "MKT 0x800455EC",
-                "until": "MKT 0x8004560C",
-                "rate": "MKT 0x800455C8"
-              },
-              "rate": 3
+                "x": "MKT 0x800455F8",
+                "y": "MKT 0x800455F8",
+                "gravity": "MKT 0x800455F8",
+                "until": "MKT 0x800455F8",
+                "rate": "MKT 0x800455F8"
+              }
             },
             {
               "op": "end"
@@ -558,34 +555,31 @@
                 "offset": 1
               },
               "src": {
-                "anim": "MKT 0x800455A8"
+                "anim": "MKT 0x800455F8"
               }
             },
             {
               "op": "jump",
               "x": "0x33333",
-              "y": "-0x6CCCC",
+              "y": "-0x6cccc",
               "gravity": "0x5199",
               "until": "landing",
+              "rate": 3,
               "src": {
-                "x": "MKT 0x800455E0",
-                "y": "MKT 0x800455DC",
-                "gravity": "MKT 0x800455EC",
-                "until": "MKT 0x8004560C",
-                "rate": "MKT 0x800455C8"
-              },
-              "rate": 3
+                "x": "MKT 0x800455F8",
+                "y": "MKT 0x800455F8",
+                "gravity": "MKT 0x800455F8",
+                "until": "MKT 0x800455F8",
+                "rate": "MKT 0x800455F8"
+              }
             },
             {
               "op": "end"
             }
           ],
           "src": {
-            "strike": "MKT 0x800B0194",
-            "ticks": "MKT 0x800451B8",
-            "reaction": "MKT 0x800452C4",
-            "on_block": "MKT 0x8004531C",
-            "on_hit": "MKT 0x80045204"
+            "ticks": "MKT 0x800451D0",
+            "strike": "MKT 0x800451F4"
           }
         },
         {
@@ -602,26 +596,27 @@
             "offset": 1
           },
           "src": {
-            "anim": "MKT 0x80045250"
+            "anim": "MKT 0x80045268"
           }
         },
         {
           "op": "jump",
-          "x": "0",
-          "y": "0xD999",
-          "gravity": "0x6CCC",
+          "x": "0x0",
+          "y": "0xd999",
+          "gravity": "0x6ccc",
           "until": "landing",
           "src": {
-            "x": "MKT 0x8004528C",
-            "y": "MKT 0x80045290",
-            "gravity": "MKT 0x80045298",
-            "until": "MKT 0x8004529C"
+            "x": "MKT 0x80045294",
+            "y": "MKT 0x80045294",
+            "gravity": "MKT 0x80045294",
+            "until": "MKT 0x80045294"
           }
         },
         {
           "op": "end"
         }
-      ]
+      ],
+      "movement": true
     },
     {
       "name": "shocker",
@@ -642,14 +637,14 @@
       "steps": [
         {
           "op": "begin",
-          "action_mkt": "0x122",
           "face": false,
           "stop": true,
           "src": {
-            "action_mkt": "MKT 0x800732B8",
             "face": "MKT 0x8007323C",
-            "stop": "MKT 0x8007323C"
-          }
+            "stop": "MKT 0x8007323C",
+            "action_mkt": "MKT 0x800732C8"
+          },
+          "action_mkt": "0x122"
         },
         {
           "op": "sound",
@@ -676,6 +671,7 @@
             "unblockable": true
           },
           "ticks": 1,
+          "only_if": "opponent_settled",
           "on_hit": [
             {
               "op": "sound",
@@ -693,13 +689,23 @@
                 "slot": 2
               },
               "src": {
-                "anim": "MKT 0x80073304"
+                "anim": "MKT 0x8007330C"
+              }
+            },
+            {
+              "op": "sleep",
+              "ticks": 3,
+              "src": {
+                "ticks": "MKT 0x80073314"
               }
             },
             {
               "op": "repeat",
-              "count": 32,
+              "count": 8,
               "steps": [
+                {
+                  "op": "next_frame"
+                },
                 {
                   "op": "sleep",
                   "ticks": 3,
@@ -709,10 +715,37 @@
                 },
                 {
                   "op": "next_frame"
+                },
+                {
+                  "op": "sleep",
+                  "ticks": 3,
+                  "src": {
+                    "ticks": "MKT 0x80073610"
+                  }
+                },
+                {
+                  "op": "next_frame"
+                },
+                {
+                  "op": "sleep",
+                  "ticks": 3,
+                  "src": {
+                    "ticks": "MKT 0x800735EC"
+                  }
+                },
+                {
+                  "op": "next_frame"
+                },
+                {
+                  "op": "sleep",
+                  "ticks": 3,
+                  "src": {
+                    "ticks": "MKT 0x80073610"
+                  }
                 }
               ],
               "src": {
-                "count": "MKT 0x80073348"
+                "count": "MKT 0x800733AC"
               }
             },
             {
@@ -720,10 +753,9 @@
             }
           ],
           "src": {
-            "strike": "MKT 0x8006CBE4",
+            "strike": "MKT 0x80073250",
             "ticks": "MKT 0x80073250",
-            "box": "MKT 0x80073290",
-            "unblockable": "MKT 0x8006CBE4"
+            "only_if": "MKT 0x8007325C"
           }
         },
         {
@@ -733,7 +765,7 @@
             "slot": 2
           },
           "src": {
-            "anim": "MKT 0x80073534"
+            "anim": "MKT 0x80073540"
           }
         },
         {
@@ -769,7 +801,7 @@
             "slot": 2
           },
           "src": {
-            "anim": "MKT 0x8007354C"
+            "anim": "MKT 0x80073558"
           }
         },
         {
