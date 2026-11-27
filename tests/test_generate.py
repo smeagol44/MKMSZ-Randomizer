@@ -255,7 +255,8 @@ def test_smre_reads_the_teleport_uppercut(mkt: bytes) -> None:
     the last frame of slot 0x0D; a sink (y 0x5F333, gravity 0x9599) until past the screen's
     bottom line; behind the opponent (dx 12, MKT's velocity lead noted); the rise (table 1 slot 3
     at rate 5; y -0x7A666, gravity -0x5199) to the floor, striking within 41 px of it; the flight
-    on from that velocity (gravity 0xF000, 0xB000 after a hit), striking while rising; the
+    on from that velocity (gravity 0xF000, 0xB000 after a blocked strike: MKT's +0x3D0 holds the
+    blocked flag 0x8014C3B8), striking while rising; the
     landing (slot 0x16 from its second frame, 3 ticks a frame)."""
 
     prog, g, _ = gen.Generator(mkt, 7).program("teleport_uppercut", 0x800AB2C0)
@@ -273,7 +274,7 @@ def test_smre_reads_the_teleport_uppercut(mkt: bytes) -> None:
         {"op": "animate", "anim": {"table": 1, "slot": 3}, "rate": 5, "until": "running"},
         {"op": "jump", "x": "0x0", "y": "-0x7a666", "gravity": "-0x5199", "until": "surface",
          "strike": strike, "strike_near_px": 41},
-        {"op": "jump", "x": "0x0", "gravity": "0xf000", "until": "landing", "gravity_on_hit": "0xb000",
+        {"op": "jump", "x": "0x0", "gravity": "0xf000", "until": "landing", "gravity_on_block": "0xb000",
          "strike": strike, "strike_while": "rising"},
         {"op": "pose", "anim": {"table": 0, "slot": 22, "offset": 1}},
         {"op": "sleep", "ticks": 3}, {"op": "next_frame"}, {"op": "sleep", "ticks": 3}, {"op": "end"},

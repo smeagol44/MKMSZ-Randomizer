@@ -474,7 +474,7 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     production that stock word is a payload reference the fixed loader refreshes."""
 
     built = fb.build(*roms, "sektor-smre")
-    assert built.selectors == {} and built.report["combos"] == (
+    assert built.selectors == {"teleport_uppercut": 3} and built.report["combos"] == (
         "HP, HP, HK, B+HK", "HP, HP, HK, HK, B+HK", "HP, HP, D+LP", "HK, HK")
     rom = built.rom
     pointer = int.from_bytes(rom[0xB1D0C:0xB1D10], "big")  # the sixth record's next pointer
@@ -482,6 +482,8 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     assert 0 < at < len(built.payload) and built.payload[at : at + 12].hex() == "800913030103100204010000"
     made = fb.production(*roms, "sektor-smre")
     assert any(r[0] == 0x800B110C for r in made.manifest["refs"])
+    # proof v04: the teleport uppercut (SMRE), free (a movement ability)
+    assert built.report["costs"] == {"teleport_uppercut": 0} and built.report["smre"]["teleport_uppercut"]["unknown"] == []
     # proof v02/v03: his throw's sounds (MKT 0x80042498: arm out / throw / in)
     assert [len(built.report["throw_sounds"][k]) for k in ("grab", "throw", "release")] == [1, 1, 1]
     for site in (0x8005BCD4, 0x8005BDC8, 0x8005BDF8):  # jal into the payload, relocated in production
@@ -503,3 +505,15 @@ def test_throw_sounds_come_from_the_mkt_throw_routine(roms: tuple[bytes, bytes])
     assert ts.read(mkt, 19) == ts.read(mkt, 24) == {"grab": [], "throw": [], "release": []}
     assert "throw_sounds" not in fb.build(*roms, "reptile").report
     assert "throw_sounds" not in fb.build(*roms, "rayden").report
+
+
+def test_motion_depths_follow_the_mkt_curve() -> None:
+    """Sektor's teleport (proof v04): MKT's sink (0x5F333, 0x9599 a donor tick, 2 donor ticks a
+    host tick) to past 320 px, near the accepted legacy depths (13, 28, 46, 66, 89 ...); the rise
+    (-0x7A666, -0x5199) from MKT's bottom line 150 px below the floor reaches it at ~12.7 px a
+    donor tick (the legacy surface speed 0xC6666 = 12.4)."""
+
+    sink, _ = fb._depths(0x5F333, 0x9599, 2, 0, lambda d: d >= fb.SINK_HIDDEN_PX)
+    assert sink[:5] == [12, 27, 44, 64, 86] and sink[-1] >= fb.SINK_HIDDEN_PX and len(sink) == 13
+    rise, v = fb._depths(-0x7A666, -0x5199, 2, fb.SCREEN_BOTTOM_PX, lambda d: d <= 0)
+    assert len(rise) == 8 and rise[-1] <= 0 and -13 < v < -12.4

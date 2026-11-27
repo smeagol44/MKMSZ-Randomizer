@@ -419,7 +419,7 @@ class _Walk:
         self.grab: dict[str, Any] | None = None  # a grab's hit path is being read (damage, release)
         self.yvel: int | None = None  # object +0x10 / +0x8 set by the move (motion loops, do_jump)
         self.gravity: int | None = None
-        self.gravity_hit: int | None = None  # the gravity after the move's strike hit
+        self.gravity_hit: int | None = None  # the gravity after the move's strike was blocked
         self.anirate: int | None = None  # init_anirate: the rate next_anirate steps the selection at
         self.callback: int | None = None  # process +0x438: the routine the next jump runs each tick
 
@@ -573,7 +573,8 @@ class _Walk:
             sides = [[x for x in b if x.kind != "break"] for b in (s.then, s.other)]
             if all(len(b) == 1 and b[0].kind == "store" and b[0].base == dc.SELF and b[0].off == 0x8
                    and b[0].value.const() is not None for b in sides):  # fmt: skip
-                # the gravity by whether the move's strike hit (process +0x3D0, set by the check)
+                # the gravity by whether the move's strike was blocked (process +0x3D0: the check
+                # copies MKT's blocked flag 0x8014C3B8 there on contact)
                 self.gravity, self.gravity_hit = (b[0].value.const() for b in sides)
                 return []
         if self.edges and "?" in text:  # the rest of the edge test (its distance, < 103 px)
@@ -1072,8 +1073,8 @@ def _jump(w: _Walk, c: dc.Call, a: list) -> list[dict]:
 
 def _kept_jump(w: _Walk, c: dc.Call, x: int, y: int, g: int) -> list[dict]:
     """do_jump with ``JUMP_KEEP`` (0xD) for the y velocity and/or gravity: the jump goes on from
-    the velocity the move left (no ``y``) with the gravity it set (``gravity_on_hit``: the other
-    one after its strike hit). A per-tick callback (process +0x438) that strikes while the object
+    the velocity the move left (no ``y``) with the gravity it set (``gravity_on_block``: the
+    other one after its strike was blocked). A per-tick callback (process +0x438) that strikes while the object
     rises (``if (self+0x10 < 0) strike``) is the jump's ``strike`` with ``strike_while: rising``."""
 
     gravity = w.gravity if g == JUMP_KEEP else g
@@ -1084,7 +1085,7 @@ def _kept_jump(w: _Walk, c: dc.Call, x: int, y: int, g: int) -> list[dict]:
     if y != JUMP_KEEP:
         step["y"] = hex(y)
     if w.gravity_hit is not None and g == JUMP_KEEP:
-        step["gravity_on_hit"] = hex(w.gravity_hit)
+        step["gravity_on_block"] = hex(w.gravity_hit)
     if w.callback is not None:
         body = dc.decompile(w.gen.mkt, w.callback)
         ifs = [s for s in body if s.kind == "if"]

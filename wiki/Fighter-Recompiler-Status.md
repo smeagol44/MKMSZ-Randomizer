@@ -39,7 +39,19 @@ The generator is named the **Special Move Recompile Engine (SMRE)** (owner). Bef
    - **Throw sounds (proof v02; Implementation/CI-confirmed; runtime Pending).** Owner on v01: throw, combos and body fine, "the throw is missing its sound". Static-confirmed: MKT starts each throw from the per-fighter table `0x800A7ED8` (by fighter id; every entry opens with `slam_init` `0x80042698`). Its first call `0x80042878` plays the grab voice (`0x80004FE4(3)`, voice group 3) for every fighter. Sektor's throw `0x80042498` plays his sounds 0 (arm out) before the grab animation `0x80042668`, 1 (arm throw) before the transfer `0x80042580`, and 2 (arm in) after it. Reptile's (`0x80040234`) and Rayden's (`0x80041620`) throws play no sounds of their own.
      - New generic `throw_sounds` reads the routine's sounds by stage. Payload hooks play them on the host throw's three stages: the grab voice call `0x8005BCD4`, the throw phase `0x8005BDC8` and the finish `0x8005BDF8`. These are the legacy build's sites and wrappers (proof v41), which play only when the thrower is the player.
      - **Grab voice dropped (owner, 2026-11-27).** MKT's throw start also plays every fighter's grab voice (voice group 3), which the host voice rule leaves silent. The build played it for a while (Sektor v02, Reptile v25), but Rayden had no free sound chain for his. Making more chains (an enlarged sound bank, [Sounds and music](Sounds-and-Music)) was stopped, and the prototype is parked in draft PR #220. Owner: "If grab sounds are this problematic then let's drop them. We can get back to them later." No fighter plays a grab voice now. Sektor's own arm sounds stay (proof v03).
-   - **Next: the teleport uppercut.** SMRE reads its start (begin, action `0x208`, sound 7). Still unknown: the last frame of slot `0x0D`, the sink loop to the screen edge, the reposition onto the opponent, and the rise with the strike check while below the opponent. Its accepted host form (legacy proofs v08–v18) has runtime calibrations (the sink crop, emerge speed, airtime scale) that the generic lowering must keep.
+   - **Teleport uppercut (proof v04; Implementation/CI-confirmed; runtime Pending).** SMRE reads MKT `0x80048368` with nothing unknown. New rules:
+     - object y-velocity and gravity stores;
+     - a single-tick loop until the screen's bottom line (`below_screen`) or the floor (`surface`) becomes a `jump` step, with its rate-stepped animation and a strike checked within N px of the floor;
+     - `do_jump`'s `0xD` "keep" values (the flight goes on from the rise's velocity) and its per-tick callback (strike while rising);
+     - the gravity chosen by MKT's `+0x3D0` (the blocked flag `0x8014C3B8`: `0xB000` once blocked, else `0xF000`; the legacy read it as "after a hit");
+     - `find_last_frame`, `teleport_land`, and the relocation offset with MKT's opponent-velocity lead (noted, omitted);
+     - MKT reaction `0x3D` = the host uppercut.
+
+     Generic lowering:
+     - the sink and the rise are descriptor-only aliases of the pose, with the anchor lowered along MKT's curve each host tick (`fighter_build.motion_scripts`), as the legacy teleport;
+     - the flight is the stock jump with a per-tick callback (controller `+0x70C`) that strikes while rising, once per move.
+
+     The sink depths (12, 27, 44, 64, 86 … px) and the surface speed (12.7 px a donor tick) match the legacy hand-tuned ones (13, 28, 46, 66, 89; 12.4).
 
 ### Sektor (SMRE step 3) — proofs
 
@@ -48,6 +60,7 @@ The generator is named the **Special Move Recompile Engine (SMRE)** (owner). Bef
 | `MKMSZR_sektor-smre_common_proof_v01.z64` | `63887e4b53b7b35f3db30a1022c81717c11e6356a7b17e41a5b94e92e6c01d6b` | Sektor's base on the generic build (`sektor-smre`), no specials: computed layout, MKT throw with the arm flattened on (`scale`), MKT combos (seventh record in the payload). Builder `Experimental/FighterRecompilerProofs/MKMSZR_build_sektor-smre_proof_v01.py`. | **Runtime-confirmed (bounded)** (owner, 2026-11-27): throw, combos and body "all looking good"; the throw had no sound (v02). |
 | `MKMSZR_sektor-smre_common_proof_v02.z64` | `87e092bb26f8946e5926e04aa580bd7edc435fdc5efb86ccb9bd278a89306374` | v01 with the throw's sounds: MKT's grab voice and his arm out / throw / in at the grab, throw and release (`throw_sounds`, `body.throw_voice`). Builder `MKMSZR_build_sektor-smre_proof_v02.py`. | **Superseded** (v03: grab voice dropped before testing). |
 | `MKMSZR_sektor-smre_common_proof_v03.z64` | `e8441f2d9e065982d607f4ee22f9bd3369b10cbd41184b2f992dc419acbf6106` | v02 without the grab voice (owner dropped grab sounds); his arm out / throw / in stay. Builder `MKMSZR_build_sektor-smre_proof_v03.py`. | **Runtime-confirmed (bounded)** (owner, 2026-11-27): "It has the sound, it's actually really good." |
+| `MKMSZR_sektor-smre_common_proof_v04.z64` | `1cceafe3c60ad7144bd1dbd153c1880dd2a5c415013b01aa7301e7c00d95cc23` | v03 with the teleport uppercut (F,F + LK, Directional Ice Down's slot, free) written by SMRE. Pure MKT: no 0.9 jump scale or airtime retime; damage 16 / chip 2 (legacy 0x18 / 3); 12 px behind (legacy 40 units); no airborne start; MKT's blocked-strike gravity. Builder `MKMSZR_build_sektor-smre_proof_v04.py`. | **Pending** (owner to compare with the accepted teleport). |
 
 ### Generator — agreed tasks (owner, 2026-11-25: option A)
 

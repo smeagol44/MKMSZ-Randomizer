@@ -153,6 +153,105 @@ def smre_programs(mkt: bytes, fighter: int, records: dict[str, int], stored: dic
     return {m.name: m for m in made}
 
 
+# Motions (a jump that sinks below the screen or rises to the floor; Sektor's teleport uppercut):
+# MKT moves the sprite past the screen's bottom line, with no floor clip. The host keeps the
+# fighter on his floor and draws his pose lower each tick: descriptor-only aliases of the frame
+# (the image shared, the anchor y lowered by the depth), as Sektor's runtime-confirmed legacy
+# teleport (proofs v04-v18).
+SCREEN_BOTTOM_PX = 150  # MKT's bottom line below the floor (the legacy surface speed 0xC6666, v04)
+SINK_HIDDEN_PX = 320  # the sink goes on to here (legacy: 311), then one far alias hides him
+HIDDEN_PX = 1000
+
+
+def _script_offset(file87: bytes, where: Any) -> int:
+    if isinstance(where, tuple) and where[0] == "at":
+        return where[1]
+    if isinstance(where, tuple) and where[0] == "primary":
+        return int.from_bytes(file87[4 * where[1] : 4 * where[1] + 4], "big")
+    return int.from_bytes(file87[0x104 + 4 * where : 0x108 + 4 * where], "big")
+
+
+def _depths(y: int, gravity: int, donor_ticks: int, start: float, stop: Any) -> tuple[list[int], float]:
+    """Depths (px below the floor) each host tick along MKT's curve (16.16 per donor tick: y +=
+    v, then v += g), from ``start`` until ``stop(depth)``; and the velocity at the end."""
+
+    d, v, out = start, y / 65536, []
+    while not stop(d):
+        for _ in range(donor_ticks):
+            d += v
+            v += gravity / 65536
+        out.append(round(d))
+        if len(out) > 120:
+            raise BuildError("a motion never reaches its end")
+    return out, v
+
+
+def motion_scripts(file87: bytearray, steps: list[dict[str, Any]], animations: dict, donor_ticks: int,
+                   at: int) -> tuple[dict[int, lower_special.Motion], int]:  # fmt: skip
+    """The alias scripts of a move's sinking and rising ``jump`` steps, placed from ``at`` in the
+    fighter file; returns ``id(step) -> Motion`` and the next free offset."""
+
+    out: dict[int, lower_special.Motion] = {}
+    shown: tuple[int, int] | None = None  # (script, word) of the frame on screen
+    running: int | None = None  # the running animation's script
+
+    def be32(o: int) -> int:
+        return int.from_bytes(file87[o : o + 4], "big")
+
+    def put(o: int, v: int) -> None:
+        file87[o : o + 4] = (v & 0xFFFFFFFF).to_bytes(4, "big")
+
+    def alias(shape: int, depth: int) -> int:
+        nonlocal at
+        sub, mine = be32(shape), at
+        put(mine, mine + 8)
+        put(mine + 4, 0)
+        file87[mine + 8 : mine + 18] = file87[sub : sub + 10]  # image, w, h, x
+        y = int.from_bytes(file87[sub + 10 : sub + 12], "big", signed=True)
+        file87[mine + 18 : mine + 20] = ((y - depth) & 0xFFFF).to_bytes(2, "big")
+        at += 20
+        return mine
+
+    for step in steps:
+        op = step["op"]
+        if op in ("pose", "animate"):
+            key = (int(step["anim"]["table"]), int(step["anim"]["slot"]))
+            script = _script_offset(file87, animations[key])
+            shown = (script, int(step["anim"].get("offset", 0)))
+            running = script if step.get("until") == "running" else None
+        if op != "jump" or step["until"] not in ("below_screen", "surface"):
+            continue
+        y, g = lp._int(step["y"]), lp._int(step["gravity"])
+        if step["until"] == "below_screen":
+            if shown is None:
+                raise BuildError("a sink with no pose before it")
+            shape = be32(shown[0] + 4 * shown[1])
+            depths, _ = _depths(y, g, donor_ticks, 0, lambda d: d >= SINK_HIDDEN_PX)
+            frames = [shape] + [alias(shape, d) for d in depths] + [alias(shape, HIDDEN_PX)]
+            out[id(step)] = lower_special.Motion(at, len(frames))
+        else:
+            if running is None:
+                raise BuildError("a rise with no running animation before it")
+            shape = be32(running)
+            depths, v = _depths(y, g, donor_ticks, SCREEN_BOTTOM_PX, lambda d: d <= 0)
+            frames = [alias(shape, d) for d in depths[:-1]] + [shape]
+            near = int(step.get("strike_near_px", 0))
+            near_from = next((k for k, d in enumerate(depths[:-1] + [0]) if d < near), None) if "strike" in step else None
+            out[id(step)] = lower_special.Motion(at, len(frames), near_from, round(v * 65536))
+        script = at
+        for k, f in enumerate(frames):
+            put(script + 4 * k, f)
+        if step["until"] == "below_screen":  # hold the hidden frame
+            put(script + 4 * len(frames), 1)
+            put(script + 4 * len(frames) + 4, script + 4 * (len(frames) - 1))
+            at = script + 4 * len(frames) + 8
+        else:  # then the running animation from its second frame
+            put(script + 4 * len(frames), 1)
+            put(script + 4 * len(frames) + 4, running + 4)
+            at = script + 4 * len(frames) + 8
+    return out, at
+
+
 def _free_from(file87: bytearray, start: int) -> int:
     """First 16-aligned offset after the last used byte of the body tail [start, TYPE_END)."""
 
@@ -396,6 +495,15 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             throw_events[stage] = tuple(fighter_sounds[n] for n in numbers)
     if throw_events:
         report["throw_sounds"] = {k: list(v) for k, v in throw_events.items()}
+    motions: dict[int, lower_special.Motion] = {}
+    for move in order:  # sinking and rising jumps: their alias scripts in the fighter file's tail
+        if any(s["op"] == "jump" and s.get("until") in ("below_screen", "surface") for s in steps_of[move]):
+            start = _free_from(file87, body.chain_start)
+            made, end_at = motion_scripts(file87, steps_of[move], animations,
+                                          _int(d.specials.get(move, {}).get("donor_ticks", 1)), start)  # fmt: skip
+            if end_at > body_build.TYPE_END:
+                raise BuildError(f"{move}: motion scripts do not fit the fighter file")
+            motions.update(made)
     if len(file87) != body_build.FILE87_SIZE:
         raise BuildError("the fighter file changed size")
     rom[body_build.FILE87_ROM : body_build.FILE87_ROM + len(file87)] = file87
@@ -484,6 +592,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             air_control=bool(tune.get("air_control")),  # owner: steer the closing drop
             cooldown=f"{move}_cooldown" if move in cooldown_of else None,
             afterimage=afterimage_of[move][0] if move in afterimage_of else None,
+            motions=motions or None,
+            primary_scripts={k: int.from_bytes(file87[4 * k : 4 * k + 4], "big") for k in d.body.slots},
         )  # fmt: skip
         if g is not None:
             ptune = tune.get("projectile", {})

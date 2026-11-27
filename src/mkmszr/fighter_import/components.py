@@ -90,10 +90,14 @@ COMPONENTS: dict[str, dict[str, str]] = {
     "carry": {"ticks": "ticks", "every_tick?": "steps"},
     "jump": {
         "x": "vel",
-        "y": "vel",
+        "y?": "vel",  # absent: on from the velocity the move left (MKT do_jump's 0xD)
         "gravity": "accel",
         "until": "enum:landing|below_screen|surface",
         "rate?": "ticks",
+        "gravity_on_block?": "accel",  # the gravity once the jump's strike was blocked
+        "strike?": "strike",  # checked each tick (once it connects, no more)
+        "strike_near_px?": "px",  # ... only within N px of the floor (a rise)
+        "strike_while?": "enum:rising",  # ... only while rising
     },
     "shake_screen": {"amplitude": "px", "count": "int", "ticks": "ticks"},
     "shake": {"dx": "px", "dy": "px", "count": "int", "ticks": "ticks"},
