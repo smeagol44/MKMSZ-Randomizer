@@ -120,13 +120,7 @@
       "air_start": true
     },
     "straight_rocket": {
-      "donor_ticks": 2,
-      "projectile": {
-        "offset_px": [
-          -30,
-          -36
-        ]
-      }
+      "donor_ticks": 2
     }
   },
   "legacy": [],

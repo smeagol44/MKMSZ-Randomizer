@@ -553,6 +553,9 @@ def test_sektor_missile_matches_the_accepted_legacy_rocket(roms: tuple[bytes, by
     prog, _, _ = generate.Generator(mkt, 7).program("straight_rocket", 0x800AB250)
     step = next(s for s in prog["steps"] if s["op"] == "projectile")
     assert step["trail"] == {"effect": {"mkt_fx": 4, "place": 3}, "every": 2}
+    # proof v09 (owner on v08: "transparent red instead of its grey, yellow and red"): ROCKET_P,
+    # named by slot 0x43's first frame (the vertical rocket), as the legacy build's v87
+    assert step["palette"] == "0x800bc3ac" and step["offset"] == [5, 38]
     art = lp.ArtLayout(0, 0, None, 0, 8, 8)
     low = lp.lower(step, art, {}, 0x20, roms[0])
     assert list(low.speeds) == zap.host_speeds(zap.SPEED_NORMAL)

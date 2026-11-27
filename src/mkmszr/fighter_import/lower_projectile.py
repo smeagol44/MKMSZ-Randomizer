@@ -55,6 +55,7 @@ MKT_TABLE1 = 0x168  # MKT get_char_ani table 1 (heap-relative)
 KSEG1_TO_KSEG0 = 0x20000000
 FOLLOW_SP = 0x24  # the child's frame: four offset words (0x20 is the texture handle)
 FOLLOW_FIELDS = (host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Y, host.ACTOR_Z)
+TRAIL_FIELDS = FOLLOW_FIELDS  # the flight's own position, kept while a trail puff starts behind it
 HIT_X, HIT_Y = 0x802E83D8, 0x802C1BA0  # a projectile's victim x / y at its last hit (0x8002DCB0)
 ACTOR_FLAGS, FACING_BIT = 0x8C, 0x10  # actor facing (0x800344F4, 0x8002B6F4)
 ACTOR_SUBLAYER = 0xEC  # draw sub-layer within the actor priority +0x5C (as projectile.py)
@@ -591,6 +592,11 @@ class Lowered:
     trail_front: bool = False
     impact_effect: str | None = None
     impact_effect_front: bool = True
+    # Drawn at the owner's vertical draw offset (+0xD8), as the stock projectile token builds its
+    # actor (0x80030AA4: Sektor's runtime-confirmed legacy rocket), so MKT's own spawn offset
+    # (make_rocket's 5, 38 px) and its effects (drawn at 0x6C, as the fighters) apply as in MKT.
+    # Projectiles placed by an owner-calibrated offset (Reptile's, Rayden's) keep ACTOR_D8.
+    owner_draw: bool = False
 
 
 def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
@@ -816,7 +822,10 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     host.load_controller(a)
     a.lhu("a0", 0x78, "s1")  # owner type (4)
     a.li("a1", p.art.flight_slot)
-    a.li("a2", ACTOR_D8)
+    if p.owner_draw:  # the clone's actor is still the owner's here
+        a.lw("a2", 0xD8, "s1")
+    else:
+        a.li("a2", ACTOR_D8)
     a.li("a3", p.art.tex_w)
     a.li("t0", p.art.tex_h)
     a.sw("t0", 0x10, "sp")
@@ -867,22 +876,31 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         a.beqz("t0", prefix + "speed_kept")
         a.addiu("s4", "s4", 4)
         a.label(prefix + "speed_kept")
-    if p.trail is not None:  # one puff a host tick, along its heading (facing-signed)
+    if p.trail is not None:  # one puff a host tick, ``trail_dx`` along its heading: the missile
+        # is moved there by the facing-aware offset that placed it (MKT multi_adjust_xy), the
+        # puff starts at its position, and its position is put back
+        host.load_controller(a)
+        for k, field in enumerate(TRAIL_FIELDS):
+            a.lw("t0", field, "s1")
+            a.sw("t0", FOLLOW_SP + 4 * k, "sp")
+        a.move("a0", "s1")
+        a.li("a1", p.trail_dx)
+        a.move("a2", "zero")
+        a.jal(F_OFFSET)
         host.load_controller(a)
         a.move("a0", "s1")
         a.la("a1", p.trail)
-        a.lhu("t3", ACTOR_FLAGS, "s1")
-        a.andi("t3", "t3", FACING_BIT)
-        a.li("a2", p.trail_dx)
-        a.beqz("t3", prefix + "trail_dx")
-        a.li("a2", -p.trail_dx)
-        a.label(prefix + "trail_dx")
+        a.move("a2", "zero")
         if p.trail_front:
             a.li("a3", effects.FRONT_SUBLAYER)
         else:  # behind it: the next sub-layer
             a.lhu("a3", ACTOR_SUBLAYER, "s1")
             a.addiu("a3", "a3", 1)
         a.jal_label("fx_spawn")
+        host.load_controller(a)
+        for k, field in enumerate(TRAIL_FIELDS):
+            a.lw("t0", FOLLOW_SP + 4 * k, "sp")
+            a.sw("t0", field, "s1")
     if p.hum_event is not None:
         a.addiu("s3", "s3", 1)
         a.slti("t0", "s3", p.hum_every)

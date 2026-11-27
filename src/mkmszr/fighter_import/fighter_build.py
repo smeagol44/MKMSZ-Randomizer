@@ -630,6 +630,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                     raise BuildError(f"{move}: a trail every {every} donor ticks, {info.dy} px up, is not lowered")
                 low = dataclasses.replace(low, trail=f"fx_{info.fx}", trail_dx=info.dx * lp.UNITS_PER_PX,
                                           trail_front=info.front)  # fmt: skip
+            if "offset_px" not in ptune:  # MKT's own spawn offset: drawn as the stock token draws
+                low = dataclasses.replace(low, owner_draw=True)
             if (move, "impact") in fx_info:  # at the projectile (MKT rocket_explode_fx)
                 info = fx_info[(move, "impact")]
                 low = dataclasses.replace(low, impact_effect=f"fx_{info.fx}", impact_effect_front=info.front)

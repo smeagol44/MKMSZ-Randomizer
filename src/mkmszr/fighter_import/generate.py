@@ -1555,6 +1555,8 @@ def _object_palette(w: _Walk, art: dict[str, int] | None) -> int | None:
         if helper is not None and helper.frames:
             return donor.m32(helper.frames[0] + 0x14)
     anim = w.object_anim
+    if anim is None and art is not None:  # the object made from the art's slot (Sektor's rocket:
+        anim = art  # slot 0x43's first frame, the vertical rocket, names ROCKET_P 0x800BC3AC)
     if anim is not None:
         p = donor.m32((0 if anim["table"] == 0 else MKT_TABLE1) + 4 * anim["slot"])
         while MKT.is_token(donor.m32(p)):
