@@ -35,6 +35,21 @@ What a reading does:
 
 From 2026-11-25 the move programs can be written by the generator (`fighter_import.decompile` → `fighter_import.generate`) instead of by hand from the reading. The reading aid stays the tool for routines the generator reports as unknown. How it works, what it reproduces and the MKT facts it found: [Fighter recompiler status](Fighter-Recompiler-Status#generator--agreed-tasks-owner-2026-11-25-option-a).
 
+**SMRE (2026-11-27).** The generator is now called the Special Move Recompile Engine. It also writes each move's command block and conditions from the MKT command record ([status](Fighter-Recompiler-Status)), and it reads grabs (Rayden's Shocker).
+
+**Grab helpers** (MKT USA Rev. 2; static reading, SMRE step 2; registry kind `engine`):
+
+| Address | Name | Reading |
+|---|---|---|
+| `0x8006CBE4` | `grab_refused` | `0x8000` when the opponent cannot be grabbed now (airborne, busy, unsettled) |
+| `0x8006D824` | `damage_opponent(n, opponent)` | Damage to the grabbed opponent; it calls `0x8003EB54` with the player side (the meaning of `n` as damage is a Hypothesis) |
+| `0x8006D730` | `opponent_routine(0, routine)` | Stops the opponent and gives its process `routine`: the hold (`0x8005A1B8`, a wait), later the release (`0x800734CC` → `0x80058728`, the drop) |
+| `0x80005140` | `opponent_voice(group)` | The opponent's voice from a voice group |
+| `0x8006C5C0` / `0x8006C740` | `count_grab_hit` / `count_grab_miss` | Counters on the processes |
+| `0x8006D940` / `0x8006D980` | `adjust_opponent(dx, dy)` / `match_opponent_to_me` | The opponent moved, and set at his animation point facing him |
+| `0x80073580` | `opponent_call(routine)` | `routine` run in the opponent's process (the shock palette on and off) |
+| `0x8000E0C0` | `step_frames(ticks, n)` | n times: the next frame, then sleep `ticks` (stops at the script's end) |
+
 ## Registry
 
 `mkt_registry.REGISTRY` maps an address to a name, arguments, effect, evidence and kind (`engine`, `move` or `global`). It includes the names already established in [MKT adapter primitives](MKT-Adapter-Primitives) and adds the ones below, all read in this task.

@@ -637,14 +637,14 @@
       "steps": [
         {
           "op": "begin",
-          "action_mkt": "0x122",
           "face": false,
           "stop": true,
           "src": {
-            "action_mkt": "MKT 0x800732B8",
             "face": "MKT 0x8007323C",
-            "stop": "MKT 0x8007323C"
-          }
+            "stop": "MKT 0x8007323C",
+            "action_mkt": "MKT 0x800732C8"
+          },
+          "action_mkt": "0x122"
         },
         {
           "op": "sound",
@@ -671,6 +671,7 @@
             "unblockable": true
           },
           "ticks": 1,
+          "only_if": "opponent_settled",
           "on_hit": [
             {
               "op": "sound",
@@ -688,13 +689,23 @@
                 "slot": 2
               },
               "src": {
-                "anim": "MKT 0x80073304"
+                "anim": "MKT 0x8007330C"
+              }
+            },
+            {
+              "op": "sleep",
+              "ticks": 3,
+              "src": {
+                "ticks": "MKT 0x80073314"
               }
             },
             {
               "op": "repeat",
-              "count": 32,
+              "count": 8,
               "steps": [
+                {
+                  "op": "next_frame"
+                },
                 {
                   "op": "sleep",
                   "ticks": 3,
@@ -704,10 +715,37 @@
                 },
                 {
                   "op": "next_frame"
+                },
+                {
+                  "op": "sleep",
+                  "ticks": 3,
+                  "src": {
+                    "ticks": "MKT 0x80073610"
+                  }
+                },
+                {
+                  "op": "next_frame"
+                },
+                {
+                  "op": "sleep",
+                  "ticks": 3,
+                  "src": {
+                    "ticks": "MKT 0x800735EC"
+                  }
+                },
+                {
+                  "op": "next_frame"
+                },
+                {
+                  "op": "sleep",
+                  "ticks": 3,
+                  "src": {
+                    "ticks": "MKT 0x80073610"
+                  }
                 }
               ],
               "src": {
-                "count": "MKT 0x80073348"
+                "count": "MKT 0x800733AC"
               }
             },
             {
@@ -715,10 +753,9 @@
             }
           ],
           "src": {
-            "strike": "MKT 0x8006CBE4",
+            "strike": "MKT 0x80073250",
             "ticks": "MKT 0x80073250",
-            "box": "MKT 0x80073290",
-            "unblockable": "MKT 0x8006CBE4"
+            "only_if": "MKT 0x8007325C"
           }
         },
         {
@@ -728,7 +765,7 @@
             "slot": 2
           },
           "src": {
-            "anim": "MKT 0x80073534"
+            "anim": "MKT 0x80073540"
           }
         },
         {
@@ -764,7 +801,7 @@
             "slot": 2
           },
           "src": {
-            "anim": "MKT 0x8007354C"
+            "anim": "MKT 0x80073558"
           }
         },
         {

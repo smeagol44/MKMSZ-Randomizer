@@ -160,17 +160,23 @@ def test_teleport_reads_the_afterimage_and_the_relocation(mkt: bytes) -> None:
 
 
 @needs_mkt
-def test_shocker_reading_names_the_grab_it_cannot_lower(mkt: bytes) -> None:
-    """HP release (quick special 0x1D -> 0x80073228): the generator reads the begin, the sounds
-    and the pose, and reports the grab it has no rule for (the grab test 0x8006CBE4, the damage
-    0x8006D824, the victim's routine); the program in moves/rayden.json is hand-written from this
-    reading (specials proof v25). A grab rule should empty this list."""
+def test_the_grab_rule_reads_the_shocker(mkt: bytes) -> None:
+    """HP release (quick special 0x1D -> 0x80073228), SMRE step 2: grab_refused, then |dx| < 0x37
+    with the opponent settled, else the miss routine; the hit path damages (0x20), holds and
+    releases the opponent (0x800734CC: shock_hold). One unblockable one-tick strike reaching 55 px,
+    the hit path as on_hit, the miss after it; nothing unknown."""
 
-    g = gen.Generator(mkt, 24).move(0x80073228)
-    assert [s["op"] for s in g.steps][:2] == ["begin", "sound"]
-    assert g.steps[0]["action_mkt"] == "0x122" and g.steps[1]["sound"] == {"fighter": 12}
-    calls = {u.split("call ")[1] for u in g.unknown if "call " in u}
-    assert {"0x8006CBE4", "0x8006D824", "0x80005140"} <= calls
+    g = gen.Generator(mkt, 24).move(0x8004EBA0)
+    assert g.unknown == [] and g.grab
+    strike = next(s for s in g.steps if s["op"] == "strike")
+    assert strike["strike"] == {"box": [0x37, 0, 0x37, gen.GRAB_BOX_HEIGHT], "damage": 0x20, "block_damage": 0,
+                                "reaction": "shock_hold", "blocked_reaction": "blocked", "unblockable": True}  # fmt: skip
+    assert strike["ticks"] == 1 and strike["only_if"] == "opponent_settled"
+    assert [s["op"] for s in strike["on_hit"]] == ["sound", "pose", "sleep", "repeat", "end"]
+    shocks = strike["on_hit"][3]
+    assert shocks["count"] == 8 and [s["op"] for s in shocks["steps"]] == ["next_frame", "sleep"] * 4
+    after = [s["op"] for s in g.steps[g.steps.index(strike) + 1 :]]
+    assert after == ["pose", "repeat", "sleep", "pose", "end"]  # MKT's miss: 15 frames at 3 ticks
 
 
 # ---- SMRE: whole programs from the command records (2026-11-27) ---------------------------------

@@ -44,7 +44,25 @@ def _g(name: str, effect: str, evidence: str = _M) -> MktRoutine:
     return MktRoutine(name, "", effect, evidence, "global")
 
 
+_S = "SMRE grab rule, 2026-11-27 (Wiki Fighter-Recompiler-Status, SMRE step 2; static reading)"
+
 REGISTRY: dict[int, MktRoutine] = {
+    # -- grabs (SMRE step 2) ------------------------------------------------------------------
+    0x8006CBE4: _e("grab_refused", "", "0x8000 when the opponent cannot be grabbed now (airborne, "
+                   "busy, unsettled; Rayden's Shocker)", _S),
+    0x8006D824: _e("damage_opponent", "a0 = damage, a1 = opponent object",
+                   "damage the grabbed opponent (meaning Hypothesis: 0x8003EB54 per player side)", _S),
+    0x8006D730: _e("opponent_routine", "a0 = 0, a1 = routine",
+                   "stop the opponent and give its process ``routine`` (a grab's hold or release)", _S),
+    0x80005140: _e("opponent_voice", "a0 = voice group", "the opponent's voice from a group", _S),
+    0x8006C5C0: _e("count_grab_hit", "", "a hit/grab counter on the opponent's process", _S),
+    0x8006C740: _e("count_grab_miss", "", "a counter on the fighter's process (a missed grab)", _S),
+    0x8006D940: _e("adjust_opponent", "a0 = dx, a1 = dy", "multi_adjust_xy on the opponent", _S),
+    0x8006D980: _e("match_opponent_to_me", "", "the opponent to his animation point, flipped to face him", _S),
+    0x80073580: _e("opponent_call", "a0 = routine", "run ``routine`` in the opponent's process "
+                   "(Rayden's shock palette on / off)", _S),
+    0x8000E0C0: _e("step_frames", "a0 = ticks, a1 = count",
+                   "count times: the next frame, then sleep ticks (stops at the script's end)", _S),
     # -- sound ------------------------------------------------------------------------------
     0x8000518C: _e(
         "run_footstep_sound", "", "random one of four sounds from group table 0x800A1A3C"

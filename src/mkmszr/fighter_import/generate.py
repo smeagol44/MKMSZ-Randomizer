@@ -56,6 +56,24 @@ OWN_CONDITIONS = ("forceball_",)  # registry-named fighter condition helpers, re
 OTHER_GUARD_FIELDS = {0x38: "the opponent's fighter id", 0x408: "the opponent's reaction state",
                       0x3F6: "the opponent's action"}  # fmt: skip
 MOVEMENT_OPS = {"relocate", "velocity"}
+# Grabs (SMRE step 2): the routine a grab gives the opponent at its release -> the victim reaction
+# meaning that plays the whole hold (components.REACTIONS). Rayden's Shocker: 0x800734CC drops the
+# victim (0x80058728) after its hold at his hands and the shocks (lower_special.shock_hold).
+GRAB_RELEASES = {0x800734CC: "shock_hold"}
+GRAB_BOX_HEIGHT = 120  # px: the victim's body height (MKT's grab tests only the horizontal reach)
+
+
+def _tree_text(s: Any) -> str:
+    """The conditions and calls of an ``if`` tree, as text (the grab shape's reach and guard)."""
+
+    parts = []
+    if s.kind == "if":
+        parts.append(str(s.cond))
+        for x in list(s.then) + list(s.other or []):
+            parts.append(_tree_text(x))
+    elif s.kind == "call":
+        parts.append(REGISTRY[s.target].name if s.target in REGISTRY else f"0x{s.target or 0:08X}")
+    return " ".join(parts)
 
 
 def _same_command(a: Any, b: Any) -> bool:
@@ -76,6 +94,7 @@ class Generated:
     steps: list[dict[str, Any]]
     notes: list[str] = field(default_factory=list)
     unknown: list[str] = field(default_factory=list)
+    grab: bool = False  # the move is a grab (the grab rule read it)
 
 
 class Generator:
@@ -258,6 +277,8 @@ class Generator:
         prog: dict[str, Any] = {"name": name, "command": cmd, "steps": g.steps}
         if any(s["op"] in MOVEMENT_OPS for s in _all(g.steps)):
             prog["movement"] = True
+        if g.grab:
+            prog["grab"] = True
         return prog, g, notes
 
     def move(self, entry: int, args: tuple[int, ...] = ()) -> Generated:
@@ -295,6 +316,7 @@ class _Walk:
         self.copy: int | None = None  # pc of new_object: the fighter's copy being set up
         self.matched = False  # match_me_to_opponent ran: an offset next is a relocation
         self.edges = False  # an arena-edge test ran in this routine (MKT's teleport side)
+        self.grab: dict[str, Any] | None = None  # a grab's hit path is being read (damage, release)
 
     def name(self, c: dc.Call) -> str:
         return self.gen.names.get(c.target, f"0x{c.target:08X}" if c.target else "jalr")
@@ -320,6 +342,11 @@ class _Walk:
         i = 0
         while i < len(stmts) and not self.ended:
             s = stmts[i]
+            if s.kind == "call" and self.name(s) == "grab_refused" and self.grab is None:
+                made = self.grab_shape(stmts, i)
+                if made is not None:  # the rest of the list is the grab's hit path, read by it
+                    out += made
+                    return out
             if s.kind == "loop":
                 count = self._count(stmts[:i], s)
                 if count is not None:
@@ -402,6 +429,12 @@ class _Walk:
         c = s.cond.const()
         if c is not None:  # decided by a known argument
             return self.stmts(s.then if c else s.other)
+        ends = [x for x in s.then if x.kind != "break"]
+        if (self.grab is not None and "proc+0x3C0" in str(s.cond) and not s.other and len(ends) == 1
+                and ends[0].kind == "call" and self.name(ends[0]) == "reaction_exit"):  # fmt: skip
+            self.note(f"MKT ends the grab if the victim breaks free (0x{s.pc:08X}: {s.cond}); the host "
+                      "victim reaction holds it to the end")  # fmt: skip
+            return []
         if any(f"[0x{p:08X}]" in str(s.cond) for p in PLAYER_OBJECTS) and "self" in str(s.cond):
             # which player the fighter is (per-player tables, e.g. the torpedo's velocity source):
             # bookkeeping; both arms do the same for their player
@@ -478,8 +511,10 @@ class _Walk:
     @staticmethod
     def _count(before: list, loop: dc.Loop) -> int | None:
         """The loop's count: the constant stored to the process field its condition counts down,
-        among the stores just before it."""
+        among the stores just before it, or a register counted down from a known value."""
 
+        if loop.count is not None:
+            return loop.count
         for s in reversed(before[-4:]):
             if s.kind != "store":
                 break
@@ -510,6 +545,55 @@ class _Walk:
                      "every_tick": [{"op": "pass_through", "ticks": 1, "src": {"ticks": at}}]}]  # fmt: skip
         steps = self.stmts(body)
         return [{"op": "repeat", "count": count, "steps": steps, "src": {"count": at}}]
+
+    def grab_shape(self, stmts: list, i: int) -> list[dict] | None:
+        """A grab (Rayden's Shocker, MKT 0x80073228)::
+
+            r = grab_refused()
+            if (r != 0x8000) { if (|my x - his x| < N) { if (opponent settled) goto hit } }
+            miss()        (a routine that ends the move)
+            hit: ...      (damage_opponent, opponent_routine(hold), ..., opponent_routine(release))
+
+        becomes one ``strike`` of one tick: an unblockable box reaching N px in front of him
+        (the host box's first value is its front edge), MKT's damage, the reaction the release
+        routine names (:data:`GRAB_RELEASES`), the hit path as ``on_hit``; the miss routine's
+        steps follow (the strike falls through to them). The move is a ``grab`` (owner rule:
+        twice Ice Blast's Ice)."""
+
+        import re
+
+        call = stmts[i]
+        if i + 2 >= len(stmts):
+            return None
+        test, miss = stmts[i + 1], stmts[i + 2]
+        if test.kind != "if" or f"r{call.pc:08X}" not in str(test.cond) or miss.kind != "call":
+            return None
+        text = _tree_text(test)
+        reach = re.search(r"\(\? < (0x[0-9A-Fa-f]+|\d+)\)", text)
+        if reach is None or "+0x14:2 - proc+0x3BC+0x14:2" not in text:
+            self.unknown(f"0x{call.pc:08X}: grab without a horizontal reach")
+            return None
+        reach_px = int(reach.group(1), 0)
+        settled = "opponent_unsettled" in text
+        miss_steps = self.call(miss)  # first: its action id must not replace the hit's on begin
+        self.grab = {}
+        on_hit = self.stmts(stmts[i + 3 :])
+        grab, self.grab = self.grab, None
+        if "damage" not in grab or "reaction" not in grab:
+            self.unknown(f"0x{call.pc:08X}: grab without {'a damage' if 'damage' not in grab else 'a known release'}")
+            return None
+        strike = {"box": [reach_px, 0, reach_px, GRAB_BOX_HEIGHT], "damage": grab["damage"], "block_damage": 0,
+                  "reaction": grab["reaction"], "blocked_reaction": "blocked", "unblockable": True}  # fmt: skip
+        step: dict[str, Any] = {"op": "strike", "strike": strike, "ticks": 1}
+        if settled:
+            step["only_if"] = "opponent_settled"
+        step["on_hit"] = on_hit
+        step["src"] = {"strike": f"MKT 0x{call.pc:08X}", "ticks": f"MKT 0x{call.pc:08X}",
+                       **({"only_if": f"MKT 0x{test.pc:08X}"} if settled else {})}  # fmt: skip
+        self.g.grab = True
+        self.note(f"MKT's grab tests the reach between the fighters' anchors (|dx| < {reach_px}); the host "
+                  "box meets the victim's body")  # fmt: skip
+        return [step] + miss_steps
 
     def _find_strike(self, body: list, guard: str | None = None) -> tuple[dc.Call, str | None, dc.If | None] | None:
         for i, x in enumerate(body):
@@ -804,6 +888,35 @@ def _frame_at(w: _Walk, c: dc.Call, a: list) -> list[dict]:  # ani_frame_at_t0(s
 
 def _ignore(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     return []
+
+
+def _damage_opponent(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    if w.grab is None or a[0] is None:
+        w.unknown(f"0x{c.pc:08X}: damage_opponent outside a grab")
+    else:
+        w.grab["damage"] = a[0]
+    return []
+
+
+def _opponent_routine(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    routine = None if a[1] is None else a[1] & 0xFFFFFFFF
+    if w.grab is not None and routine in GRAB_RELEASES:
+        w.grab["reaction"] = GRAB_RELEASES[routine]
+    elif w.grab is None:
+        w.unknown(f"0x{c.pc:08X}: opponent_routine outside a grab")
+    return []  # the hold (a waiting routine) and the release are the victim reaction's
+
+
+def _step_frames(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    """step_frames(ticks, n) after a selection: its first frame, then n - 1 more, ``ticks`` each."""
+
+    if a[0] is None or a[1] is None or w.pending is None:
+        w.unknown(f"0x{c.pc:08X}: step_frames {c.args[0]}, {c.args[1]}")
+        return []
+    first = w.show_pending()
+    at = f"MKT 0x{c.pc:08X}"
+    body = [{"op": "sleep", "ticks": a[0], "src": {"ticks": at}}, {"op": "next_frame"}]
+    return first + [{"op": "repeat", "count": a[1] - 1, "steps": body}, {"op": "sleep", "ticks": a[0]}]
 
 
 def _note_only(text: str):
@@ -1162,6 +1275,15 @@ def _walk_all(stmts: list) -> list:
 
 
 CALL_RULES = {
+    "damage_opponent": _damage_opponent,
+    "opponent_routine": _opponent_routine,
+    "step_frames": _step_frames,
+    "opponent_voice": _note_only("MKT's grab plays the victim's voice; the host victim reaction plays its own"),
+    "count_grab_hit": _ignore,  # MKT's hit counters (no host equivalent needed)
+    "count_grab_miss": _ignore,
+    "adjust_opponent": _ignore,  # the victim's moves during a grab: the host victim reaction's
+    "match_opponent_to_me": _ignore,
+    "opponent_call": _ignore,
     "init_special_face": _begin(True),
     "init_special": _begin(False),
     "begin_special": _begin_special,

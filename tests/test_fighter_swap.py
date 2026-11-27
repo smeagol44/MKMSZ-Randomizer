@@ -126,7 +126,9 @@ def test_cli_sektor_build_is_pinned(tmp_path: Path) -> None:
 # hangs on the Temple monk).
 # Since Reptile specials proof v23 (owner, 2026-11-26: "Acid spit works now"): the same with Acid
 # Spit's splash on the enemy hit, MKT's flip and mirrored art (composition v03 was 31c22f52...).
-REPTILE_CLI_SHA256 = "96fbf32a7c6803cad626b45ee923003393e0e9913ac0d21bf51d8af557f96632"
+# Since SMRE step 1 (owner, 2026-11-27): the forceballs no longer turn at the start, pure MKT
+# (with the turn: 96fbf32a...).
+REPTILE_CLI_SHA256 = "1296f815cfcdc5a7d01d5c2ab514739d4021b934048a034d1d52d55484a53c65"
 
 
 @needs_roms

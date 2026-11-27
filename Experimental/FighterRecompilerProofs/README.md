@@ -41,6 +41,7 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_reptile-specials_proof_v21.py` | `MKMSZR_reptile-specials_common_proof_v21.z64` | v20 plus Reptile's Power Ups icons from his description's `icons` recipe (`fighter_icons`) |
 | `MKMSZR_build_reptile-specials_proof_v22.py` | `MKMSZR_reptile-specials_common_proof_v22.z64` | v21 with his Power Ups help text and Ice costs from his description (`help`, `costs`) |
 | `MKMSZR_build_reptile-specials_proof_v23.py` | `MKMSZR_reptile-specials_common_proof_v23.z64` | Reptile through the generic build, with the impact corrections from Rayden (enemy hit, MKT flip with mirrored art, own height) as defaults |
+| `MKMSZR_build_reptile-specials_proof_v24.py` | `MKMSZR_reptile-specials_common_proof_v24.z64` | v23 with his specials written by SMRE; the forceballs no longer turn at the start (pure MKT) |
 | `MKMSZR_build_reptile-production_composition_v01.py` | `MKMSZR_reptile-production_composition_proof_v01.z64` (and `--all-powers`) | Milestone 4 step 5: a CLI randomizer ROM with Reptile put in by the production Fighter option's generic path (`fighter_build.production`, `fighter_swap._apply_described`) |
 | `MKMSZR_build_reptile-production_composition_v02.py` | `MKMSZR_reptile-production_composition_proof_v02.z64` (and `--all-powers`) | v01 with the throw helper ending when a hit interrupts the throw |
 | `MKMSZR_build_reptile-production_composition_v03.py` | `MKMSZR_reptile-production_composition_proof_v03.z64` (and `--all-powers`) | v02 with the forceballs' knockback reaction morphing the victim first (stock `0x800572C4`/`0x80057478`), fixing the Temple MONK3 crash |
@@ -76,3 +77,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v28.py` | `MKMSZR_rayden-specials_common_proof_v28.z64` | v27 with the Shocker's shaking as long as the hold (MKT's 32 frames in 48 ticks) and MKT's full miss |
 | `MKMSZR_build_rayden-specials_proof_v29.py` | `MKMSZR_rayden-specials_common_proof_v29.z64` | v28 with the Shocker's two frames alternating (one frame per MKT frame step) |
 | `MKMSZR_build_rayden-specials_proof_v30.py` | `MKMSZR_rayden-specials_common_proof_v30.z64` | v29 with the Shocker's hold and the Teleport's cooldown as 60 Hz clock stamps (no process to get stuck) |
+| `MKMSZR_build_rayden-specials_proof_v31.py` | `MKMSZR_rayden-specials_common_proof_v31.z64` | v30 with all five specials written by SMRE; the Shocker from the grab rule (MKT's 3-tick pause after the grab) |
