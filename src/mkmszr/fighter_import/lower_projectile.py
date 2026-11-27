@@ -138,6 +138,9 @@ NORMAL_RGB = 0x80  # 0x80034740's unlit colour
 # launch 0x0C knocks the victim away and runs the victim morphs (Rayden's lightning stand-in).
 REACTION_LOWERING["launch"] = {"kind": "host", "slot": 0x0C}
 BLOCKED_LOWERING = {"blocked": 0x05}
+# Strike record +0xC flags: every stock record has 0x0001. The block test 0x80034888 (a1 = this
+# halfword) reports no block when bit 0x0002 is set (0x80034940; Static-confirmed): a grab.
+STRIKE_FLAGS, STRIKE_UNBLOCKABLE = 0x0001, 0x0002
 
 
 def host_reaction(meaning: str) -> int | None:
@@ -577,7 +580,8 @@ def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
     record = b"".join((v & 0xFFFF).to_bytes(2, "big") for v in box)
     record += bytes((reaction_slot, BLOCKED_LOWERING[strike["blocked_reaction"]]))
     record += bytes((_int(strike["damage"]), _int(strike["block_damage"])))
-    return record + bytes.fromhex("00010000")
+    flags = STRIKE_FLAGS | (STRIKE_UNBLOCKABLE if strike.get("unblockable") else 0)
+    return record + flags.to_bytes(2, "big") + bytes(2)
 
 
 def arc(meaning: str) -> tuple[int, int, int]:

@@ -211,6 +211,16 @@ To host a donor sound:
 
 The donor's `−2253`-cent waveform correction is kept as is; MKMSZ honours it, as Toasty already showed. Chains are proof allocations until a production reservation claims them in the [Memory and allocation map](Memory-and-Allocation-Map).
 
+### Multi-track donor sounds (2026-11-26)
+
+**Static-confirmed host path; Implementation/CI-confirmed port; runtime Pending (Rayden specials proof v27).** MKT and MKMSZ share the WESS sequence format. Each track has a `0x14`-byte header (initial patch, stream length at `+0x10`), then a stream of MIDI-style variable-length deltas and opcodes: `07` patch change (a little-endian `u16`), `0C` volume, `0D` pan, `11` note on (key, velocity), `12` note off, `22` end. A multi-track donor event (Rayden's `ft_sound(5)`, MKT `0x205`: patch `0x1A7` with three notes and `0x1A8` with one note after a delay, `0x6C` bytes plus 4 of padding) is hosted like this:
+
+- each track takes its own isolated chain (subpatch, waveform, book and sample, as above);
+- `sound.retarget` sets the track's header patch and every in-stream patch change to the chain's patch. It refuses a track whose notes play another patch, or an opcode it does not know;
+- the retargeted tracks go together after the samples. The first chain's event definition gets the track count, length and offset (from the track base `0x979240`). Production shifts that offset when it moves the samples to the generated tail.
+
+This works because the WESS loader reads each event from ROM by its offset into a pool sized from the lengths at boot (`0x800880EC`, `0x80088B10`; [Function registry](Function-Registry)). The pool grows by the extra length (`0x5C` bytes here; enough audio-heap room is a Hypothesis until the runtime test). The fighter build no longer installs the sounds of a move whose description skips them (Rayden's teleport), and moves share the body's script sound. Rayden still uses all 16 isolated chains.
+
 ## Imported fighter voice rule (2026-11-07)
 
 **Runtime-confirmed bounded for Sektor (teleport proof v15: "It's fantastic now").** This rule is meant to apply to any MKT donor fighter.

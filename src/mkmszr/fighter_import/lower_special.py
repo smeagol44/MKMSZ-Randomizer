@@ -83,6 +83,7 @@ COSTS = {
 F_RANDPER = 0x80016008
 F_TURN = 0x8003188C  # (actor): turn it around (face_opponent 0x80031EF0 calls it when needed)
 MOVEMENT_COST = 0  # movement abilities cost no Ice (owner rule, 2026-11-24; move program "movement")
+GRAB_COST = 2 * COSTS["ice_blast"]  # grabs cost twice Ice Blast's (owner rule, 2026-11-26; "grab")
 BLOCKED_FLAG = 0x802ECD88  # halfword: the collision core sets it on a blocked contact
 F_SET_XVEL = 0x8002B1EC  # (actor, x speed): actor +0x14 and +0x58
 FACING_BIT = 0x10
@@ -101,7 +102,7 @@ LIT_BIT = 0x1000
 def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
                         default: int | None = None, alive: tuple[str, ...] = (),
                         refuse_if: tuple[int, int] | None = None, airborne: bool = False,
-                        cooldown: str | None = None, target_range: int | None = None,
+                        cooldown: tuple[str, int] | None = None, target_range: int | None = None,
                         held: tuple[str, int] | None = None) -> None:  # fmt: skip
     """``label() -> 0x8000 / 0x4000`` (see the module notes). With ``default``, the gate word
     is used only when it is ``slti t0, v0, N`` (Ice Blast's rewritten tail), else ``default``.
@@ -112,12 +113,14 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     ``refuse_if`` (controller offset, mask): refuse while that halfword of the player's
     controller has a bit of the mask set (Invisibility: already stealthed). ``airborne``: also
     accept in the air (no fall-speed or floor check; Rayden's torpedo, owner 2026-11-24).
-    ``cooldown``: the label of a word the move's ``stamp`` keeps set for its cooldown (MKT's
-    ticks_since condition): refuse while it is set. ``target_range``: refuse unless an enemy is
-    within that range on the player's path (as Sektor's teleport condition, which avoids a
-    teleport with nobody to reach). ``held`` (word label, host ticks): refuse unless the word
-    (the High Punch hold count, ``commands``) is at least that (MKT ``ticks_since`` on the press
-    stamp: Rayden's Shocker)."""
+    ``cooldown`` (stamp label, ticks): refuse until that many clock ticks (``host.VI_CLOCK``,
+    60 Hz, as MKT's) have passed since the move's ``stamp`` (MKT's ticks_since condition).
+    ``target_range``: refuse unless an enemy is within that range on the player's path (as
+    Sektor's teleport condition, which avoids a teleport with nobody to reach). ``held`` (stamp
+    label, ticks): refuse unless the High Punch press stamp (``commands``) is at least that old
+    at the release (MKT ``ticks_since`` on the press stamp: Rayden's Shocker). Both are
+    timestamps since v30: v25-v29 used a counter process with a running flag and a timer
+    process, which a stock process kill could leave stuck until the next stage load."""
 
     a.label(label)
     a.addiu("sp", "sp", -0x20)
@@ -125,15 +128,10 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
     if target_range is not None:  # find_target uses s1 / s4
         a.sw("s1", 0x18, "sp")
         a.sw("s4", 0x14, "sp")
-    if cooldown is not None:
-        a.la("t0", cooldown)
-        a.lw("t0", 0, "t0")
-        a.bnez("t0", label + "_no")
-    if held is not None:
-        a.la("t0", held[0])
-        a.lw("t0", 0, "t0")
-        a.slti("t0", "t0", held[1])
-        a.bnez("t0", label + "_no")
+    if cooldown is not None:  # refuse until the cooldown has passed since the move's stamp
+        host.emit_since(a, cooldown[0], cooldown[1], label + "_no", unset_refuses=False)
+    if held is not None:  # refuse unless High Punch was pressed that long before its release
+        host.emit_since(a, held[0], held[1], label + "_no", unset_refuses=True)
     a.lui("t0", hi(PLAYER_ACTOR))
     a.lw("t0", lo(PLAYER_ACTOR), "t0")
     if not airborne:
@@ -218,35 +216,10 @@ def emit_gate_condition(a: Assembler, label: str, gate_va: int, cost: int,
 
 
 # ---- cooldowns (MKT stamp_tick + ticks_since) ---------------------------------------------------
-COOLDOWN_PROCESS_ID = 0x100  # as the blink and stealth timer
-
-
-def emit_cooldown(a: Assembler, label: str, ticks: int) -> None:
-    """Process ``label``: keep the word ``label_word`` set for ``ticks`` host ticks, then clear
-    it (the move's ``stamp`` starts it; its condition refuses while the word is set)."""
-
-    a.label(label)
-    a.li("a0", ticks)
-    a.jal(F_SLEEP)
-    a.la("t0", label + "_word")
-    a.sw("zero", 0, "t0")
-    a.jal(lp.F_EXIT)
-    a.label(label + "_word")
-    a.raw(0)
-
-
 def emit_stamp(a: Assembler, cooldown: str, skip: str) -> None:
-    """In the move: set the cooldown word and start its timer process (none left: no cooldown)."""
+    """In the move: stamp the clock in the cooldown word (its condition compares the time)."""
 
-    a.la("t0", cooldown + "_word")
-    a.li("t1", 1)
-    a.sw("t1", 0, "t0")
-    a.li("a0", COOLDOWN_PROCESS_ID)
-    a.la("a1", cooldown)
-    a.jal(lp.F_CLONE)
-    a.bnez("v0", skip)
-    a.la("t0", cooldown + "_word")
-    a.sw("zero", 0, "t0")
+    host.emit_stamp_now(a, cooldown)
     a.label(skip)
     host.load_controller(a)
 
@@ -413,6 +386,45 @@ def _scale(n: int, donor_ticks: int) -> int:
     return max(1, -(-n // donor_ticks))
 
 
+def _timed_repeat(step: dict[str, Any], donor_ticks: int) -> tuple[int, list[list[dict[str, Any]]]] | None:
+    """A ``repeat`` whose body sleeps at least one host tick (Rayden's Shocker: 32 x [sleep 3,
+    next_frame] at 2 donor ticks per host tick): MKT's iteration count and its total time. The
+    body is emitted ``k`` times per loop pass (``k`` = the passes after which the donor time is
+    whole host ticks again), its sleeps rounded on the running total (3, 3 -> 2, 1 host ticks),
+    so 32 frames take 48 host ticks; scaling the count instead showed 16 frames in 32 ticks. Its
+    ``next_frame`` steps are MKT's own frame steps: one frame each (a per-tick loop's advance by
+    the donor ticks it stands for landed on the same frame of a two-frame loop every time).
+    None for a per-tick loop (a body shorter than a host tick), whose count scales."""
+
+    from math import gcd
+
+    body = step["steps"]
+    if donor_ticks <= 1 or any(s["op"] == "repeat" for s in body):
+        return None
+    sleeps = [int(s["ticks"]) for s in body if s["op"] == "sleep"]
+    total = sum(sleeps)
+    if total < donor_ticks:
+        return None
+    k = donor_ticks // gcd(total, donor_ticks)
+    count = int(step["count"])
+    if count % k:
+        return None
+    bodies, donor, host_done = [], 0, 0
+    for _ in range(k):
+        out = []
+        for s in body:
+            if s["op"] == "sleep":
+                donor += int(s["ticks"])
+                end = -(-donor // donor_ticks)
+                s = {**s, "_host_ticks": max(1, end - host_done)}
+                host_done = end
+            elif s["op"] == "next_frame":  # MKT's own frame step: one frame (v29; v25-v28 two)
+                s = {**s, "_times": 1}
+            out.append(s)
+        bodies.append(out)
+    return count // k, bodies
+
+
 def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: int,
                 animations: dict[tuple[int, int], int | tuple[str, int]], child: str | None = None,
                 helper: str | None = None, sounds: dict[int, int] | None = None,
@@ -443,7 +455,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     the word a ``carry`` step shares with the victim's ``torpedo_carry`` reaction
     (:func:`emit_carry_reaction`); ``air_control``: ``jump`` steps let the player steer (see
     :data:`AIR_MAP`); ``cooldown``: the label of the move's cooldown process
-    (:func:`emit_cooldown`), started by its ``stamp`` step; ``afterimage``: the label of the
+    (the clock stamp its ``stamp`` step writes, :func:`emit_stamp`); ``afterimage``: the label of the
     afterimage process (``lower_projectile.emit_afterimage_process``) for ``afterimage`` steps;
     ``relocate`` steps call the ``relocate`` subroutine (:func:`emit_relocate_routine`).
 
@@ -530,8 +542,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                     a.label(skip)
         host.load_controller(a)
 
-    def sleep(ticks: int) -> None:
-        host.sleep_ticks(a, _scale(ticks, donor_ticks), fresh("sleep"))
+    def sleep(ticks: int, host_ticks: int | None = None) -> None:
+        n = _scale(ticks, donor_ticks) if host_ticks is None else host_ticks
+        host.sleep_ticks(a, n, fresh("sleep"))
         host.load_controller(a)
 
     def emit(steps: list[dict[str, Any]], after: str | None) -> None:
@@ -583,8 +596,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
             elif op == "pose":
                 select(anim_at(step["anim"]), int(step["anim"].get("offset", 0)))
                 advance()
-            elif op == "next_frame":
-                advance(donor_ticks)
+            elif op == "next_frame":  # a per-tick loop advances once per donor tick it stands for
+                advance(step.get("_times", donor_ticks))
             elif op == "pass_through":  # see the docstring
                 host.load_controller(a)
                 a.lhu("t0", lp.ACTOR_FLAGS, "s1")
@@ -697,10 +710,18 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                         a.jal(host.F_OFFSET)
                         sleep(int(step["ticks"]))
             elif op == "repeat":
-                loop, count = fresh("repeat"), _scale(int(step["count"]), donor_ticks)
-                a.li("s4", count)
-                a.label(loop)
-                emit(step["steps"], None)
+                timed = _timed_repeat(step, donor_ticks)
+                loop = fresh("repeat")
+                if timed is None:  # a per-tick loop: the count scales with the ticks
+                    a.li("s4", _scale(int(step["count"]), donor_ticks))
+                    a.label(loop)
+                    emit(step["steps"], None)
+                else:  # MKT's count, the sleeps spread so the total time is MKT's (see below)
+                    count, bodies = timed
+                    a.li("s4", count)
+                    a.label(loop)
+                    for body in bodies:
+                        emit(body, None)
                 a.addiu("s4", "s4", -1)
                 a.bnez("s4", loop)
             elif op == "strike":
@@ -732,7 +753,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                     host.load_controller(a)
                 lp.emit_spawn(a, child, after=fresh("spawned"))
             elif op == "sleep":
-                sleep(int(step["ticks"]))
+                sleep(int(step["ticks"]), step.get("_host_ticks"))
             elif op == "finish":
                 a.li("a0", _scale(int(step["rate"]), donor_ticks))
                 a.jal(F_TO_PHASE_END)
@@ -1046,14 +1067,23 @@ def emit_carry_reaction(a: Assembler, label: str, word: str, release: str,
 # (0x8005A1B8), is posed in its slot 0x20 at his hands (0x800733F8, per-fighter offsets) and, 8
 # times, its shock palette goes on and off (0x8000FD28 / 0x8000F9B0, the cyan palette reaction 0x80
 # uses) while it is moved 4 px and back every 3 donor ticks (0x800735BC); then it drops and lands
-# knocked down (0x800734CC -> 0x80058728). The host: the victim stops and shows its root 0x20, is
-# held where the grab found it (no gravity, its airborne counter counting, as the carry) for the
-# hold, moved 4 px down and back every ``every`` ticks, blinks cyan (the lightning's blink
-# helper), then falls into the torpedo victim's release (the lifted knockback with no push).
+# knocked down (0x800734CC -> 0x80058728). The host: the victim stops, shows its root 0x20 and
+# turns to face him; each tick it is held at his hands (the grab point below; no gravity, its
+# airborne counter counting, as the carry), moved 4 px down and back every ``every`` ticks, and
+# blinks cyan (the lightning's blink helper), then falls into the torpedo victim's release (the
+# lifted knockback with no push). Specials proof v25-v26 held it where the strike found it.
 SHOCK_ROOT = 0x20
 SHOCK_HOLD_DONOR_TICKS = 8 * 2 * 6  # 8 shocks, each 2 halves of 2 x 3 donor ticks
 SHOCK_JIGGLE_DONOR_TICKS = 3
 SHOCK_JIGGLE_PX = 4
+# MKT 0x800733F8: match_ani_points(him, victim) gives the victim his position, flip_single turns
+# it to face him, then multi_adjust_xy(victim, dx, dy - 8) from the per-victim table 0x800AAF8C
+# (6 bytes: frame, dx, dy). Its common entry (16 of 28 fighters: the ninjas, Cage, Baraka, ...)
+# is dx -44, dy -13; dx runs along the victim's facing, toward him, so the victim's anchor is
+# 44 px in front of his and 21 px up (Static-confirmed reading). Host enemies are not MKT
+# fighters: the common entry for all.
+SHOCK_GRAB_DX_PX = 44
+SHOCK_GRAB_DY_PX = -13 - 8
 
 
 def emit_shock_hold_reaction(a: Assembler, label: str, release: str, morphs: tuple[int, ...],
@@ -1084,11 +1114,38 @@ def emit_shock_hold_reaction(a: Assembler, label: str, release: str, morphs: tup
     a.beqz("v0", label + "_noblink")
     a.sw("s0", 0x6F4, "v0")
     a.label(label + "_noblink")
-    host.load_controller(a)
-    a.lw("s3", host.ACTOR_Y, "s1")  # its height, held
+
+    def player_actor(reg: str) -> None:
+        a.lui(reg, hi(host.PLAYER_CTRL))
+        a.lw(reg, lo(host.PLAYER_CTRL), reg)
+        a.lw(reg, host.CTRL_ACTOR, reg)
+
+    host.load_controller(a)  # it faces him (MKT flip_single after match_ani_points)
+    player_actor("t0")
+    a.lhu("t1", lp.ACTOR_FLAGS, "t0")
+    a.lhu("t2", lp.ACTOR_FLAGS, "s1")
+    a.xor("t1", "t1", "t2")
+    a.andi("t1", "t1", lp.FACING_BIT)
+    a.bnez("t1", label + "_faced")  # (the assembler fills branch delay slots)
+    a.move("a0", "s1")
+    a.jal(F_TURN)
+    a.label(label + "_faced")
     a.li("s2", ticks)
     a.label(label + "_loop")
     host.load_controller(a)
+    player_actor("t0")  # at his hands: his position plus the grab offset along his facing
+    a.li("t2", SHOCK_GRAB_DX_PX * lp.UNITS_PER_PX << 8)  # actor x is whole units << 8
+    a.lhu("t1", lp.ACTOR_FLAGS, "t0")
+    a.andi("t1", "t1", lp.FACING_BIT)
+    a.beqz("t1", label + "_ahead")
+    a.subu("t2", "zero", "t2")  # he faces left: the grab point is to his left
+    a.label(label + "_ahead")
+    a.lw("t1", host.ACTOR_X, "t0")
+    a.addu("t1", "t1", "t2")
+    a.sw("t1", host.ACTOR_X, "s1")
+    a.lw("s3", host.ACTOR_Y, "t0")
+    a.li("t2", SHOCK_GRAB_DY_PX * lp.UNITS_PER_PX << 8)  # y grows downward: negative is up
+    a.addu("s3", "s3", "t2")
     a.li("t0", every)  # down 4 px on every other ``every`` ticks
     a.div("s2", "t0")
     a.mflo("t1")
@@ -1100,7 +1157,7 @@ def emit_shock_hold_reaction(a: Assembler, label: str, release: str, morphs: tup
     a.mflo("t1")
     a.nop()
     a.nop()
-    a.addu("t1", "t1", "s3")  # y grows downward
+    a.addu("t1", "t1", "s3")
     a.sw("t1", host.ACTOR_Y, "s1")
     a.sw("t1", ACTOR_PREV_Y, "s1")
     a.sw("zero", host.ACTOR_GRAVITY, "s1")
@@ -1112,7 +1169,7 @@ def emit_shock_hold_reaction(a: Assembler, label: str, release: str, morphs: tup
     a.addiu("s2", "s2", -1)
     a.bnez("s2", label + "_loop")
     host.load_controller(a)
-    a.sw("s3", host.ACTOR_Y, "s1")
+    a.sw("s3", host.ACTOR_Y, "s1")  # at the grab height: the drop falls from his hands
     a.sw("s3", ACTOR_PREV_Y, "s1")
     for k, reg in enumerate(("s0", "s1", "s2", "s3")):
         a.lw(reg, 0x18 + 4 * k, "sp")

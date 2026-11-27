@@ -134,7 +134,9 @@ def test_rayden_torpedo_flight_frames_and_carry(roms: tuple[bytes, bytes]) -> No
     # toggle); impact_mirror mirrors its frames in the art instead (v10-v12 flipped the actor
     # back, mirroring it around an anchor outside its box); the torpedo's three jumps (bounce,
     # bounce, drop) take the air map
-    assert ws.count(0x012A4826) == 2  # xor t1, t1, t2 (the facing bit): each lightning's burst
+    # xor t1, t1, t2 (the facing bit): each lightning's burst, and the Shocker's victim turning
+    # to face him (v27)
+    assert ws.count(0x012A4826) == 3
     # input map: five begins without a turn (both lightnings, teleport, torpedo, Shocker), three jumps
     assert ws.count(0x2739B05C) == 8
     # v11-v12 (owner screenshots, Wind): the burst goes to the enemy hit (the player's +0x640,
@@ -337,7 +339,10 @@ def test_teleport_relocates_with_an_afterimage_and_a_cooldown(roms: tuple[bytes,
     assert built.selectors["teleport"] == 5
     ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
     assert 0x24040015 in ws  # li a0, 0x15: the afterimage process class
-    assert 0x24040020 in ws  # li a0, 32: the cooldown, in host ticks
+    # MKT's cooldown as a clock stamp (v30): the move stamps the 60 Hz clock, the condition
+    # refuses until 0x40 ticks have passed (v23-v29: a timer process of 32 host ticks)
+    assert 0x240A0040 in ws and 0x012A502B in ws  # li t2, 0x40; sltu t2, t1, t2
+    assert ws.count(0x3C09802E) == 2  # lui t1, 0x802E: each condition reads the clock
     assert 0x24040086 in ws  # li a0, 134: the relocation distance (67 px)
     assert lower_special.RELOCATE_RANGE == 592
 
@@ -361,8 +366,7 @@ def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> 
     """Specials proof v25: the Shocker (MKT 0x800AB9F4, HP released after 0x38 donor ticks)
     sits in a release table hooked into the HP release event; the HP press callback is
     wrapped to count the hold; the strike selects the shock-hold reaction in spare entry
-    0x4E (blocked entry 0x0E), whose routine is in the payload; sound 5 (two tracks) is
-    not ported yet."""
+    0x4E (blocked entry 0x0E), whose routine is in the payload."""
 
     from mkmszr.fighter_import import commands as cmds
     from mkmszr.fighter_import import lower_projectile as lp
@@ -374,6 +378,10 @@ def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> 
     # v26 (owner on v25): the host box is (front edge, y, width back, height); v25's (0, ..., 61)
     # lay behind him. MKT's grab range |dx| < 0x37 in front:
     assert record[:8] == bytes.fromhex("0037000000370078")
+    # v27 (owner on v26): a grab cannot be blocked (record +0xC bit 0x0002, the block test's
+    # no-block bit) and costs twice Ice Blast's Ice (owner rule)
+    assert record[12:14] == bytes.fromhex("0003")
+    assert built.report["costs"]["shocker"] == 0x40 and built.report["costs"]["lightning"] == 0x20
     entry = lp.REACTION_TABLE - 0x7FFFF400 + 4 * 0x4E
     target = int.from_bytes(built.rom[entry : entry + 4], "big")
     assert built.link_va <= target < built.link_va + len(built.payload)
@@ -382,5 +390,25 @@ def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> 
              for r in (cmds.HP_RELEASE_RECORD, cmds.HP_PRESS_RECORD)]  # fmt: skip
     assert all(built.link_va <= h < built.link_va + len(built.payload) for h in hooks)
     ws = [int.from_bytes(built.payload[i : i + 4], "big") for i in range(0, len(built.payload), 4)]
-    assert 0x2908001C in ws  # slti t0, t0, 28: the hold gate (56 donor ticks at 2 per host tick)
-    assert built.report["unported_sounds"] == [("shocker", 5)]
+    # v30: the hold is MKT's 0x38 ticks on the 60 Hz clock, since the press stamp (v25-v29: a
+    # counter process whose running flag a stock process kill could leave stuck)
+    assert 0x240A0038 in ws  # li t2, 0x38
+    # v28 (owner on v27: "the enemies are being held for too long"): MKT holds the victim 96 donor
+    # ticks while he plays 32 frames, 3 ticks each (0x80073378(8)). The victim's hold is 48 host
+    # ticks; his shaking was 16 frames in 32 (the repeat count was scaled), so the victim stayed
+    # held after he stopped. Now 32 frames in 48: 16 passes of [sleep 2, frame, sleep 1, frame];
+    # the miss 7 passes (14 frames, MKT 0x8000E0C0(3, 0xF)).
+    assert 0x24120030 in ws  # addiu s2, zero, 48: the victim's hold
+    assert 0x24140010 in ws and 0x24140007 in ws  # addiu s4, zero, 16 / 7: the two repeats
+    # v27: sound 5 (MKT event 0x205, two tracks) is ported: one chain per track, both tracks in one
+    # host event read from the sample area
+    from mkmszr.fighter_import import sound
+
+    assert "unported_sounds" not in built.report
+    assert built.report["multi_track_sounds"] == [("shocker", 5, 2)]
+    hosts = [c.event for c in built.report["chains_used"]]
+    multi = [e for e in hosts if int.from_bytes(built.rom[sound.MSZ_EVENT_DEFS + 16 * e :][:2], "big") == 2]
+    assert len(multi) == 1 and len(hosts) == 16  # the teleport's skipped sounds take no chain
+    d = sound.MSZ_EVENT_DEFS + 16 * multi[0]
+    at = sound.MSZ_TRACKS + int.from_bytes(built.rom[d + 8 : d + 12], "big")
+    assert built.samples[0] <= at < built.samples[1] and int.from_bytes(built.rom[d + 4 : d + 8], "big") == 0x6C

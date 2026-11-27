@@ -24,6 +24,7 @@ MKT_DEFS_ROM, MKT_DEFS_LEN = 0xAA7090, 0x7A6
 MKT_TRACKS_ROM = 0xAA7836
 MKT_SAMPLES_ROM = 0xAB4370
 MKT_FIGHTER_SOUNDS = 0x800A1ED4  # [fighter] -> u16 event table
+TRACK_HEADER = 0x14
 
 # MKMSZ USA Rev. 0
 MSZ_EVENT_DEFS = 0x976D60  # 16 bytes per event: u16 tracks, length, offset (from MSZ_TRACKS)
@@ -61,7 +62,7 @@ ISOLATED_CHAINS = tuple(
 @dataclass(frozen=True)
 class DonorSound:
     event: int
-    track: bytes  # 0x20-byte single track; patch number at +0
+    track: bytes  # one track: 0x14-byte header (patch number at +0), then its stream
     subpatch: bytes  # 20 bytes
     wave: bytes  # 24 bytes
     book: bytes  # 264 bytes
@@ -84,11 +85,29 @@ class MktSoundBank:
         return self._u(table + 2 * index, 2) & 0x7FFF
 
     def event(self, event: int) -> DonorSound:
-        d = self.defs[event * 16 : event * 16 + 16]
-        length, offset = int.from_bytes(d[4:8], "big"), int.from_bytes(d[8:12], "big")
-        track = zlib.decompress(self.mkt[MKT_TRACKS_ROM + offset :], -15)[:length]
-        if len(track) != 0x20:
+        tracks = self.tracks(event)
+        if len(tracks) != 1 or len(tracks[0].track) != 0x20:
             raise ValueError(f"MKT event {event:#x} is not a single 0x20-byte track")
+        return tracks[0]
+
+    def tracks(self, event: int) -> list[DonorSound]:
+        """Every track of the event (a ``0x14``-byte header, patch first and stream length at
+        ``+0x10``, then the stream), each with its patch's records and sample."""
+
+        d = self.defs[event * 16 : event * 16 + 16]
+        count = int.from_bytes(d[0:2], "big")
+        length, offset = int.from_bytes(d[4:8], "big"), int.from_bytes(d[8:12], "big")
+        data = zlib.decompress(self.mkt[MKT_TRACKS_ROM + offset :], -15)[:length]
+        out, at = [], 0
+        for _ in range(count):
+            size = TRACK_HEADER + int.from_bytes(data[at + 0x10 : at + 0x14], "big")
+            out.append(self._sound(event, data[at : at + size]))
+            at += size
+        if not length - 8 < at <= length:  # padding after the last track (event 0x205: 4 bytes)
+            raise ValueError(f"MKT event {event:#x}: tracks do not fill its 0x{length:X} bytes")
+        return out
+
+    def _sound(self, event: int, track: bytes) -> DonorSound:
         patch = int.from_bytes(track[0:4], "big")
         sub = int.from_bytes(self.ctl[patch * 4 + 2 : patch * 4 + 4], "big")
         subpatch = self.ctl[0x6E0 + sub * 20 : 0x6E0 + sub * 20 + 20]
@@ -131,10 +150,20 @@ def install(
     """
 
     check_chain(clean, chain)
+    track = host_track_rom(clean, chain.event)
+    data = chain.patch.to_bytes(4, "big") + donor.track[4:]
+    if bytes(rom[track : track + len(data)]) != clean[track : track + len(data)]:
+        raise ValueError(f"host {chain.event}: record at {track:#x} already modified")
+    rom[track : track + len(data)] = data
+    return _install_records(rom, clean, donor, chain, sample_rom)
+
+
+def _install_records(rom: bytearray, clean: bytes, donor: DonorSound, chain: HostChain, sample_rom: int) -> int:
+    """The chain's subpatch, waveform and book records, and the sample."""
+
     if sample_rom & 0xF:
         raise ValueError("sample address must be 16-byte aligned")
     writes = {
-        host_track_rom(clean, chain.event): chain.patch.to_bytes(4, "big") + donor.track[4:],
         MSZ_SUBPATCHES + chain.subpatch * 20: donor.subpatch[:10]
         + chain.wave.to_bytes(2, "big")
         + donor.subpatch[12:],
@@ -153,3 +182,68 @@ def install(
 
 def sample_digest(donor: DonorSound) -> str:
     return hashlib.sha256(donor.sample).hexdigest()
+
+
+# WESS sequence streams (MKT and MKMSZ share the format; Wiki Sounds-and-Music): each event is a
+# MIDI-style variable-length delta, then an opcode and its arguments. Only the opcodes SFX
+# tracks use are known here; any other refuses the port.
+WESS_ARGS = {0x07: 2, 0x0C: 1, 0x0D: 1, 0x11: 2, 0x12: 1, 0x22: 0, 0x23: 0}
+WESS_PATCH, WESS_NOTE_ON, WESS_END = 0x07, 0x11, 0x22  # patch change: little-endian u16
+
+
+def retarget(track: bytes, patch: int) -> bytes:
+    """``track`` playing host ``patch``: its header patch and every in-stream patch change. The
+    notes must all play the header's patch (one sample per track)."""
+
+    own = int.from_bytes(track[0:4], "big")
+    end = TRACK_HEADER + int.from_bytes(track[0x10:0x14], "big")
+    out = bytearray(patch.to_bytes(4, "big") + track[4:end])
+    pos, current, played = TRACK_HEADER, own, set()
+    while True:
+        while track[pos] & 0x80:  # delta time
+            pos += 1
+        pos += 1
+        op = track[pos]
+        if op not in WESS_ARGS:
+            raise ValueError(f"WESS opcode {op:#x} at +{pos:#x} is not supported")
+        if op == WESS_PATCH:
+            current = int.from_bytes(track[pos + 1 : pos + 3], "little")
+            out[pos + 1 : pos + 3] = patch.to_bytes(2, "little")
+        elif op == WESS_NOTE_ON:
+            played.add(current)
+        pos += 1 + WESS_ARGS[op]
+        if op == WESS_END:
+            break
+        if pos >= end:
+            raise ValueError("WESS stream has no end")
+    if played - {own}:
+        raise ValueError(f"track notes play patches {sorted(played)}, not only its own {own}")
+    return bytes(out)
+
+
+def install_tracks(rom: bytearray, clean: bytes, tracks: list[DonorSound], chains: tuple[HostChain, ...],
+                   sample_rom: int) -> tuple[int, int]:  # fmt: skip
+    """Host a multi-track donor event: each track in its own chain (records and sample as
+    :func:`install`), the retargeted tracks together after the samples, and the first chain's
+    event definition pointed at them (track count, length, offset from :data:`MSZ_TRACKS`). The
+    sequence loader reads every event from ROM by that offset into a pool sized from the
+    lengths (Static-confirmed: ``0x800880EC``, ``0x80088B10``). Returns the event to play and
+    the next free 16-aligned address."""
+
+    if len(chains) != len(tracks):
+        raise ValueError("one chain per track")
+    data = b""
+    for donor, chain in zip(tracks, chains, strict=True):
+        check_chain(clean, chain)
+        sample_rom = _install_records(rom, clean, donor, chain, sample_rom)
+        data += retarget(donor.track, chain.patch)
+    if set(rom[sample_rom : sample_rom + len(data)]) != {0xFF}:
+        raise ValueError(f"track area at {sample_rom:#x} is not free")
+    rom[sample_rom : sample_rom + len(data)] = data
+    d = MSZ_EVENT_DEFS + chains[0].event * 16
+    if bytes(rom[d : d + 16]) != clean[d : d + 16]:
+        raise ValueError(f"event {chains[0].event} definition already modified")
+    rom[d : d + 2] = len(tracks).to_bytes(2, "big")
+    rom[d + 4 : d + 8] = len(data).to_bytes(4, "big")
+    rom[d + 8 : d + 12] = (sample_rom - MSZ_TRACKS).to_bytes(4, "big")
+    return chains[0].event, (sample_rom + len(data) + 0xF) & ~0xF

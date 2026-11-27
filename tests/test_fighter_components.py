@@ -131,3 +131,39 @@ def test_player_entry_of_the_type_file_table() -> None:
                     readers.append(nxt.pc)
                     break
     assert readers == [0x80046FCC]
+
+
+def test_grab_flag_and_unblockable_strike() -> None:
+    """Rayden's Shocker: the move is a ``grab`` (owner rule: twice Ice Blast's Ice) and its
+    strike is ``unblockable`` (MKT's grab checks no block); both are optional booleans."""
+
+    shocker = next(m for m in cp.load_programs("rayden")[0] if m.name == "shocker")
+    assert shocker.grab and not shocker.movement
+    strike = next(s for s in shocker.steps if s["op"] == "strike")["strike"]
+    assert strike["unblockable"] is True
+    doc = copy.deepcopy(_doc())
+    doc["moves"][0]["grab"] = "yes"
+    with pytest.raises(cp.ProgramError, match="grab must be true or false"):
+        cp.validate_programs(doc)
+    raw = {"format": 1, "moves": [{"name": shocker.name, "command": shocker.command,
+                                   "steps": copy.deepcopy(shocker.steps)}]}  # fmt: skip
+    next(s for s in raw["moves"][0]["steps"] if s["op"] == "strike")["strike"]["unblockable"] = 1
+    with pytest.raises(cp.ProgramError, match="unblockable is true or false"):
+        cp.validate_programs(raw)
+
+
+
+def test_a_timed_repeat_keeps_mkt_frames_and_time() -> None:
+    """32 x [sleep 3, next_frame] at 2 donor ticks per host tick: 32 frames in 48 host ticks
+    (sleeps 2, 1 alternating); a per-tick loop (a body under one host tick) keeps scaling."""
+
+    from mkmszr.fighter_import import lower_special as ls
+
+    step = {"op": "repeat", "count": 32, "steps": [{"op": "sleep", "ticks": 3}, {"op": "next_frame"}]}
+    count, bodies = ls._timed_repeat(step, 2)  # type: ignore[misc]
+    sleeps = [s["_host_ticks"] for b in bodies for s in b if s["op"] == "sleep"]
+    assert (count, sleeps) == (16, [2, 1]) and count * sum(sleeps) == 48
+    # one frame per MKT frame step (v29): stepping two landed on the same frame of a 2-frame loop
+    assert [s["_times"] for b in bodies for s in b if s["op"] == "next_frame"] == [1, 1]
+    assert ls._timed_repeat(step, 1) is None
+    assert ls._timed_repeat({**step, "steps": [{"op": "sleep", "ticks": 1}]}, 2) is None

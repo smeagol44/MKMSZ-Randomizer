@@ -172,6 +172,12 @@ def test_rayden_shocker_is_a_high_punch_release_command() -> None:
     assert rec[:16] == bytes.fromhex("0010001000000000a01b0600a01b0700")  # HP masks, mode 0
     assert all(rec[:4] != r[:4] or r[8:16] != rec[8:16] for r in low.tables["HP"])  # not a press
     assert low.release_checker and low.press_wrapper
+    # the press wrapper stamps the 60 Hz clock and runs the stock press: no process, no flag
+    # (v30; a counter process with a running flag could be left stuck by a stock process kill)
+    at = low.press_wrapper - 0xA01AF520
+    words = [int.from_bytes(low.stubs[at + 4 * i : at + 4 * i + 4], "big") for i in range(9)]
+    assert words[:3] == [0x3C08802E, 0x8D087DC0, 0x25080001]  # lui t0; lw t0, clock; addiu t0, 1
+    assert 0x3C198004 in words and not any(w >> 26 == 3 for w in words)  # j via t9; no jal
     rom = bytearray(clean)
     cmds.install(rom, clean, low, 0xF10000, 0xA01AF420)
     slot = lambda record: record + cmds.PLAYER_TYPE_SLOT - cmds.VA_TO_ROM

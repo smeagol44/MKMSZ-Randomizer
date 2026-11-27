@@ -18,7 +18,9 @@ Units (engine-neutral, anchored on donor values and the documented calibrations)
 * ``pxpair``: ``[x, y]`` donor pixels, x along the facing (positive forward), y positive down
   (the projectile spawn offset; proof v06: Reptile's forceball needs ``[-30, -36]``).
 * ``strike``: ``{"box": [x, y, w, h], "damage": n, "block_damage": n, "reaction": name,
-  "blocked_reaction": name}``; reactions are meanings from :data:`REACTIONS`.
+  "blocked_reaction": name, "unblockable"?: true}``; reactions are meanings from
+  :data:`REACTIONS`; ``unblockable`` (a grab: MKT checks no block) sets the host record's
+  can't-block bit.
 
 Provenance (owner decision 2026-11-11): every parameter of every step names its source in the
 step's ``src`` map: ``"MKT 0x8004F9AC"`` (the donor instruction or data word), ``"host"`` or
@@ -147,6 +149,8 @@ class Move:
     # A movement ability (owner rule, 2026-11-24: moving abilities cost no Ice), e.g. Rayden's
     # torpedo and teleport, Reptile's elbow dash, Sektor's teleport.
     movement: bool = False
+    # A grab (owner rule, 2026-11-26: grabs cost twice Ice Blast's Ice), e.g. Rayden's Shocker.
+    grab: bool = False
 
 
 def _int(value: Any) -> int | None:
@@ -183,9 +187,11 @@ def _check_value(kind: str, value: Any, where: str, errors: list[str]) -> None:
     elif kind == "effect":
         need(isinstance(value, dict) and set(value) == {"mkt_fx"}, "effect is {mkt_fx: n}")
     elif kind == "strike":
-        ok = isinstance(value, dict) and set(value) == {
-            "box", "damage", "block_damage", "reaction", "blocked_reaction"}  # fmt: skip
-        need(ok, "strike needs box, damage, block_damage, reaction, blocked_reaction")
+        keys = {"box", "damage", "block_damage", "reaction", "blocked_reaction"}
+        ok = isinstance(value, dict) and keys <= set(value) <= keys | {"unblockable"}
+        need(ok, "strike needs box, damage, block_damage, reaction, blocked_reaction (and unblockable?)")
+        if ok:
+            need(isinstance(value.get("unblockable", False), bool), "strike unblockable is true or false")
         if ok:
             need(len(value["box"]) == 4, "strike box is [x, y, w, h]")
             for r in ("reaction", "blocked_reaction"):
@@ -264,9 +270,11 @@ def validate_programs(doc: Any) -> list[Move]:
             elif not SRC.match(str(cond.get("src", ""))):
                 errors.append(f"{where}: condition {cond['kind']} needs src")
         validate_steps(m.get("steps"), f"{where} steps", errors)
-        if not isinstance(m.get("movement", False), bool):
-            errors.append(f"{where}: movement must be true or false")
-        moves.append(Move(m.get("name", ""), cmd, m.get("steps", []), m.get("movement", False) is True))
+        for flag in ("movement", "grab"):
+            if not isinstance(m.get(flag, False), bool):
+                errors.append(f"{where}: {flag} must be true or false")
+        moves.append(Move(m.get("name", ""), cmd, m.get("steps", []), m.get("movement", False) is True,
+                          m.get("grab", False) is True))
     if not moves:
         errors.append("no moves")
     for gap in doc.get("gaps", []):
