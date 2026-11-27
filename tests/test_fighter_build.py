@@ -474,7 +474,7 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     production that stock word is a payload reference the fixed loader refreshes."""
 
     built = fb.build(*roms, "sektor-smre")
-    assert built.selectors == {"teleport_uppercut": 3, "straight_rocket": 4} and built.report["combos"] == (
+    assert built.selectors == {"teleport_uppercut": 3, "straight_rocket": 4, "double_rocket": 5} and built.report["combos"] == (
         "HP, HP, HK, B+HK", "HP, HP, HK, HK, B+HK", "HP, HP, D+LP", "HK, HK")
     rom = built.rom
     pointer = int.from_bytes(rom[0xB1D0C:0xB1D10], "big")  # the sixth record's next pointer
@@ -493,6 +493,10 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     # and explosion (fx 5) art in the fighter file
     assert built.report["costs"]["straight_rocket"] == 0x20
     assert built.report["smre"]["straight_rocket"]["unknown"] == []
+    # proof v13: the double missile (B,B,F + LP, Ice Clone's slot and cost): two of the same missile,
+    # 10 donor ticks apart, sharing its art, sounds and effects
+    assert built.report["costs"]["double_rocket"] == 0x60
+    assert built.report["smre"]["double_rocket"]["unknown"] == []
     assert [(m, role, fx) for m, role, fx, *_ in built.report["mkt_effects"]] == [
         ("straight_rocket", "trail", 4), ("straight_rocket", "impact", 5)]
     # proof v02/v03: his throw's sounds (MKT 0x80042498: arm out / throw / in)
