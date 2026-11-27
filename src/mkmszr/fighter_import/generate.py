@@ -39,6 +39,7 @@ MAX_DEPTH = 4
 # equivalent (owner-accepted stand-ins are marked).
 REACTION_MEANINGS = {
     0x24: "launch",  # generic damaging launch (Reptile's elbow return hit)
+    0x3B: "rocket_stumble",  # Sektor's rockets: r_rocket -> zap_stumble (push 0x33333)
     0x3D: "uppercut",  # Sektor's teleport uppercut: the host's stock uppercut (runtime-confirmed v08)
     0x71: "knockback_arc",  # Reptile's forceballs
     0x72: "acid_stagger",  # Reptile's acid
@@ -424,6 +425,7 @@ class _Walk:
         self.callback: int | None = None  # process +0x438: the routine the next jump runs each tick
         self.last_anim: dict[str, int] | None = None  # the selection last shown
         self.saved: tuple[dict[str, int], int] | None = None  # cursor saved at process +0x440
+        self.proj_offset: list[int] | None = None  # multi_adjust_xy on the projectile object
 
     def name(self, c: dc.Call) -> str:
         return self.gen.names.get(c.target, f"0x{c.target:08X}" if c.target else "jalr")
@@ -599,6 +601,13 @@ class _Walk:
                       "relocation picks it by the room there (walls, floor)")  # fmt: skip
             return self.stmts(s.then)
         call = self._tested_call(s.cond)
+        if call == "opponent_reacting":
+            rates = [self._phase_rate(b) for b in (s.then, s.other)]
+            if None not in rates and self.pending is not None:
+                fast, normal = rates if "== 0x8000" in str(s.cond) else rates[::-1]
+                anim, self.pending = self.pending, None
+                return [{"op": "animate", "anim": anim, "rate": normal, "rate_reacting": fast, "until": "phase_end",
+                         "src": {k: f"MKT 0x{s.pc:08X}" for k in ("anim", "rate", "rate_reacting", "until")}}]  # fmt: skip
         if call == "proc_flag1":
             self.note("MKT's landing leaves by another route when process +0x3FA bit 0 is set "
                       f"(0x{s.pc:08X}); the host landing ends the move")  # fmt: skip
@@ -609,6 +618,14 @@ class _Walk:
             return self.stmts(s.then)
         self.unknown(f"0x{s.pc:08X}: branch on {s.cond}")
         return self.stmts(s.then)
+
+    def _phase_rate(self, branch: list) -> int | None:
+        """A branch that only plays the selection to its phase end (mframew n): n."""
+
+        calls = [x for x in branch if x.kind != "break"]
+        if len(calls) == 1 and calls[0].kind == "call" and self.name(calls[0]) == "mframew":
+            return calls[0].args[0].const()
+        return None
 
     def _tested_call(self, cond: dc.Value) -> str | None:
         if isinstance(cond, dc.Bin) and cond.op in ("==", "!="):
@@ -1013,6 +1030,17 @@ def _last_frame(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     return []
 
 
+def _backward(w: _Walk, c: dc.Call, a: list) -> list[dict]:
+    """ani_backward(rate, -1): the selection from its last frame back to its first, ``rate``
+    ticks a frame (MKT 0x8000E004; Sektor's chest closing)."""
+
+    if w.pending is None or a[0] is None:
+        w.unknown(f"0x{c.pc:08X}: ani_backward without a selection")
+        return []
+    anim, w.pending = w.pending, None
+    return [{"op": "animate", "anim": anim, "rate": a[0], "until": "phase_end", "reverse": True}]
+
+
 def _anirate(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     w.anirate = a[0]
     return []
@@ -1217,6 +1245,8 @@ def _projectile(w: _Walk, c: dc.Call, a: list) -> list[dict]:
         return []
     child = a[0] & 0xFFFFFFFF
     step = _read_projectile(w, child, {})
+    if w.proj_offset is not None:  # placed by the parent before the process (make_rocket)
+        step["offset"], w.proj_offset = w.proj_offset, None
     w.projectiles[c.pc] = (step, child)
     return [step]
 
@@ -1268,6 +1298,10 @@ def _adjust(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     opponent, facing as the opponent; a negative dx is behind it (Rayden's teleport: -0x43, or
     +0x43 by an arena edge)."""
 
+    obj = c.args[0]
+    if isinstance(obj, dc.Load) and obj.off == 0x440 and "proc" in str(obj.base) and None not in a[1:3]:
+        w.proj_offset = [a[1], a[2]]  # the projectile object placed by the fighter (Sektor's rockets)
+        return []
     if not (w.matched and c.args[0] == dc.SELF):
         w.unknown(f"0x{c.pc:08X}: offset {c.args[1]}")
         return []
@@ -1352,6 +1386,22 @@ def projectile(w: _Walk, child: int, fields: dict[tuple[int, int], int]) -> dict
             w.note(f"MKT plays the projectile's part {art['part']} (forming) before the flight; "
                    "the program starts at the flight part")  # fmt: skip
             art["part"] += 1
+        elif n == "ft_sound" and a[0] is not None:
+            step["sound"] = {"fighter": a[0]}  # played as the projectile starts (Sektor's launch)
+        elif x.kind == "if" and w._tested_call(x.cond) == "opponent_reacting":
+            speeds = []
+            for branch in (x.then, x.other):
+                sets = [y for y in branch if y.kind == "call" and w.name(y) == "proj_set_xvel"]
+                speeds.append(sets[0].args[1].const() if len(sets) == 1 else None)
+                if len(sets) == 1 and sets[0].args[2].const() is not None:
+                    step["rate"] = sets[0].args[2].const()
+            if None in speeds:
+                w.unknown(f"0x{x.pc:08X}: speeds by the opponent's reaction")
+            else:
+                fast, normal = speeds if "== 0x8000" in str(x.cond) else speeds[::-1]
+                step["speed"], step["speed_reacting"] = hex(normal), hex(fast)
+        elif n == "opponent_reacting":
+            pass  # tested by the branch that follows
         elif n == "proj_set_xvel":
             speed = a[1]
             if speed is None and isinstance(x.args[1], dc.Load) and x.args[1].base == dc.PROC:
@@ -1371,8 +1421,7 @@ def projectile(w: _Walk, child: int, fields: dict[tuple[int, int], int]) -> dict
                 sizzle = gen.reaction_sound(gen.strike_raw(a[1])[8])
             flown = True
         elif x.kind == "store" and x.base == dc.PROC and x.off == 0x438 and x.value.const():
-            key, value = _callback(w, x.value.const() & 0xFFFFFFFF)
-            if key is not None:
+            for key, value in _callback(w, x.value.const() & 0xFFFFFFFF):
                 step[key] = value
         elif x.kind == "call" and x.target and _readable(x.target):
             check = _check(w, x, len(checks) + 1)
@@ -1449,7 +1498,7 @@ def _walk_calls(stmts: list) -> list:
     return out
 
 
-def _callback(w: _Walk, callback: int) -> tuple[str | None, Any]:
+def _callback(w: _Walk, callback: int) -> list[tuple[str, Any]]:
     """A flight callback (process +0x438, run each flight tick):
 
     * ``hum``: it plays a sound each time its counter (process +0x440) runs out;
@@ -1465,7 +1514,7 @@ def _callback(w: _Walk, callback: int) -> tuple[str | None, Any]:
             sound = next((y for y in x.then if y.kind == "call" and w.name(y) == "ft_sound"), None)
             reset = next((y for y in x.then if y.kind == "store" and y.base == dc.PROC and y.off == 0x440), None)
             if sound is not None and reset is not None and reset.value.const():
-                return "hum", {"sound": {"fighter": sound.args[0].const()}, "every": reset.value.const()}
+                return [("hum", {"sound": {"fighter": sound.args[0].const()}, "every": reset.value.const()})]
     every = _walk_all(body)
     if any(x.kind == "call" and w.name(x) == "proj_offscreen" for x in every) and any(
         x.kind == "store" and x.base == dc.SELF and x.off == 0x14 for x in every
@@ -1473,9 +1522,24 @@ def _callback(w: _Walk, callback: int) -> tuple[str | None, Any]:
         cooldown = next((x.value.const() for x in every if x.kind == "store" and x.base == dc.PROC
                          and x.value.const() and x.off != 0x3CC), None)  # fmt: skip
         if cooldown is not None:
-            return "wrap", {"cooldown": cooldown}
+            return [("wrap", {"cooldown": cooldown})]
+    out: list[tuple[str, Any]] = []
+    smoke = next((x for x in every if x.kind == "call" and w.name(x) == "rocket_smoke"), None)
+    if smoke is not None:  # MKT's smoke: create_fx(n) every other flight tick (rocket_smoke)
+        fx = next((y.args[0].const() for y in _walk_all(dc.decompile(w.gen.mkt, smoke.target))
+                   if y.kind == "call" and w.name(y) == "create_fx"), None)  # fmt: skip
+        if fx is not None:
+            out.append(("trail", {"effect": {"mkt_fx": fx}, "every": 2}))
+    text = " ".join(str(getattr(x, "cond", "")) for x in every)
+    shift = re.search(r"\+0xC >> (\d+)\)", text)
+    cap = re.search(r"< (0x[0-9A-F]+)\)", text)
+    if shift is not None and cap is not None and any(x.kind == "call" and w.name(x) == "proj_set_xvel" for x in every):
+        # each flight tick v += v >> shift, kept below the cap (Sektor's rocket: 4, 0xB3334)
+        out += [("accel_shift", int(shift.group(1))), ("cap", hex(int(cap.group(1), 16) - 1))]
+    if out:
+        return out
     w.unknown(f"0x{callback:08X}: flight callback")
-    return None, None
+    return []
 
 
 def _object_palette(w: _Walk, art: dict[str, int] | None) -> int | None:
@@ -1535,6 +1599,9 @@ def _impact(w: _Walk, rest: list) -> dict[str, Any] | None:
         elif n == "create_fx" and a[0] is not None:
             impact["effect"] = {"mkt_fx": a[0]}
     if anim is None:
+        if "effect" in impact:  # a shared MKT effect at the projectile (Sektor's explosion)
+            impact["end"] = "effect"
+            return impact
         return None
     impact["anim"] = anim
     return impact
@@ -1618,6 +1685,14 @@ CALL_RULES = {
                                "plays (owner, Sektor teleport v10)"),
     "land_reset": _ignore,  # the host's end of the move resets the fighter
     "proc_flag1": _ignore,  # tested by its branch
+    "opponent_reacting": _ignore,  # tested by its branch
+    "rzap3": _follow,
+    "make_rocket": _follow,
+    "robo_chest_open": _follow,
+    "robo_chest_close": _follow,
+    "ani_backward": _backward,
+    "proj_recover": _note_only("MKT sets action 0x604 for the recovery after a projectile; the program "
+                               "keeps the begin's"),
 }
 
 

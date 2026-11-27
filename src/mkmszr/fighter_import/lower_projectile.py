@@ -107,6 +107,9 @@ REACTION_LOWERING["acid_stagger"] = {
     "donor_push": 0x26666,  # MKT reaction 0x72 (0x800547C8): +0x420 = 0x26666, then 0x80057F94
     "donor_ref": 0x33333,  # MKT zap_stumble (r_rocket), the host's accepted 0x56666
 }
+# MKT reaction 0x3B (r_rocket 0x80057B08 -> zap_stumble 0x80057BEC, Sektor's rockets): the same
+# stumble at MKT's rocket push, the host's accepted 0x56666 (robo_zap, proof v35).
+REACTION_LOWERING["rocket_stumble"] = {**REACTION_LOWERING["acid_stagger"], "donor_push": 0x33333}
 # MKT reaction 0x80 (0x800539A8, Rayden's lightning): the hit preamble, a push away from the
 # attacker at 0x26666, the hit voice, the victim's slot 0x20 played twice at rate 2 with its
 # per-fighter shock palette (0x800A38B0[fighter], into process +0x440): the victim staggers back

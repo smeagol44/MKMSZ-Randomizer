@@ -49,6 +49,7 @@ REACTIONS = {
     "until a wall or the end, then it slumps where it is (MKT 0x8005391C)",
     "knockback_arc": "MKT 0x71: victim launched on an arc toward the attacker (x 0x2CCCC, y -0x6CCCC, gravity 0x5199)",
     "acid_stagger": "MKT 0x72: victim staggers back (+0x420 = 0x26666); details Pending",
+    "rocket_stumble": "MKT 0x3B (r_rocket -> zap_stumble, push 0x33333): the victim stumbles back",
     "shock_stagger": "MKT 0x80: victim staggers back (0x26666) blinking cyan (its shock palette)",
     "shock_stagger_toward": "MKT 0x81: as 0x80, pushed towards the attacker (towards_x_vel)",
     "shock_hold": "Rayden's Shocker grab: the victim held and shocked (blinking cyan), then dropped",
@@ -77,7 +78,9 @@ COMPONENTS: dict[str, dict[str, str]] = {
     "wait": {"until": "enum:opponent_settled"},
     "repeat": {"count": "int", "steps": "steps"},
     # animation
-    "animate": {"anim": "anim", "rate": "ticks", "until": "enum:phase_end|running|manual"},
+    "animate": {"anim": "anim", "rate": "ticks", "until": "enum:phase_end|running|manual",
+                "rate_reacting?": "ticks",  # the rate while the opponent is in a reaction (MKT 0x8007FB4C)
+                "reverse?": "bool"},  # last frame back to the first (MKT ani_backward)
     "pose": {"anim": "anim"},
     "finish": {"rate": "ticks"},
     "next_frame": {},
@@ -125,7 +128,10 @@ COMPONENTS: dict[str, dict[str, str]] = {
         "strike": "strike",
         "palette?": "int",
         "accel?": "vel",
+        "accel_shift?": "int",  # each flight tick v += v >> n (MKT's rocket: 4), up to cap
         "cap?": "vel",
+        "speed_reacting?": "vel",  # the start speed while the opponent is in a reaction
+        "sound?": "sound",  # played as it starts (Sektor's launch)
         "hum?": "hum",
         "trail?": "trail",
         "checks?": "boxes",

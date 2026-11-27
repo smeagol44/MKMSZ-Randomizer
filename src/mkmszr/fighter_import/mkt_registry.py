@@ -255,6 +255,14 @@ REGISTRY: dict[int, MktRoutine] = {
         "stop_me, face_opponent, object flags |= 4, then the init_special steps",
         _M,
     ),
+    0x8007FB4C: _e(
+        "opponent_reacting",
+        "",
+        "0x8000 when the opponent's process +0x3FA & 4 (in a reaction), else 0x4000 (Sektor's "
+        "rockets: the faster start speed and chest; SMRE step 3, static reading)",
+        _M,
+    ),
+    0x8000DF4C: _e("ani_backward", "a0 = rate, a1 = slot or -1", "the selection played backwards", _M),
     0x8005A614: _e(
         "process_exist",
         "a0 = id, a1 = mask",
