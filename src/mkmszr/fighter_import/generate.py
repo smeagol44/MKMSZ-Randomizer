@@ -1746,6 +1746,9 @@ def _homing(w: _Walk, child: int, stmts: list) -> dict[str, Any]:
         homing["directions"] = {"anim": anim, "parts": parts}
         start = _point_direction(int(step.get("speed", "0"), 16), 0)
         step["art"] = {**anim, "part": start + 1}  # the start velocity's direction
+        palette = _object_palette(w, step["art"])  # the object's: its slot's first frame names it
+        if palette:
+            step["palette"] = hex(palette)
     # the smoke: rocket_smoke(point_rocket's direction)
     smoke = next((c for c in calls if w.name(c) == "rocket_smoke"), None)
     if smoke is not None:

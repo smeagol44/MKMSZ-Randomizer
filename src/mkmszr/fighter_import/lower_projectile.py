@@ -20,6 +20,7 @@ each; for this actor ``0x80031208``'s +y is down, as the donor's.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -927,7 +928,8 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         a.li("t0", 0x7FFF)
         a.sw("t0", WRAP_LAST_SP, "sp")  # |view x| last tick (none yet)
     if p.homing is not None:  # MKT's homing flight; the strike only when it explodes
-        emit_homing_flight(a, p, prefix, prefix + "h_explode")
+        emit_homing_flight(a, p, prefix, prefix + "h_explode",
+                           lambda: collide(data + "record", prefix + "on_contact"))
         a.label(prefix + "h_explode")
         collide(data + "record", prefix + "on_contact")
         a.beq("zero", "zero", prefix + "on_contact")
@@ -1580,6 +1582,10 @@ class Homing:
     smoke: tuple[tuple[int, int], ...] = ()  # each direction's puff offset (world units, MKT placement)
     marker: str | None = None  # the crosshair's descriptor label (effects.emit_descriptor)
     marker_offset: tuple[int, int] = (0, 0)  # world units from the target
+    # Owner adjustment (2026-11-27, proof v14: circling the crosshair "going through the enemies
+    # ... it should definitely hit"): the strike every tick while it flies, as the legacy's stock
+    # loop did; MKT checks it only when it explodes.
+    strike_in_flight: bool = False
 
 
 def homing_of(step: dict[str, Any], art: ArtLayout) -> Homing:
@@ -1788,7 +1794,8 @@ def _emit_direction(a: Assembler, tag: str) -> None:
     a.nop()
 
 
-def emit_homing_flight(a: Assembler, p: Lowered, prefix: str, explode: str) -> None:
+def emit_homing_flight(a: Assembler, p: Lowered, prefix: str, explode: str,
+                       collide: Callable[[], None] | None = None) -> None:  # fmt: skip
     """The homing flight (in place of :func:`emit_process`'s straight one): per host tick the
     target kept (or re-picked), two donor steps (phases, then the hunt), the host velocity
     from their displacement (as the straight flight's speeds), the direction art and facing,
@@ -1928,6 +1935,8 @@ def emit_homing_flight(a: Assembler, p: Lowered, prefix: str, explode: str) -> N
             a.lw("t0", FOLLOW_SP + 4 * k, "sp")
             a.sw("t0", field, "s1")
         a.label(prefix + "h_smoked")
+    if h.strike_in_flight and collide is not None:  # owner: it hits what it touches
+        collide()
     host.load_controller(a)
     a.move("a0", "s1")
     a.jal(F_ADVANCE)

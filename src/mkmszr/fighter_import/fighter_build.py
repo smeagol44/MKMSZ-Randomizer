@@ -656,7 +656,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             if "homing" in projectile_of[move]:  # MKT's homing flight, smoke by direction, crosshair
                 homing = lp.homing_of(projectile_of[move], g.art)
                 homing = dataclasses.replace(homing, smoke=tuple(fx_places.get(move, ())),
-                                             marker=f"{move}_marker_desc" if move in marker_art else None)  # fmt: skip
+                                             marker=f"{move}_marker_desc" if move in marker_art else None,
+                                             strike_in_flight=bool(ptune.get("strike_in_flight")))  # fmt: skip
                 low = dataclasses.replace(low, homing=homing)
             if (move, "impact") in fx_info:  # at the projectile (MKT rocket_explode_fx)
                 info = fx_info[(move, "impact")]

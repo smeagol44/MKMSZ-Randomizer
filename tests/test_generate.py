@@ -302,6 +302,7 @@ def test_sektor_homing_missile(mkt: bytes) -> None:
     p = steps[4]
     assert p["sound"] == {"fighter": 4} and p["speed"] == "0x4cccc" and p["rate"] == 3
     assert "behind" not in p and p["offset"] == [5, 38] and p["art"] == {"table": 0, "slot": 67, "part": 4}
+    assert p["palette"] == "0x800bc3ac"  # ROCKET_P, as the straight missile (proof v15)
     assert p["trail"] == {"effect": {"mkt_fx": 4, "place": "direction"}, "every": 2}
     assert p["impact"] == {"at": "projectile", "end": "effect", "sound": {"fighter": 10}, "effect": {"mkt_fx": 5}}
     assert p["homing"] == {
