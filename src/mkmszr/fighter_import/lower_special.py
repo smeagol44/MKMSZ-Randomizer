@@ -666,8 +666,10 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
         counter[0] += 1
         return f"{label}_{tag}{counter[0]}"
 
-    def anim_at(anim: dict[str, Any]) -> int | tuple[str, int]:
-        key = (int(anim["table"]), int(anim["slot"]))
+    def anim_at(anim: dict[str, Any], reverse: bool = False) -> int | tuple[str, int]:
+        key: tuple = (int(anim["table"]), int(anim["slot"]))
+        if reverse:  # its frames backwards (body.secondary_scripts ``:reverse``)
+            key = (*key, "reverse")
         if key not in animations:
             raise ValueError(f"{label}: animation {key} has no host slot")
         return animations[key]
@@ -759,7 +761,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 host.load_controller(a)
                 emit_charge(a, cost)
             elif op == "animate":
-                where = anim_at(step["anim"])
+                where = anim_at(step["anim"], bool(step.get("reverse")))
                 until = step.get("until")
                 if until == "running":  # rate-stepped by the motion that follows (MKT next_anirate)
                     select(where)
@@ -779,7 +781,16 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                     a.move("s7", "zero")
                 select(where)
                 if until == "phase_end":
-                    a.li("a0", _scale(int(step["rate"]), donor_ticks))
+                    if "rate_reacting" in step:  # MKT: faster while the opponent is in a reaction
+                        quick = fresh("quick")
+                        host.load_controller(a)
+                        host.opponent_reacting(a, "s0", "t8", quick + "_read")
+                        a.li("a0", _scale(int(step["rate"]), donor_ticks))
+                        a.beqz("t8", quick)
+                        a.li("a0", _scale(int(step["rate_reacting"]), donor_ticks))
+                        a.label(quick)
+                    else:
+                        a.li("a0", _scale(int(step["rate"]), donor_ticks))
                     a.jal(F_TO_PHASE_END)
                     host.load_controller(a)
                 else:  # show the first frame (index 0); next_frame steps advance it

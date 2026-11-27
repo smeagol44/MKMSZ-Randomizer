@@ -1373,6 +1373,9 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
         _starts = set(donor.table0) | set(_t1)
     new_scripts = {s: donor_frames_by_phase(donor, (donor.table0 if t == 0 else _t1)[i], _starts)[:n]
                    for s, (t, i, n) in body_d.secondary_scripts.items()}  # fmt: skip
+    for s in body_d.reverse_scripts:  # backwards from the last but one (MKT ani_backward)
+        flat = [r for p in new_scripts[s] for r in p]
+        new_scripts[s] = [flat[-2::-1]]
     # Helper composites (phase slots): only the ones the host positions show.
     stance_first = translated_first_frame(slot_cfg, donor)
     shown = {slot: set(phase_fill(clean_file, slot, phases, body_d.phase_slots[slot], stance_first).values())

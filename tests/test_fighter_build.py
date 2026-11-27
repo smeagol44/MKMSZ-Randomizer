@@ -474,7 +474,7 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     production that stock word is a payload reference the fixed loader refreshes."""
 
     built = fb.build(*roms, "sektor-smre")
-    assert built.selectors == {"teleport_uppercut": 3} and built.report["combos"] == (
+    assert built.selectors == {"teleport_uppercut": 3, "straight_rocket": 4} and built.report["combos"] == (
         "HP, HP, HK, B+HK", "HP, HP, HK, HK, B+HK", "HP, HP, D+LP", "HK, HK")
     rom = built.rom
     pointer = int.from_bytes(rom[0xB1D0C:0xB1D10], "big")  # the sixth record's next pointer
@@ -488,7 +488,13 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     words = [int.from_bytes(lk[k : k + 2], "big") for k in range(0x10, 0x2C, 2)]
     assert lk[:8] == bytes.fromhex("0040004000000001") and words[:3] == [24, 9, 9] and words[7:9] == [8, 8]
     # proof v04: the teleport uppercut (SMRE), free (a movement ability)
-    assert built.report["costs"] == {"teleport_uppercut": 0} and built.report["smre"]["teleport_uppercut"]["unknown"] == []
+    assert built.report["costs"]["teleport_uppercut"] == 0 and built.report["smre"]["teleport_uppercut"]["unknown"] == []
+    # proof v08: the straight missile (SMRE) in Ice Blast's slot, at its cost; MKT's smoke (fx 4)
+    # and explosion (fx 5) art in the fighter file
+    assert built.report["costs"]["straight_rocket"] == 0x20
+    assert built.report["smre"]["straight_rocket"]["unknown"] == []
+    assert [(m, role, fx) for m, role, fx, *_ in built.report["mkt_effects"]] == [
+        ("straight_rocket", "trail", 4), ("straight_rocket", "impact", 5)]
     # proof v02/v03: his throw's sounds (MKT 0x80042498: arm out / throw / in)
     assert [len(built.report["throw_sounds"][k]) for k in ("grab", "throw", "release")] == [1, 1, 1]
     for site in (0x8005BCD4, 0x8005BDC8, 0x8005BDF8):  # jal into the payload, relocated in production
@@ -522,3 +528,34 @@ def test_motion_depths_follow_the_mkt_curve() -> None:
     assert sink[:5] == [12, 27, 44, 64, 86] and sink[-1] >= fb.SINK_HIDDEN_PX and len(sink) == 13
     rise, v = fb._depths(-0x7A666, -0x5199, 2, fb.SCREEN_BOTTOM_PX, lambda d: d <= 0)
     assert len(rise) == 8 and rise[-1] <= 0 and -13 < v < -12.4
+
+
+@needs_roms
+def test_sektor_missile_matches_the_accepted_legacy_rocket(roms: tuple[bytes, bytes]) -> None:
+    """Proof v08: what the generic build reads from MKT for the straight missile equals the accepted
+    legacy rocket's hand-written values (``actions.robo_zap``): the smoke and explosion art
+    (create_fx 4 and 5, read from their routines), the smoke 19 px behind it, behind the fighters,
+    the explosion in front, and the host speed tables (0x33333 or 0x59999 while the opponent
+    reacts, v += v >> 4 a donor tick up to 0xB3333)."""
+
+    from mkmszr.fighter_import import generate, mkt_effects
+    from mkmszr.fighter_import import lower_projectile as lp
+    from mkmszr.fighter_import.actions import robo_zap as zap
+
+    mkt = roms[1]
+    own = mkt[0x906A90:0x906B90]  # Sektor's dictionary (MktRom.dictionary(7))
+    shared = mkt[mkt_effects.SHARED_DICTIONARY - 0x80000000 :][:0x100]
+    smoke, boom = mkt_effects.read(mkt, 4, 3), mkt_effects.read(mkt, 5)
+    assert (smoke.dx, smoke.dy, smoke.front, smoke.ticks_per_frame) == (zap.SMOKE_OFFSET, 0, False, 4)
+    assert (boom.dx, boom.front, boom.ticks_per_frame) == (0, True, 4)
+    assert mkt_effects.art(mkt, smoke, [own, shared]) == zap.smoke_art(mkt, own)
+    assert mkt_effects.art(mkt, boom, [own, shared]) == zap.explosion_art(mkt, own)
+    prog, _, _ = generate.Generator(mkt, 7).program("straight_rocket", 0x800AB250)
+    step = next(s for s in prog["steps"] if s["op"] == "projectile")
+    assert step["trail"] == {"effect": {"mkt_fx": 4, "place": 3}, "every": 2}
+    art = lp.ArtLayout(0, 0, None, 0, 8, 8)
+    low = lp.lower(step, art, {}, 0x20, roms[0])
+    assert list(low.speeds) == zap.host_speeds(zap.SPEED_NORMAL)
+    assert list(low.speeds_reacting) == zap.host_speeds(zap.SPEED_REACTING)
+    chest = [s for s in prog["steps"] if s["op"] == "animate"]
+    assert [s.get("reverse", False) for s in chest] == [False, True] and chest[0]["rate_reacting"] == 2

@@ -239,6 +239,12 @@ Commands: straight rocket (`do_robo_zap` `0x8007BF84`), double rocket (`0x8007BF
 - the victim's thrown routine: `0x80042580(routine)`.
 
 Sektor's `0x80042498` plays his sounds 0, 1 and 2 at the grab, the throw and after the transfer. Reptile's `0x80040234` (body `0x80040274`) and Rayden's `0x80041620` play none. Read by `fighter_import.throw_sounds`.
+
+**Shared effects (`create_fx`, SMRE step 3, 2026-11-27; static reading).** `create_fx(n)` (`0x8002A820`) starts a process at `0x800A5590[n]`. Sektor's missile uses two:
+- fx 4, rocket puff (`0x8002E448`): process `+0x41C` = `0x800CC7E0` (five image descriptors, palette `0x800BC638`), `framew(4)`, object `+0x1C` = 0 (behind), `multi_adjust_xy` by table `0x800A5BB8[+0x444]` with x − 0x18. `rocket_smoke(3)` (`0x8007C7C8`) passes entry 3 = (5, 0): 19 px behind the missile;
+- fx 5, explosion (`0x8002EA38`): `+0x41C` = `0x800CC7F8` (eight one-part shapes, palette `0x800BC6E4`), `mframew(4)`, `+0x1C` = `0x51` (in front). Its codec-14/19 images decode within the palette with Sektor's dictionary (ROM `0x906A90`), not the shared `0x800CCA88`.
+
+Read by `fighter_import.mkt_effects`. Both give the legacy rocket's art (Implementation/CI-confirmed).
  All read with no unknown calls at the move-body level. Their detailed readings, translations and runtime history are in [MKT adapter primitives](MKT-Adapter-Primitives) (rocket and teleport sections) and stay frozen legacy.
 
 ## Provenance convention

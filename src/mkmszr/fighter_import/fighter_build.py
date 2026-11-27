@@ -50,6 +50,7 @@ from . import (
     effects,
     host,
     lower_special,
+    mkt_effects,
     physics,
     sound,
     throw_sounds,
@@ -58,7 +59,7 @@ from . import (
 from . import description as fd
 from . import lower_projectile as lp
 from .mips import Assembler
-from .mkt_fighter import validate_mkt_n64_rev2
+from .mkt_fighter import MktRom, validate_mkt_n64_rev2
 
 VA_TO_ROM = 0x7FFFF400
 LINK_VA = 0xA01AF420  # the proofs' payload address (any address works: production relocates)
@@ -352,9 +353,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         samples_end = sound.install(rom, clean, donor_sound, chain, (samples_end + 0xF) & ~0xF)
         return chain.event
 
-    animations: dict[tuple[int, int], int | tuple[str, int]] = {}
-    for key, (t, i, _) in d.body.secondary_scripts.items():
-        animations[(t, i)] = key if key < body_build.VIRTUAL_SCRIPT else ("at", body.script_offsets[key])
+    animations: dict[tuple, int | tuple[str, int]] = {}
+    for key, (t, i, _) in d.body.secondary_scripts.items():  # backwards ones: (t, i, "reverse")
+        where = key if key < body_build.VIRTUAL_SCRIPT else ("at", body.script_offsets[key])
+        animations[(t, i, "reverse") if key in d.body.reverse_scripts else (t, i)] = where
     animations[(0, d.body.run_slot)] = ("at", body_build.RUN_TARGET)
     for k in d.body.slots:  # host primary k holds MKT table-0 index k (the generic body rule)
         if k not in d.body.sources:  # (a slot with another source holds something else)
@@ -374,6 +376,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     fighter_sounds: dict[int, int] = dict([script_sound]) if script_sound else {}
     footsteps: dict[str, tuple[int, ...]] = {}
     effect_art: dict[int, tuple[effects.EffectArt, effects.EffectLayout, dict[str, Any]]] = {}
+    fx_info: dict[tuple[str, str], mkt_effects.MktEffect] = {}  # (move, "trail" | "impact")
     report["body"] = body.report
     for move in order:
         tune = d.specials.get(move, {})
@@ -483,6 +486,25 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 raise BuildError(f"{move}: effect {fx} art does not fit the fighter file")
             file87[placed.offset : placed.end] = placed.data
             effect_art[int(fx)] = (art_fx, placed, spec)
+        for fx in _unlowered_effects(projectile_of.get(move)):
+            report.setdefault("effects_not_lowered", []).append((move, fx))
+        for role, eff in _projectile_effects(projectile_of.get(move)):  # Sektor's smoke and explosion
+            fx = _int(eff["mkt_fx"])
+            info = mkt_effects.read(mkt, fx, _int(eff["place"]) if "place" in eff else None)
+            fx_info[(move, role)] = info
+            if fx in effect_art:
+                continue
+            start, end = MktRom(mkt).dictionary(donor_id)
+            shared = mkt[mkt_effects.SHARED_DICTIONARY - 0x80000000 :][:0x100]
+            art_fx = mkt_effects.art(mkt, info, [mkt[start:end], shared])
+            placed = effects.layout(art_fx, _free_from(file87, body.chain_start))
+            if placed.end > body_build.TYPE_END or set(file87[placed.offset : placed.end]) != {0xFF}:
+                raise BuildError(f"{move}: MKT effect {fx} art does not fit the fighter file")
+            file87[placed.offset : placed.end] = placed.data
+            spec = {"ticks_per_frame": max(1, info.ticks_per_frame * physics.HOST_HZ // physics.DONOR_HZ),
+                    "reserve": mkt_effects.TRAIL_RESERVE if role == "trail" else mkt_effects.EFFECT_RESERVE}  # fmt: skip
+            effect_art[fx] = (art_fx, placed, spec)
+            report.setdefault("mkt_effects", []).append((move, role, fx, hex(placed.offset), len(placed.data)))
     # His MKT throw routine's own sounds on the host throw's three stages (Sektor's arm: out, throw,
     # in). MKT's grab voice (voice group 3, every fighter) is left out (owner, 2026-11-27: grab
     # sounds dropped for now; Rayden had no sound chain for his).
@@ -602,6 +624,15 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             low = dataclasses.replace(low, impact_flip=bool(ptune.get("impact_flip", True)),
                                       impact_keep_y=bool(ptune.get("impact_keep_y", True)),
                                       impact_at_hit=bool(ptune.get("impact_at_hit", True)))  # fmt: skip
+            if (move, "trail") in fx_info:  # MKT rocket_smoke: one puff every other donor tick
+                info, every = fx_info[(move, "trail")], _int(projectile_of[move]["trail"]["every"])
+                if every * physics.HOST_HZ != physics.DONOR_HZ or info.dy:
+                    raise BuildError(f"{move}: a trail every {every} donor ticks, {info.dy} px up, is not lowered")
+                low = dataclasses.replace(low, trail=f"fx_{info.fx}", trail_dx=info.dx * lp.UNITS_PER_PX,
+                                          trail_front=info.front)  # fmt: skip
+            if (move, "impact") in fx_info:  # at the projectile (MKT rocket_explode_fx)
+                info = fx_info[(move, "impact")]
+                low = dataclasses.replace(low, impact_effect=f"fx_{info.fx}", impact_effect_front=info.front)
             if "impact_toward_px" in ptune:  # owner: the impact nearer the attacker (facing him)
                 low = dataclasses.replace(low, impact_dx=low.impact_dx
                                           + _int(ptune["impact_toward_px"]) * lp.UNITS_PER_PX)  # fmt: skip
@@ -738,6 +769,25 @@ def _report_key(g: _Group, groups: dict) -> str:
 def _combo_slot(d: fd.FighterDescription) -> tuple[int | None]:
     table, index = d.body.sources.get(combos.COMBO_SLOT, (0, combos.COMBO_SLOT))
     return (index if table == 1 else None,)
+
+
+def _projectile_effects(step: dict[str, Any] | None) -> list[tuple[str, dict[str, Any]]]:
+    """("trail" | "impact", effect) a projectile step starts that the backend lowers: its trail,
+    and its impact when the impact is that effect (``end: effect``, Sektor's explosion). An
+    effect beside an impact animation (Reptile's acid droplets, ``create_fx(0x2F)``) is not
+    lowered yet (:func:`_unlowered_effects`)."""
+
+    if step is None:
+        return []
+    impact = step.get("impact", {})
+    found = [("trail", step.get("trail", {}).get("effect")),
+             ("impact", impact.get("effect") if impact.get("end") == "effect" else None)]  # fmt: skip
+    return [(role, eff) for role, eff in found if eff is not None]
+
+
+def _unlowered_effects(step: dict[str, Any] | None) -> list[int]:
+    impact = (step or {}).get("impact", {})
+    return [_int(impact["effect"]["mkt_fx"])] if "effect" in impact and impact.get("end") != "effect" else []
 
 
 def _projectile_rates(step: dict[str, Any], ticks_per: int) -> dict[str, Any]:

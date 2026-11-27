@@ -100,14 +100,16 @@
     },
     "secondary_scripts": {
       "0x44": "table0:0x0D:1",
-      "0x45": "table1:0x03:1"
+      "0x45": "table1:0x03:1",
+      "0x46": "table1:0x00:1",
+      "0x47": "table1:0x00:1:reverse"
     }
   },
   "commands": {
-    "teleport_uppercut": "directional_ice_down"
+    "teleport_uppercut": "directional_ice_down",
+    "straight_rocket": "ice_blast"
   },
   "remove_commands": [
-    "ice_blast",
     "directional_ice_up",
     "ice_clone",
     "freeze_on_contact"
@@ -116,11 +118,21 @@
     "teleport_uppercut": {
       "donor_ticks": 2,
       "air_start": true
+    },
+    "straight_rocket": {
+      "donor_ticks": 2,
+      "projectile": {
+        "offset_px": [
+          -30,
+          -36
+        ]
+      }
     }
   },
   "legacy": [],
   "notes": "SMRE step 3 (Sektor's migration to the generic build, one move at a time). The product Sektor stays sektor.json with its frozen legacy build until every move is migrated; this description then replaces it. Body: the computed layout (Reptile's and Rayden's), his MKT throw with the mechanical arm flattened onto each pose (phase mode 'scale'), his colour map and palette from sektor.json (the accepted 16-colour proof).",
   "smre": {
-    "teleport_uppercut": "0x800AB2C0"
+    "teleport_uppercut": "0x800AB2C0",
+    "straight_rocket": "0x800AB250"
   }
 }

@@ -57,6 +57,7 @@ FOLLOW_SP = 0x24  # the child's frame: four offset words (0x20 is the texture ha
 FOLLOW_FIELDS = (host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Y, host.ACTOR_Z)
 HIT_X, HIT_Y = 0x802E83D8, 0x802C1BA0  # a projectile's victim x / y at its last hit (0x8002DCB0)
 ACTOR_FLAGS, FACING_BIT = 0x8C, 0x10  # actor facing (0x800344F4, 0x8002B6F4)
+ACTOR_SUBLAYER = 0xEC  # draw sub-layer within the actor priority +0x5C (as projectile.py)
 
 # Victim reactions by meaning -> host. "base": a stock host reaction (leaf, no branches) copied
 # into the payload with the donor arc converted; "host": a stock reaction used as is.
@@ -475,28 +476,31 @@ def place_art(
 
 
 # ---- sounds, strike and reaction --------------------------------------------------------------
+def _sounds(step: dict[str, Any]) -> list[tuple[str, Any]]:
+    """(name, sound) the step hosts: the launch (``sound``, Sektor's missile), hum, impact."""
+
+    wanted = [("launch", step.get("sound")), ("hum", step.get("hum", {}).get("sound")),
+              ("impact", step.get("impact", {}).get("sound"))]  # fmt: skip
+    return [(name, snd) for name, snd in wanted if snd]
+
+
 def projectile_sounds(step: dict[str, Any]) -> list[str]:
     """The sounds a projectile step hosts (``install_sounds`` takes one chain each)."""
 
-    return [name for name in ("hum", "impact") if step.get(name, {}).get("sound")]
+    return [name for name, _ in _sounds(step)]
 
 
 def install_sounds(
     rom: bytearray, clean: bytes, mkt: bytes, donor_id: int, step: dict[str, Any],
     chains: tuple[sound.HostChain, ...], sample_rom: int,
 ) -> tuple[dict[str, int], int]:  # fmt: skip
-    """Host the hum and impact sounds; returns their host events and the next sample address."""
+    """Host the launch, hum and impact sounds; returns their host events and the next sample
+    address."""
 
     bank = sound.MktSoundBank(mkt)
     events: dict[str, int] = {}
-    wanted = [
-        ("hum", step.get("hum", {}).get("sound")),
-        ("impact", step.get("impact", {}).get("sound")),
-    ]
     free = list(chains)
-    for name, snd in wanted:
-        if not snd:
-            continue
+    for name, snd in _sounds(step):
         if "fighter" not in snd:
             raise ValueError("only fighter sounds are supported")
         chain = free.pop(0)
@@ -573,6 +577,20 @@ class Lowered:
     # projectile leaves the screen it re-enters past the opposite edge; for ``wrap_cooldown``
     # ticks the flight keeps it, then it ends at the next exit as usual (0 = no wrap).
     wrap_cooldown: int = 0
+    # MKT's rocket (Sektor, rocket1_proc 0x8007C100): a sound as it starts; the start speed
+    # (``speed_reacting`` while the opponent is in a reaction); the flight callback's
+    # acceleration (v += v >> n every donor tick, up to the cap: host speeds per host tick, two
+    # donor ticks each, the last one steady); a trail effect (MKT rocket_smoke: create_fx every
+    # other donor tick = every host tick, ``trail_dx`` donor units along its heading, behind it);
+    # an impact effect at the projectile (MKT rocket_explode_fx), in front.
+    launch_event: int | None = None
+    speeds: tuple[int, ...] = ()  # host per-tick magnitudes (empty: ``speed`` throughout)
+    speeds_reacting: tuple[int, ...] = ()
+    trail: str | None = None  # an effects.emit_descriptor label
+    trail_dx: int = 0  # world units along the projectile's heading (negative: behind)
+    trail_front: bool = False
+    impact_effect: str | None = None
+    impact_effect_front: bool = True
 
 
 def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
@@ -615,6 +633,22 @@ def lower(
         for c in step.get("checks", [])
     )
     impact = step.get("impact", {})
+    speeds: tuple[int, ...] = ()
+    speeds_reacting: tuple[int, ...] = ()
+    if "accel_shift" in step or "speed_reacting" in step:
+        shift = _int(step.get("accel_shift", 0))
+        cap = _int(step["cap"]) if "cap" in step else None
+        if shift and cap is None:
+            raise ValueError("projectile accel_shift needs a cap")
+
+        def host_speeds(start: int) -> tuple[int, ...]:
+            if not shift:
+                return (physics.fold_donor_speeds(start, start, lambda d: d, UNITS_PER_PX)[0],)
+            return tuple(physics.fold_donor_speeds(start, cap, lambda d: d + (d >> shift), UNITS_PER_PX))
+
+        speeds = host_speeds(_int(step["speed"]))
+        speeds_reacting = host_speeds(_int(step.get("speed_reacting", step["speed"])))
+        speed = speeds[0]
     return Lowered(
         art, speed, dx, dy, record, words,
         events.get("hum"), _int(step.get("hum", {}).get("every", 0)), events.get("impact"),
@@ -622,6 +656,7 @@ def lower(
         _int(impact.get("adjust", [0, 0])[0]) * UNITS_PER_PX,
         impact_follow=impact.get("follow") == "opponent",
         wrap_cooldown=_int(step["wrap"]["cooldown"]) if "wrap" in step else 0,
+        launch_event=events.get("launch"), speeds=speeds, speeds_reacting=speeds_reacting,
     )  # fmt: skip
 
 
@@ -740,14 +775,17 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
             a.li("a1", slot)
             a.jal(F_SELECT)
 
-    def velocity() -> None:
+    def velocity(tag: str = "") -> None:
         host.load_controller(a)
-        a.li("t0", p.speed)
+        if p.speeds:  # the table's (see below)
+            a.lw("t0", 0, "s4")
+        else:
+            a.li("t0", p.speed)
         a.lw("t1", 0x700, "s0")
         a.li("t2", 0x10)
-        a.bne("t1", "t2", prefix + "set_vel")
+        a.bne("t1", "t2", prefix + "set_vel" + tag)
         a.subu("t0", "zero", "t0")
-        a.label(prefix + "set_vel")
+        a.label(prefix + "set_vel" + tag)
         a.sw("t0", 0x14, "s1")
 
     def collide(record: str, hit: str) -> None:
@@ -794,6 +832,15 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.li("a1", p.dx)
     a.li("a2", p.dy)
     a.jal(F_OFFSET)
+    if p.launch_event is not None:  # MKT rocket1_proc: its sound as it starts
+        host.play_sound(a, p.launch_event, player)
+    if p.speeds:  # s4: this tick's speed in the table (the reacting one if he is reacting)
+        host.load_controller(a)
+        host.opponent_reacting(a, "s0", "t8", prefix + "react_read")
+        a.la("s4", prefix + "speeds")
+        a.beqz("t8", prefix + "speeds_picked")
+        a.la("s4", prefix + "speeds_reacting")
+        a.label(prefix + "speeds_picked")
     if p.checks:  # MKT: the first frames stay put and check close-range boxes, then flight
         host.load_controller(a)
         select(p.art.flight_slot, p.art.flight_at)
@@ -814,6 +861,28 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         a.li("t0", 0x7FFF)
         a.sw("t0", WRAP_LAST_SP, "sp")  # |view x| last tick (none yet)
     a.label(prefix + "fly")
+    if p.speeds:  # this tick's speed; the next entry from the next tick (0 ends the table)
+        velocity("_tick")
+        a.lw("t0", 4, "s4")
+        a.beqz("t0", prefix + "speed_kept")
+        a.addiu("s4", "s4", 4)
+        a.label(prefix + "speed_kept")
+    if p.trail is not None:  # one puff a host tick, along its heading (facing-signed)
+        host.load_controller(a)
+        a.move("a0", "s1")
+        a.la("a1", p.trail)
+        a.lhu("t3", ACTOR_FLAGS, "s1")
+        a.andi("t3", "t3", FACING_BIT)
+        a.li("a2", p.trail_dx)
+        a.beqz("t3", prefix + "trail_dx")
+        a.li("a2", -p.trail_dx)
+        a.label(prefix + "trail_dx")
+        if p.trail_front:
+            a.li("a3", effects.FRONT_SUBLAYER)
+        else:  # behind it: the next sub-layer
+            a.lhu("a3", ACTOR_SUBLAYER, "s1")
+            a.addiu("a3", "a3", 1)
+        a.jal_label("fx_spawn")
     if p.hum_event is not None:
         a.addiu("s3", "s3", 1)
         a.slti("t0", "s3", p.hum_every)
@@ -849,6 +918,17 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.label(prefix + "on_contact")
     if p.impact_event is not None:
         host.play_sound(a, p.impact_event, player)
+    if p.impact_effect is not None:  # at the projectile (MKT rocket_explode_fx)
+        host.load_controller(a)
+        a.move("a0", "s1")
+        a.la("a1", p.impact_effect)
+        a.move("a2", "zero")
+        if p.impact_effect_front:
+            a.li("a3", effects.FRONT_SUBLAYER)
+        else:
+            a.lhu("a3", ACTOR_SUBLAYER, "s1")
+            a.addiu("a3", "a3", 1)
+        a.jal_label("fx_spawn")
     if p.art.impact_slot is not None:
         host.load_controller(a)
         a.sw("zero", 0x14, "s1")
@@ -948,6 +1028,12 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     a.jal(F_EXIT)
     a.label(prefix + "child_hang")
     a.beq("zero", "zero", prefix + "child_hang")
+    if p.speeds:  # each ended by 0 (the last entry is the steady speed)
+        for name, table in (("speeds", p.speeds), ("speeds_reacting", p.speeds_reacting)):
+            a.label(prefix + name)
+            for word in table:
+                a.raw(word)
+            a.raw(0)
 
 
 # The host camera (Static-confirmed, the offscreen test 0x80035088): view = M * (world >> 8 + T)

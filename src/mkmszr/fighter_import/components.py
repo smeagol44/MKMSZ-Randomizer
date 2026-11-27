@@ -14,7 +14,8 @@ Units (engine-neutral, anchored on donor values and the documented calibrations)
 * ``anim``: a donor animation ``{"table": 0|1, "slot": n}`` plus optional ``part`` (1-based)
   and ``offset`` (script words); the body builder imports the frames it names.
 * ``sound``: ``{"fighter": n}`` (the donor fighter sound table entry) or ``{"shared": n}``.
-* ``effect``: ``{"mkt_fx": n}`` (donor shared effect index).
+* ``effect``: ``{"mkt_fx": n}`` (donor shared effect index), with ``place: k`` when its routine
+  offsets it by MKT's placement entry k (the caller's argument: Sektor's ``rocket_smoke(3)``).
 * ``pxpair``: ``[x, y]`` donor pixels, x along the facing (positive forward), y positive down
   (the projectile spawn offset; proof v06: Reptile's forceball needs ``[-30, -36]``).
 * ``strike``: ``{"box": [x, y, w, h], "damage": n, "block_damage": n, "reaction": name,
@@ -53,7 +54,6 @@ REACTIONS = {
     "shock_stagger": "MKT 0x80: victim staggers back (0x26666) blinking cyan (its shock palette)",
     "shock_stagger_toward": "MKT 0x81: as 0x80, pushed towards the attacker (towards_x_vel)",
     "shock_hold": "Rayden's Shocker grab: the victim held and shocked (blinking cyan), then dropped",
-    "rocket_stumble": "MKT r_rocket -> zap_stumble: stumble back",
     "uppercut": "teleport strike: host uppercut reaction 0x08 (runtime-confirmed teleport)",
     "blocked": "the stock blocked reaction",
 }
@@ -195,7 +195,8 @@ def _check_value(kind: str, value: Any, where: str, errors: list[str]) -> None:
         need(isinstance(value, dict) and (set(value) in ({"fighter"}, {"shared"}, {"fighter", "random"})),
              "sound is {fighter: n}, {fighter: n, random: k} (one of n..n+k-1) or {shared: n}")  # fmt: skip
     elif kind == "effect":
-        need(isinstance(value, dict) and set(value) == {"mkt_fx"}, "effect is {mkt_fx: n}")
+        need(isinstance(value, dict) and set(value) in ({"mkt_fx"}, {"mkt_fx", "place"}),
+             "effect is {mkt_fx: n} (and place: MKT's placement index, process +0x444)")  # fmt: skip
     elif kind == "strike":
         keys = {"box", "damage", "block_damage", "reaction", "blocked_reaction"}
         ok = isinstance(value, dict) and keys <= set(value) <= keys | {"unblockable"}

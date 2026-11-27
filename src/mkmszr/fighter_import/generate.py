@@ -1528,8 +1528,10 @@ def _callback(w: _Walk, callback: int) -> list[tuple[str, Any]]:
     if smoke is not None:  # MKT's smoke: create_fx(n) every other flight tick (rocket_smoke)
         fx = next((y.args[0].const() for y in _walk_all(dc.decompile(w.gen.mkt, smoke.target))
                    if y.kind == "call" and w.name(y) == "create_fx"), None)  # fmt: skip
+        place = smoke.args[0].const()  # its placement index (the effect's process +0x444)
         if fx is not None:
-            out.append(("trail", {"effect": {"mkt_fx": fx}, "every": 2}))
+            effect = {"mkt_fx": fx} if place is None else {"mkt_fx": fx, "place": place}
+            out.append(("trail", {"effect": effect, "every": 2}))
     text = " ".join(str(getattr(x, "cond", "")) for x in every)
     shift = re.search(r"\+0xC >> (\d+)\)", text)
     cap = re.search(r"< (0x[0-9A-F]+)\)", text)
