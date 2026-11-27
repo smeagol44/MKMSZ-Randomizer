@@ -608,6 +608,10 @@ class Lowered:
     # Its render position set as it is placed (effects.RENDER_POSITION: paused on its first tick,
     # it would be drawn at the stage's origin)
     render_position: bool = False
+    # The trail is placed from the projectile's drawn position (+0x38..: the position before this
+    # tick's move), as MKT places a puff from the rocket it shows (Sektor SMRE proof v12: from
+    # +0x2C the newest puff showed one tick's travel ahead, under the missile's body)
+    trail_from_drawn: bool = True
 
 
 def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
@@ -916,6 +920,10 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         for k, field in enumerate(TRAIL_FIELDS):
             a.lw("t0", field, "s1")
             a.sw("t0", FOLLOW_SP + 4 * k, "sp")
+        if p.trail_from_drawn:  # from where it is drawn: +0x2C has this tick's move already
+            for src, dst in effects.RENDER_POSITION:
+                a.lw("t0", dst, "s1")
+                a.sw("t0", src, "s1")
         a.move("a0", "s1")
         a.li("a1", p.trail_dx)
         a.move("a2", "zero")

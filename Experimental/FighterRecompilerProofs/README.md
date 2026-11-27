@@ -90,3 +90,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_sektor-smre_proof_v09.py` | `MKMSZR_sektor-smre_common_proof_v09.z64` | v08 with ROCKET_P, MKT's spawn (5, 38) px at the owner's draw offset, and the smoke placed 19 px behind by the missile's own offset |
 | `MKMSZR_build_sektor-smre_proof_v10.py` | `MKMSZR_sektor-smre_common_proof_v10.z64` | v09 with the missile drawn behind Sektor (MKT depth 0: his layer + 1), the smoke behind it, and no puff on its first flight tick |
 | `MKMSZR_build_sektor-smre_proof_v11.py` | `MKMSZR_sektor-smre_common_proof_v11.z64` | v10 with each new puff's (and the missile's) render position set as it is placed: no puff at the stage's origin on pause |
+| `MKMSZR_build_sektor-smre_proof_v12.py` | `MKMSZR_sektor-smre_common_proof_v12.z64` | v11 with each puff placed from the missile's drawn position (19 px behind it: on the flame) |
