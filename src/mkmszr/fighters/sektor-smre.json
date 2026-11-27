@@ -114,7 +114,8 @@
   ],
   "specials": {
     "teleport_uppercut": {
-      "donor_ticks": 2
+      "donor_ticks": 2,
+      "air_start": true
     }
   },
   "legacy": [],

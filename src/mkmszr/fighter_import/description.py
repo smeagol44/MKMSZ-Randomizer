@@ -67,7 +67,9 @@ Body fields:
 * ``help`` (optional): the Power Ups help text per power slot (``fighter_import.fighter_help``).
 * ``specials`` (optional): move name -> lowering tuning for ``fighter_import.fighter_build``
   (owner calibrations such as offsets, facing, recovery, the per-move projectile limit,
-  stealth drain, effects, `face` (turn at the start), `skip` (step kinds left out), `air_control` (steer the closing drop), recovery
+  stealth drain, effects, `face` (turn at the start), `skip` (step kinds left out), `air_control` (steer the closing drop),
+  `air_start` (the move may start in the air: MKT's command has no ground check; a sink falls to the
+  floor first: Sektor's teleport uppercut), recovery
   `sleep_ticks`, hit window `strike_ticks` in donor ticks, `turn_back` (its `face` steps turn
   back instead: the reversed lightning), the
   torpedo carry's grab point `carry`: `dx_px`, `dy_px`; `projectile`: `impact_toward_px`,

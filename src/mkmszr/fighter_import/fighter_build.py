@@ -553,7 +553,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                                           target_range=lower_special.RELOCATE_RANGE if relocates else None,
                                           held=held,
                                           alive=alive, refuse_if=refuse,
-                                          airborne=bool(tune.get("airborne")))  # fmt: skip
+                                          airborne=bool(tune.get("airborne") or tune.get("air_start")))  # fmt: skip
         g = group_of.get(move)
         meanings = {s["strike"]["reaction"] for s in _all_steps(steps) if s["op"] == "strike"}
         reaction_map = {}
@@ -593,6 +593,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             cooldown=f"{move}_cooldown" if move in cooldown_of else None,
             afterimage=afterimage_of[move][0] if move in afterimage_of else None,
             motions=motions or None,
+            air_start=bool(tune.get("air_start")),  # MKT's command has no ground check (Sektor's teleport)
             primary_scripts={k: int.from_bytes(file87[4 * k : 4 * k + 4], "big") for k in d.body.slots},
         )  # fmt: skip
         if g is not None:
@@ -668,7 +669,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     main = a.link()
     # Transfer mode 0 refuses an airborne start, mode 1 does not (Wiki Player-Actions "Descriptor
     # selector and condition"): moves tuned "airborne" (Rayden's torpedo) take mode 1.
-    overrides = {m: (1 if d.specials.get(m, {}).get("airborne") else 0, a.labels[f"{m}_cond"], a.labels[f"{m}_thunk"])
+    overrides = {m: (1 if d.specials.get(m, {}).get("airborne") or d.specials.get(m, {}).get("air_start") else 0,
+                     a.labels[f"{m}_cond"], a.labels[f"{m}_thunk"])
                  for m in order}  # fmt: skip
     cmds = commands.donor_commands(mkt, moves, d.commands)
     stub_base = (link_va + TABLE_RESERVE + len(main) + 0xF) & ~0xF

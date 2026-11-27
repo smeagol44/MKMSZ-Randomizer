@@ -439,6 +439,64 @@ class Motion:
     surface_velocity: int | None = None
 
 
+def _emit_fall_then_sink(a: Assembler, motion: Motion, y: int, gravity: int, tag: str) -> None:
+    """A sink that may start in the air: while above his floor the fighter falls on the sink's
+    own curve (MKT's velocity and gravity, converted), showing its first frame, counting ticks
+    (``s7``); then the alias script goes on from that tick (capped at its last frame)."""
+
+    host.set_cursor(a, motion.script)
+    host.advance_animation(a)
+    a.move("s7", "zero")
+    a.lw("t0", host.ACTOR_Y, "s1")
+    a.lw("t1", host.CTRL_GROUND, "s0")
+    a.slt("t2", "t0", "t1")  # y grows downward: above the floor
+    a.beqz("t2", tag + "_grounded")
+    a.li("t0", physics.convert_velocity(y))
+    a.sw("t0", host.ACTOR_YVEL, "s1")
+    a.li("t0", physics.convert_acceleration(gravity))
+    a.sw("t0", host.ACTOR_GRAVITY, "s1")
+    a.li("s2", 60)  # at most 2 s
+    a.label(tag)
+    host.sleep_tick(a)
+    host.load_controller(a)
+    a.addiu("s7", "s7", 1)
+    a.lw("t0", host.ACTOR_Y, "s1")
+    a.lw("t1", host.CTRL_GROUND, "s0")
+    a.slt("t2", "t0", "t1")
+    a.beqz("t2", tag + "_fallen")
+    a.addiu("s2", "s2", -1)
+    a.bnez("s2", tag)
+    a.label(tag + "_fallen")
+    host.stop(a)
+    a.sw("zero", host.ACTOR_GRAVITY, "s1")
+    a.sw("zero", host.ACTOR_YVEL, "s1")
+    a.sh("zero", host.CTRL_AIRBORNE, "s0")
+    a.label(tag + "_grounded")
+    a.li("t0", motion.steps - 1)
+    a.slt("t1", "t0", "s7")
+    a.beqz("t1", tag + "_index")
+    a.move("s7", "t0")  # capped at the last frame
+    a.label(tag + "_index")
+    a.lw("t0", host.ACTOR_FILE_BASE, "s1")  # the cursor on frame s7 of the script
+    a.sll("t1", "s7", 2)
+    a.addu("t0", "t0", "t1")
+    a.li("t1", motion.script)
+    a.addu("t0", "t0", "t1")
+    a.sw("t0", host.CTRL_SCRIPT_CURSOR, "s0")
+    host.advance_animation(a)
+    a.li("s2", motion.steps - 1)
+    a.subu("s2", "s2", "s7")  # the ticks left
+    a.beqz("s2", tag + "_done")
+    a.label(tag + "_sink")
+    host.sleep_tick(a)
+    host.load_controller(a)
+    host.advance_animation(a)
+    a.addiu("s2", "s2", -1)
+    a.bnez("s2", tag + "_sink")
+    a.label(tag + "_done")
+    host.load_controller(a)
+
+
 def _emit_strike_once(a: Assembler, label: str, record: str, hit_word: str) -> None:
     """``label()``: the strike against every enemy unless it already connected (``hit_word``);
     on contact sets ``hit_word`` (1 clean, 2 blocked). Saves what it uses."""
@@ -516,7 +574,8 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 carry: str | None = None, air_control: bool = False,
                 cooldown: str | None = None, afterimage: str | None = None,
                 motions: dict[int, Motion] | None = None,
-                primary_scripts: dict[int, int] | None = None) -> list[tuple[str, bytes]]:  # fmt: skip
+                primary_scripts: dict[int, int] | None = None,
+                air_start: bool = False) -> list[tuple[str, bytes]]:  # fmt: skip
     """The action root for a move program (never returns). ``animations``: donor animation
     (table, slot) -> host secondary slot holding it, or ``("at", offset)`` for a body script
     without a table entry (selected by setting the cursor); ``child``: the projectile process
@@ -541,7 +600,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
     ``motions``: ``id(step)`` -> :class:`Motion`, the alias scripts of the ``jump`` steps that
     sink below the screen or rise to the floor (``fighter_build.motion_scripts``);
     ``primary_scripts``: host primary slot -> its script's file offset (a pose with an offset
-    in a body slot: Sektor's landing).
+    in a body slot: Sektor's landing); ``air_start``: the move may start in the air (MKT's
+    command has no ground check), so a sink first falls on its own curve to the floor and goes
+    on from the curve tick it reached (Sektor's legacy teleport, runtime-confirmed v08).
 
     Returns the strike records ``(label, 16 bytes)`` to place with :func:`emit_strike_data`.
 
@@ -772,6 +833,9 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
                 if step["until"] == "surface":
                     rise[0] = motion
                 host.load_controller(a)
+                if step["until"] == "below_screen" and air_start:
+                    _emit_fall_then_sink(a, motion, lp._int(step["y"]), lp._int(step["gravity"]), fresh("fall"))
+                    continue
                 host.set_cursor(a, motion.script)
                 host.advance_animation(a)
                 a.li("s2", motion.steps - 1)
