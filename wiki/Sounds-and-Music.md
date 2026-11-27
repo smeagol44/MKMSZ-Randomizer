@@ -124,6 +124,19 @@ The proof history also established an important namespace/liveness rule: an even
 
 These are host-side architectural conclusions. Donor-specific selectors, MKT bank addresses, waveform identities, and v01-v03 chronology belong to [Toasty audio research](Toasty-Audio-Research).
 
+## Growing the sound bank (research, 2026-11-27)
+
+The 16 isolated chains limit how many sounds a fighter can bring; Rayden uses them all, so his throw's grab voice is skipped. Owner decision (2026-11-27): find more sounds rather than drop one. **Static-confirmed facts** (clean MKMSZ USA Rev. 0):
+
+- **Boot loading** (`0x800012EC`). The audio heap descriptor `0x802ECCB0` (`{base, current, size}`) is set up by `0x80088DB0` with base `0x80112020` and size `0x9C400`, so it ends at `0x801AE420`. Boot then:
+  - sizes the control bank at ROM `0x947C80` from its own header (`0x8007E050`; `0x2F088` bytes), allocates it from that heap (`0x80088DF0`) and DMAs it (`0x8007E31C`);
+  - does the same for the sequence module at ROM `0x976D40` (`0x80088500` / `0x800885C4`), then for every event (`0x800014B8`: `0x80088B10` sizes, `0x80088DF0` allocates).
+- **The allocator** `0x80088DF0` is a bump allocator, 16-byte aligned. It returns 0 when `current + n` passes `base + size`; the boot callers do not check.
+- **The ROM bank's place** is read only through the code at `0x800013FC` (`lui`/`addiu` `0x947C80`) and the word at ROM `0xA57B8`. The bank can therefore move to the generated-output region and grow there, with no ROM limit.
+- **The cost is audio heap.** A new chain needs 4 (patch) + 20 (subpatch) + 24 (waveform) + 264 (predictor book) + 16 (event definition) + `0x20` (track) bytes, about 360. Samples stay in ROM.
+
+**Pending:** the heap's use after boot. It is the word at `0x802ECCB4` (the current end) against `0x801AE420`, readable from any save state; static summing of every boot allocation was not attempted. Next: the control-bank header format (counts and sizes per table), then a bounded proof that adds chains for Rayden's grab voice.
+
 ## Function-semantics ownership
 
 The audio chain above names `0x80064C18`, `0x80080A88`, `0x8007EC4C`, and `0x80015FD8` because their composition matters to the audio explanation. Their canonical meanings, evidence labels, and future semantic corrections are maintained only in [Function registry](Function-Registry); this page intentionally does not maintain a competing function table.
