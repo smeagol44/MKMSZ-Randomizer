@@ -257,7 +257,8 @@ def test_smre_reads_the_teleport_uppercut(mkt: bytes) -> None:
     at rate 5; y -0x7A666, gravity -0x5199) to the floor, striking within 41 px of it; the flight
     on from that velocity (gravity 0xF000, 0xB000 after a blocked strike: MKT's +0x3D0 holds the
     blocked flag 0x8014C3B8), striking while rising; the
-    landing (slot 0x16 from its second frame, 3 ticks a frame)."""
+    landing: slot 0x16's second frame, then (the cursor saved at +0x440 restored) its first, 3
+    ticks each (proof v07; v04-v06 showed the third, a knee-up pose: "touches the ground twice")."""
 
     prog, g, _ = gen.Generator(mkt, 7).program("teleport_uppercut", 0x800AB2C0)
     assert g.unknown == [] and prog["movement"]
@@ -277,5 +278,6 @@ def test_smre_reads_the_teleport_uppercut(mkt: bytes) -> None:
         {"op": "jump", "x": "0x0", "gravity": "0xf000", "until": "landing", "gravity_on_block": "0xb000",
          "strike": strike, "strike_while": "rising"},
         {"op": "pose", "anim": {"table": 0, "slot": 22, "offset": 1}},
-        {"op": "sleep", "ticks": 3}, {"op": "next_frame"}, {"op": "sleep", "ticks": 3}, {"op": "end"},
+        {"op": "sleep", "ticks": 3}, {"op": "pose", "anim": {"table": 0, "slot": 22}}, {"op": "sleep", "ticks": 3},
+        {"op": "end"},
     ]  # fmt: skip

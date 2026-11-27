@@ -422,6 +422,8 @@ class _Walk:
         self.gravity_hit: int | None = None  # the gravity after the move's strike was blocked
         self.anirate: int | None = None  # init_anirate: the rate next_anirate steps the selection at
         self.callback: int | None = None  # process +0x438: the routine the next jump runs each tick
+        self.last_anim: dict[str, int] | None = None  # the selection last shown
+        self.saved: tuple[dict[str, int], int] | None = None  # cursor saved at process +0x440
 
     def name(self, c: dc.Call) -> str:
         return self.gen.names.get(c.target, f"0x{c.target:08X}" if c.target else "jalr")
@@ -517,6 +519,18 @@ class _Walk:
                 self.note("MKT's invisibility (object flag 0x20) has no timer in the move: the "
                           "stealth length is the owner's (description)")  # fmt: skip
                 return [{"op": "stealth"}]
+        if s.base == dc.PROC and s.off == 0x440 and isinstance(s.value, dc.Load) and s.value.off == 0x41C:
+            anim = self.pending if self.pending is not None else self.last_anim
+            if anim is not None:  # the animation cursor saved (teleport_land, MKT 0x80076ED4)
+                self.saved = (dict(anim), self.offset)
+                return []
+        if s.base == dc.PROC and s.off == 0x41C and isinstance(s.value, dc.Load) and s.value.off == 0x41C:
+            # the cursor restored from +0x440 (the decompiler forwards the saved value: the cursor
+            # as it was when saved); the next frame shown is the saved one again
+            if self.saved is None:  # saved outside this routine (Rayden's Shocker): as before
+                return []
+            self.pending, self.offset = dict(self.saved[0]), self.saved[1]
+            return []
         if s.base == dc.PROC and s.off == 0x41C and isinstance(s.value, dc.Bin):
             step = s.value.b.const()
             if s.value.op == "+" and step is not None and self.pending is not None:
@@ -639,6 +653,7 @@ class _Walk:
         if self.pending is None:
             return []
         anim = dict(self.pending)
+        self.last_anim = dict(self.pending)
         if self.offset:
             anim["offset"] = self.offset
         self.pending, self.offset = None, 0

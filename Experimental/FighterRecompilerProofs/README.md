@@ -85,3 +85,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_sektor-smre_proof_v04.py` | `MKMSZR_sektor-smre_common_proof_v04.z64` | v03 with the teleport uppercut written by SMRE (sink / rise aliases, the striking flight on the stock jump) |
 | `MKMSZR_build_sektor-smre_proof_v05.py` | `MKMSZR_sektor-smre_common_proof_v05.z64` | v04 with the teleport uppercut startable in the air (falls on its sink curve first), as MKT |
 | `MKMSZR_build_sektor-smre_proof_v06.py` | `MKMSZR_sektor-smre_common_proof_v06.z64` | v05 with the Low Kick record built from MKT's compact table (v04-v05: no command matched) |
+| `MKMSZR_build_sektor-smre_proof_v07.py` | `MKMSZR_sektor-smre_common_proof_v07.z64` | v06 with MKT's landing (frame 2, then 1, in 3 host ticks): no knee-up second touch |

@@ -425,6 +425,39 @@ def _timed_repeat(step: dict[str, Any], donor_ticks: int) -> tuple[int, list[lis
     return count // k, bodies
 
 
+INSTANT_OPS = {"pose", "next_frame", "sound", "face", "flip"}
+
+
+def _sleep_runs(steps: list[dict[str, Any]], donor_ticks: int) -> list[dict[str, Any]]:
+    """Sleeps with only instant steps between them, rounded on their running total (as
+    :func:`_timed_repeat` does within a repeat): Sektor's landing, two frames of 3 donor ticks
+    each, takes 3 host ticks (MKT's 0.1 s), not 2 + 2 (proof v07; the owner's LK after the
+    uppercut). A lone sleep keeps its own rounding."""
+
+    if donor_ticks <= 1:
+        return steps
+    out = list(steps)
+    run: list[int] = []
+
+    def close() -> None:
+        if len(run) > 1:
+            donor = done = 0
+            for i in run:
+                donor += int(out[i]["ticks"])
+                end = (2 * donor + donor_ticks) // (2 * donor_ticks)  # nearest, halves up
+                out[i] = {**out[i], "_host_ticks": max(1, end - done)}
+                done = end
+        run.clear()
+
+    for k, s in enumerate(out):
+        if s["op"] == "sleep" and "_host_ticks" not in s:
+            run.append(k)
+        elif s["op"] not in INSTANT_OPS:
+            close()
+    close()
+    return out
+
+
 @dataclass(frozen=True)
 class Motion:
     """A ``jump`` step that sinks below the screen or rises to the floor, as an alias script: one
@@ -701,7 +734,7 @@ def emit_action(a: Assembler, label: str, steps: list[dict[str, Any]], *, cost: 
         host.load_controller(a)
 
     def emit(steps: list[dict[str, Any]], after: str | None) -> None:
-        for step in steps:
+        for step in _sleep_runs(steps, donor_ticks):
             op = step["op"]
             if op in skip:
                 continue
