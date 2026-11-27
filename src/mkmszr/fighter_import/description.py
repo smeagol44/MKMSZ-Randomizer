@@ -65,7 +65,11 @@ Body fields:
   taken only by a move with its own special. ``remove_commands``: Sub-Zero command records
   dropped although no move takes them (``fighter_import.commands``; milestone 4 step 2).
 * ``icons`` (optional): the Power Ups icon recipe, one entry per power slot
-  (``fighter_import.fighter_icons``; milestone 4 step 4).
+  (``fighter_import.fighter_icons``; milestone 4 step 4), or ``"sektor"``: Sektor's accepted
+  hand-composed set (``power_icons``, R4b), kept when his description replaced the legacy build.
+* ``tiers`` (optional): a kept Sub-Zero power -> the power slot whose threshold it takes
+  (``fighter_build.TIER_SITES``; Sektor: ``super_slide`` on ``freeze_on_contact``, owner
+  2026-11-09). The edit is recomputed from the randomized ROM (after any power-order shuffle).
 * ``help`` (optional): the Power Ups help text per power slot (``fighter_import.fighter_help``).
 * ``specials`` (optional): move name -> lowering tuning for ``fighter_import.fighter_build``
   (owner calibrations such as offsets, facing, recovery, the per-move projectile limit,
@@ -172,13 +176,14 @@ class FighterDescription:
     body: Body
     legacy: tuple[str, ...]
     commands: dict[str, str | None] = field(default_factory=dict)
-    icons: dict = field(default_factory=dict)  # Power Ups icon recipe (fighter_icons)
+    icons: dict | str = field(default_factory=dict)  # Power Ups icon recipe (fighter_icons) or "sektor"
     help: dict = field(default_factory=dict)  # Power Ups help text (fighter_help)
     costs: dict[str, int] = field(default_factory=dict)  # move -> Ice cost (else the replaced power's)
     specials: dict = field(default_factory=dict)  # move -> lowering tuning (fighter_build), in build order
     outfit: dict = field(default_factory=dict)  # outfit recolour: {entries (body palette), own colour}
     remove_commands: tuple[str, ...] = ()
     smre: dict = field(default_factory=dict)  # move -> MKT command record VA (programs from SMRE)
+    tiers: dict = field(default_factory=dict)  # kept power -> the power slot whose threshold it takes
 
 
 def _int(value: Any, where: str, errors: list[str]) -> int | None:
@@ -382,7 +387,9 @@ def validate(data: Any) -> FighterDescription:
     if len(called) != len(set(called)) or set(called) & set(remove):
         errors.append("commands: each host power is taken by one move and not removed")
     icons = data.get("icons", {})
-    if icons:
+    if icons == "sektor":
+        pass  # Sektor's accepted hand-composed set (power_icons)
+    elif icons:
         from ..patches.power_order import POWER_NAMES
 
         recipes = icons.get("slots") if isinstance(icons, dict) else None
@@ -394,6 +401,13 @@ def validate(data: Any) -> FighterDescription:
                     continue
                 if not isinstance(spec, dict) or not isinstance(spec.get("layers"), list) or len(spec.get("crop", [])) != 3:
                     errors.append(f"icons.slots.{name}: 'stock', 'empty' or {{layers, crop: [x0, y0, size]}}")
+    from .fighter_build import TIER_SITES
+    from .lower_special import GATES
+
+    tiers = data.get("tiers", {})
+    if not isinstance(tiers, dict) or any(k not in TIER_SITES or v not in GATES for k, v in tiers.items()):
+        errors.append(f"tiers: kept power ({', '.join(TIER_SITES)}) -> power slot ({', '.join(GATES)})")
+        tiers = {}
     raw_costs = data.get("costs", {})
     costs: dict[str, int] = {}
     if not isinstance(raw_costs, dict):
@@ -449,7 +463,7 @@ def validate(data: Any) -> FighterDescription:
         else:
             outfit = {"entries": tuple(values), "own": own}  # type: ignore[misc]
     unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes",
-                           "commands", "remove_commands", "icons", "help", "costs", "specials", "smre",
+                           "commands", "remove_commands", "icons", "help", "costs", "specials", "smre", "tiers",
                            "outfit"}  # fmt: skip
     if unknown:
         errors.append(f"unknown keys: {', '.join(sorted(unknown))}")
@@ -460,7 +474,7 @@ def validate(data: Any) -> FighterDescription:
         body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts, script_sounds,
                   frozenset(loop_scripts), frozenset(reverse_scripts)),
         legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove), smre=smre,
-        icons=icons, help=help_text, costs=costs, specials=specials, outfit=outfit,
+        icons=icons, help=help_text, costs=costs, specials=specials, outfit=outfit, tiers=dict(tiers),
     )  # fmt: skip
 
 

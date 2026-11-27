@@ -473,7 +473,7 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     record follows the stubs in the payload; the host graph's sixth record names it, and in
     production that stock word is a payload reference the fixed loader refreshes."""
 
-    built = fb.build(*roms, "sektor-smre")
+    built = fb.build(*roms, "sektor")
     assert built.selectors == {"teleport_uppercut": 3, "straight_rocket": 4, "double_rocket": 5,
                                "homing_rocket": 6} and built.report["combos"] == (
         "HP, HP, HK, B+HK", "HP, HP, HK, HK, B+HK", "HP, HP, D+LP", "HK, HK")
@@ -481,7 +481,7 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     pointer = int.from_bytes(rom[0xB1D0C:0xB1D10], "big")  # the sixth record's next pointer
     at = pointer - built.link_va
     assert 0 < at < len(built.payload) and built.payload[at : at + 12].hex() == "800913030103100204010000"
-    made = fb.production(*roms, "sektor-smre")
+    made = fb.production(*roms, "sektor")
     assert any(r[0] == 0x800B110C for r in made.manifest["refs"])
     # proof v06: the teleport uppercut's Low Kick record from MKT's compact table (v04-v05 read it
     # as a 0x2C-byte record: no command matched); mode 1 (it may start in the air, v05)
@@ -494,9 +494,13 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     # and explosion (fx 5) art in the fighter file
     assert built.report["costs"]["straight_rocket"] == 0x20
     assert built.report["smre"]["straight_rocket"]["unknown"] == []
-    # proof v13: the double missile (B,B,F + LP, Ice Clone's slot and cost): two of the same missile,
-    # 10 donor ticks apart, sharing its art, sounds and effects
-    assert built.report["costs"]["double_rocket"] == 0x60
+    # proof v13: the double missile (B,B,F + LP): two of the same missile, 10 donor ticks apart,
+    # sharing its art, sounds and effects; the product's slot (Ice Shatter) and cost (0x30)
+    assert built.report["costs"]["double_rocket"] == 0x30
+    # the product's Super Slide tier (owner, 2026-11-09): its gate takes Freeze on Contact's threshold
+    assert built.rom[0x3D728:0x3D72C] == bytes.fromhex("28420008")  # slti v0, v0, 8
+    made_derived = fb.production(*roms, "sektor").manifest["derived"]
+    assert made_derived == [0x3D728]
     assert built.report["smre"]["double_rocket"]["unknown"] == []
     # proof v14: the homing missile (F,D,B + HP, Air Ice Blast's slot, cost 0x40 as the product)
     assert built.report["costs"]["homing_rocket"] == 0x40
@@ -596,3 +600,15 @@ def test_effect_render_position_is_set_before_insertion() -> None:
     for src, dst in effects.RENDER_POSITION:
         k = fixed.index(0x8E480000 | src, fixed.index(lw_sw[0]))
         assert fixed[k + 1] == 0xAE480000 | dst  # sw t0, dst(s2)
+
+
+@needs_roms
+def test_tier_moves_follow_the_shuffled_thresholds(roms: tuple[bytes, bytes]) -> None:
+    """A kept power's moved tier (Sektor: Super Slide on Freeze on Contact's) is read from the ROM
+    it is applied to, so it follows a power-order shuffle (which rewrites only the thresholds)."""
+
+    clean = bytearray(roms[0])
+    assert fb.tier_edits(bytes(clean), {"super_slide": "freeze_on_contact"}) == {0x3D728: (0x28420007, 0x28420008)}
+    clean[0x5B5DC:0x5B5E0] = bytes.fromhex("28420005")  # Freeze on Contact shuffled to tier 5
+    assert fb.tier_edits(bytes(clean), {"super_slide": "freeze_on_contact"}) == {0x3D728: (0x28420007, 0x28420005)}
+

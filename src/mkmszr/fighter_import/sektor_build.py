@@ -103,7 +103,7 @@ def _build(clean: bytes, mkt: bytes, *, fixed_va: int | None, link_va: int) -> d
     # Sektor's frozen legacy adds its move frames (combo, throw arm composites, teleport, chest)
     # and its combo and throw script edits (fighter_import.body_build.Extras).
     from mkmszr.fighter_import import body_build as _bb, description as _desc
-    SEKTOR = _desc.load('sektor')
+    SEKTOR = _desc.load('sektor-legacy')
     _donorb = _bb.Donor(mkt, SEKTOR.donor_fighter_id)
     assert _donorb.base == MB and _donorb.dictionary == ROBO_DICT
     def donor_frame(rel): return _donorb.frame(rel)

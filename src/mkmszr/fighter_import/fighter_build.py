@@ -769,6 +769,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     _guarded(rom, TRANSFER_BOUND_ROM, TRANSFER_BOUND_STOCK, TRANSFER_BOUND_STOCK - 3 + FIRST_SELECTOR + len(order))
     for m in order:
         _guarded(rom, host.TRANSFER_TABLE - VA_TO_ROM + 4 * selectors[m], 0, a.labels[f"{m}_root"])
+    for off, (old, new) in tier_edits(bytes(rom), d.tiers).items():  # derived: see tier_edits
+        _guarded(rom, off, old, new)
     for stage, label in throw_hooks.items():  # the stock jal enters the payload's KSEG0 alias
         site, stock, _, _ = throw_sounds.SITES[stage]
         _guarded(rom, site - VA_TO_ROM, stock, 0x0C000000 | ((a.labels[label] >> 2) & 0x03FFFFFF))
@@ -807,6 +809,28 @@ def _report_key(g: _Group, groups: dict) -> str:
 def _combo_slot(d: fd.FighterDescription) -> tuple[int | None]:
     table, index = d.body.sources.get(combos.COMBO_SLOT, (0, combos.COMBO_SLOT))
     return (index if table == 1 else None,)
+
+
+# Kept Sub-Zero powers whose tier a description may move (``tiers``): power -> ROM of its gate
+# ``slti v0, v0, N`` (Static-confirmed; Sektor's legacy R4 edit, sektor_tiers.SUPER_SLIDE_GATE_ROM).
+TIER_SITES = {"super_slide": 0x3D728}  # 0x8003CB28, the Super Slide recogniser 0x8003CAF4
+
+
+def tier_edits(rom: bytes, tiers: dict[str, str]) -> dict[int, tuple[int, int]]:
+    """ROM offset -> (word, new word): each moved power's gate takes the threshold of the named
+    slot's gate in ``rom`` (the clean ROM, or the randomized one after any power-order shuffle,
+    which rewrites only the thresholds). A derived edit: the product recomputes it from the
+    randomized ROM (``patches.fighter_swap``)."""
+
+    from .actions.sektor_tiers import SLTI_V0, _gate
+
+    word = lambda off: int.from_bytes(rom[off : off + 4], "big")
+    edits = {}
+    for power, slot in tiers.items():
+        site, source = TIER_SITES[power], lower_special.GATES[slot] - VA_TO_ROM
+        edits[site] = (word(site), SLTI_V0 | _gate(word(source)))
+        _gate(word(site))
+    return edits
 
 
 def _marker_art(mkt: bytes, donor_id: int, anim: dict[str, Any]) -> effects.EffectArt:
@@ -1010,5 +1034,6 @@ def production(clean: bytes, mkt: bytes, name: str, *, fixed_va: int = FIXED_VA)
         "refs": [[r.address, r.offset, r.kseg0] for r in refs], "jal_sites": {hex(o): b for o, b in jal_sites.items()},
         "file87_rom": f87_rom, "file87_size": len(file87), "samples_rom": samples_rom,
         "samples_end": samples_rom + len(samples), "tail": TAIL, "slack": body_build.TYPE_END - blob_end,
+        "derived": sorted(tier_edits(clean, fd.load(name).tiers)),
     }  # fmt: skip
     return Production(bytes(image), fixed, manifest)

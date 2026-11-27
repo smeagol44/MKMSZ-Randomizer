@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -26,9 +25,11 @@ from mkmszr.rom import RomImage
 # v61 ad2ceb4b... only in ROM 0xB1A3A and the CRCs) linked for the production pool tail
 # (fighter_import.sektor_build). v60 was 28e034af...; composition proof v13 (v60) e1f83b25...
 SEKTOR_BUILD_SHA256 = "e35df9c55330ff6d2ce2d19fab7c357c421e3b0884f3a4a7826ca62df95240c4"
-# --fighter sektor --seed SEKTOR-PROD-1 --debug-all-keys (composition v13's config). Build v62:
-# differs from the v61 output 7fe0ed36... only in ROM 0xB1A3A and the CRCs.
-SEKTOR_CLI_SHA256 = "0c739f81669f2f02b11fe99f290ebe9b6353ac5f491b623be48fd12ee17395a2"
+# --fighter sektor --seed SEKTOR-PROD-1 --debug-all-keys (composition v13's config). Since SMRE step 3
+# (2026-11-27) Sektor is built from his description (fighters/sektor.json: SMRE proofs v01-v15 with the
+# product's slots, costs, Super Slide tier, help, icons and outfit). The legacy build v62's output
+# was 0c739f81... (v61: 7fe0ed36...).
+SEKTOR_CLI_SHA256 = "36d00d33171ee8f7d898273724dbadce5fec94952bcff893e434791352ad2cf7"
 
 
 def test_config_accepts_the_fighters_and_requires_classic_specials() -> None:
@@ -67,17 +68,11 @@ def test_pipeline_needs_a_valid_donor_and_puts_the_swap_last() -> None:
     assert all(p.name != "fighter-swap" for p in build_pipeline(RandomizerConfig(seed="X")).patches)
 
 
-def test_classification_tables_are_disjoint() -> None:
-    transplant = set(fs.TRANSPLANT_SITES)
-    assert not transplant & fs.DERIVED_SITES and not transplant & fs.DROP_SITES
-    assert not fs.DERIVED_SITES & fs.DROP_SITES
-    for site in transplant | fs.DERIVED_SITES | fs.DROP_SITES:
-        assert site % 4 == 0
-        assert not (fs._in(site, fs.DROP_RANGES) and fs._in(site, fs.TRANSPLANT_RANGES)), hex(site)
-    for a, b in (*fs.TRANSPLANT_RANGES, *fs.DROP_RANGES):
-        assert a < b and a % 4 == 0 and b % 4 == 0
-    spans = sorted((*fs.TRANSPLANT_RANGES, *fs.DROP_RANGES))
-    assert all(x[1] <= y[0] for x, y in pairwise(spans))
+def test_every_importable_fighter_is_described() -> None:
+    """Since SMRE step 3 (2026-11-27) Sektor is built from his description as Reptile and Rayden;
+    the legacy transplant lists are gone."""
+
+    assert set(fs.DESCRIBED) == set(fs.FIGHTERS) - {"sub-zero"}
     assert fs.TAIL[1] <= fs.OUTPUT_SIZE and fs.TAIL[0] >= fs.CLEAN_SIZE
 
 

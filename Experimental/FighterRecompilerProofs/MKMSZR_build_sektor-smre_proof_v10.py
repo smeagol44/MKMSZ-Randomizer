@@ -174,7 +174,7 @@ rayden_v31 = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(rayden_v31)
 v01 = rayden_v31.v01
 
-FIGHTER = "sektor-smre"
+FIGHTER = "sektor"  # was "sektor-smre" (renamed when it replaced the legacy Sektor)
 
 
 def build(clean: bytes, mkt: bytes) -> tuple[bytes, fb.Built]:

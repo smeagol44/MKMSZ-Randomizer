@@ -303,5 +303,5 @@ def test_helper_objects_are_flattened_onto_the_throw() -> None:
     fill = bb.phase_fill(cf, 0x23, phases, "scale")
     shown = [fill[p][2] if isinstance(fill[p], tuple) else fill[p] for p in sorted(fill)]
     assert shown == [0x17A8, 0x22EC, 0x2318, 0x2340, 0x2368, 0x2390, 0x23CC, 0x23E0, 0x241C]
-    body = bb.build_body(fd.load("sektor-smre"), clean, mkt, bb.Extras(), rom=bytearray(clean))
+    body = bb.build_body(fd.load("sektor"), clean, mkt, bb.Extras(), rom=bytearray(clean))
     assert any(line.startswith("HELPER 7 owner+helper frames flattened; palettes 0x800BC310") for line in body.log)
