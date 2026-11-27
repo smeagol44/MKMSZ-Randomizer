@@ -81,6 +81,15 @@ Steps as for Reptile: body, inputs, specials, icons and description, product opt
 
 **Rayden is done (owner, 2026-11-27):** body, inputs, his five specials (specials proof v29), Slide and Super Slide, icons, help, outfit and the product option.
 
+**To review later (owner, 2026-11-27): the Shocker sometimes does not come out.** Seen once: after gaining the power on Water it would not fire until the stage was exited and re-entered. Dying, getting hit and other attempts did not reproduce it. Candidate mechanism (Static-confirmed parts; the trigger is a Hypothesis):
+
+- The HP press wrapper starts the hold counter (process class `0x100`) only while its `hold_running` word is 0, and only the counter clears that word, when HP is released.
+- Stock code kills every process whose class lacks bit `0x8000` (`0x80028488(0, 0x8000)` at `0x80014828` and `0x800549CC`, the latter reached from `0x80054888`, called indirectly) and every process outright (`0x80028488(0, 0)` at `0x80078BA8`, `0x80079438`, `0x800799A4`).
+- If such a kill runs while HP is held (e.g. HP pressed to close a popup), `hold_running` stays set, no counter starts again, the count stays 0 and the condition refuses until the payload reloads at the next stage load.
+- The Teleport's cooldown word has the same weakness (set by the move, cleared only by its timer process).
+
+Proposed fix: no running flag. Each press kills the old counter by its own class and starts a new one, or counters use a timestamp if a host tick counter is found. A trace or save state of the failure would confirm the trigger.
+
 **Presentation and product option (2026-11-26, owner: "open the PR and let's do 2"; Implementation/CI-confirmed, runtime Pending):**
 
 - **Power slots** (his description): Lightning (Ice Blast), **Slide** (generic frames, the new rule above), Teleport (Directional Ice; its down record removed), reversed Lightning (Air Ice Blast), Torpedo (Ice Clone), Shocker (Ice Shatter), **Super Slide** (generic), Freeze on Contact **empty** (record removed: he has no sixth special), Polar Blast as is. Costs are the replaced slots' (Lightning and reversed Lightning `0x20`; the Teleport and Torpedo free as movement; the Shocker free, Ice Shatter's slot); owner to adjust.
@@ -97,7 +106,7 @@ Steps as for Reptile: body, inputs, specials, icons and description, product opt
 | Test ROM | SHA-256 | Contents | State |
 |---|---|---|---|
 | `MKMSZR_rayden_product_full-seed_build_v01.z64` | `2a7c95e846a9b940e4bd4d68c87639d85b846a89078bf3b518336ca23e80dbfb` | CLI `--fighter rayden --seed RAYDEN-PROD-1` (defaults otherwise: SPECIALS CLASSIC, vanilla outfit): Rayden through the product path, 1260 words transplanted with no owner conflict, blob `0x3F1C` bytes with 84 relocations, icons in the relocated file `0x5D`. His code runs from his fighter file for the first time. | Owner (2026-11-26): "Icons look good, tail extension approved, testing the ROM now but so far it looks good, so I'll accept it"; PR #216 merged. Runtime coverage continues. |
-| `MKMSZR_rayden_product_full-seed_build_v02.z64` | `736f5292043bb9c82866ba0755c44979e1efc627c4392c1484aca9209a61cd72` | The same CLI build (`--fighter rayden --seed RAYDEN-PROD-1`) with specials proof v29's Shocker: 1259 words transplanted, blob `0x4020` bytes with 85 relocations. The two-track sound's event (177) moves with the samples to the generated tail (`0x01874710`). | Pending (owner check of the product path) |
+| `MKMSZR_rayden_product_full-seed_build_v02.z64` | `736f5292043bb9c82866ba0755c44979e1efc627c4392c1484aca9209a61cd72` | The same CLI build (`--fighter rayden --seed RAYDEN-PROD-1`) with specials proof v29's Shocker: 1259 words transplanted, blob `0x4020` bytes with 85 relocations. The two-track sound's event (177) moves with the samples to the generated tail (`0x01874710`). | **Accepted** (owner, 2026-11-27), with one open item (below): once, after gaining the power on Water, the Shocker would not come out until the stage was re-entered; not reproduced. |
 
 **Body proof v01** (`MKMSZR_build_rayden-body_proof_v01.py`; his description `fighters/rayden.json`, body only):
 
