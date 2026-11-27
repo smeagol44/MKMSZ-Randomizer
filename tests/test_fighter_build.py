@@ -460,7 +460,8 @@ def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> 
     assert built.report["multi_track_sounds"] == [("shocker", 5, 2)]
     hosts = [c.event for c in built.report["chains_used"]]
     multi = [e for e in hosts if int.from_bytes(built.rom[sound.MSZ_EVENT_DEFS + 16 * e :][:2], "big") == 2]
-    assert len(multi) == 1 and len(hosts) == 16  # the teleport's skipped sounds take no chain
+    # the teleport's skipped sounds take no chain; the 17th is his grab voice, appended (sound_bank)
+    assert len(multi) == 1 and len(hosts) == 17 and hosts[-1] == 590
     d = sound.MSZ_EVENT_DEFS + 16 * multi[0]
     at = sound.MSZ_TRACKS + int.from_bytes(built.rom[d + 8 : d + 12], "big")
     assert built.samples[0] <= at < built.samples[1] and int.from_bytes(built.rom[d + 4 : d + 8], "big") == 0x6C
@@ -471,13 +472,18 @@ def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> 
 # at build time (his description's ``smre``). Step 1 (four moves) was byte-identical to specials
 # proof v30 (payload c97596af...); step 2's grab rule writes the Shocker with MKT's 3-tick pause
 # after the grab and a hold that ends with his shaking.
+# Since Rayden specials proof v32 (owner, 2026-11-27): his grab voice hook (silent_throw: the
+# earlier payload).
 RAYDEN_V30_PAYLOAD_SHA256 = "05458f184d51373b"
+RAYDEN_V32_PAYLOAD_SHA256 = "cd7f51adc5788599dfd2499994d85021a656d491411008a9e6615465e2c0dda5"
 
 
 @needs_roms
-def test_rayden_and_reptile_moves_come_from_smre(roms: tuple[bytes, bytes]) -> None:
+def test_rayden_and_reptile_moves_come_from_smre(roms: tuple[bytes, bytes], monkeypatch: pytest.MonkeyPatch) -> None:
     built = fb.build(*roms, "rayden")
-    assert hashlib.sha256(built.payload).hexdigest().startswith(RAYDEN_V30_PAYLOAD_SHA256)
+    assert hashlib.sha256(built.payload).hexdigest() == RAYDEN_V32_PAYLOAD_SHA256
+    silent_throw(monkeypatch)
+    assert hashlib.sha256(fb.build(*roms, "rayden").payload).hexdigest().startswith(RAYDEN_V30_PAYLOAD_SHA256)
     assert set(built.report["smre"]) == {"lightning", "reversed_lightning", "teleport", "torpedo", "shocker"}
     assert all(v["record"].startswith("0x800AB") for v in built.report["smre"].values())
     rep = fb.fd.load("reptile")
@@ -511,8 +517,8 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
 def test_throw_sounds_come_from_the_mkt_throw_routine(roms: tuple[bytes, bytes]) -> None:
     """MKT's throw table 0x800A7ED8 (by fighter id): Sektor's 0x80042498 plays his sounds 0 at
     the grab, 1 before the throw and 2 after the victim's transfer; Reptile's and Rayden's play
-    none. Every fighter's throw start plays his grab voice (voice group 3): Reptile gets it (a grab
-    hook only); Rayden has no free sound chain for it."""
+    none. Every fighter's throw start plays his grab voice (voice group 3): a grab hook only for
+    Reptile and Rayden (Rayden's in a chain appended to the enlarged bank)."""
 
     from mkmszr.fighter_import import throw_sounds as ts
 
@@ -520,5 +526,4 @@ def test_throw_sounds_come_from_the_mkt_throw_routine(roms: tuple[bytes, bytes])
     assert ts.read(mkt, 7) == {"grab": [0], "throw": [1], "release": [2]}
     assert ts.read(mkt, 19) == ts.read(mkt, 24) == {"grab": [], "throw": [], "release": []}
     assert list(fb.build(*roms, "reptile").report["throw_sounds"]) == ["grab"]
-    rayden = fb.build(*roms, "rayden").report
-    assert "throw_sounds" not in rayden and rayden["throw_grab_voice_skipped"].startswith("MKT event 0x66")
+    assert fb.build(*roms, "rayden").report["throw_sounds"] == {"grab": [590]}

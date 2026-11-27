@@ -52,6 +52,7 @@ from . import (
     lower_special,
     physics,
     sound,
+    sound_bank,
     throw_sounds,
     voices,
 )
@@ -75,6 +76,8 @@ TRANSFER_ENTRIES_FREE = 5  # 0x800A105C..0x800A106C: zero and unreferenced (Memo
 REACTION_POOL = (0x2B, 0x23, 0x4C, 0x4E)
 VOICE_CHAINS = sound.ISOLATED_CHAINS[:10]
 EXTRA_CHAINS = sound.ISOLATED_CHAINS[10:]
+BANK_CHAINS = 5  # chains past the isolated ones (sound_bank: the audio heap allows about five)
+SOUND_REGION = (0x01880000, 0x01900000)  # the enlarged sound bank and event module (Memory map)
 HELPER_DY_PX = -2  # throw helper above its projectile (owner fine-tune, specials proofs v09/v11)
 
 
@@ -194,21 +197,26 @@ class Built:
     reactions: dict[str, int] = field(default_factory=dict)
     chains: dict[str, int] = field(default_factory=dict)  # what -> host event
     report: dict[str, Any] = field(default_factory=dict)
+    sound_ext: Any = None  # sound_bank.Extension: chains appended to the bank (None: none)
 
 
 class _Pool:
-    def __init__(self, items: tuple, what: str) -> None:
+    def __init__(self, items: tuple, what: str, appended: Any = None) -> None:
         self.items, self.what, self.used = list(items), what, 0
+        self.appended = appended  # item -> True when only the generic install can host it
 
-    def take(self) -> Any:
+    def take(self, appended_ok: bool = False) -> Any:
         if self.used >= len(self.items):
             raise BuildError(f"no {self.what} left")
+        item = self.items[self.used]
+        if self.appended is not None and self.appended(item) and not appended_ok:
+            raise BuildError(f"no isolated {self.what} left (appended chains host single tracks only)")
         self.used += 1
-        return self.items[self.used - 1]
+        return item
 
 
 def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
-          indirect: dict[str, int] | None = None) -> Built:  # fmt: skip
+          indirect: dict[str, int] | None = None, relocate_sounds: bool = True) -> Built:  # fmt: skip
     validate_mkt_n64_rev2(mkt)
     d = fd.load(name)
     donor_id = d.donor_fighter_id
@@ -236,7 +244,12 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     combo_graph = combos.donor_graph(mkt, donor_id)
     vs, samples_end = voices.install(rom, clean, mkt, donor_id, VOICE_CHAINS, SAMPLE_ROM)
     used_voices = len(set(vs.category.values()) - {None})
-    chains = _Pool(tuple(EXTRA_CHAINS) + tuple(VOICE_CHAINS[used_voices:]), "isolated sound chains")
+    # Past the 16 isolated chains, chains appended to an enlarged bank (sound_bank; audio heap
+    # bound: about five more).
+    sound_ext = sound_bank.extension_for(clean)
+    chains = _Pool(tuple(EXTRA_CHAINS) + tuple(VOICE_CHAINS[used_voices:])
+                   + tuple(sound_ext.chain(k) for k in range(BANK_CHAINS)), "sound chains",
+                   lambda c: c.event >= sound_ext.base[0])  # fmt: skip
     voice_chains = list(VOICE_CHAINS[:used_voices])
     bank = sound.MktSoundBank(mkt)
     script_sound: tuple[int, int] | None = None  # (donor sound, host event): moves share it
@@ -249,8 +262,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
 
     def install(donor_sound: sound.DonorSound) -> int:
         nonlocal samples_end
-        chain = chains.take()
-        samples_end = sound.install(rom, clean, donor_sound, chain, (samples_end + 0xF) & ~0xF)
+        chain = chains.take(appended_ok=True)
+        samples_end = sound.install(rom, clean, donor_sound, chain, (samples_end + 0xF) & ~0xF, sound_ext)
         return chain.event
 
     animations: dict[tuple[int, int], int | tuple[str, int]] = {}
@@ -397,10 +410,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     grab_voices = voices.groups(mkt, donor_id).get(throw_sounds.GRAB_VOICE_GROUP, [])
     if len(grab_voices) > 1:  # MKT picks one at random; no fighter here has more than one
         raise BuildError(f"{len(grab_voices)} grab voices: one hook event per stage")
-    if grab_voices and chains.used < len(chains.items):
+    if grab_voices:
         throw_events["grab"] = (install(bank.event(grab_voices[0])), *throw_events.get("grab", ()))
-    elif grab_voices:  # every isolated chain taken (Rayden: 7 voices, 7 move sounds, a two-track one)
-        report["throw_grab_voice_skipped"] = f"MKT event 0x{grab_voices[0]:X}: no isolated sound chain left"
     if throw_events:
         report["throw_sounds"] = {k: list(v) for k, v in throw_events.items()}
     if len(file87) != body_build.FILE87_SIZE:
@@ -615,10 +626,20 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                   chains_used=voice_chains + chains.items[: chains.used])  # fmt: skip
     report.update(payload_end=end, voices=vs.category, combos=combos_low.strings,
                   commands=low_cmd.report, samples_end=samples_end)  # fmt: skip
+    if sound_ext.records:  # the enlarged bank (32 MiB image); production does it on its own ROM
+        report["appended_chains"] = len(sound_ext.records)
+        if relocate_sounds:
+            rom += b"\xff" * (OUTPUT_SIZE - len(rom))
+            sound_bank.relocate(rom, sound_ext, *SOUND_REGION)
+    try:
+        report["audio_heap_growth"] = sound_bank.check_heap(bytes(rom), clean)
+    except ValueError as e:
+        raise BuildError(str(e)) from e
     return Built(
         bytes(rom), bytes(payload), link_va, bytes(file87), (SAMPLE_ROM, samples_end), dict(low_cmd.moved),
         selectors, dict(custom_reactions) | {_report_key(g, groups): g.reaction_slot for g in groups.values()},
         {f"fighter sound {n}": e for n, e in fighter_sounds.items()}, report,
+        sound_ext if sound_ext.records else None,
     )  # fmt: skip
 
 
@@ -700,11 +721,12 @@ def production(clean: bytes, mkt: bytes, name: str, *, fixed_va: int = FIXED_VA)
     from ..patches.rainbow_palette import EXPECTED_RAW_LOADER_JAL, LOAD_JAL_SITES
     from . import relocate
 
-    probe = build(clean, mkt, name)
+    probe = build(clean, mkt, name, relocate_sounds=False)
     buttons = sorted(probe.moved_tables)
     fixed_k1 = fixed_va | 0x20000000
     slots = {b: fixed_k1 + 4 * k for k, b in enumerate(buttons)}
-    links = {dlt: build(clean, mkt, name, link_va=LINK_VA + dlt, indirect=slots) for dlt in (0, *LINK_DELTAS)}
+    links = {dlt: build(clean, mkt, name, link_va=LINK_VA + dlt, indirect=slots, relocate_sounds=False)
+             for dlt in (0, *LINK_DELTAS)}  # fmt: skip
     base = links[0]
     n = len(base.payload)
     relocs = relocate.find(base.payload, links[LINK_DELTAS[0]].payload, LINK_DELTAS[0])
@@ -783,7 +805,10 @@ def production(clean: bytes, mkt: bytes, name: str, *, fixed_va: int = FIXED_VA)
     _put32(image, entry, f87_rom)
     _put32(image, entry + 4, f87_rom + len(file87))
     shift = samples_rom - s0
+    appended = base.sound_ext.base[0] if base.sound_ext is not None else None
     for chain in base.report["chains_used"]:
+        if appended is not None and chain.event >= appended:
+            continue  # its records are the extension's (below)
         w = sound.MSZ_WAVES + chain.wave * 24
         o = int.from_bytes(image[w : w + 4], "big")
         if not s0 <= sound.MSZ_TBL + o < s1:
@@ -793,6 +818,15 @@ def production(clean: bytes, mkt: bytes, name: str, *, fixed_va: int = FIXED_VA)
         o = int.from_bytes(image[dfn : dfn + 4], "big")
         if s0 <= sound.MSZ_TRACKS + o < s1:
             _put32(image, dfn, o + shift)
+    ext = base.sound_ext  # appended chains: their samples moved too; the product patch enlarges
+    if ext is not None:  # the bank on its own ROM (sound_bank.relocate), keeping other owners' edits
+        records = []
+        for track, sub, wave, book in ext.records:
+            o = int.from_bytes(wave[0:4], "big")
+            if not s0 <= sound.MSZ_TBL + o < s1:
+                raise BuildError("an appended chain's sample is outside the moved block")
+            records.append((track, sub, (o + shift).to_bytes(4, "big") + wave[4:], book))
+        ext = dataclasses.replace(ext, records=records)
     for site in LOAD_JAL_SITES:
         _guarded(image, site, EXPECTED_RAW_LOADER_JAL, 0x0C000000 | ((load_wrapper >> 2) & 0x03FFFFFF))
     for off, boff in jal_sites.items():
@@ -803,5 +837,6 @@ def production(clean: bytes, mkt: bytes, name: str, *, fixed_va: int = FIXED_VA)
         "refs": [[r.address, r.offset, r.kseg0] for r in refs], "jal_sites": {hex(o): b for o, b in jal_sites.items()},
         "file87_rom": f87_rom, "file87_size": len(file87), "samples_rom": samples_rom,
         "samples_end": samples_rom + len(samples), "tail": TAIL, "slack": body_build.TYPE_END - blob_end,
+        "sound_ext": ext, "sound_region": SOUND_REGION,
     }  # fmt: skip
     return Production(bytes(image), fixed, manifest)

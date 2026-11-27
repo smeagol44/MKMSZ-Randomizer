@@ -141,14 +141,27 @@ def check_chain(clean: bytes, chain: HostChain) -> None:
 
 
 def install(
-    rom: bytearray, clean: bytes, donor: DonorSound, chain: HostChain, sample_rom: int
+    rom: bytearray, clean: bytes, donor: DonorSound, chain: HostChain, sample_rom: int, ext=None
 ) -> int:
     """Host ``donor`` in ``chain``; the sample goes at ``sample_rom`` (16-aligned).
 
     Every rewritten record must still hold its clean bytes. Returns the next free
-    16-aligned sample address.
+    16-aligned sample address. A chain past the stock bank (``ext``, a
+    :class:`sound_bank.Extension`) gets its records in the extension, in chain order; they are
+    written when the bank is enlarged (:func:`sound_bank.relocate`).
     """
 
+    if ext is not None and chain.event >= ext.base[0]:
+        if chain != ext.chain(len(ext.records)):
+            raise ValueError(f"extra chain {chain} out of order")
+        if sample_rom & 0xF:
+            raise ValueError("sample address must be 16-byte aligned")
+        if set(rom[sample_rom : sample_rom + len(donor.sample)]) != {0xFF}:
+            raise ValueError(f"sample area at {sample_rom:#x} is not free")
+        rom[sample_rom : sample_rom + len(donor.sample)] = donor.sample
+        wave = (sample_rom - MSZ_TBL).to_bytes(4, "big") + donor.wave[4:]
+        ext.records.append((chain.patch.to_bytes(4, "big") + donor.track[4:], donor.subpatch, wave, donor.book))
+        return (sample_rom + len(donor.sample) + 0xF) & ~0xF
     check_chain(clean, chain)
     track = host_track_rom(clean, chain.event)
     data = chain.patch.to_bytes(4, "big") + donor.track[4:]

@@ -81,3 +81,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_sektor-smre_proof_v01.py` | `MKMSZR_sektor-smre_common_proof_v01.z64` | SMRE step 3: Sektor's base on the generic build (`sektor-smre`), no specials: MKT throw with the arm flattened on (`scale`), MKT combos (seventh record in the payload) |
 | `MKMSZR_build_sektor-smre_proof_v02.py` | `MKMSZR_sektor-smre_common_proof_v02.z64` | v01 with the throw's sounds: MKT's grab voice and his arm out / throw / in (`throw_sounds`, `body.throw_voice`) |
 | `MKMSZR_build_reptile-specials_proof_v25.py` | `MKMSZR_reptile-specials_common_proof_v25.z64` | v24 with his MKT grab voice at the throw (`throw_sounds`) |
+| `MKMSZR_build_rayden-specials_proof_v32.py` | `MKMSZR_rayden-specials_common_proof_v32.z64` | v31 with his MKT grab voice at the throw, in a chain appended to the enlarged sound bank (32 MiB) |
