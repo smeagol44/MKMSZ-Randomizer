@@ -376,9 +376,15 @@
       "every": 2
      },
      "homing": {
+      "phases": [{"ticks": 8}, {"ticks": 16, "climb": "0x8800"}],
       "aim_dy": 54,
-      "speed": "0x50000",
-      "explode_within": 6
+      "steer": "0x33333",
+      "speed": 5,
+      "damping": 4,
+      "explode_within": 6,
+      "timeout": 128,
+      "directions": {"anim": {"table": 0, "slot": 67}, "parts": 8},
+      "marker": {"anim": {"table": 1, "slot": 5}, "offset": [-12, 27]}
      },
      "hum": {
       "sound": {

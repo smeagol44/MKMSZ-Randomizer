@@ -432,6 +432,11 @@ REGISTRY: dict[int, MktRoutine] = {
     0x8007C100: _e("rocket1_proc", "", "straight rocket process"),
     0x8007C25C: _e("rocket2_proc", "", "homing rocket process"),
     0x8007C4AC: _e("rocket_hunt", "", "homing steering"),
+    0x8007C6F0: _e("rocket_marker", "", "the crosshair object kept on the opponent at an offset"),
+    0x8007C894: _e(
+        "rocket_explode", "a0 = rocket", "strike check (proj_strike_check), crosshair gone, boom"
+    ),
+    0x8007C988: _e("rocket_marker_delete", "", "unlink the crosshair object"),
     0x8007C7C8: _e("rocket_smoke", "", "smoke trail cadence"),
     0x8007CA34: _e("point_rocket", "", "rocket direction animation from velocity"),
     0x8007CE70: _e("robo_chest_open", "", "special start + chest open"),

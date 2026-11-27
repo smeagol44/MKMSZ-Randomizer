@@ -281,3 +281,32 @@ def test_smre_reads_the_teleport_uppercut(mkt: bytes) -> None:
         {"op": "sleep", "ticks": 3}, {"op": "pose", "anim": {"table": 0, "slot": 22}}, {"op": "sleep", "ticks": 3},
         {"op": "end"},
     ]  # fmt: skip
+
+
+@needs_mkt
+def test_sektor_homing_missile(mkt: bytes) -> None:
+    """Sektor's homing missile (F,D,B + HP -> do_robo_zap2 -> rzap3(rocket2_proc 0x8007C25C)),
+    nothing unknown: the target sound 12 and the chest; the missile (his sound 4, 0x4CCCC at
+    rate 3, strike 0x12, in front: rocket2_proc's own depth 0x51 over make_rocket's 0); its
+    crosshair (table 1 slot 5 at the opponent + (-12, 27), rocket_marker 0x8007C6F0); its
+    direction art (point_rocket: table 0 slot 0x43, 8 parts) and smoke (create_fx 4 at the
+    direction's placement entry); its phase table 0x800AB220 (8 ticks straight, 16 climbing
+    by 0x8800, then rocket_hunt: aim 54 px below, explode within 6, steer 0x33333, damping
+    >> 4, speed 5, timeout 128); rocket_explode's boom (sound 10, create_fx 5)."""
+
+    prog, g, _ = gen.Generator(mkt, 7).program("homing_rocket", 0x800AB288)
+    assert g.unknown == []
+    assert prog["command"]["tokens"] == [8, 7, 9] and prog["command"]["buttons"] == "0x10"
+    steps = [{k: v for k, v in s.items() if k != "src"} for s in prog["steps"]]
+    assert [s["op"] for s in steps] == ["begin", "sound", "sound", "animate", "projectile", "sleep", "animate", "end"]
+    p = steps[4]
+    assert p["sound"] == {"fighter": 4} and p["speed"] == "0x4cccc" and p["rate"] == 3
+    assert "behind" not in p and p["offset"] == [5, 38] and p["art"] == {"table": 0, "slot": 67, "part": 4}
+    assert p["trail"] == {"effect": {"mkt_fx": 4, "place": "direction"}, "every": 2}
+    assert p["impact"] == {"at": "projectile", "end": "effect", "sound": {"fighter": 10}, "effect": {"mkt_fx": 5}}
+    assert p["homing"] == {
+        "timeout": 128, "marker": {"anim": {"table": 1, "slot": 5}, "offset": [-12, 27]},
+        "directions": {"anim": {"table": 0, "slot": 67}, "parts": 8},
+        "phases": [{"ticks": 8}, {"ticks": 16, "climb": "0x8800"}],
+        "aim_dy": 54, "explode_within": 6, "damping": 4, "speed": 5, "steer": "0x33333",
+    }  # fmt: skip

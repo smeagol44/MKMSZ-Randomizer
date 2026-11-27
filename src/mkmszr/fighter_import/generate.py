@@ -1252,10 +1252,10 @@ def _projectile(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     step = _read_projectile(w, child, {})
     if w.proj_offset is not None:  # placed by the parent before the process (make_rocket)
         step["offset"], w.proj_offset = w.proj_offset, None
-    if w.proj_depth is not None:  # depth 0: behind the fighters (Sektor's rocket from his chest)
-        if w.proj_depth == 0:
-            step["behind"] = True
-        w.proj_depth = None
+    depth = step.pop("_depth", w.proj_depth)  # the child's own store wins (rocket2_proc: 0x51)
+    if depth == 0:  # behind the fighters (Sektor's rocket from his chest)
+        step["behind"] = True
+    w.proj_depth = None
     w.projectiles[c.pc] = (step, child)
     return [step]
 
@@ -1370,6 +1370,8 @@ def projectile(w: _Walk, child: int, fields: dict[tuple[int, int], int]) -> dict
     gen = w.gen
     stmts = dc.decompile(gen.mkt, child, (), fields)
     _index_calls(stmts)
+    if any(x.kind == "call" and w.name(x) == "point_rocket" for x in _walk_all(stmts)):
+        return _homing(w, child, stmts)
     flat = _flatten(w, stmts)
     step: dict[str, Any] = {"op": "projectile"}
     art: dict[str, int] | None = None
@@ -1618,6 +1620,223 @@ def _impact(w: _Walk, rest: list) -> dict[str, Any] | None:
         return None
     impact["anim"] = anim
     return impact
+
+
+# ---- homing projectiles (Sektor's rocket2_proc) ---------------------------------------------------
+PHASE_FIELD = 0x3CC  # process: ticks left in the current phase entry
+TIMEOUT_FIELD = 0x3D8  # process: rocket_hunt's donor ticks left
+OBJECT_FIELD = 0x418  # process: its object
+DEPTH = 0x1C  # object depth (0 behind the fighters)
+
+
+def _point_direction(vx: int, vy: int) -> int:
+    """MKT point_rocket 0x8007CA34: 0 up .. 3 level by the 7/2 ratios, + 4 when moving down."""
+
+    ax, ay = abs(vx), abs(vy)
+    d = 0 if ay >= (7 * ax) >> 1 else 1 if ay >= ax else 2 if ax <= (7 * ay) >> 1 else 3
+    return d + 4 if vy > 0 else d
+
+
+def _hunt_constants(mkt: bytes, entry: int) -> dict[str, int] | None:
+    """rocket_hunt's constants from its instructions (Static-confirmed shape, 0x8007C4AC): the
+    aim (``addiu`` on the y difference, px below the opponent), the explosion distance (``slti``
+    after the first rough distance), the steering factor and the speed (the constant registers
+    of the two ``multu`` groups), the damping (``sra`` of the velocity). None if the shape
+    differs (three rough distances, one ``slti``)."""
+
+    from .mipsdis import decode
+
+    rough = next(va for va, r in REGISTRY.items() if r.name == "rough_distance")
+    consts: dict[int, int] = {}
+    seen: dict[str, Any] = {"rough": 0, "multu": []}
+    out: dict[str, int] = {}
+    va = entry
+    while va < entry + 0x400:
+        d = decode(int.from_bytes(mkt[va - 0x80000000 : va - 0x7FFFFFFC], "big"), va)
+        if d.op == "lui":
+            consts[d.rt] = (d.imm & 0xFFFF) << 16
+        elif d.op == "ori" and d.rs in consts:
+            consts[d.rt] = consts[d.rs] | (d.imm & 0xFFFF)
+        elif d.op == "addiu" and d.rs == 0:
+            consts[d.rt] = d.imm
+        elif (d.op == "addiu" and d.rs == d.rt and d.rs not in consts and d.imm > 0 and seen["rough"] == 0
+              and "aim_dy" not in out):  # fmt: skip
+            out["aim_dy"] = d.imm
+        elif d.op == "jal" and d.target == rough:
+            seen["rough"] += 1
+        elif d.op == "slti" and seen["rough"] == 1 and "explode_within" not in out:
+            out["explode_within"] = d.imm
+        elif d.op == "multu":
+            k = consts.get(d.rt, consts.get(d.rs))
+            if k is not None:
+                seen["multu"].append((seen["rough"], k))
+        elif d.op == "sra" and d.imm not in (16, 31) and "damping" not in out:
+            out["damping"] = d.imm
+        elif d.op == "jr" and d.rs == 31:
+            break
+        va += 4
+    steer = [k for r, k in seen["multu"] if r == 1]
+    speed = [k for r, k in seen["multu"] if r == 3]
+    if seen["rough"] != 3 or not steer or not speed or len(out) != 3:
+        return None
+    out.update(steer=steer[0], speed=speed[0])
+    return out
+
+
+def _homing(w: _Walk, child: int, stmts: list) -> dict[str, Any]:
+    """A homing projectile (Sektor's rocket2_proc 0x8007C25C): its start (sound, speed, strike,
+    timeout, depth), its crosshair (an object from a table-1 frame kept on the opponent at an
+    offset: rocket_marker), its direction art (point_rocket: one part of a table-0 animation per
+    direction), its smoke (rocket_smoke(direction): create_fx with the placement entry of the
+    direction) and its phase table (8-byte entries {routine, parameter, ticks}, ended by a zero
+    count: an empty routine flies straight, one that takes the parameter from the y velocity
+    climbs, rocket_hunt steers at the opponent until its timeout), then rocket_explode: the
+    strike checked once, the crosshair removed, the boom (the impact)."""
+
+    gen = w.gen
+    every = _walk_all(stmts)
+    calls = [x for x in every if x.kind == "call"]
+    step: dict[str, Any] = {"op": "projectile"}
+    homing: dict[str, Any] = {}
+    own = lambda e: isinstance(e, dc.Load) and e.base == dc.PROC and e.off == OBJECT_FIELD
+    for x in every:
+        if x.kind == "store" and x.base == dc.PROC and x.off == TIMEOUT_FIELD and x.value.const():
+            homing["timeout"] = x.value.const()
+        elif x.kind == "store" and own(x.base) and x.off == DEPTH and x.value.const() is not None:
+            step["_depth"] = x.value.const()  # its own object's depth (0x51: in front)
+    sound = next((c for c in calls if w.name(c) == "ft_sound" and c.args[0].const() is not None), None)
+    if sound is not None:
+        step["sound"] = {"fighter": sound.args[0].const()}
+    vel = next((c for c in calls if w.name(c) == "proj_set_xvel"), None)
+    if vel is None or vel.args[1].const() is None:
+        w.unknown(f"0x{child:08X}: homing projectile speed")
+    else:
+        step["speed"] = hex(vel.args[1].const())
+        if vel.args[2].const() is not None:
+            step["rate"] = vel.args[2].const()
+    strike_call = next((c for c in calls if w.name(c) == "proj_set_strike"), None)
+    strike = gen.strike_index(strike_call.args[0].const()) if strike_call is not None and strike_call.args[0].const() is not None else None
+    if strike is None:
+        w.unknown(f"0x{child:08X}: homing projectile strike")
+    else:
+        step["strike"] = strike
+    # the crosshair: get_char_ani(table, slot) before the object made from its frame, kept by
+    # rocket_marker on the opponent at multi_adjust_xy's offset
+    pick = next((c for c in calls if w.name(c) == "get_char_ani" and None not in [v.const() for v in c.args[:2]]), None)
+    marker_call = next((c for c in calls if w.name(c) == "rocket_marker"), None)
+    if pick is not None and marker_call is not None:
+        adjust = next((y for y in _walk_all(dc.decompile(gen.mkt, marker_call.target)) if y.kind == "call"
+                       and w.name(y) == "multi_adjust_xy" and None not in [v.const() for v in y.args[1:3]]), None)  # fmt: skip
+        if adjust is not None:
+            homing["marker"] = {"anim": {"table": pick.args[0].const(), "slot": pick.args[1].const()},
+                                "offset": [adjust.args[1].const(), adjust.args[2].const()]}  # fmt: skip
+    if "marker" not in homing:
+        w.unknown(f"0x{child:08X}: the homing crosshair")
+    # the direction art: point_rocket's get_char_ani(0, slot) and find_part(1..n)
+    point = next(c for c in calls if w.name(c) == "point_rocket")
+    body = _walk_all(dc.decompile(gen.mkt, point.target))
+    art = next((y for y in body if y.kind == "call" and w.name(y) == "get_char_ani"
+                and None not in [v.const() for v in y.args[:2]]), None)  # fmt: skip
+    part = next((y for y in body if y.kind == "call" and w.name(y) == "find_part"), None)
+    parts = max(getattr(part.args[0], "values", ()) or [0]) if part is not None else 0
+    if art is None or parts < 2:
+        w.unknown(f"0x{point.target:08X}: the direction art")
+    else:
+        anim = {"table": art.args[0].const(), "slot": art.args[1].const()}
+        homing["directions"] = {"anim": anim, "parts": parts}
+        start = _point_direction(int(step.get("speed", "0"), 16), 0)
+        step["art"] = {**anim, "part": start + 1}  # the start velocity's direction
+    # the smoke: rocket_smoke(point_rocket's direction)
+    smoke = next((c for c in calls if w.name(c) == "rocket_smoke"), None)
+    if smoke is not None:
+        fx = next((y.args[0].const() for y in _walk_all(dc.decompile(gen.mkt, smoke.target))
+                   if y.kind == "call" and w.name(y) == "create_fx"), None)  # fmt: skip
+        by_direction = isinstance(smoke.args[0], dc.Bin) and isinstance(smoke.args[0].a, dc.Result)
+        if fx is not None and by_direction:  # its argument: point_rocket's result
+            step["trail"] = {"effect": {"mkt_fx": fx, "place": "direction"}, "every": 2}
+        else:
+            w.unknown(f"0x{smoke.pc:08X}: the homing smoke")
+    # the phase table: the Load of a ticks halfword at table + 8 * entry + 6
+    table = None
+    for x in every:
+        for e in _loads(x):
+            if e.off == 6 and e.width == 2 and isinstance(e.base, dc.Bin) and e.base.op == "+" and e.base.a.const():
+                table = e.base.a.const() & 0xFFFFFFFF
+    phases: list[dict[str, Any]] = []
+    hunt = None
+    u32 = lambda va: int.from_bytes(gen.mkt[va - 0x80000000 : va - 0x7FFFFFFC], "big")
+    k = 0
+    while table is not None and k < 16 and (ticks := u32(table + 8 * k + 4) & 0xFFFF):
+        routine, param = u32(table + 8 * k), u32(table + 8 * k + 4) >> 16
+        body = dc.decompile(gen.mkt, routine)
+        if gen.names.get(routine) == "rocket_hunt":
+            hunt = _hunt_constants(gen.mkt, routine)
+            if hunt is None:
+                w.unknown(f"0x{routine:08X}: rocket_hunt's constants")
+            k += 1
+            break
+        if all(y.kind == "return" for y in body):
+            phases.append({"ticks": ticks})
+        elif any(y.kind == "store" and own(y.base) and y.off == 0x10 and isinstance(y.value, dc.Bin)
+                 and y.value.op == "-" for y in body):  # fmt: skip
+            phases.append({"ticks": ticks, "climb": hex(param)})
+        else:
+            w.unknown(f"0x{routine:08X}: homing phase {k}")
+        k += 1
+    if table is None or hunt is None:
+        w.unknown(f"0x{child:08X}: the homing phase table")
+    else:
+        homing["phases"] = phases
+        homing.update({key: hunt[key] for key in ("aim_dy", "explode_within", "damping", "speed")})
+        homing["steer"] = hex(hunt["steer"])
+    step["homing"] = homing
+    # the explosion: rocket_explode's strike check, then its boom routine (the impact)
+    boom = next((c for c in calls if w.name(c) == "rocket_explode"), None)
+    if boom is None:
+        boom_target = next((va for va, r in REGISTRY.items() if r.name == "rocket_explode"), None)
+    else:
+        boom_target = boom.target
+    explode = reading.read(gen.mkt, boom_target).calls if boom_target else []  # (past a branch)
+    at = next((k for k, c in enumerate(explode) if gen.names.get(c.target) == "proj_strike_check"), None)
+    after = [c.target for c in explode[at + 1 :] if c.target and _readable(c.target)] if at is not None else []
+    fx_va = after[-1] if after else None  # its boom routine (0x8007C9F0: sound, effect, delete)
+    checked = explode[at].args[1] if at is not None else None
+    if checked is not None and strike_call is not None and checked != strike_call.args[0].const():
+        w.unknown(f"0x{boom_target:08X}: the explosion strikes with 0x{checked:X}, not the flight's")
+    impact = None
+    if fx_va is not None:
+        body = dc.decompile(gen.mkt, fx_va)
+        _index_calls(body)
+        impact = _impact(w, _flatten(w, body))
+    if impact is None:
+        w.unknown(f"0x{child:08X}: the homing explosion")
+    else:
+        step["impact"] = impact
+    w.note("MKT's explosion re-targets and restarts the rocket when the opponent is in a special "
+           "state (object +0x38 = 30 or action 0x402, 0x8007C894); not lowered")  # fmt: skip
+    w.note("rocket_hunt also ends on a global flag (0x802575D8); the host hunt ends on its timeout "
+           "or at the target")  # fmt: skip
+    return step
+
+
+def _loads(x: Any) -> list:
+    """Every Load in a statement's expressions (not nested statements)."""
+
+    out: list = []
+
+    def visit(e: Any) -> None:
+        if isinstance(e, dc.Load):
+            out.append(e)
+            visit(e.base)
+        elif isinstance(e, dc.Bin):
+            visit(e.a)
+            visit(e.b)
+
+    for key in ("cond", "value", "base"):
+        visit(getattr(x, key, None))
+    for e in getattr(x, "args", ()) or ():
+        visit(e)
+    return out
 
 
 def _walk_all(stmts: list) -> list:

@@ -198,6 +198,9 @@ def _check_value(kind: str, value: Any, where: str, errors: list[str]) -> None:
     elif kind == "effect":
         need(isinstance(value, dict) and set(value) in ({"mkt_fx"}, {"mkt_fx", "place"}),
              "effect is {mkt_fx: n} (and place: MKT's placement index, process +0x444)")  # fmt: skip
+        if isinstance(value, dict) and "place" in value:
+            need(value["place"] == "direction" or _int(value["place"]) is not None,
+                 "effect place is an index or \"direction\" (the homing direction's entry)")  # fmt: skip
     elif kind == "strike":
         keys = {"box", "damage", "block_damage", "reaction", "blocked_reaction"}
         ok = isinstance(value, dict) and keys <= set(value) <= keys | {"unblockable"}
@@ -224,8 +227,16 @@ def _check_value(kind: str, value: Any, where: str, errors: list[str]) -> None:
         need(isinstance(value, dict) and set(value) == {"cooldown"} and _int(value["cooldown"]) is not None,
              "wrap is {cooldown}")  # fmt: skip
     elif kind == "homing":
-        need(isinstance(value, dict) and set(value) == {"aim_dy", "speed", "explode_within"},
-             "homing is {aim_dy, speed, explode_within}")  # fmt: skip
+        keys = {"phases", "aim_dy", "steer", "speed", "damping", "explode_within", "timeout",
+                "directions", "marker"}  # fmt: skip
+        need(isinstance(value, dict) and set(value) == keys, f"homing is {{{', '.join(sorted(keys))}}}")
+        if isinstance(value, dict) and set(value) == keys:
+            need(isinstance(value["phases"], list) and all(isinstance(p, dict) and set(p) <= {"ticks", "climb"}
+                 and "ticks" in p for p in value["phases"]), "homing phases are [{ticks, climb?}]")  # fmt: skip
+            need(isinstance(value["directions"], dict) and set(value["directions"]) == {"anim", "parts"},
+                 "homing directions are {anim, parts}")  # fmt: skip
+            need(isinstance(value["marker"], dict) and set(value["marker"]) == {"anim", "offset"},
+                 "homing marker is {anim, offset}")  # fmt: skip
     elif kind == "impact":
         need(isinstance(value, dict) and "end" in value and set(value) <= {
             "anim", "rate", "sound", "effect", "at", "end", "bounce", "adjust", "follow"}, "impact keys")  # fmt: skip
