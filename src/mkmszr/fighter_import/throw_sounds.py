@@ -6,8 +6,8 @@ runs the grab animation (``slam_grab`` ``0x80042668``), waits for the throw (``0
 gives the victim its thrown routine (``slam_transfer`` ``0x80042580``) and recovers. Some
 fighters play their own sounds (``ft_sound``) between these steps: Sektor's ``0x80042498``
 plays 0 (arm out) at the grab, 1 (arm throw) before the throw and 2 (arm in) after the
-transfer, as the arcade ``robo1_slam``. Reptile's and Rayden's play none (the grab voice is the
-voice rule's).
+transfer, as the arcade ``robo1_slam``. Reptile's and Rayden's play none. MKT's grab voice (every
+fighter, voice group 3) is not played (owner, 2026-11-27: grab sounds dropped for now).
 
 :func:`read` sorts the routine's ``ft_sound`` calls (one level of its own callees followed)
 into ``grab`` (before the grab animation), ``throw`` (before the transfer) and ``release``.
@@ -27,7 +27,8 @@ FT_SOUND = 0x80005760
 SLAM_GRAB = 0x80042668  # (phase): the throw animation (table 0 slot 0x23) to that phase
 SLAM_TRANSFER = 0x80042580  # (routine): the victim's thrown routine
 STAGES = ("grab", "throw", "release")
-GRAB_VOICE_GROUP = 3  # MKT's throw start 0x80042878: voice 0x80004FE4(3), every fighter
+# MKT's throw start 0x80042878 also plays the grab voice (0x80004FE4(3): voice group 3) for every
+# fighter; the builds leave it out for now (owner, 2026-11-27).
 
 # Host player throw 0x8005BC8C: site VA -> (stock word, the routine it calls). Grab: the grab
 # voice (category 11); throw: the throw phase with the victim (attacker controller in s0);

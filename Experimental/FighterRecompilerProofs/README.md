@@ -80,4 +80,5 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v31.py` | `MKMSZR_rayden-specials_common_proof_v31.z64` | v30 with all five specials written by SMRE; the Shocker from the grab rule (MKT's 3-tick pause after the grab) |
 | `MKMSZR_build_sektor-smre_proof_v01.py` | `MKMSZR_sektor-smre_common_proof_v01.z64` | SMRE step 3: Sektor's base on the generic build (`sektor-smre`), no specials: MKT throw with the arm flattened on (`scale`), MKT combos (seventh record in the payload) |
 | `MKMSZR_build_sektor-smre_proof_v02.py` | `MKMSZR_sektor-smre_common_proof_v02.z64` | v01 with the throw's sounds: MKT's grab voice and his arm out / throw / in (`throw_sounds`, `body.throw_voice`) |
-| `MKMSZR_build_reptile-specials_proof_v25.py` | `MKMSZR_reptile-specials_common_proof_v25.z64` | v24 with his MKT grab voice at the throw (`throw_sounds`) |
+| `MKMSZR_build_reptile-specials_proof_v25.py` | `MKMSZR_reptile-specials_common_proof_v25.z64` | **Withdrawn** (owner dropped grab sounds): v24 with his MKT grab voice at the throw (commit `9dd5ebe`) |
+| `MKMSZR_build_sektor-smre_proof_v03.py` | `MKMSZR_sektor-smre_common_proof_v03.z64` | v02 without the grab voice (owner dropped grab sounds); his arm sounds stay |

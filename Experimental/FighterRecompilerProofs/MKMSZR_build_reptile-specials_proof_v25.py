@@ -1,4 +1,7 @@
-"""Reptile specials proof v25 (Fighter recompiler, after Rayden's milestone 6). Disposable.
+"""Reptile specials proof v25 (Fighter recompiler, after Rayden's milestone 6). Disposable. WITHDRAWN.
+
+Withdrawn (owner, 2026-11-27): grab sounds are dropped for now, so this builder now gives v24's
+ROM. The v25 ROM (his grab voice) is reproducible at commit 9dd5ebe.
 
 Reptile through the generic build (``fighter_import.fighter_build.build``: body, combos, throw,
 sounds, his five specials from ``fighters/moves/reptile.json``), on the specials proofs' harness

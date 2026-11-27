@@ -384,9 +384,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 raise BuildError(f"{move}: effect {fx} art does not fit the fighter file")
             file87[placed.offset : placed.end] = placed.data
             effect_art[int(fx)] = (art_fx, placed, spec)
-    # The MKT throw's sounds on the host throw's three stages: the grab voice (MKT's throw start
-    # plays voice group 3 for every fighter; the host voice rule leaves the throw's category 11
-    # silent), then his throw routine's own (Sektor's arm: out, throw, in).
+    # His MKT throw routine's own sounds on the host throw's three stages (Sektor's arm: out, throw,
+    # in). MKT's grab voice (voice group 3, every fighter) is left out (owner, 2026-11-27: grab
+    # sounds dropped for now; Rayden had no sound chain for his).
     throw_events: dict[str, tuple[int, ...]] = {}
     for stage, numbers in throw_sounds.read(mkt, donor_id).items():
         for n in numbers:
@@ -394,13 +394,6 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 fighter_sounds[n] = install(bank.event(bank.fighter_event(donor_id, n)))
         if numbers:
             throw_events[stage] = tuple(fighter_sounds[n] for n in numbers)
-    grab_voices = voices.groups(mkt, donor_id).get(throw_sounds.GRAB_VOICE_GROUP, [])
-    if len(grab_voices) > 1:  # MKT picks one at random; no fighter here has more than one
-        raise BuildError(f"{len(grab_voices)} grab voices: one hook event per stage")
-    if grab_voices and chains.used < len(chains.items):
-        throw_events["grab"] = (install(bank.event(grab_voices[0])), *throw_events.get("grab", ()))
-    elif grab_voices:  # every isolated chain taken (Rayden: 7 voices, 7 move sounds, a two-track one)
-        report["throw_grab_voice_skipped"] = f"MKT event 0x{grab_voices[0]:X}: no isolated sound chain left"
     if throw_events:
         report["throw_sounds"] = {k: list(v) for k, v in throw_events.items()}
     if len(file87) != body_build.FILE87_SIZE:

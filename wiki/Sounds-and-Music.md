@@ -152,7 +152,7 @@ Larger gains would need the audio heap somewhere else, such as the Expansion Pak
 - The event loader takes the track base as module `+ 0x20 +` the definitions' size (`0x800886F4`).
 - Rebuilding both modules with no extra chain gives the stock bank byte for byte, and moving them leaves the heap use unchanged.
 
-The prototype moved both modules to `[0x01880000, 0x01900000)` (32 MiB output; free above the fighter tail in a product build) and appended Rayden's grab voice as event 590 (heap +`0x170`; +`0x1C0` with his Shocker). Rayden's throw therefore stays without a grab voice (`throw_grab_voice_skipped` in his build report).
+The prototype moved both modules to `[0x01880000, 0x01900000)` (32 MiB output; free above the fighter tail in a product build) and appended Rayden's grab voice as event 590 (heap +`0x170`; +`0x1C0` with his Shocker). The prototype is parked in draft PR #220. Grab voices were then dropped for every fighter (owner: "We can get back to them later").
 
 ## Function-semantics ownership
 

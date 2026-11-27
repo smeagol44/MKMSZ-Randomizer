@@ -33,17 +33,6 @@ V23_FILE87_SHA256 = "64e6d394ef95aad23ad45eb522c28d4ad3d88730919ade2b786d705cb27
 # The fighter file is unchanged; with the turn restored (ACCEPTED_FORCEBALL_TURN) the build gives
 # the V23 payload again.
 V24_PAYLOAD_SHA256 = "749b6da96350f91e94285d01ea042b6a7a6ffcf5ba83d2e7a6ca7dd384e0b0a4"
-# Since Reptile specials proof v25 (owner, 2026-11-27: the throw's sounds "on by default"): his MKT
-# grab voice at the grab of his throw (a payload hook); without it (silent_throw) the V24 payload.
-V25_PAYLOAD_SHA256 = "24da248fcd2c8b809f879220b584f643aae6d0e065a0fae3b2074050fd32a7eb"
-
-
-def silent_throw(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Builds as accepted before Reptile specials proof v25: no grab voice at the throw."""
-
-    from mkmszr.fighter_import import throw_sounds
-
-    monkeypatch.setattr(throw_sounds, "GRAB_VOICE_GROUP", -1)
 ACCEPTED_FORCEBALL_TURN = {"face": True}
 
 
@@ -55,8 +44,6 @@ ACCEPTED_ACID_TUNING = {"impact_flip": False, "impact_keep_y": True, "impact_at_
 
 def accepted_acid(monkeypatch: pytest.MonkeyPatch) -> None:
     import dataclasses
-
-    silent_throw(monkeypatch)
 
     from mkmszr.fighter_import import description
 
@@ -79,8 +66,6 @@ def accepted_turn(monkeypatch: pytest.MonkeyPatch) -> None:
     """Reptile's forceballs as accepted through specials proof v23: turning at the start."""
 
     import dataclasses
-
-    silent_throw(monkeypatch)
 
     from mkmszr.fighter_import import description
 
@@ -107,10 +92,8 @@ def roms() -> tuple[bytes, bytes]:
 def test_generic_build_reproduces_the_accepted_reptile(roms: tuple[bytes, bytes],
                                                       monkeypatch: pytest.MonkeyPatch) -> None:  # fmt: skip
     built = fb.build(*roms, "reptile")
-    assert hashlib.sha256(built.payload).hexdigest() == V25_PAYLOAD_SHA256
-    assert [(k, len(v)) for k, v in built.report["throw_sounds"].items()] == [("grab", 1)]  # his grab voice
-    silent_throw(monkeypatch)
-    assert hashlib.sha256(fb.build(*roms, "reptile").payload).hexdigest() == V24_PAYLOAD_SHA256
+    assert hashlib.sha256(built.payload).hexdigest() == V24_PAYLOAD_SHA256
+    assert "throw_sounds" not in built.report  # his MKT throw plays no sounds of its own
     assert hashlib.sha256(built.file87).hexdigest() == V23_FILE87_SHA256
     accepted_turn(monkeypatch)
     assert hashlib.sha256(fb.build(*roms, "reptile").payload).hexdigest() == V23_PAYLOAD_SHA256
@@ -134,7 +117,7 @@ def test_reptile_production_placement(roms: tuple[bytes, bytes]) -> None:
     made = fb.production(clean, mkt, "reptile")
     m = made.manifest
     assert len(made.rom) == fb.OUTPUT_SIZE
-    assert m["slack"] > 0 and list(m["jal_sites"]) == ["0x5c8d4"]  # the throw's grab voice hook
+    assert m["slack"] > 0 and m["jal_sites"] == {}
     assert len(m["refs"]) == 17  # transfer 3-7, reactions 0x23/0x2B/0x4C, LP/LK/HK records, HP pointer
     assert (fb.FIXED_VA & ~0x20000000) + m["fixed_len"] <= fb.POOL_END
     assert fb.TAIL[0] == m["file87_rom"] and m["samples_end"] <= fb.TAIL[1]
@@ -499,8 +482,8 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     assert 0 < at < len(built.payload) and built.payload[at : at + 12].hex() == "800913030103100204010000"
     made = fb.production(*roms, "sektor-smre")
     assert any(r[0] == 0x800B110C for r in made.manifest["refs"])
-    # proof v02: his throw's sounds (MKT 0x80042498: arm out / throw / in; the grab voice first)
-    assert [len(built.report["throw_sounds"][k]) for k in ("grab", "throw", "release")] == [2, 1, 1]
+    # proof v02/v03: his throw's sounds (MKT 0x80042498: arm out / throw / in)
+    assert [len(built.report["throw_sounds"][k]) for k in ("grab", "throw", "release")] == [1, 1, 1]
     for site in (0x8005BCD4, 0x8005BDC8, 0x8005BDF8):  # jal into the payload, relocated in production
         word = int.from_bytes(rom[site - fb.VA_TO_ROM : site - fb.VA_TO_ROM + 4], "big")
         assert word >> 26 == 3 and 0 < (((word & 0x03FFFFFF) << 2) | 0xA0000000) - built.link_va < len(built.payload)
@@ -511,14 +494,12 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
 def test_throw_sounds_come_from_the_mkt_throw_routine(roms: tuple[bytes, bytes]) -> None:
     """MKT's throw table 0x800A7ED8 (by fighter id): Sektor's 0x80042498 plays his sounds 0 at
     the grab, 1 before the throw and 2 after the victim's transfer; Reptile's and Rayden's play
-    none. Every fighter's throw start plays his grab voice (voice group 3): Reptile gets it (a grab
-    hook only); Rayden has no free sound chain for it."""
+    none, so their builds get no throw hooks (MKT's grab voice is left out: owner, 2026-11-27)."""
 
     from mkmszr.fighter_import import throw_sounds as ts
 
     mkt = roms[1]
     assert ts.read(mkt, 7) == {"grab": [0], "throw": [1], "release": [2]}
     assert ts.read(mkt, 19) == ts.read(mkt, 24) == {"grab": [], "throw": [], "release": []}
-    assert list(fb.build(*roms, "reptile").report["throw_sounds"]) == ["grab"]
-    rayden = fb.build(*roms, "rayden").report
-    assert "throw_sounds" not in rayden and rayden["throw_grab_voice_skipped"].startswith("MKT event 0x66")
+    assert "throw_sounds" not in fb.build(*roms, "reptile").report
+    assert "throw_sounds" not in fb.build(*roms, "rayden").report
