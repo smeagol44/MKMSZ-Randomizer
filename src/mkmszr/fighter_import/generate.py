@@ -426,6 +426,7 @@ class _Walk:
         self.last_anim: dict[str, int] | None = None  # the selection last shown
         self.saved: tuple[dict[str, int], int] | None = None  # cursor saved at process +0x440
         self.proj_offset: list[int] | None = None  # multi_adjust_xy on the projectile object
+        self.proj_depth: int | None = None  # the projectile object's depth (+0x1C; make_rocket: 0)
 
     def name(self, c: dc.Call) -> str:
         return self.gen.names.get(c.target, f"0x{c.target:08X}" if c.target else "jalr")
@@ -511,6 +512,10 @@ class _Walk:
                     step["src"] = {k: next(iter(src.values())) for k in refilled if k not in _NO_SRC}
             else:
                 self.unknown(f"0x{s.pc:08X}: projectile process field +0x440 = {s.value}")
+            return []
+        if (isinstance(s.base, dc.Load) and s.base.base == dc.PROC and s.base.off == 0x440 and s.off == 0x1C
+                and s.width == 2 and s.value.const() is not None):  # fmt: skip
+            self.proj_depth = s.value.const()  # the projectile object's depth (make_rocket: 0, behind)
             return []
         if s.base == dc.PROC and s.off == 0x8 and s.value.const() is not None:
             self.target = s.value.const() & 0xFFFFFFFF
@@ -1247,6 +1252,10 @@ def _projectile(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     step = _read_projectile(w, child, {})
     if w.proj_offset is not None:  # placed by the parent before the process (make_rocket)
         step["offset"], w.proj_offset = w.proj_offset, None
+    if w.proj_depth is not None:  # depth 0: behind the fighters (Sektor's rocket from his chest)
+        if w.proj_depth == 0:
+            step["behind"] = True
+        w.proj_depth = None
     w.projectiles[c.pc] = (step, child)
     return [step]
 

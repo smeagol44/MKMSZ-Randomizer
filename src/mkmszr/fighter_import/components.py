@@ -134,6 +134,7 @@ COMPONENTS: dict[str, dict[str, str]] = {
         "sound?": "sound",  # played as it starts (Sektor's launch)
         "hum?": "hum",
         "trail?": "trail",
+        "behind?": "bool",  # drawn behind its owner (MKT object depth +0x1C = 0: make_rocket)
         "checks?": "boxes",
         "homing?": "homing",
         "wrap?": "wrap",

@@ -556,9 +556,12 @@ def test_sektor_missile_matches_the_accepted_legacy_rocket(roms: tuple[bytes, by
     # proof v09 (owner on v08: "transparent red instead of its grey, yellow and red"): ROCKET_P,
     # named by slot 0x43's first frame (the vertical rocket), as the legacy build's v87
     assert step["palette"] == "0x800bc3ac" and step["offset"] == [5, 38]
+    # proof v10 (owner on v09: "should be drawn behind Sektor"): make_rocket's object depth 0
+    assert step["behind"] is True
     art = lp.ArtLayout(0, 0, None, 0, 8, 8)
     low = lp.lower(step, art, {}, 0x20, roms[0])
     assert list(low.speeds) == zap.host_speeds(zap.SPEED_NORMAL)
     assert list(low.speeds_reacting) == zap.host_speeds(zap.SPEED_REACTING)
+    assert low.behind_owner
     chest = [s for s in prog["steps"] if s["op"] == "animate"]
     assert [s.get("reverse", False) for s in chest] == [False, True] and chest[0]["rate_reacting"] == 2

@@ -88,3 +88,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_sektor-smre_proof_v07.py` | `MKMSZR_sektor-smre_common_proof_v07.z64` | v06 with MKT's landing (frame 2, then 1, in 3 host ticks): no knee-up second touch |
 | `MKMSZR_build_sektor-smre_proof_v08.py` | `MKMSZR_sektor-smre_common_proof_v08.z64` | v07 with the straight missile (F,F + LP) written by SMRE: chest, launch sound, MKT speeds, smoke, explosion, stumble |
 | `MKMSZR_build_sektor-smre_proof_v09.py` | `MKMSZR_sektor-smre_common_proof_v09.z64` | v08 with ROCKET_P, MKT's spawn (5, 38) px at the owner's draw offset, and the smoke placed 19 px behind by the missile's own offset |
+| `MKMSZR_build_sektor-smre_proof_v10.py` | `MKMSZR_sektor-smre_common_proof_v10.z64` | v09 with the missile drawn behind Sektor (MKT depth 0: his layer + 1), the smoke behind it, and no puff on its first flight tick |

@@ -55,6 +55,9 @@ MKT_TABLE1 = 0x168  # MKT get_char_ani table 1 (heap-relative)
 KSEG1_TO_KSEG0 = 0x20000000
 FOLLOW_SP = 0x24  # the child's frame: four offset words (0x20 is the texture handle)
 FOLLOW_FIELDS = (host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Y, host.ACTOR_Z)
+TRAIL_TICK_SP = 0x1C  # the child's frame: the trail has started (MKT rocket_smoke's toggle)
+OWNER_SUBLAYER_SP, OWNER_PRIORITY_SP = 0x38, 0x3C  # the owner's layer, read before the build
+ACTOR_PRIORITY = 0x5C
 TRAIL_FIELDS = FOLLOW_FIELDS  # the flight's own position, kept while a trail puff starts behind it
 HIT_X, HIT_Y = 0x802E83D8, 0x802C1BA0  # a projectile's victim x / y at its last hit (0x8002DCB0)
 ACTOR_FLAGS, FACING_BIT = 0x8C, 0x10  # actor facing (0x800344F4, 0x8002B6F4)
@@ -597,6 +600,11 @@ class Lowered:
     # (make_rocket's 5, 38 px) and its effects (drawn at 0x6C, as the fighters) apply as in MKT.
     # Projectiles placed by an owner-calibrated offset (Reptile's, Rayden's) keep ACTOR_D8.
     owner_draw: bool = False
+    # MKT object depth 0 (make_rocket): one sprite layer behind its owner, the stock idiom
+    # (+0xEC = owner +0xEC + 1, 0x80030D18; the legacy rocket's behind_owner), priority +0x5C his.
+    behind_owner: bool = False
+    # MKT rocket_smoke toggles: its first puff comes on the second flight tick
+    trail_skip_first: bool = True
 
 
 def strike_record(strike: dict[str, Any], reaction_slot: int) -> bytes:
@@ -663,6 +671,7 @@ def lower(
         impact_follow=impact.get("follow") == "opponent",
         wrap_cooldown=_int(step["wrap"]["cooldown"]) if "wrap" in step else 0,
         launch_event=events.get("launch"), speeds=speeds, speeds_reacting=speeds_reacting,
+        behind_owner=bool(step.get("behind")),
     )  # fmt: skip
 
 
@@ -820,6 +829,11 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         a.li("t1", 1)
         a.sw("t1", 0, "t0")
     host.load_controller(a)
+    if p.behind_owner:  # the owner's layer, while the clone's actor is still his
+        a.lhu("t0", ACTOR_SUBLAYER, "s1")
+        a.sw("t0", OWNER_SUBLAYER_SP, "sp")
+        a.lhu("t0", ACTOR_PRIORITY, "s1")
+        a.sw("t0", OWNER_PRIORITY_SP, "sp")
     a.lhu("a0", 0x78, "s1")  # owner type (4)
     a.li("a1", p.art.flight_slot)
     if p.owner_draw:  # the clone's actor is still the owner's here
@@ -837,6 +851,12 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     host.load_controller(a)
     a.li("t0", PROJECTILE_CLASS)
     a.sh("t0", 0x72, "s1")
+    if p.behind_owner:
+        a.lw("t0", OWNER_SUBLAYER_SP, "sp")
+        a.addiu("t0", "t0", 1)
+        a.sh("t0", ACTOR_SUBLAYER, "s1")
+        a.lw("t0", OWNER_PRIORITY_SP, "sp")
+        a.sh("t0", ACTOR_PRIORITY, "s1")
     a.move("a0", "s1")
     a.li("a1", p.dx)
     a.li("a2", p.dy)
@@ -865,6 +885,8 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         velocity()
         select(p.art.flight_slot, p.art.flight_at)
     a.li("s3", 0)
+    if p.trail is not None:
+        a.sw("zero", TRAIL_TICK_SP, "sp")
     if p.wrap_cooldown:
         a.li("s6", WRAP_ARMED)
         a.li("t0", 0x7FFF)
@@ -879,6 +901,11 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
     if p.trail is not None:  # one puff a host tick, ``trail_dx`` along its heading: the missile
         # is moved there by the facing-aware offset that placed it (MKT multi_adjust_xy), the
         # puff starts at its position, and its position is put back
+        if p.trail_skip_first:
+            a.lw("t0", TRAIL_TICK_SP, "sp")
+            a.li("t1", 1)
+            a.sw("t1", TRAIL_TICK_SP, "sp")
+            a.beqz("t0", prefix + "trail_done")
         host.load_controller(a)
         for k, field in enumerate(TRAIL_FIELDS):
             a.lw("t0", field, "s1")
@@ -901,6 +928,7 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         for k, field in enumerate(TRAIL_FIELDS):
             a.lw("t0", FOLLOW_SP + 4 * k, "sp")
             a.sw("t0", field, "s1")
+        a.label(prefix + "trail_done")
     if p.hum_event is not None:
         a.addiu("s3", "s3", 1)
         a.slti("t0", "s3", p.hum_every)
