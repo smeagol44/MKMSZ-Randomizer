@@ -70,6 +70,11 @@ Body fields:
   torpedo carry's grab point `carry`: `dx_px`, `dy_px`; `projectile`: `impact_toward_px`,
   the impact moved that many pixels toward the attacker), in the
   order the moves are built.
+* ``smre`` (optional): move name -> the MKT command record its program is generated from by the
+  Special Move Recompile Engine (``generate.Generator.program``: the command block from the
+  record, the steps from its action). The build uses the generated program; the stored one in
+  ``fighters/moves/<fighter>.json`` is then a reference the tests compare it with. Moves not
+  listed use their stored program (Rayden's Shocker until a grab rule exists).
 * ``costs`` (optional): move name -> Ice cost, where it differs from the replaced Sub-Zero
   power's (``lower_special.COSTS``); owner decisions, e.g. Reptile's halved forceballs.
 * ``legacy``: frozen Sektor-era modules this fighter still uses (plan rule 4).
@@ -163,6 +168,7 @@ class FighterDescription:
     specials: dict = field(default_factory=dict)  # move -> lowering tuning (fighter_build), in build order
     outfit: dict = field(default_factory=dict)  # outfit recolour: {entries (body palette), own colour}
     remove_commands: tuple[str, ...] = ()
+    smre: dict = field(default_factory=dict)  # move -> MKT command record VA (programs from SMRE)
 
 
 def _int(value: Any, where: str, errors: list[str]) -> int | None:
@@ -388,6 +394,19 @@ def validate(data: Any) -> FighterDescription:
                 errors.append(f"costs.{move}: 0..0xA6 (a full Ice meter)")
             elif cost is not None:
                 costs[move] = cost
+    smre: dict[str, int] = {}
+    raw_smre = data.get("smre", {})
+    if not isinstance(raw_smre, dict):
+        errors.append("smre: move name -> MKT command record address")
+    else:
+        for move, value in raw_smre.items():
+            va = _int(value, f"smre.{move}", errors)
+            if move not in commands:
+                errors.append(f"smre.{move}: not a move with a command")
+            elif va is not None and not 0x80000000 <= va < 0x80400000:
+                errors.append(f"smre.{move}: an MKT RAM address (0x80000000..0x803FFFFF)")
+            elif va is not None:
+                smre[move] = va
     specials = data.get("specials", {})
     if not isinstance(specials, dict) or any(m not in commands or not isinstance(v, dict) for m, v in specials.items()):
         errors.append("specials: move name (with a command) -> its lowering tuning")
@@ -417,7 +436,7 @@ def validate(data: Any) -> FighterDescription:
         else:
             outfit = {"entries": tuple(values), "own": own}  # type: ignore[misc]
     unknown = set(data) - {"format", "id", "display_name", "title", "donor", "body", "legacy", "notes",
-                           "commands", "remove_commands", "icons", "help", "costs", "specials",
+                           "commands", "remove_commands", "icons", "help", "costs", "specials", "smre",
                            "outfit"}  # fmt: skip
     if unknown:
         errors.append(f"unknown keys: {', '.join(sorted(unknown))}")
@@ -427,7 +446,7 @@ def validate(data: Any) -> FighterDescription:
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
         body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts, script_sounds,
                   frozenset(loop_scripts)),
-        legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove),
+        legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove), smre=smre,
         icons=icons, help=help_text, costs=costs, specials=specials, outfit=outfit,
     )  # fmt: skip
 

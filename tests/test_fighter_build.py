@@ -157,8 +157,8 @@ def test_a_pose_past_its_script_is_refused(roms: tuple[bytes, bytes], monkeypatc
     def with_bad_pose(name: str):
         moves, gaps = real(name)
         for m in moves:
-            if m.name == "torpedo":
-                m.steps.insert(5, {"op": "pose", "anim": {"table": 1, "slot": 0, "offset": 6}})
+            if m.name == "shocker":  # a stored program (the SMRE moves are written at build time)
+                m.steps.insert(1, {"op": "pose", "anim": {"table": 1, "slot": 0, "offset": 6}})
         return moves, gaps
 
     monkeypatch.setattr(components, "load_programs", with_bad_pose)
@@ -412,3 +412,21 @@ def test_rayden_shocker_release_hold_and_reaction(roms: tuple[bytes, bytes]) -> 
     d = sound.MSZ_EVENT_DEFS + 16 * multi[0]
     at = sound.MSZ_TRACKS + int.from_bytes(built.rom[d + 8 : d + 12], "big")
     assert built.samples[0] <= at < built.samples[1] and int.from_bytes(built.rom[d + 4 : d + 8], "big") == 0x6C
+
+
+
+# SMRE (2026-11-27): Rayden's lightning, reversed lightning, teleport and torpedo are written by the
+# Special Move Recompile Engine at build time (his description's ``smre``); the build is
+# byte-identical to the one from the stored programs (specials proof v30's payload). Reptile's
+# five are SMRE's too (his V23 pins above are unchanged).
+RAYDEN_V30_PAYLOAD_SHA256 = "c97596af0ffc4f59"
+
+
+@needs_roms
+def test_rayden_and_reptile_moves_come_from_smre(roms: tuple[bytes, bytes]) -> None:
+    built = fb.build(*roms, "rayden")
+    assert hashlib.sha256(built.payload).hexdigest().startswith(RAYDEN_V30_PAYLOAD_SHA256)
+    assert set(built.report["smre"]) == {"lightning", "reversed_lightning", "teleport", "torpedo"}
+    assert all(v["record"].startswith("0x800AB") for v in built.report["smre"].values())
+    rep = fb.fd.load("reptile")
+    assert set(rep.smre) == {"acid_spit", "forceball_fast", "forceball_slow", "elbow_dash", "invisibility"}

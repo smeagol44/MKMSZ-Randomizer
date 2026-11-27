@@ -171,3 +171,48 @@ def test_shocker_reading_names_the_grab_it_cannot_lower(mkt: bytes) -> None:
     assert g.steps[0]["action_mkt"] == "0x122" and g.steps[1]["sound"] == {"fighter": 12}
     calls = {u.split("call ")[1] for u in g.unknown if "call " in u}
     assert {"0x8006CBE4", "0x8006D824", "0x80005140"} <= calls
+
+
+# ---- SMRE: whole programs from the command records (2026-11-27) ---------------------------------
+@needs_mkt
+@pytest.mark.parametrize("fighter", ["rayden", "reptile"])
+def test_smre_writes_the_stored_programs_exactly(mkt: bytes, fighter: str) -> None:
+    """Every move the fighter description lists under ``smre`` is written by the Special Move
+    Recompile Engine from its MKT command record (command block, conditions, steps, provenance,
+    the movement flag); the stored program is exactly that output, kept as the reference."""
+
+    from mkmszr.fighter_import import description as fd
+
+    d = fd.load(fighter)
+    doc = json.loads(resources.files("mkmszr.fighters.moves").joinpath(f"{fighter}.json").read_text("utf-8"))
+    stored = {m["name"]: m for m in doc["moves"]}
+    g = gen.Generator(mkt, d.donor_fighter_id)
+    for move, record in d.smre.items():
+        prog, _, _ = g.program(move, record)
+        if stored[move].get("grab"):
+            prog["grab"] = True
+        assert prog == stored[move], move
+
+
+@needs_mkt
+def test_smre_reads_commands_and_conditions(mkt: bytes) -> None:
+    """Buttons come from the input events that hold the record (Reptile's forceball sits in the
+    High Punch and Low Punch tables: 0x90; Rayden's Lightning record has masks 0xFC but sits only
+    in Low Punch: 0x80); the release grid gives ``release``; ``ticks_since`` on the High Punch
+    press stamp is ``held_for``, on any other stamp a ``cooldown``; guards the build does not
+    lower are notes, not conditions."""
+
+    ray, rep = gen.Generator(mkt, 24), gen.Generator(mkt, 19)
+    cmd, _ = ray.command(0x800ABA54)
+    assert (cmd["buttons"], cmd["tokens"], cmd["window"]) == ("0x80", [9, 7], 16)
+    cmd, notes = ray.command(0x800AB9F4)  # the Shocker
+    assert cmd["release"] is True and cmd["conditions"] == [{"kind": "held_for", "ticks": 0x38, "src": "MKT 0x80051008"}]
+    assert any("opponent's action" in n for n in notes)
+    cmd, _ = ray.command(0x800AB968)  # the teleport
+    assert cmd["buttons"] == "stick" and cmd["conditions"][0]["kind"] == "cooldown" and cmd["conditions"][0]["ticks"] == 0x40
+    cmd, notes = rep.command(0x800AC810)  # the fast forceball, through forceball_cooldown(0x80156BA0)
+    assert cmd["buttons"] == "0x90"
+    assert [(c["kind"], c.get("key") or c.get("mask")) for c in cmd["conditions"]] == [("cooldown", "0x80156BA0"), ("buttons_held", "0x90")]
+    assert len(notes) == 2  # the opponent's fighter id and reaction state
+    with pytest.raises(ValueError, match="not one of fighter"):
+        ray.command(0x800AC810)

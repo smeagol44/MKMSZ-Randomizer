@@ -82,6 +82,7 @@
     "torpedo": "ice_clone",
     "shocker": "ice_shatter"
   },
+  "smre": {"lightning": "0x800ABA54", "reversed_lightning": "0x800ABA80", "teleport": "0x800AB968", "torpedo": "0x800AB998"},
   "remove_commands": [
     "directional_ice_down",
     "freeze_on_contact"

@@ -127,6 +127,31 @@ def _guarded(rom: bytearray, off: int, old: int, new: int) -> None:
     _put32(rom, off, new)
 
 
+def smre_programs(mkt: bytes, fighter: int, records: dict[str, int], stored: dict[str, Any],
+                  report: dict[str, Any]) -> dict[str, components.Move]:  # fmt: skip
+    """The moves of ``records`` (move -> MKT command record) as the Special Move Recompile Engine
+    writes them (``generate.Generator.program``), validated like stored programs. A stored
+    program's ``grab`` flag (an owner classification) carries over. The engine's notes and
+    unknowns go into ``report["smre"]``."""
+
+    from . import generate
+
+    gen = generate.Generator(mkt, fighter)
+    docs, info = [], {}
+    for move, record in records.items():
+        prog, g, notes = gen.program(move, record)
+        if move in stored and stored[move].grab:
+            prog["grab"] = True
+        docs.append(prog)
+        info[move] = {"record": f"0x{record:08X}", "notes": notes + g.notes, "unknown": list(g.unknown)}
+    report["smre"] = info
+    try:
+        made = components.validate_programs({"format": components.FORMAT, "moves": docs})
+    except components.ProgramError as e:
+        raise BuildError(f"SMRE program does not validate: {e}") from e
+    return {m.name: m for m in made}
+
+
 def _free_from(file87: bytearray, start: int) -> int:
     """First 16-aligned offset after the last used byte of the body tail [start, TYPE_END)."""
 
@@ -190,6 +215,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     rom = bytearray(clean)
     moves, _ = components.load_programs(name)
     programs = {m.name: m for m in moves}
+    report: dict[str, Any] = {}
+    if d.smre:  # SMRE: the programs written from MKT's own code (the stored ones are references)
+        programs.update(smre_programs(mkt, donor_id, d.smre, programs, report))
     order = list(d.specials) + [m for m, p in d.commands.items() if p and m not in d.specials]
     for move in order:
         if move not in programs:
@@ -245,7 +273,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     fighter_sounds: dict[int, int] = dict([script_sound]) if script_sound else {}
     footsteps: dict[str, tuple[int, ...]] = {}
     effect_art: dict[int, tuple[effects.EffectArt, effects.EffectLayout, dict[str, Any]]] = {}
-    report: dict[str, Any] = {"body": body.report}
+    report["body"] = body.report
     for move in order:
         tune = d.specials.get(move, {})
         steps = list(programs[move].steps)

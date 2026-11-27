@@ -14,7 +14,9 @@
 | Whether automatic recognition of MKT machine code is worth building | **Yes (2026-11-25).** Build a generator that writes move programs from MKT's code, checked against the accepted Reptile and Rayden programs; owner adjustments stay in the fighter descriptions. Rayden's remaining moves (teleport, reversed Lightning, Shocker) are its first unseen moves. Current projectiles stay as they are until the generator can build several fighters for testing them together (owner: Acid Spit's hit effect is sometimes misplaced). | Owner: "Let's go with option A" (2026-11-25; earlier default "not yet") |
 | Rayden's reversed lightning: MKT's screen wrap (the bolt leaves one edge and re-enters past the other) on the host's 3D camera | **MKT's wrap** (2026-11-26) | Owner, generator step 5 |
 | Facing at the end of Rayden's reversed lightning and after his teleport (MKT faces the opponent in both) | **The teleport faces the opponent; the reversed lightning turns back** to the way he faced before throwing (2026-11-26) | Owner, generator step 5 |
-| Which Sektor legacy modules to migrate | Not decided; default **not yet** | Assistant proposal; no owner answer yet |
+| Which Sektor legacy modules to migrate | **All of them** (2026-11-27): Sektor is to be built by the generic pipeline like Reptile and Rayden (SMRE step 3) | Owner: "before doing any new character, I want these 3 characters to be built entirely by the generator" |
+| The generator's name | **Special Move Recompile Engine (SMRE)** (2026-11-27): the whole pipeline (MKT reading, the move-program language, the MKMSZ back end) | Owner |
+| What comes before new fighters | **Sektor, Reptile and Rayden built entirely by SMRE** (2026-11-27), in three steps: (1) the build writes the programs and their command blocks with SMRE from the MKT command records; (2) a grab rule (Rayden's Shocker); (3) Sektor migrated from his legacy modules | Owner, assistant proposal: "Yes, please start" |
 
 ## Notes
 

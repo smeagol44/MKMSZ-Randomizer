@@ -18,6 +18,8 @@ A move program is data (`src/mkmszr/fighters/moves/<fighter>.json`, format 1):
 
 `components.validate_programs` checks every step against the catalogue and rejects unknown components, unknown or missing parameters, bad units, unknown reactions and missing provenance.
 
+**Written by SMRE (2026-11-27).** A fighter description's `smre` (move → MKT command record) makes the build write those programs with the Special Move Recompile Engine (`generate.Generator.program`: command block and conditions from the record, steps from its action). The stored program is then a reference equal to the engine's output (tests). Conditions read from MKT: `held_for` (`ticks_since` on a button press stamp), `cooldown` (`ticks_since` on any other stamp, keyed by the stamp word), `buttons_held`; other guards are notes. `holding_away`, `projectiles_below` and `opponent_state` remain for hand-written programs.
+
 **Provenance (owner decision 2026-11-11).** Every parameter carries its source in the step's `src` map:
 
 - `"MKT 0x…"`: the donor instruction or data word;

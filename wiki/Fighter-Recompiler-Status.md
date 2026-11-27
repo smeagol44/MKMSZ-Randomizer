@@ -6,6 +6,22 @@
 
 **Milestone 6 — next fighters: Rayden** (MKT fighter 24), started 2026-11-13 ([amendment 1](Fighter-Recompiler-Amendment-1): decisions and his power slots). Milestone 4 (Reptile) shipped as a product Fighter option (PRs #209, #210); its record follows below.
 
+### SMRE — all three fighters by the engine (owner, 2026-11-27)
+
+The generator is named the **Special Move Recompile Engine (SMRE)** (owner). Before any new fighter, Sektor, Reptile and Rayden are to be built entirely by it ([Amendment 1](Fighter-Recompiler-Amendment-1)). The pipeline is explained with Rayden's Teleport as a worked example in the "SMRE Pipeline" page shared with the owner.
+
+1. **The build writes the programs with SMRE.** **Done (2026-11-27; Implementation/CI-confirmed: the Reptile and Rayden builds, test and product, are byte-identical to before).**
+   - A fighter description's `smre` names each move's MKT command record. The build calls `generate.Generator.program`, which writes:
+     - the **command block** from the record: buttons from the input events that hold it (or an identical copy), `release` for the release grid, tokens and window;
+     - its **conditions**, from a linear read of the condition routine that follows wrapper calls with their arguments: `ticks_since(stamp) < N` becomes `held_for` for the High Punch press stamp `0x80257738`, otherwise `cooldown` keyed by the stamp word; `buttons_held(mask)` becomes `buttons_held`; any other guard (airborne, the opponent's id, action or reaction state) is a note, not a condition;
+     - the **steps** of the record's action (dispatchers followed);
+     - `movement` when a step moves the fighter (`relocate`, `velocity`).
+   - The stored programs in `fighters/moves/*.json` are now exactly SMRE's output, kept as references (tests pin the equality). The build validates the generated programs like stored ones and lists the engine's notes and unknowns in `report["smre"]`.
+   - Reptile: all five specials. Rayden: Lightning, reversed Lightning, Teleport, Torpedo; the Shocker keeps its stored program until step 2.
+   - **Found on the way** (no ROM change): the comparison of generated and accepted programs ignored `begin.face` and `stop`, and now checks them. MKT's Reptile moves never turn at the start (`init_special`); the accepted Forceballs did, so that is now an owner adjustment in his description (`specials.forceball_*.face: true`). His other three already had `face: false`. The Forceball conditions' hand-written `opponent_state` text was never lowered; it is now a note. Their cooldown key is the stamp word (`0x80156BA0`, `0x80156B58`) instead of a name (projectile moves do not lower it). Shape-built steps (`repeat`, hit windows, `carry`) and a late MKT action id now carry their MKT sources.
+2. **A grab rule** (the Shocker). Pending.
+3. **Sektor** from his legacy modules to a description, SMRE programs and the generic build, in stages with test ROMs. Pending.
+
 ### Generator — agreed tasks (owner, 2026-11-25: option A)
 
 1. One table for builder-supplied victim reactions (`lower_special.VICTIM_REACTIONS`; done, outputs unchanged).
@@ -480,9 +496,9 @@ PRs: 1 inventory and description format; 2 generic builder; 3 codec 23, roster d
 | 1 Fighter description and generic body builder | **Done** (2026-11-10) | See above | #197 inventory and format; #198 generic builder; PR 3 roster decode, computed layout, auto colour, Reptile body |
 | 2 Component library and MKMSZ backend v1 | **Done** (2026-11-11) | See above | #201 components, programs, host references; #202 review, projectile proofs v01–v07, backend `lower_projectile` |
 | 3 Reading aid for MKT moves | **Done** (2026-11-11) | See above | #200 reading aid, registry, readings |
-| 4 Reptile | In progress | See above | — |
-| 5 Generic product integration | Not started | — | — |
-| 6 Review and next fighters | **In progress** (2026-11-13): Rayden | [Amendment 1](Fighter-Recompiler-Amendment-1) | Rayden body proof v01 |
+| 4 Reptile | **Done** (2026-11-13) | See above | #209, #210 (product option); specials proofs v01–v23 |
+| 5 Generic product integration | **Done** (2026-11-13) | Generic production build, Fighter option for described fighters | #209, #210 |
+| 6 Review and next fighters | **In progress**: Rayden **done** (2026-11-27); now SMRE for all three fighters before new ones | [Amendment 1](Fighter-Recompiler-Amendment-1) | #211–#217 |
 
 ## Debt
 
