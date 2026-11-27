@@ -79,3 +79,4 @@ Disposable proof builders for the [Fighter recompiler plan](../../wiki/Fighter-R
 | `MKMSZR_build_rayden-specials_proof_v30.py` | `MKMSZR_rayden-specials_common_proof_v30.z64` | v29 with the Shocker's hold and the Teleport's cooldown as 60 Hz clock stamps (no process to get stuck) |
 | `MKMSZR_build_rayden-specials_proof_v31.py` | `MKMSZR_rayden-specials_common_proof_v31.z64` | v30 with all five specials written by SMRE; the Shocker from the grab rule (MKT's 3-tick pause after the grab) |
 | `MKMSZR_build_sektor-smre_proof_v01.py` | `MKMSZR_sektor-smre_common_proof_v01.z64` | SMRE step 3: Sektor's base on the generic build (`sektor-smre`), no specials: MKT throw with the arm flattened on (`scale`), MKT combos (seventh record in the payload) |
+| `MKMSZR_build_sektor-smre_proof_v02.py` | `MKMSZR_sektor-smre_common_proof_v02.z64` | v01 with the throw's sounds: MKT's grab voice and his arm out / throw / in (`throw_sounds`, `body.throw_voice`) |

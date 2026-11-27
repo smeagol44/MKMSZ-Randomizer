@@ -481,3 +481,23 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     assert 0 < at < len(built.payload) and built.payload[at : at + 12].hex() == "800913030103100204010000"
     made = fb.production(*roms, "sektor-smre")
     assert any(r[0] == 0x800B110C for r in made.manifest["refs"])
+    # proof v02: his throw's sounds (MKT 0x80042498: arm out / throw / in; the grab voice first)
+    assert [len(built.report["throw_sounds"][k]) for k in ("grab", "throw", "release")] == [2, 1, 1]
+    for site in (0x8005BCD4, 0x8005BDC8, 0x8005BDF8):  # jal into the payload, relocated in production
+        word = int.from_bytes(rom[site - fb.VA_TO_ROM : site - fb.VA_TO_ROM + 4], "big")
+        assert word >> 26 == 3 and 0 < (((word & 0x03FFFFFF) << 2) | 0xA0000000) - built.link_va < len(built.payload)
+        assert hex(site - fb.VA_TO_ROM) in made.manifest["jal_sites"]
+
+
+@needs_roms
+def test_throw_sounds_come_from_the_mkt_throw_routine(roms: tuple[bytes, bytes]) -> None:
+    """MKT's throw table 0x800A7ED8 (by fighter id): Sektor's 0x80042498 plays his sounds 0 at
+    the grab, 1 before the throw and 2 after the victim's transfer; Reptile's and Rayden's play
+    none, so their builds get no throw hooks."""
+
+    from mkmszr.fighter_import import throw_sounds as ts
+
+    mkt = roms[1]
+    assert ts.read(mkt, 7) == {"grab": [0], "throw": [1], "release": [2]}
+    assert ts.read(mkt, 19) == ts.read(mkt, 24) == {"grab": [], "throw": [], "release": []}
+    assert "throw_sounds" not in fb.build(*roms, "reptile").report

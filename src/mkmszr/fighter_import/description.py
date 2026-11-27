@@ -50,6 +50,10 @@ Body fields:
   32-entry palette (BGR555 words, hex); ``auto`` derives them from the donor palette (the
   reduction is milestone 1 work).
 * ``body.common_animations``: the generic recipes in ``common_moves`` to apply.
+* ``body.throw_voice`` (optional, default false): the throw plays the donor's grab voice (MKT
+  voice group 3, which MKT's throw start ``0x80042878`` plays for every fighter) at the grab,
+  before his throw routine's own sounds (``throw_sounds``). The host voice rule leaves the
+  throw's voice category 11 silent. On for Sektor (his legacy build played it, proof v41).
 * ``body.layout`` (optional): explicit layout choices that replace the computed layout,
   used to keep an accepted fighter byte-identical (Sektor). ``slots`` gives, per body slot,
   ``mode`` (``inplace``: the host script's place, ``capacity`` words; ``relocated``: at
@@ -153,6 +157,7 @@ class Body:
     secondary_scripts: dict[int, tuple[int, int, int]] = field(default_factory=dict)  # -> (table, index, phases)
     script_sounds: dict[int, int] = field(default_factory=dict)  # host primary slot -> donor ft_sound index
     loop_scripts: frozenset[int] = frozenset()  # secondary_scripts keys that end in the donor's loop
+    throw_voice: bool = False  # the throw plays MKT's grab voice (voice group 3) at the grab
 
 
 @dataclass(frozen=True)
@@ -345,6 +350,9 @@ def validate(data: Any) -> FighterDescription:
         errors.append("body.script_sounds: only with the computed layout")
     if sources and "layout" in body_d:
         errors.append("body.slot_sources: only with the computed layout")
+    throw_voice = body_d.get("throw_voice", False)
+    if not isinstance(throw_voice, bool):
+        errors.append("body.throw_voice: true or false")
     anims = _get(body_d, "common_animations", list, "body", errors) or []
     for a in anims:
         if a not in COMMON_ANIMATIONS:
@@ -448,7 +456,7 @@ def validate(data: Any) -> FighterDescription:
     return FighterDescription(
         id=fid, display_name=display, title=title, donor_fighter_id=donor_id, donor_name=donor_name,
         body=Body(tuple(slots), run_slot, run_rate, Colour(depth, method, index_map, palette), tuple(anims), layout, sources, phase_slots, secondary, new_scripts, script_sounds,
-                  frozenset(loop_scripts)),
+                  frozenset(loop_scripts), throw_voice is True),
         legacy=tuple(legacy), commands=dict(commands), remove_commands=tuple(remove), smre=smre,
         icons=icons, help=help_text, costs=costs, specials=specials, outfit=outfit,
     )  # fmt: skip

@@ -52,6 +52,7 @@ from . import (
     lower_special,
     physics,
     sound,
+    throw_sounds,
     voices,
 )
 from . import description as fd
@@ -383,6 +384,19 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                 raise BuildError(f"{move}: effect {fx} art does not fit the fighter file")
             file87[placed.offset : placed.end] = placed.data
             effect_art[int(fx)] = (art_fx, placed, spec)
+    # His MKT throw's own sounds (Sektor's arm: out, throw, in) on the host throw's three stages.
+    throw_events: dict[str, tuple[int, ...]] = {}
+    for stage, numbers in throw_sounds.read(mkt, donor_id).items():
+        for n in numbers:
+            if n not in fighter_sounds:
+                fighter_sounds[n] = install(bank.event(bank.fighter_event(donor_id, n)))
+        if numbers:
+            throw_events[stage] = tuple(fighter_sounds[n] for n in numbers)
+    if d.body.throw_voice:  # MKT's grab voice first (voice group 3, one entry per fighter)
+        (grab_voice,) = voices.groups(mkt, donor_id)[throw_sounds.GRAB_VOICE_GROUP]
+        throw_events["grab"] = (install(bank.event(grab_voice)), *throw_events.get("grab", ()))
+    if throw_events:
+        report["throw_sounds"] = {k: list(v) for k, v in throw_events.items()}
     if len(file87) != body_build.FILE87_SIZE:
         raise BuildError("the fighter file changed size")
     rom[body_build.FILE87_ROM : body_build.FILE87_ROM + len(file87)] = file87
@@ -526,6 +540,7 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             effects.emit_descriptor(a, f"fx_{fx}", placed, art_fx, _int(spec["ticks_per_frame"]),
                                     _int(spec["reserve"]))  # fmt: skip
     host.emit_sound_player(a)
+    throw_hooks = throw_sounds.emit_hooks(a, throw_events)
     for g in groups.values():
         if g.helper is not None and g.first:
             lp.emit_helper_data(a, g.helper)
@@ -575,6 +590,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     _guarded(rom, TRANSFER_BOUND_ROM, TRANSFER_BOUND_STOCK, TRANSFER_BOUND_STOCK - 3 + FIRST_SELECTOR + len(order))
     for m in order:
         _guarded(rom, host.TRANSFER_TABLE - VA_TO_ROM + 4 * selectors[m], 0, a.labels[f"{m}_root"])
+    for stage, label in throw_hooks.items():  # the stock jal enters the payload's KSEG0 alias
+        site, stock, _, _ = throw_sounds.SITES[stage]
+        _guarded(rom, site - VA_TO_ROM, stock, 0x0C000000 | ((a.labels[label] >> 2) & 0x03FFFFFF))
     for g in groups.values():
         reaction_label = f"g{_gid(g)}_reaction"
         if reaction_label not in a.labels:  # a stock (host-kind) reaction
