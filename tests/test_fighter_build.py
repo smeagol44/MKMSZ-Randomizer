@@ -464,20 +464,3 @@ def test_rayden_and_reptile_moves_come_from_smre(roms: tuple[bytes, bytes]) -> N
     assert all(v["record"].startswith("0x800AB") for v in built.report["smre"].values())
     rep = fb.fd.load("reptile")
     assert set(rep.smre) == {"acid_spit", "forceball_fast", "forceball_slow", "elbow_dash", "invisibility"}
-
-
-@needs_roms
-def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
-    """SMRE step 3, proof v01: Sektor from ``sektor-smre`` with no specials. His seventh MKT combo
-    record follows the stubs in the payload; the host graph's sixth record names it, and in
-    production that stock word is a payload reference the fixed loader refreshes."""
-
-    built = fb.build(*roms, "sektor-smre")
-    assert built.selectors == {} and built.report["combos"] == (
-        "HP, HP, HK, B+HK", "HP, HP, HK, HK, B+HK", "HP, HP, D+LP", "HK, HK")
-    rom = built.rom
-    pointer = int.from_bytes(rom[0xB1D0C:0xB1D10], "big")  # the sixth record's next pointer
-    at = pointer - built.link_va
-    assert 0 < at < len(built.payload) and built.payload[at : at + 12].hex() == "800913030103100204010000"
-    made = fb.production(*roms, "sektor-smre")
-    assert any(r[0] == 0x800B110C for r in made.manifest["refs"])

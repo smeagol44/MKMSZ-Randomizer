@@ -22,10 +22,7 @@ Body fields:
   phase but the last (its retract) in order over all the host's frame positions, moved N
   places earlier (N < 0: later, the stance pose first); the retract fills what is left. Used
   for the throw (0x23) to line the donor's grab up with the host's (Sektor proof v55 is two
-  places late; Reptile's, owner-tested, one place early). ``scale``: the donor frames of every
-  phase but the last scaled over the host positions of every phase but the last, the retract
-  over the last host phase (a donor throw much longer than the host's: Sektor's). A donor
-  helper object (MKT token 11: Sektor's arm) is flattened onto the owner's frames.
+  places late; Reptile's, owner-tested, one place early).
 * ``body.secondary_slots`` (optional): host secondary slot -> ``"table0:0xNN"`` or
   ``"table1:0xNN"``: the host script is kept and takes that donor script's frames phase by
   phase, scaled by position. Used where the donor has the animation a host-only state plays,
@@ -148,7 +145,7 @@ class Body:
     common_animations: tuple[str, ...]
     layout: Layout | None = None
     sources: dict[int, tuple[int, int]] = field(default_factory=dict)  # host slot -> (table, index)
-    phase_slots: dict[int, str] = field(default_factory=dict)  # host slot -> "phases" | "scale" | "shift:N"
+    phase_slots: dict[int, str] = field(default_factory=dict)  # host slot -> "phases" | "shift:N"
     secondary_slots: dict[int, tuple[int, int]] = field(default_factory=dict)  # host S slot -> (table, index)
     secondary_scripts: dict[int, tuple[int, int, int]] = field(default_factory=dict)  # -> (table, index, phases)
     script_sounds: dict[int, int] = field(default_factory=dict)  # host primary slot -> donor ft_sound index
@@ -286,14 +283,14 @@ def validate(data: Any) -> FighterDescription:
     phase_slots: dict[int, str] = {}
     raw_phase = body_d.get("phase_slots", {}) if isinstance(body_d, dict) else {}
     if not isinstance(raw_phase, dict):
-        errors.append("body.phase_slots: expected an object (slot -> 'phases', 'scale' or 'shift:N')")
+        errors.append("body.phase_slots: expected an object (slot -> 'phases' or 'shift:N')")
         raw_phase = {}
     for key, mode in raw_phase.items():
         slot = _int(key, f"body.phase_slots key {key!r}", errors)
         if slot is not None and (slot in slots or not 0 <= slot <= 0x40):
             errors.append(f"body.phase_slots[{key}]: 0x{slot:02X} is a body slot or out of range")
-        elif not (mode in ("phases", "scale") or (isinstance(mode, str) and re.fullmatch(r"shift:[+-]?\d{1,2}", mode))):
-            errors.append(f"body.phase_slots[{key}]: mode 'phases', 'scale' or 'shift:N'")
+        elif not (mode == "phases" or (isinstance(mode, str) and re.fullmatch(r"shift:[+-]?\d{1,2}", mode))):
+            errors.append(f"body.phase_slots[{key}]: mode 'phases' or 'shift:N'")
         elif slot is not None:
             phase_slots[slot] = mode
     secondary: dict[int, tuple[int, int]] = {}

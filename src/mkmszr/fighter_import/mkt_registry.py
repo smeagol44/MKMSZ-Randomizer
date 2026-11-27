@@ -255,13 +255,6 @@ REGISTRY: dict[int, MktRoutine] = {
         "stop_me, face_opponent, object flags |= 4, then the init_special steps",
         _M,
     ),
-    0x8005A614: _e(
-        "process_exist",
-        "a0 = id, a1 = mask",
-        "the first process other than the current one whose id (+0x40C) & mask matches, else 0 "
-        "(SMRE step 3, static reading: Sektor's missile handlers refuse while 0x705/0x805 exists)",
-        _M,
-    ),
     0x8005A88C: _e("process_sleep", "a0 = ticks", "sleep the current process"),
     0x8005A69C: _e(
         "process_suicide", "", "end the current process (inference: control never returns)", _M

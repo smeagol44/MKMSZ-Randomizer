@@ -81,20 +81,3 @@ def test_rayden_shared_tail_and_action_finisher() -> None:
     assert graph.dropped == ((0x800AEFF8, 0x8004F3C0),)
     low = cb.lower(graph, None, set(range(0x23)))
     assert len(low.records) == 6 * 16 and low.strikes == {0: 0, 1: 1, 2: 4, 9: 9}
-
-
-@needs_mkt
-def test_option_lists_past_the_host_graph_go_to_the_payload() -> None:
-    """Sektor's seven MKT records on the host's six (SMRE step 3): lists go into the graph in
-    order; the last (one record) goes to ``overflow_va``, the sixth record's next pointer
-    names it. Without ``overflow_va`` the graph refuses."""
-
-    graph = cb.donor_graph(Path(MKT).read_bytes(), 7)
-    assert cb.overflow_size(graph) == 16 and cb.overflow_size(graph, capacity=7) == 0
-    with pytest.raises(cb.ComboError, match="do not fit"):
-        cb.lower(graph, None, set(range(0x23)))
-    low = cb.lower(graph, None, set(range(0x23)), overflow_va=0xA01AF5D0)
-    assert len(low.records) == 16 * cb.HOST_CAPACITY and len(low.overflow) == 16
-    assert low.records[-4:] == (0xA01AF5D0).to_bytes(4, "big") and low.roots == (0x800B10B0, 0x800B10C0)
-    whole = cb.lower(graph, None, set(range(0x23)), capacity=7)  # the same records, one place
-    assert low.records[:-4] == whole.records[: 16 * 6 - 4] and low.overflow == whole.records[16 * 6 :]

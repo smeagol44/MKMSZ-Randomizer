@@ -246,7 +246,7 @@ Interpreter field correspondence. These offsets are engine-local, not a portable
 | `7` | sound `0x800054A8(id)` | operand skipped | Length-compatible: a copy is silent. An audible translation is target callback 2 plus an SFX index, which changes length |
 | `8` | jump if fighter ID == operand | jump if fighter type == operand | Different ID spaces; **fold at import time** for the known donor fighter |
 | `10` | position relative to the process `+0x3BC` object (opponent) | position relative to the controller `+0x63C` actor, X mirrored, track-aware | Victim/throw-side only; translate together with the grab/throw adapter |
-| `11` | create helper object from a frame (`0x8006DA14`) and register it as `+0x3C4` | create helper actor, but bind the **fixed Ice palette `0x800B1A24`** | **Translation required.** The helper must take the imported fighter's palette; the v81–v89 missile line worked around exactly this binding. In a body phase slot (Sektor's throw arm) the generic builder flattens the helper onto the owner's frames instead, in its own palette mapped to body colours (SMRE step 3, [status](Fighter-Recompiler-Status)) |
+| `11` | create helper object from a frame (`0x8006DA14`) and register it as `+0x3C4` | create helper actor, but bind the **fixed Ice palette `0x800B1A24`** | **Translation required.** The helper must take the imported fighter's palette; the v81–v89 missile line worked around exactly this binding |
 | `13` | bind the next frame record's palette (`0x8006D5DC`); no operand | no-op; no operand | Length-compatible drop under the 16-colour policy |
 | `15` | sound pair `0x800057C0/0x80005760` | operand skipped | as token 7 |
 | `16` | — | companion double frame | Host-only |
@@ -360,10 +360,6 @@ The already-working `0x0504` uppercut entry remained unchanged. That is a positi
 - **Combo into a special.** A record's next field may be a routine instead of a list or a small recovery wait: Rayden's option `0x800AEFF8` ends in `0x8004F3C0` (his torpedo, `do_body_propell(0x1E)`). The host graph cannot call actions; `fighter_import.combos` leaves such options out and lists them (`Graph.dropped`).
 - **Button index** is the input-event order of both games: 0 HP, 1 LP, 2 block, 3 HK, 4 LK (host handler blocks at `0x800A0478 + 0x78·i`; MKT grid events 0, 1, 3, 4). Rayden's kick strings use index 4.
 - **Selector 9** is reaction `0x17`, damage 7 in both strike tables (identity, Pending at runtime).
-
-### Overflow (SMRE step 3, 2026-11-27; Implementation/CI-confirmed, runtime Pending)
-
-A graph larger than the host's six records keeps its option lists in order. A list that does not fit whole follows the command stubs in the fighter's payload (`combos.lower(overflow_va=...)`), and its host pointer is relocated as a stock reference. Sektor's seventh record is his last list (`0x800AF478`); v62 put his kick root `0x800AF508` there instead. Either way, one list goes in the payload.
 
 ### Compatibility rule
 

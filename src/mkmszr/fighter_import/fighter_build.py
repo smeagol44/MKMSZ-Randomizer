@@ -213,11 +213,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     donor_id = d.donor_fighter_id
     donor = body_build.Donor(mkt, donor_id)
     rom = bytearray(clean)
-    try:  # stored programs (references once SMRE writes the moves)
-        stored, _ = components.load_programs(name)
-    except FileNotFoundError:  # a fighter whose moves SMRE writes, with no references
-        stored = []
-    programs = {m.name: m for m in stored}
+    moves, _ = components.load_programs(name)
+    programs = {m.name: m for m in moves}
     report: dict[str, Any] = {}
     if d.smre:  # SMRE: the programs written from MKT's own code (the stored ones are references)
         programs.update(smre_programs(mkt, donor_id, d.smre, programs, report))
@@ -232,7 +229,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         bytes(body.file), stock=body.clean_file, flipped=body.flipped,
         slide="slide" in d.body.common_animations,
     )  # fmt: skip
-    combo_graph = combos.donor_graph(mkt, donor_id)
+    combos_low = combos.lower(combos.donor_graph(mkt, donor_id),
+                              *_combo_slot(d), set(d.body.slots))  # fmt: skip
+    combos.install(rom, combos_low)
     vs, samples_end = voices.install(rom, clean, mkt, donor_id, VOICE_CHAINS, SAMPLE_ROM)
     used_voices = len(set(vs.category.values()) - {None})
     chains = _Pool(tuple(EXTRA_CHAINS) + tuple(VOICE_CHAINS[used_voices:]), "isolated sound chains")
@@ -391,7 +390,6 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     # Ice costs: the description's (owner decisions), else none for a movement ability (owner
     # rule, 2026-11-24), twice Ice Blast's for a grab (owner rule, 2026-11-26), else the replaced
     # Sub-Zero power's.
-    moves = list(programs.values())  # SMRE's where it writes them
     movement = {mv.name for mv in moves if mv.movement}
     grabs = {mv.name for mv in moves if mv.grab}
     costs = {m: d.costs.get(m, lower_special.MOVEMENT_COST if m in movement
@@ -554,19 +552,11 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
            for k, v in low_cmd.moved.items()):  # fmt: skip
         raise BuildError("moved command tables do not fit their reserve")
     end = stub_base - link_va + len(low_cmd.stubs)
-    # Combo option lists past the host graph (Sektor's seventh record) follow the stubs.
-    combo_at = (end + 0xF) & ~0xF
-    combos_low = combos.lower(combo_graph, *_combo_slot(d), set(d.body.slots),
-                              overflow_va=link_va + combo_at)  # fmt: skip
-    combos.install(rom, combos_low)
-    if combos_low.overflow:
-        end = combo_at + len(combos_low.overflow)
     if end > PAYLOAD_LIMIT:
         raise BuildError(f"payload 0x{end:X} > 0x{PAYLOAD_LIMIT:X}")
     payload = bytearray(end)
     payload[TABLE_RESERVE : TABLE_RESERVE + len(main)] = main
-    payload[stub_base - link_va : stub_base - link_va + len(low_cmd.stubs)] = low_cmd.stubs
-    payload[combo_at : combo_at + len(combos_low.overflow)] = combos_low.overflow
+    payload[stub_base - link_va : end] = low_cmd.stubs
     rom[SCRATCH_ROM : SCRATCH_ROM + end] = payload
     commands.install(rom, clean, low_cmd, SCRATCH_ROM, link_va, indirect=indirect)
     payload = bytearray(rom[SCRATCH_ROM : SCRATCH_ROM + end])  # with the moved tables
