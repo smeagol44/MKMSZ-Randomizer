@@ -215,3 +215,55 @@ def test_host_kind_reaction_uses_the_stock_entry() -> None:
     # Rayden's lightning stand-in: the stock roundhouse launch, no payload reaction code.
     assert lp.host_reaction("launch") == 0x0C
     assert lp.host_reaction("knockback_arc") is None
+
+
+def test_homing_hunt_and_direction_match_the_legacy_model() -> None:
+    """The generic homing flight's steering and direction code (SMRE's constants, Sektor proof
+    v14) against the runtime-confirmed legacy model (actions.robo_tracker: rocket_hunt and
+    point_rocket, proofs v42-v46), run on the MIPS evaluator over many positions and speeds."""
+
+    import random
+
+    from mips_eval import Machine
+
+    from mkmszr.fighter_import import lower_projectile as lp
+    from mkmszr.fighter_import.actions import robo_tracker as trk
+    from mkmszr.fighter_import.mips import REG, Assembler
+
+    h = lp.Homing(((8, 0), (16, 0x8800)), trk.AIM_Y, trk.DETONATE_PX, trk.STEER, trk.HUNT_SPEED, 4,
+                  0x80, trk.START_SPEED, 3, ())  # fmt: skip
+    a = Assembler(0xA0100000)
+    lp._emit_hunt(a, h, "hunt")
+    lp._emit_direction(a, "dir")
+    code = a.link()
+    rnd = random.Random(14)
+    ctrl, target, rocket, sp = 0x80200000, 0x80201000, 0x80202000, 0x80203000
+    for _ in range(300):
+        vx, vy = rnd.randint(-0x60000, 0x60000), rnd.randint(-0x60000, 0x60000)
+        rx, ry = rnd.randint(-40000, 40000) << 8, rnd.randint(-8000, 8000) << 8
+        tx, ty = rx + (rnd.randint(-600, 600) << 8), ry + (rnd.randint(-300, 300) << 8)
+        sum_x, sum_y = vx + rnd.randint(-0x40000, 0x40000), vy + rnd.randint(-0x40000, 0x40000)
+        m = Machine(code, 0xA0100000)
+        m.store(ctrl + 0x6E0, target)
+        for base, x, y in ((target, tx, ty), (rocket, rx, ry)):
+            m.store(base + 0x2C, x)
+            m.store(base + 0x30, y)
+        m.store(sp + lp.SUM_X_SP, sum_x)
+        m.store(sp + lp.SUM_Y_SP, sum_y)
+        m.regs[REG["s1"]], m.regs[REG["s7"]], m.regs[REG["sp"]] = rocket, ctrl, sp
+        m.regs[REG["s2"]], m.regs[REG["s3"]] = vx & 0xFFFFFFFF, vy & 0xFFFFFFFF
+        m.regs[REG["ra"]] = 0x80000010
+        stop = m.run(a.labels["hunt"])
+        assert stop.kind == "return"
+        dx = ((tx - rx) >> 9) - ((sum_x - vx) >> 16)
+        dy = ((ty - ry) >> 9) - ((sum_y - vy) >> 16) + trk.AIM_Y
+        s32 = lambda v: v - (1 << 32) if v & 0x80000000 else v
+        if trk.near(dx, dy):
+            assert m.regs[REG["v0"]] == 1
+        else:
+            assert m.regs[REG["v0"]] == 0
+            assert (s32(m.regs[REG["s2"]]), s32(m.regs[REG["s3"]])) == trk.hunt(vx, vy, dx, dy)
+        m.regs[REG["a0"]], m.regs[REG["a1"]] = vx & 0xFFFFFFFF, vy & 0xFFFFFFFF
+        m.regs[REG["ra"]] = 0x80000010
+        assert m.run(a.labels["dir"]).kind == "return"
+        assert m.regs[REG["v0"]] == trk.direction(vx, vy)

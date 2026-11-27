@@ -377,6 +377,9 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     footsteps: dict[str, tuple[int, ...]] = {}
     effect_art: dict[int, tuple[effects.EffectArt, effects.EffectLayout, dict[str, Any]]] = {}
     fx_info: dict[tuple[str, str], mkt_effects.MktEffect] = {}  # (move, "trail" | "impact")
+    fx_places: dict[str, list[tuple[int, int]]] = {}  # move -> its trail's offset per homing direction
+    projectile_events: dict[int, int] = {}  # projectile sounds hosted so far: fighter sound -> event
+    marker_art: dict[str, tuple[effects.EffectArt, effects.EffectLayout]] = {}  # move -> its crosshair
     report["body"] = body.report
     for move in order:
         tune = d.specials.get(move, {})
@@ -403,6 +406,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             projectile_of[move] = proj
             anim = proj["art"]
             akey = (_int(anim["table"]), _int(anim["slot"]), _int(anim.get("part", 1)))
+            if "homing" in proj:  # its own art: every direction's script (MKT point_rocket)
+                akey = (*akey, 1)  # type: ignore[assignment]
             gkey = (akey, proj["strike"]["reaction"])
             if gkey in groups:
                 groups[gkey].moves.append(move)
@@ -422,10 +427,10 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                                    helper_slot=_int(ptune["helper_slot"]) if "helper_slot" in ptune else None,
                                    throw_rate=int(throw["rate"]),
                                    impact_mirror=impact_mirror(proj, ptune))  # fmt: skip
-                needed = len(lp.projectile_sounds(proj))
+                needed = lp.new_sounds(proj, projectile_events)
                 events, samples_end = lp.install_sounds(
                     rom, clean, mkt, donor_id, proj, tuple(chains.take() for _ in range(needed)),
-                    (samples_end + 0xF) & ~0xF,
+                    (samples_end + 0xF) & ~0xF, projectile_events,
                 )  # fmt: skip
                 stock = lp.host_reaction(proj["strike"]["reaction"])
                 helper_label = f"{move}_helper" if helper is not None else None
@@ -490,7 +495,13 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             report.setdefault("effects_not_lowered", []).append((move, fx))
         for role, eff in _projectile_effects(projectile_of.get(move)):  # Sektor's smoke and explosion
             fx = _int(eff["mkt_fx"])
-            info = mkt_effects.read(mkt, fx, _int(eff["place"]) if "place" in eff else None)
+            if eff.get("place") == "direction":  # one placement entry per homing direction
+                parts = _int(projectile_of[move]["homing"]["directions"]["parts"])
+                placed_by = [mkt_effects.read(mkt, fx, k) for k in range(parts)]
+                fx_places[move] = [(e.dx * lp.UNITS_PER_PX, e.dy * lp.UNITS_PER_PX) for e in placed_by]
+                info = placed_by[0]
+            else:
+                info = mkt_effects.read(mkt, fx, _int(eff["place"]) if "place" in eff else None)
             fx_info[(move, role)] = info
             if fx in effect_art:
                 continue
@@ -505,6 +516,15 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                     "reserve": mkt_effects.TRAIL_RESERVE if role == "trail" else mkt_effects.EFFECT_RESERVE}  # fmt: skip
             effect_art[fx] = (art_fx, placed, spec)
             report.setdefault("mkt_effects", []).append((move, role, fx, hex(placed.offset), len(placed.data)))
+    for move in order:  # a homing projectile's crosshair (MKT: an object from a table-1 frame)
+        proj = projectile_of.get(move)
+        if proj is not None and "homing" in proj:
+            mark = _marker_art(mkt, donor_id, proj["homing"]["marker"]["anim"])
+            placed = effects.layout(mark, _free_from(file87, body.chain_start))
+            if placed.end > body_build.TYPE_END or set(file87[placed.offset : placed.end]) != {0xFF}:
+                raise BuildError(f"{move}: the crosshair art does not fit the fighter file")
+            file87[placed.offset : placed.end] = placed.data
+            marker_art[move] = (mark, placed)
     # His MKT throw routine's own sounds on the host throw's three stages (Sektor's arm: out, throw,
     # in). MKT's grab voice (voice group 3, every fighter) is left out (owner, 2026-11-27: grab
     # sounds dropped for now; Rayden had no sound chain for his).
@@ -572,7 +592,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
             held = ("hold_hp_stamp", _int(held_cond["ticks"]))
         lower_special.emit_gate_condition(a, f"{move}_cond", gate, costs[move], default=default,
                                           cooldown=(f"{move}_cooldown", cooldown_of[move]) if move in cooldown_of else None,
-                                          target_range=lower_special.RELOCATE_RANGE if relocates else None,
+                                          target_range=lower_special.RELOCATE_RANGE if relocates
+                                          or "homing" in projectile_of.get(move, {}) else None,
                                           held=held,
                                           alive=alive, refuse_if=refuse,
                                           airborne=bool(tune.get("airborne") or tune.get("air_start")))  # fmt: skip
@@ -626,12 +647,17 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                                       impact_at_hit=bool(ptune.get("impact_at_hit", True)))  # fmt: skip
             if (move, "trail") in fx_info:  # MKT rocket_smoke: one puff every other donor tick
                 info, every = fx_info[(move, "trail")], _int(projectile_of[move]["trail"]["every"])
-                if every * physics.HOST_HZ != physics.DONOR_HZ or info.dy:
+                if every * physics.HOST_HZ != physics.DONOR_HZ or (info.dy and move not in fx_places):
                     raise BuildError(f"{move}: a trail every {every} donor ticks, {info.dy} px up, is not lowered")
                 low = dataclasses.replace(low, trail=f"fx_{info.fx}", trail_dx=info.dx * lp.UNITS_PER_PX,
                                           trail_front=info.front)  # fmt: skip
             if "offset_px" not in ptune:  # MKT's own spawn offset: drawn as the stock token draws
                 low = dataclasses.replace(low, owner_draw=True, render_position=True)
+            if "homing" in projectile_of[move]:  # MKT's homing flight, smoke by direction, crosshair
+                homing = lp.homing_of(projectile_of[move], g.art)
+                homing = dataclasses.replace(homing, smoke=tuple(fx_places.get(move, ())),
+                                             marker=f"{move}_marker_desc" if move in marker_art else None)  # fmt: skip
+                low = dataclasses.replace(low, homing=homing)
             if (move, "impact") in fx_info:  # at the projectile (MKT rocket_explode_fx)
                 info = fx_info[(move, "impact")]
                 low = dataclasses.replace(low, impact_effect=f"fx_{info.fx}", impact_effect_front=info.front)
@@ -682,6 +708,14 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
         for fx, (art_fx, placed, spec) in effect_art.items():
             effects.emit_descriptor(a, f"fx_{fx}", placed, art_fx, _int(spec["ticks_per_frame"]),
                                     _int(spec["reserve"]))  # fmt: skip
+    for move, (mark, placed) in marker_art.items():  # each crosshair follows its missile's target
+        dx, dy = lp.homing_of(projectile_of[move], lp.ArtLayout(0, 0, None, 0, 0, 0)).marker_offset
+        effects.emit_spawn(a, f"{move}_marker_spawn", process=f"{move}_marker")
+        effects.emit_process(a, f"{move}_marker", follow=(f"{move}_follow", f"{move}_heartbeat", dx, dy),
+                             render_position=True)  # fmt: skip
+        while a.pc() & 3:
+            a.nop()
+        effects.emit_descriptor(a, f"{move}_marker_desc", placed, mark, 1, mkt_effects.EFFECT_RESERVE)
     host.emit_sound_player(a)
     throw_hooks = throw_sounds.emit_hooks(a, throw_events)
     for g in groups.values():
@@ -761,7 +795,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
 
 
 def _gid(g: _Group) -> str:
-    return f"{g.key[0]}_{g.key[1]}_{g.key[2]}" + ("" if g.first else f"_{g.reaction}")
+    homing = "_h" if len(g.key) > 3 else ""  # a homing projectile's own art (directions)
+    return f"{g.key[0]}_{g.key[1]}_{g.key[2]}{homing}" + ("" if g.first else f"_{g.reaction}")
 
 
 def _report_key(g: _Group, groups: dict) -> str:
@@ -771,6 +806,20 @@ def _report_key(g: _Group, groups: dict) -> str:
 def _combo_slot(d: fd.FighterDescription) -> tuple[int | None]:
     table, index = d.body.sources.get(combos.COMBO_SLOT, (0, combos.COMBO_SLOT))
     return (index if table == 1 else None,)
+
+
+def _marker_art(mkt: bytes, donor_id: int, anim: dict[str, Any]) -> effects.EffectArt:
+    """A homing crosshair: the first word of the donor's table-1 script names its image
+    descriptor, whose fourth word is its palette (Sektor's 0x2C64, 0x800BC3D0)."""
+
+    rom = MktRom(mkt)
+    heap = rom.heap_bytes(donor_id)
+    table = rom.table1(donor_id) if _int(anim["table"]) == 1 else rom.table0(donor_id)
+    descriptor = int.from_bytes(heap[table[_int(anim["slot"])] :][:4], "big")
+    start, end = rom.dictionary(donor_id)
+    frame = effects.heap_descriptor_frame(heap, descriptor, mkt[start:end])
+    palette = int.from_bytes(heap[descriptor + 12 : descriptor + 16], "big")
+    return effects.EffectArt((frame,), effects.mkt_palette(mkt, palette))
 
 
 def _projectile_effects(step: dict[str, Any] | None) -> list[tuple[str, dict[str, Any]]]:
