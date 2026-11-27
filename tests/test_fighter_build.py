@@ -482,6 +482,11 @@ def test_sektor_base_on_the_generic_build(roms: tuple[bytes, bytes]) -> None:
     assert 0 < at < len(built.payload) and built.payload[at : at + 12].hex() == "800913030103100204010000"
     made = fb.production(*roms, "sektor-smre")
     assert any(r[0] == 0x800B110C for r in made.manifest["refs"])
+    # proof v06: the teleport uppercut's Low Kick record from MKT's compact table (v04-v05 read it
+    # as a 0x2C-byte record: no command matched); mode 1 (it may start in the air, v05)
+    lk = built.rom[0x800B0F68 - fb.VA_TO_ROM :][: 0x2C]
+    words = [int.from_bytes(lk[k : k + 2], "big") for k in range(0x10, 0x2C, 2)]
+    assert lk[:8] == bytes.fromhex("0040004000000001") and words[:3] == [24, 9, 9] and words[7:9] == [8, 8]
     # proof v04: the teleport uppercut (SMRE), free (a movement ability)
     assert built.report["costs"] == {"teleport_uppercut": 0} and built.report["smre"]["teleport_uppercut"]["unknown"] == []
     # proof v02/v03: his throw's sounds (MKT 0x80042498: arm out / throw / in)

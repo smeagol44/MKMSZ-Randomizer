@@ -103,6 +103,32 @@ def record_at(image: bytes, va: int, delta: int) -> bytes:
     return bytes(image[va - delta : va - delta + RECORD])
 
 
+def _tokens(data: bytes, at: int, count: int) -> list[int]:
+    values = [int.from_bytes(data[at + 2 * k : at + 2 * k + 2], "big") for k in range(count)]
+    return values[: values.index(0)] if 0 in values else values
+
+
+def donor_record(mkt: bytes, va: int, command: dict) -> bytes:
+    """The donor command as a 0x2C-byte record. A declarative MKT record is read as it is; an
+    inline matcher's compact table (Sektor's handlers, SMRE ``inline_command``: u16 window, six
+    facing-right then six facing-left tokens) becomes a record with the program's buttons as its
+    masks and no selector, condition or action (the host power's are used). Which one the
+    address holds is told by the program's tokens and window."""
+
+    rec = record_at(mkt, va, 0x80000000)
+    tokens, window = [int(t) for t in command.get("tokens", [])], command.get("window")
+    if _tokens(rec, 0x12, 6) == tokens and int.from_bytes(rec[0x10:0x12], "big") == window:
+        return rec
+    o = va - 0x80000000
+    if _tokens(mkt, o + 2, 6) == tokens and int.from_bytes(mkt[o : o + 2], "big") == window:
+        raw = command.get("buttons", "")
+        mask = int(raw, 16) if raw and raw != "stick" else 0
+        left = mkt[o + 14 : o + 26]
+        return (mask.to_bytes(2, "big") * 2 + bytes(12) + mkt[o : o + 2] + mkt[o + 2 : o + 14]
+                + left + bytes(2))  # fmt: skip
+    raise CommandError(f"MKT 0x{va:08X} is neither a command record nor a compact table of tokens {tokens}")
+
+
 @dataclass(frozen=True)
 class Command:
     name: str
@@ -402,7 +428,7 @@ def donor_commands(mkt: bytes, moves: list, spec: dict[str, str | None]) -> list
         release = bool(move.command.get("release"))
         if release and buttons != BUTTONS["HP"]:
             raise CommandError(f"{move.name}: only High Punch release commands are lowered")
-        out.append(Command(move.name, va, record_at(mkt, va, 0x80000000), spec[move.name], held, buttons,
+        out.append(Command(move.name, va, donor_record(mkt, va, move.command), spec[move.name], held, buttons,
                            stick, release))  # fmt: skip
     missing = set(spec) - {c.name for c in out}
     if missing:
