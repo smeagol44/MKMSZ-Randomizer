@@ -53,6 +53,7 @@ REACTIONS = {
     "rocket_stumble": "MKT 0x3B (r_rocket -> zap_stumble, push 0x33333): the victim stumbles back",
     "shock_stagger": "MKT 0x80: victim staggers back (0x26666) blinking cyan (its shock palette)",
     "shock_stagger_toward": "MKT 0x81: as 0x80, pushed towards the attacker (towards_x_vel)",
+    "tether_pull": "a projectile reels the struck victim toward its owner, then dazes it",
     "shock_hold": "Rayden's Shocker grab: the victim held and shocked (blinking cyan), then dropped",
     "uppercut": "teleport strike: host uppercut reaction 0x08 (runtime-confirmed teleport)",
     "blocked": "the stock blocked reaction",
@@ -138,6 +139,7 @@ COMPONENTS: dict[str, dict[str, str]] = {
         "checks?": "boxes",
         "homing?": "homing",
         "wrap?": "wrap",
+        "tether?": "tether",
         "impact": "impact",
     },
     # state
@@ -223,6 +225,11 @@ def _check_value(kind: str, value: Any, where: str, errors: list[str]) -> None:
     elif kind == "boxes":
         need(isinstance(value, list) and all(isinstance(b, dict) and set(b) == {"box", "after"}
              for b in value), "checks are [{box, after}]")  # fmt: skip
+    elif kind == "tether":
+        keys = {"reach_px", "pull_speed", "stop_px", "daze_ticks"}
+        need(isinstance(value, dict) and set(value) == keys
+             and all((_int(value[k]) or 0) > 0 for k in keys),
+             "tether needs positive reach_px, pull_speed, stop_px and daze_ticks")
     elif kind == "wrap":
         need(isinstance(value, dict) and set(value) == {"cooldown"} and _int(value["cooldown"]) is not None,
              "wrap is {cooldown}")  # fmt: skip

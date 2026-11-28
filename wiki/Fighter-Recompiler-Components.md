@@ -155,6 +155,12 @@ The native path, without patching the Ice root:
 
 **Proof-only infrastructure** (not production allocations; [memory map](Memory-and-Allocation-Map#proof-only-allocations-generic-projectile-v01v06-2026-11-11)): the teleport proofs' v6 payload arena widened to 2 KiB, file `0x87` relocated and enlarged at ROM `0xF20000`, table-1 slots `0x0D`/`0x12`, samples at `0xF70000` in host chains 335/336, the lifted reaction in dummy reaction slot `0x2B`. Production placement goes through the fighter file and fixed loader (milestone 5).
 
+### Tethered projectile
+
+The `projectile.tether` component carries reach in donor pixels, pull velocity, stop distance and daze time. The MKT reader follows `0x80078AA0 → 0x80078C04 → 0x80078E80` and the contact callbacks `0x80079104 → 0x800796E0`. The wrapper supplies projectile placement. The body importer reads only the cast/recovery phases of the mixed body/rope script. The projectile importer reads the held flight frame and its palette separately. The successful-contact routine installs the pull independently of the initial strike reaction byte, which differs between Cyber Smoke and the ninja variants.
+
+MKMSZ uses the Prison Scorpion draw contract. The projectile actor's `+0x64 & 0x40` enables horizontal clipping, and `+0x104` holds the visible span in texture pixels. The player variant uses the stock class-`0x700` enemy strike path. It accepts the last touched enemy only when the collision has scheduled this tether's reaction at controller `+0x08`. A bounded reaction checks owner action, shared path and wall clearance before advancing the enemy with stock horizontal velocity. It releases through `0x800328FC`. Projectile removal and texture release follow the same ownership as the generic projectile. This lowering is Pending manual validation.
+
 ### Special actions (milestone 4 step 3, 2026-11-11)
 
 `fighter_import.lower_special` turns a move program into a host special in the slot of the Sub-Zero power it replaces.

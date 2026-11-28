@@ -2,6 +2,24 @@
 
 > **Scope:** living progress page for the fixed [Fighter recompiler plan](Fighter-Recompiler-Plan). It records the current milestone, the task list and acceptance checklist agreed when each milestone starts, debt, owner decisions and baseline identities. Update it in the same PR as the work it records. The plan itself is not edited here.
 
+## Cyber Smoke proof v02
+
+**Implementation-confirmed. Manual runtime validation Pending.** The owner asked for spear and pull next using SMRE and deferred the ambient smoke particles. The v01 harness builds v02 with `--version 2`. Use **Back, Back + Low Punch** on the ground. The proof assigns it to Ice Blast's progression slot and stock cost (`0x20`). The v01 build still reproduces byte for byte. v02 SHA-256 `4fef4b694296bbf37aee7b252702c7373494633877fde35d19aab9f197ab5fab`, CRC1/CRC2 `6CBE7949 / CBA9057C`.
+
+SMRE reads the shared MKT tether routine rather than a Smoke move program. It follows the variant child pointer, reads the cast and recovery phases and launch sound, follows the successful-contact handoffs to the pull routine, and resolves each fighter's own strike record and rope frame. Cyber Smoke uses the placement `(-73, 17)` and 250-px rope from his donor record. Scorpion and Human Smoke use `(-20, 0)` and a 234-px rope with their own palette and hitbox. All three donor readings validate using the same engine rule.
+
+MKMSZ draws the donor rope with the stock Prison rope renderer. A compatible grounded enemy is pulled with native actor movement, then held briefly in the stock hit pose and returned through the standard reaction exit. The proof uses the normal cast recovery on contact and one-live-projectile gating. MKT's separate hit reel animation, hit presentation, exact cooldown behavior, and the ambient smoke effect are pending. Check the hit, pull, release, miss and block routes manually, starting on flat ground with a single enemy.
+
+## Cyber Smoke proof v01
+
+**Runtime-confirmed, bounded.** The maintainer reported that v01 works fine and noted the missing ambient smoke particles. It remains an exact reference build. Disposable clean-ROM proof from main `5c03a6d` and supported MKT N64 USA Rev. 2 donor. Uses the existing stage-select and max-EXP harness. Fighter 14 supplies the body, MKT combo graph and standing throw animation. The host supplies common movement and interaction poses where required. Proof SHA-256 `93a6b839ea946d79f34d670eee6d74d75dc8f0a54df93a72c76eb4d138adf1cd`, CRC1/CRC2 `ED1EF83A / 7146C8F4`. Builder `Experimental/FighterRecompilerProofs/MKMSZR_build_cyber-smoke_proof_v01.py`.
+
+- **Teleport Uppercut:** F,F + LK on the ground or in the air, target in range, zero Ice. SMRE reads `0x800ABE70` into the Sektor-style sink/relocate/rise/strike sequence without unknown action operations. Donor opponent-state checks and motion lead are omitted. The host uses its floor and landing handling. Enemy contact, launch, placement and aerial recovery still need a manual run.
+- **Invisibility:** Hold Block, tap Up twice, then press Run. The proof hooks MKMSZ Run press at `0x800A0434`, with a private command table and a guard for Block + Run. Cast animation (table 1, slot `0x0B`) and sound 10 follow the donor. Reuses MKMSZ Eye stealth with Reptile’s Ice-paid timer (64 Ice to cast), ground only. MKT’s `0x80074D04` visibility toggle, repeated-cast cancellation, and effect `0x1E` are open for porting. The effect art needs `0x9058` bytes, over the `0x68FC` bytes available in the body tail before alignment.
+- **Spear:** Omitted. SMRE stops at `0x80078AE0`, `0x80078B08`, `0x80078B10` and `0x80078B20`. The projectile/tether, hit-to-pull callback, victim control and release remain open. Smoke's routine passes `0x80078BBC` to the shared spear setup; trace this path before assuming Scorpion-identical behavior.
+- **Air Throw:** Omitted. Block press uses imperative handler `0x8004D104`, with height and spacing checks and a transfer to `0x8003FF30`. The host airborne capture, positioning and release path remain open.
+- **Presentation:** Smoke's ambient puffs and the rest of his donor-specific presentation remain open. MKMSZ Slide, Super Slide and Polar Blast serve as host abilities in the proof. Full stage and production-composition validation are Pending.
+
 ## Current milestone
 
 **Milestone 6 — next fighters: Rayden** (MKT fighter 24), started 2026-11-13 ([amendment 1](Fighter-Recompiler-Amendment-1): decisions and his power slots). Milestone 4 (Reptile) shipped as a product Fighter option (PRs #209, #210); its record follows below.

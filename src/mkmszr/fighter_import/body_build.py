@@ -937,7 +937,9 @@ def donor_loop_target(donor: Donor, root: int, frames: list[int]) -> int:
     raise LayoutError(f"script 0x{root:X} does not end in a loop the builder can copy")
 
 
-def donor_frames_by_phase(donor: Donor, root: int, starts: set[int]) -> list[list[int]]:
+def donor_frames_by_phase(
+    donor: Donor, root: int, starts: set[int], max_phases: int | None = None
+) -> list[list[int]]:
     """Body frames of the donor script at ``root`` grouped by phase, every token skipped (with its
     operands), up to a jump/stop or the next script start. The frame after a helper step (tokens
     12 and 14) is the helper object's (token 11's actor, e.g. Reptile's forceball forming in his
@@ -949,6 +951,9 @@ def donor_frames_by_phase(donor: Donor, root: int, starts: set[int]) -> list[lis
     for _ in range(4 * MAX_SCRIPT_WORDS):
         v = donor.m32(pos)
         if v == 0:
+            # Some roots continue into projectile data after the requested body phases.
+            if max_phases is not None and sum(bool(phase) for phase in phases) >= max_phases:
+                break
             phases.append([])
             pos += 4
             if pos in starts:
@@ -1371,7 +1376,7 @@ def build_body(description: FighterDescription, clean: bytes, mkt: bytes, extras
     if body_d.secondary_scripts:
         _t1 = MktRom(donor.mkt).table1(donor.fighter_id)
         _starts = set(donor.table0) | set(_t1)
-    new_scripts = {s: donor_frames_by_phase(donor, (donor.table0 if t == 0 else _t1)[i], _starts)[:n]
+    new_scripts = {s: donor_frames_by_phase(donor, (donor.table0 if t == 0 else _t1)[i], _starts, n)
                    for s, (t, i, n) in body_d.secondary_scripts.items()}  # fmt: skip
     for s in body_d.reverse_scripts:  # backwards from the last but one (MKT ani_backward)
         flat = [r for p in new_scripts[s] for r in p]
