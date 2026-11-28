@@ -1,0 +1,102 @@
+{
+  "format": 1,
+  "id": "cyber-smoke",
+  "display_name": "Cyber Smoke",
+  "title": "SMOKE",
+  "donor": {
+    "game": "MKT-N64-USA-Rev2",
+    "fighter_id": 14,
+    "name": "SMOKE"
+  },
+  "body": {
+    "slots": [
+      "0x00",
+      "0x01",
+      "0x02",
+      "0x03",
+      "0x04",
+      "0x05",
+      "0x06",
+      "0x07",
+      "0x08",
+      "0x09",
+      "0x0A",
+      "0x0B",
+      "0x0C",
+      "0x0E",
+      "0x0F",
+      "0x10",
+      "0x11",
+      "0x12",
+      "0x13",
+      "0x14",
+      "0x15",
+      "0x16",
+      "0x17",
+      "0x18",
+      "0x19",
+      "0x1A",
+      "0x1B",
+      "0x1C",
+      "0x1D",
+      "0x1E",
+      "0x1F",
+      "0x20",
+      "0x21",
+      "0x22"
+    ],
+    "run": {
+      "mkt_slot": "0x4A",
+      "host_rate": 3
+    },
+    "colour": {
+      "depth": 16,
+      "method": "auto"
+    },
+    "common_animations": [
+      "slide",
+      "death",
+      "long_fall",
+      "pickup",
+      "grabbed"
+    ],
+    "phase_slots": {
+      "0x23": "scale"
+    },
+    "secondary_scripts": {
+      "0x44": "table0:0x0D:1",
+      "0x45": "table1:0x03:1",
+      "0x46": "table1:0x0B:1"
+    }
+  },
+  "commands": {
+    "teleport_uppercut": "directional_ice_down",
+    "invisibility": "freeze_on_contact"
+  },
+  "remove_commands": [
+    "directional_ice_up",
+    "ice_blast",
+    "ice_clone",
+    "spine_rip"
+  ],
+  "specials": {
+    "teleport_uppercut": {
+      "donor_ticks": 2,
+      "air_start": true
+    },
+    "invisibility": {
+      "face": false,
+      "donor_ticks": 2,
+      "stealth": {
+        "period": 6,
+        "drain": 1
+      }
+    }
+  },
+  "smre": {
+    "teleport_uppercut": "0x800ABE70"
+  },
+  "costs": {
+    "invisibility": "0x40"
+  }
+}
