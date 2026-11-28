@@ -124,3 +124,27 @@ def test_sektor_specials_read_completely() -> None:
     assert {m.action for m in moves} == SEKTOR
     for m in moves:
         assert m.unknown_calls == [], hex(m.action)
+
+
+@needs_mkt
+@pytest.mark.parametrize(
+    ("fighter", "record", "offset", "width", "palette"),
+    [
+        (14, 0x800ABFB8, [-73, 17], 250, 0x800BC46C),
+        (18, 0x800AC640, [-20, 0], 234, 0x800BEC38),
+        (22, 0x800AC640, [-20, 0], 234, 0x800BEC38),
+    ],
+)
+def test_shared_tether_preserves_each_donors_data(fighter, record, offset, width, palette):
+    from mkmszr.fighter_import import components, generate
+
+    program, result, _ = generate.Generator(Path(MKT).read_bytes(), fighter).program("spear", record)
+    assert not result.unknown
+    components.validate_programs({"format": 1, "moves": [program]})
+    projectile = next(step for step in program["steps"] if step["op"] == "projectile")
+    assert projectile["offset"] == offset
+    assert projectile["palette"] == palette
+    assert projectile["tether"] == {
+        "reach_px": width, "pull_speed": 0x66666, "stop_px": 52, "daze_ticks": 64,
+    }
+    assert projectile["strike"]["reaction"] == "tether_pull"

@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "moves": [
+    {
+      "name": "invisibility",
+      "command": {
+        "src": "MKT 0x800ABFE8",
+        "buttons": "0x10",
+        "tokens": [
+          6,
+          6
+        ],
+        "window": 40
+      },
+      "steps": [
+        {
+          "op": "begin",
+          "face": false,
+          "stop": true,
+          "src": {
+            "face": "MKT 0x80074CB4",
+            "stop": "MKT 0x80074CB4",
+            "action_mkt": "host"
+          },
+          "action_mkt": 0
+        },
+        {
+          "op": "animate",
+          "anim": {
+            "table": 1,
+            "slot": 11
+          },
+          "rate": 2,
+          "until": "phase_end",
+          "src": {
+            "anim": "MKT 0x80074CC8",
+            "rate": "MKT 0x80074CC8",
+            "until": "MKT 0x80074CC8"
+          }
+        },
+        {
+          "op": "sound",
+          "sound": {
+            "fighter": 10
+          },
+          "src": {
+            "sound": "MKT 0x80074CD0"
+          }
+        },
+        {
+          "op": "sleep",
+          "ticks": 6,
+          "src": {
+            "ticks": "MKT 0x80074CE0"
+          }
+        },
+        {
+          "op": "stealth"
+        },
+        {
+          "op": "end"
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "move": "invisibility",
+      "what": "SMRE cannot lower the Run trigger and donor invisibility toggle. The proof shim supplies the original input and reuses the host Eye stealth timer. Donor effect 0x1E exceeds the available stock-size type-5 tail."
+    },
+    {
+      "move": "spear",
+      "what": "SMRE stops before projectile and victim transfer."
+    },
+    {
+      "move": "air_throw",
+      "what": "The Block event runs a direct air-throw handler outside the command tables."
+    }
+  ]
+}

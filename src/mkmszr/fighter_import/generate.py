@@ -1356,6 +1356,104 @@ def _object_here(w: _Walk, c: dc.Call, a: list) -> list[dict]:
     return []
 
 
+def _tether(w: _Walk, c: dc.Call, args: list) -> list[dict]:
+    """Lift the shared tether routine from its caller, child, hit and release callbacks.
+
+    Read the linear call sites because the two animation-rate paths in the cast join
+    before the launch. The child is an argument of the shared routine, so variants
+    can use the same lowering with different placement.
+    """
+    if args[0] is None:
+        w.unknown(f"0x{c.pc:08X}: tether without a child callback")
+        return []
+    rom = w.gen.mkt
+
+    def calls(entry: int) -> list[reading.Call]:
+        return reading.read(rom, entry & 0xFFFFFFFF).calls
+
+    def named(body: list[reading.Call], name: str) -> reading.Call:
+        return next(call for call in body if call.name == name)
+
+    def src(pc: int) -> str:
+        return f"MKT 0x{pc:08X}"
+
+    try:
+        cast = calls(c.target)
+        begin = named(cast, "begin_special")
+        anims = [call for call in cast if call.name == "animate_table1"]
+        fast, normal = sorted(anims, key=lambda call: call.args[0])
+        named(cast, "proj_process")
+        visual = calls(named(cast, "tether_spawn_visual").target)
+        sound = named(visual, "ft_sound")
+        speed = named(cast, "proj_set_xvel")
+        wait = named(cast, "process_sleep")
+        recovery = next(call for call in cast if call.target == 0x8000DFA8)
+        variant = named(calls(args[0]), "tether_flight")
+        flight = calls(variant.target)
+        select = named(flight, "get_char_ani")
+        part = named(flight, "find_part")
+        check = named(flight, "proj_strike_check")
+        contact = named(flight, "tether_contact")
+        reel = named(calls(contact.target), "give_routine")
+        release = named(calls(reel.args[1]), "give_routine")
+        if w.gen.names.get(reel.args[1]) != "tether_reel" or w.gen.names.get(release.args[1]) != "tether_pull":
+            raise ValueError("unrecognized tether handoff")
+        pull = calls(release.args[1])
+        pull_speed = named(pull, "towards_x_vel")
+        code = reading.extent(rom, release.args[1])
+        stop = next(ins for ins in code if ins.op == "slti" and ins.imm > 0)
+        # The daze countdown is initialized after the victim switches to its dazed animation.
+        rate = named(pull, "init_anirate")
+        timer = next(stmt for stmt in dc.decompile(rom, release.args[1])
+                     if isinstance(stmt, dc.Store) and stmt.pc > rate.pc
+                     and stmt.off == 0x444 and stmt.value.const() is not None)
+        if any(x is None for x in (*variant.args[:2], *select.args[:2], part.args[0],
+                                   check.args[1], speed.args[1], pull_speed.args[2],
+                                   wait.args[0], normal.args[0], recovery.args[0])):
+            raise ValueError("missing tether parameter")
+        strike = w.gen.strike_index(check.args[1])
+        if strike is None:
+            raise ValueError("missing tether strike record")
+        # The record's reaction is the initial hit. The shared contact routine above
+        # installs the actual reel/pull independently of that per-fighter record.
+        strike["reaction"] = "tether_pull"
+        art = {"table": select.args[0], "slot": select.args[1], "part": part.args[0]}
+        from .lower_projectile import Donor, donor_part
+        donor = Donor(rom, w.gen.fighter)
+        frames = donor_part(donor, art, first_only=True).frames
+        reach = donor.frame(frames[0])["w"]
+        shape = donor.parts(frames[0])[0]
+        palette = donor.m32(shape + 12)
+        hold = {"reach_px": reach, "pull_speed": pull_speed.args[2], "stop_px": stop.imm,
+                "daze_ticks": timer.value.const()}
+        strike_va = w.gen.word(w.gen.word(STRIKE_TABLE + 4 * w.gen.fighter) + 4 * check.args[1])
+    except (AttributeError, IndexError, StopIteration, TypeError, ValueError) as exc:
+        w.unknown(f"0x{c.pc:08X}: tether sequence: {exc}")
+        return []
+    dx, dy = (v - 0x100000000 if v >= 0x80000000 else v for v in variant.args[:2])
+    w.note("MKT switches to a separate hit reel animation and checks two cooldown stamps; "
+           "the host proof uses the regular cast recovery and one-live-projectile gate")
+    w.note("MKT has distinct collision and rope objects; the host drives a single clipped rope "
+           f"at the rope tip (pull stop {src(stop.pc)}, daze {src(timer.pc)})")
+    return [
+        *_provenance(_begin_special(w, c, list(begin.args)), begin.pc),
+        {"op": "animate", "anim": {"table": 1, "slot": normal.args[1]},
+         "rate": normal.args[0], "rate_reacting": fast.args[0], "until": "phase_end",
+         "src": {"anim": src(normal.pc), "rate": src(normal.pc),
+                 "rate_reacting": src(fast.pc), "until": src(normal.pc)}},
+        *_provenance([{"op": "sound", "sound": {"fighter": sound.args[0]}}], sound.pc),
+        {"op": "projectile", "art": art, "offset": [dx, dy], "speed": speed.args[1],
+         "rate": 1, "strike": strike, "palette": palette, "tether": hold,
+         "impact": {"end": "reel"},
+         "src": {"art": src(part.pc), "offset": src(variant.pc), "speed": src(speed.pc),
+                 "rate": "host", "strike": src(strike_va), "palette": src(part.pc),
+                 "tether": src(release.args[1]), "impact": src(contact.pc)}},
+        *_provenance([{"op": "sleep", "ticks": wait.args[0]}], wait.pc),
+        *_provenance([{"op": "finish", "rate": recovery.args[0]}], recovery.pc),
+        {"op": "end"},
+    ]
+
+
 # ---- projectiles ---------------------------------------------------------------------------------
 # A projectile process (MKT ``proj_process``' child) reads as: its art (get_char_ani / find_part /
 # skip_frame; a part played to its end first with mframew is the forming part), close-range
@@ -1883,6 +1981,7 @@ CALL_RULES = {
     "shake_object": _shake_object,
     "ani_frame_at_t0": _frame_at,
     "proj_process": _projectile,
+    "tether_setup": _tether,
     "proj_object_here": _object_here,
     "new_object": _new_object,
     "ani_frame_at": _frame_at_t1,

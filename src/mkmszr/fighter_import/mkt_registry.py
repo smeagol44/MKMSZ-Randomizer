@@ -47,6 +47,15 @@ def _g(name: str, effect: str, evidence: str = _M) -> MktRoutine:
 _S = "SMRE grab rule, 2026-11-27 (Wiki Fighter-Recompiler-Status, SMRE step 2; static reading)"
 
 REGISTRY: dict[int, MktRoutine] = {
+    0x80078AA0: _e("tether_setup", "a0 = variant child wrapper",
+                   "shared spear cast, rope spawn, flight and miss recovery"),
+    0x8007956C: _e("tether_spawn_visual", "", "rope object and launch sound"),
+    0x80078C04: _e("tether_flight", "a0 = x, a1 = y",
+                   "spear collision and rope length loop"),
+    0x80078E80: _e("tether_contact", "", "spear contact, victim handoff and owner follow-up"),
+    0x80079104: _e("tether_reel", "", "spear reel and second victim handoff"),
+    0x800796E0: _e("tether_pull", "", "victim moves toward owner, then stays dizzy"),
+
     # -- grabs (SMRE step 2) ------------------------------------------------------------------
     0x8006CBE4: _e("grab_refused", "", "0x8000 when the opponent cannot be grabbed now (airborne, "
                    "busy, unsettled; Rayden's Shocker)", _S),

@@ -308,9 +308,12 @@ class _Pool:
 
 
 def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
-          indirect: dict[str, int] | None = None) -> Built:  # fmt: skip
+          indirect: dict[str, int] | None = None,
+          description: fd.FighterDescription | None = None) -> Built:
     validate_mkt_n64_rev2(mkt)
-    d = fd.load(name)
+    d = description if description is not None else fd.load(name)
+    if d.id != name:
+        raise BuildError("fighter description ID does not match the build name")
     donor_id = d.donor_fighter_id
     donor = body_build.Donor(mkt, donor_id)
     rom = bytearray(clean)
@@ -326,6 +329,23 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
     for move in order:
         if move not in programs:
             raise BuildError(f"{move}: no move program")
+
+    scripts = dict(d.body.secondary_scripts)
+    for move in order:
+        steps = programs[move].steps
+        if not any(step["op"] == "projectile" and "tether" in step for step in steps):
+            continue
+        cast = next(step["anim"] for step in steps if step["op"] == "animate")
+        root = (_int(cast["table"]), _int(cast["slot"]))
+        phases = 2 if any(step["op"] == "finish" for step in steps) else 1
+        if not any((table, slot) == root and count >= phases
+                   for table, slot, count in scripts.values()):
+            key = next((k for k in range(body_build.VIRTUAL_SCRIPT, 0x80) if k not in scripts), None)
+            if key is None:
+                raise BuildError(f"{move}: no virtual animation slot for the tether cast")
+            scripts[key] = (*root, phases)
+    if scripts != d.body.secondary_scripts:
+        d = dataclasses.replace(d, body=dataclasses.replace(d.body, secondary_scripts=scripts))
 
     # ---- body, file 0x87 ------------------------------------------------------------------
     body = body_build.build_body(d, clean, mkt, body_build.Extras(), rom=rom)
@@ -426,7 +446,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                                    helper=helper,
                                    helper_slot=_int(ptune["helper_slot"]) if "helper_slot" in ptune else None,
                                    throw_rate=int(throw["rate"]),
-                                   impact_mirror=impact_mirror(proj, ptune))  # fmt: skip
+                                   impact_mirror=impact_mirror(proj, ptune),
+                                   render_dy_px=_int(ptune.get("render_dy_px", 0)))  # fmt: skip
                 needed = lp.new_sounds(proj, projectile_events)
                 events, samples_end = lp.install_sounds(
                     rom, clean, mkt, donor_id, proj, tuple(chains.take() for _ in range(needed)),

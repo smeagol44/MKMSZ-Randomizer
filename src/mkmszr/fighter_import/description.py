@@ -79,7 +79,8 @@ Body fields:
   `sleep_ticks`, hit window `strike_ticks` in donor ticks, `turn_back` (its `face` steps turn
   back instead: the reversed lightning), the
   torpedo carry's grab point `carry`: `dx_px`, `dy_px`; `projectile`: `impact_toward_px`,
-  the impact moved that many pixels toward the attacker; `strike_in_flight`, a homing
+  the impact moved that many pixels toward the attacker; `render_dy_px` moves the flight
+  sprite down without changing its collision placement; `strike_in_flight`, a homing
   projectile hits what it touches while it flies: Sektor's homing missile, owner 2026-11-27;
   MKT checks its strike only when it explodes), in the
   order the moves are built.
