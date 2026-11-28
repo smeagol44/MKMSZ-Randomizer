@@ -2,9 +2,19 @@
 
 > **Scope:** living progress page for the fixed [Fighter recompiler plan](Fighter-Recompiler-Plan). It records the current milestone, the task list and acceptance checklist agreed when each milestone starts, debt, owner decisions and baseline identities. Update it in the same PR as the work it records. The plan itself is not edited here.
 
+## Cyber Smoke proof v03
+
+**Implementation-confirmed, manual validation Pending.** Maintainer's v02 test showed the rope too high, a long cast lock and enemies resuming without a visible daze. The v03 harness uses `--version 3`. Use **Back, Back + Low Punch** on the ground. SHA-256 `dab873d785d92d43a7e65c1fd57111257a4c2d9995a7c4b4208a9ab31b7c0435`, CRC1/CRC2 `6CBE7A49 / A029610B`.
+
+- **Rope:** The screenshot calibration moves the flight sprite down 10 source pixels through its draw anchor. The donor collision offset and strike record are unchanged.
+- **Caster recovery:** The post-launch hold is 8 donor ticks instead of 48, or 4 instead of 24 host updates before the closing animation. The projectile now verifies that its launch actor is still the live player and can finish the pull after Smoke regains control.
+- **Victim daze:** Arrival, a wall stop or a stalled reel now enter the daze callback after a valid capture. The callback keeps normal hit-reaction ownership and holds the victim's last stock hit pose when available. SMRE reads 64 donor ticks and lowers them to 32 gameplay updates, approximately one second at 30 Hz. The victim can take a follow-up hit during this hold.
+
+The accepted v01 ROM still reproduces byte for byte. Commit `952fc3b4f6371464b50ee62a59158c9004840ef0` retains the exact v02 builder.
+
 ## Cyber Smoke proof v02
 
-**Implementation-confirmed. Manual runtime validation Pending.** The owner asked for spear and pull next using SMRE and deferred the ambient smoke particles. The v01 harness builds v02 with `--version 2`. Use **Back, Back + Low Punch** on the ground. The proof assigns it to Ice Blast's progression slot and stock cost (`0x20`). The v01 build still reproduces byte for byte. v02 SHA-256 `4fef4b694296bbf37aee7b252702c7373494633877fde35d19aab9f197ab5fab`, CRC1/CRC2 `6CBE7949 / CBA9057C`.
+**Runtime-confirmed, bounded, correction requested.** The owner confirmed the spear and pull and reported the three v03 issues above. The owner asked for spear and pull next using SMRE and deferred the ambient smoke particles. The v01 harness builds v02 with `--version 2`. Use **Back, Back + Low Punch** on the ground. The proof assigns it to Ice Blast's progression slot and stock cost (`0x20`). The v01 build still reproduces byte for byte. v02 SHA-256 `4fef4b694296bbf37aee7b252702c7373494633877fde35d19aab9f197ab5fab`, CRC1/CRC2 `6CBE7949 / CBA9057C`.
 
 SMRE reads the shared MKT tether routine rather than a Smoke move program. It follows the variant child pointer, reads the cast and recovery phases and launch sound, follows the successful-contact handoffs to the pull routine, and resolves each fighter's own strike record and rope frame. Cyber Smoke uses the placement `(-73, 17)` and 250-px rope from his donor record. Scorpion and Human Smoke use `(-20, 0)` and a 234-px rope with their own palette and hitbox. All three donor readings validate using the same engine rule.
 

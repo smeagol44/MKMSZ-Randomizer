@@ -21,7 +21,7 @@ each; for this actor ``0x80031208``'s +y is down, as the donor's.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from . import effects, host, physics, sound
@@ -359,6 +359,7 @@ def place_art(
     helper_slot: int | None = None,
     throw_rate: int = 0,
     impact_mirror: bool = False,
+    render_dy_px: int = 0,
 ) -> ArtLayout:
     """Put the projectile's art in the fighter file and point table-1 ``slots`` (empty in
     stock) at its flight and impact scripts. By default it is appended; with ``at`` it is
@@ -410,8 +411,10 @@ def place_art(
     frames = [_frame(donor, r, 0) for _, r in keys]
     if "tether" in step:
         # Donor clips from a left-origin rope object. MKMSZ clips back from the tip.
-        frames = [effects.EffectFrame(f.width, f.height, f.width, f.anchor_y, f.indices)
-                  for f in frames]
+        frames = [replace(f, anchor_x=f.width) for f in frames]
+    if render_dy_px:
+        # The host subtracts the frame's Y anchor from its projected position.
+        frames = [replace(f, anchor_y=f.anchor_y - render_dy_px) for f in frames]
     if impact is not None:
         impact_palette = (
             list(effects.mkt_palette(mkt, impact.palette)) if impact.palette else flight_palette
@@ -886,6 +889,12 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         a.li("t1", 1)
         a.sw("t1", 0, "t0")
     host.load_controller(a)
+    if p.tether is not None:
+        # The clone still owns the launching actor until projectile_build replaces it.
+        a.la("t0", data + "owner")
+        a.sw("s1", 0, "t0")
+        a.la("t0", data + "victim")
+        a.sw("zero", 0, "t0")
     if p.behind_owner:  # the owner's layer, while the clone's actor is still his
         a.lhu("t0", ACTOR_SUBLAYER, "s1")
         a.sw("t0", OWNER_SUBLAYER_SP, "sp")
@@ -1014,7 +1023,7 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
             a.label(prefix + "no_hum")
         if p.tether is not None:
             host.load_controller(a)
-            emit_tether_length(a, prefix + "flight_span", p.tether, prefix + "done")
+            emit_tether_length(a, prefix + "flight_span", data, p.tether, prefix + "done")
             a.beqz("t0", prefix + "flight_outside")
         collide(data + "record", prefix + "on_contact")
         if p.tether is not None:
@@ -1146,6 +1155,11 @@ def emit_process(a: Assembler, p: Lowered, child: str = "projectile", player: st
         a.addiu("s2", "s2", -1)
         a.bnez("s2", prefix + "impact_loop")
     a.label(prefix + "done")
+    if p.tether is not None:
+        a.la("t0", data + "owner")
+        a.sw("zero", 0, "t0")
+        a.la("t0", data + "victim")
+        a.sw("zero", 0, "t0")
     if p.homing is not None:  # its crosshair goes (the follower sees no target)
         a.la("t0", prefix + "follow")
         a.sw("zero", 0, "t0")
@@ -1595,28 +1609,37 @@ def emit_data(a: Assembler, p: Lowered, base: int, clean: bytes | None = None, d
 TETHER_RENDER = 0x40
 TETHER_LENGTH = 0x104
 TETHER_VICTIM_ROOT = 0x20
-TETHER_OWNER_ACTION = 0x603  # lower_special.ICE_ACTION_ID
+TETHER_SELECT_LAST_FRAME = 0x8003044C  # the native spear uses the last recoil frame
 TETHER_VICTIM_ACTION = 0x11A  # native rope exchange marker
 CTRL_SCHEDULED_PC = 0x08  # 0x80032CD4 installs a new reaction entry here
 TETHER_RELEASE = 0x800328FC
 TETHER_WALL_MARGIN = 16  # whole world units; leave a small margin at a blocking wall
-TETHER_PULL_LIMIT = 40  # host ticks; bounded if the victim cannot make progress
+TETHER_PULL_LIMIT = 40  # host ticks
+TETHER_STALL_LIMIT = 3  # consecutive passes with no approach
+TETHER_PREV_GAP = 0x30
+TETHER_STALL = 0x34
 
 
-def _tether_owner(a: Assembler, out: str, done: str) -> None:
-    a.lui(out, host.hi(host.PLAYER_CTRL))
-    a.lw(out, host.lo(host.PLAYER_CTRL), out)
-    a.beqz(out, done)
-    a.lhu("t1", host.CTRL_ACTION_ID, out)
-    a.li("t2", TETHER_OWNER_ACTION)
-    a.bne("t1", "t2", done)
-    a.lw(out, host.CTRL_ACTOR, out)
-    a.beqz(out, done)
+def _tether_owner(a: Assembler, data: str, done: str) -> None:
+    """Load the active launch actor into t3, independently of its current action."""
+    a.lui("t3", host.hi(host.PLAYER_CTRL))
+    a.lw("t3", host.lo(host.PLAYER_CTRL), "t3")
+    a.beqz("t3", done)
+    a.lhu("t1", CTRL_HEALTH, "t3")
+    a.beqz("t1", done)
+    a.lhu("t1", host.CTRL_STATE_FLAGS, "t3")
+    a.andi("t1", "t1", HIT_REACTION_BIT)
+    a.bnez("t1", done)
+    a.lw("t3", host.CTRL_ACTOR, "t3")
+    a.beqz("t3", done)
+    a.la("t1", data + "owner")
+    a.lw("t1", 0, "t1")
+    a.bne("t3", "t1", done)
 
 
-def emit_tether_length(a: Assembler, tag: str, tether: Tether, done: str) -> None:
+def emit_tether_length(a: Assembler, tag: str, data: str, tether: Tether, done: str) -> None:
     """Clip the long rope sprite to the forward distance from the owner to its tip."""
-    _tether_owner(a, "t3", done)
+    _tether_owner(a, data, done)
     a.lw("t0", host.ACTOR_X, "s1")
     a.lw("t2", host.ACTOR_X, "t3")
     a.subu("t0", "t0", "t2")
@@ -1639,7 +1662,7 @@ def emit_tether_contact(a: Assembler, prefix: str, data: str, tether: Tether) ->
     done = prefix + "done"
     host.load_controller(a)
     a.sw("zero", host.ACTOR_XVEL, "s1")
-    _tether_owner(a, "t3", done)
+    _tether_owner(a, data, done)
     a.lui("t0", host.hi(host.PLAYER_CTRL))
     a.lw("t0", host.lo(host.PLAYER_CTRL), "t0")
     a.lw("s5", host.CTRL_OPPONENT, "t0")
@@ -1654,7 +1677,7 @@ def emit_tether_contact(a: Assembler, prefix: str, data: str, tether: Tether) ->
     a.bltz("t0", done)
     a.la("t0", data + "victim")
     a.sw("s5", 0, "t0")
-    a.li("s7", TETHER_PULL_LIMIT)
+    a.li("s7", TETHER_PULL_LIMIT + 2)  # the victim can start a scheduler pass later
     a.label(prefix + "reel")
     a.move("a0", "s6")
     a.li("a1", 0xFFFF)
@@ -1676,7 +1699,7 @@ def emit_tether_contact(a: Assembler, prefix: str, data: str, tether: Tether) ->
     for field in (host.ACTOR_PATH, host.ACTOR_PATH_PARAM, host.ACTOR_X, host.ACTOR_Z):
         a.lw("t0", field, "t4")
         a.sw("t0", field, "s1")
-    emit_tether_length(a, prefix + "reel_span", tether, prefix + "reel_done")
+    emit_tether_length(a, prefix + "reel_span", data, tether, prefix + "reel_done")
     a.move("a0", "s1")
     a.jal(F_ADVANCE)
     a.li("a0", 1)
@@ -1684,15 +1707,30 @@ def emit_tether_contact(a: Assembler, prefix: str, data: str, tether: Tether) ->
     a.addiu("s7", "s7", -1)
     a.bnez("s7", prefix + "reel")
     a.label(prefix + "reel_done")
-    a.la("t0", data + "victim")
-    a.sw("zero", 0, "t0")
     a.beq("zero", "zero", done)
+
+
+def _tether_pose(a: Assembler, tag: str, *, last: bool = False) -> None:
+    """Show a frame from the stock hit root when the victim's current file supplies it."""
+    host.load_controller(a)
+    a.lw("t0", host.ACTOR_FILE_BASE, "s1")
+    a.beqz("t0", tag)
+    a.lw("t1", 4 * TETHER_VICTIM_ROOT, "t0")
+    a.blez("t1", tag)  # 0 or -1 is an absent root on split resources
+    a.move("a0", "zero")
+    a.li("a1", TETHER_VICTIM_ROOT)
+    a.jal(F_SELECT)
+    if last:
+        a.jal(TETHER_SELECT_LAST_FRAME)
+    host.load_controller(a)
+    host.advance_animation(a)
+    a.label(tag)
 
 
 def emit_tether_reaction(a: Assembler, data: str, tether: Tether) -> None:
     """Player-side variant of the native rope reaction, using ordinary enemy motion and exit."""
     label = data + "reaction"
-    a.addiu("sp", "sp", -0x30)
+    a.addiu("sp", "sp", -0x38)
     a.sw("s0", 0x18, "sp")
     a.sw("s1", 0x1C, "sp")
     a.sw("s2", 0x20, "sp")
@@ -1715,18 +1753,18 @@ def emit_tether_reaction(a: Assembler, data: str, tether: Tether) -> None:
         a.jal(fn)
     host.load_controller(a)
     host.stop(a)
-    a.move("a0", "zero")
-    a.li("a1", TETHER_VICTIM_ROOT)
-    a.jal(F_SELECT)
-    host.load_controller(a)
-    host.advance_animation(a)
+    _tether_pose(a, label + "_pull_pose")
     a.li("s2", TETHER_PULL_LIMIT)
+    a.li("t0", 0x7FFFFFFF)
+    a.sw("t0", TETHER_PREV_GAP, "sp")
+    a.li("t0", TETHER_STALL_LIMIT)
+    a.sw("t0", TETHER_STALL, "sp")
     a.label(label + "_pull")
     host.load_controller(a)
     a.la("t0", data + "victim")
     a.lw("t1", 0, "t0")
     a.bne("t1", "s0", label + "_out")
-    _tether_owner(a, "t3", label + "_out")
+    _tether_owner(a, data, label + "_out")
     a.lw("t0", host.ACTOR_PATH, "t3")
     a.lw("t1", host.ACTOR_PATH, "s1")
     a.bne("t0", "t1", label + "_out")
@@ -1737,6 +1775,17 @@ def emit_tether_reaction(a: Assembler, data: str, tether: Tether) -> None:
     a.li("t1", tether.stop_px * UNITS_PER_PX << 8)
     a.slt("t0", "t1", "t2")
     a.beqz("t0", label + "_daze")
+    # Fighter separation can stop the victim outside the donor's distance.
+    a.lw("t0", TETHER_PREV_GAP, "sp")
+    a.slt("t1", "t2", "t0")
+    a.sw("t2", TETHER_PREV_GAP, "sp")
+    a.li("t0", TETHER_STALL_LIMIT)
+    a.bnez("t1", label + "_stall_count")
+    a.lw("t0", TETHER_STALL, "sp")
+    a.addiu("t0", "t0", -1)
+    a.beqz("t0", label + "_daze")
+    a.label(label + "_stall_count")
+    a.sw("t0", TETHER_STALL, "sp")
     a.move("a0", "s1")
     a.addiu("a1", "sp", 0x10)
     a.addiu("a2", "sp", 0x14)
@@ -1751,19 +1800,19 @@ def emit_tether_reaction(a: Assembler, data: str, tether: Tether) -> None:
     a.lw("t0", 0x10, "sp")
     a.label(label + "_wall")
     a.slti("t0", "t0", TETHER_WALL_MARGIN)
-    a.bnez("t0", label + "_out")
+    a.bnez("t0", label + "_daze")
     a.move("a0", "s1")
     a.jal(0x8002B1EC)  # native horizontal velocity setter (walkway and ordinary motion)
     host.sleep_tick(a)
     a.addiu("s2", "s2", -1)
     a.bnez("s2", label + "_pull")
-    a.beq("zero", "zero", label + "_out")
     a.label(label + "_daze")
     a.la("t0", data + "victim")
     a.sw("zero", 0, "t0")
     host.stop(a)
-    a.li("a0", tether.daze_ticks)
-    a.jal(F_SLEEP)
+    _tether_pose(a, label + "_daze_pose", last=True)
+    # The victim's own routine keeps its hit state after the rope or owner leaves.
+    host.sleep_ticks(a, tether.daze_ticks, label + "_dazing")
     a.label(label + "_out")
     host.load_controller(a)
     a.la("t0", data + "victim")
@@ -1782,9 +1831,11 @@ def emit_tether_reaction(a: Assembler, data: str, tether: Tether) -> None:
     a.lw("s2", 0x20, "sp")
     a.lw("s3", 0x24, "sp")
     a.lw("ra", 0x28, "sp")
-    a.addiu("sp", "sp", 0x30)
+    a.addiu("sp", "sp", 0x38)
     a.j(TETHER_RELEASE)
     a.label(data + "victim")
+    a.raw(0)
+    a.label(data + "owner")
     a.raw(0)
 
 

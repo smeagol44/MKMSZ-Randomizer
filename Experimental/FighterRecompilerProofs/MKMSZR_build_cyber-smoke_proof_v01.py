@@ -84,20 +84,24 @@ def build(
     if hashlib.sha256(clean).hexdigest() != proof_harness.v01.CLEAN_SHA256:
         raise ValueError("Expected the clean MKMSZ USA Rev. 0 ROM")
     fighter = description.load("cyber-smoke")
-    if version == 2:
+    if version == 3:
         # Select the donor command and route it to Ice Blast in the disposable proof.
         # SMRE reads the move from MKT, including the child callback and strike.
         fighter = replace(
             fighter,
             smre={**fighter.smre, "spear": 0x800ABFB8},
             commands={**fighter.commands, "spear": "ice_blast"},
-            specials={**fighter.specials, "spear": {"donor_ticks": 2}},
+            specials={
+                **fighter.specials,
+                "spear": {"donor_ticks": 2, "sleep_ticks": 8,
+                          "projectile": {"render_dy_px": 10}},
+            },
             remove_commands=tuple(power for power in fighter.remove_commands if power != "ice_blast"),
         )
     elif version != 1:
         raise ValueError("Unknown Cyber Smoke proof version")
     built = fighter_build.build(clean, mkt, "cyber-smoke", description=fighter)
-    if version == 2 and built.report["smre"]["spear"]["unknown"]:
+    if version == 3 and built.report["smre"]["spear"]["unknown"]:
         raise ValueError(f"SMRE did not resolve the tether: {built.report['smre']['spear']['unknown']}")
     rom = bytearray(built.rom)
     install_run_invisibility(rom, clean, built)
@@ -114,7 +118,7 @@ def main() -> None:
     parser.add_argument("clean", type=Path)
     parser.add_argument("mkt", type=Path)
     parser.add_argument("-o", "--output", type=Path, required=True)
-    parser.add_argument("--version", type=int, choices=(1, 2), default=1)
+    parser.add_argument("--version", type=int, choices=(1, 3), default=1)
     args = parser.parse_args()
     if args.output.resolve() in {args.clean.resolve(), args.mkt.resolve()}:
         parser.error("Choose a separate output path")
@@ -123,7 +127,7 @@ def main() -> None:
         file.write(rom)
     print("SHA-256", hashlib.sha256(rom).hexdigest())
     print("Generic payload", hex(len(built.payload)), "selectors", built.selectors)
-    if args.version == 2:
+    if args.version == 3:
         print("Spear input: Back, Back + Low Punch. Ground only.")
     print("Invisibility input: hold Block, Up, Up, press Run. Ground only.")
     for name, value in built.report.items():

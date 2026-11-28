@@ -446,7 +446,8 @@ def build(clean: bytes, mkt: bytes, name: str, *, link_va: int = LINK_VA,
                                    helper=helper,
                                    helper_slot=_int(ptune["helper_slot"]) if "helper_slot" in ptune else None,
                                    throw_rate=int(throw["rate"]),
-                                   impact_mirror=impact_mirror(proj, ptune))  # fmt: skip
+                                   impact_mirror=impact_mirror(proj, ptune),
+                                   render_dy_px=_int(ptune.get("render_dy_px", 0)))  # fmt: skip
                 needed = lp.new_sounds(proj, projectile_events)
                 events, samples_end = lp.install_sounds(
                     rom, clean, mkt, donor_id, proj, tuple(chains.take() for _ in range(needed)),

@@ -267,3 +267,29 @@ def test_homing_hunt_and_direction_match_the_legacy_model() -> None:
         m.regs[REG["ra"]] = 0x80000010
         assert m.run(a.labels["dir"]).kind == "return"
         assert m.regs[REG["v0"]] == trk.direction(vx, vy)
+
+
+@needs_mkt
+def test_tether_render_offset_changes_only_the_flight_anchor() -> None:
+    from mkmszr.fighter_import import generate
+
+    mkt = Path(MKT).read_bytes()
+    program, result, _ = generate.Generator(mkt, 14).program("spear", 0x800ABFB8)
+    assert not result.unknown
+    step = next(s for s in program["steps"] if s["op"] == "projectile")
+
+    original = bytearray()
+    lowered = bytearray()
+    art = lp.place_art(original, mkt, 14, step, None, 0x10000)
+    moved = lp.place_art(lowered, mkt, 14, step, None, 0x10000, render_dy_px=10)
+    assert art == moved
+
+    def word_at(at: int) -> int:
+        return int.from_bytes(original[at:at + 4], "big")
+
+    descriptor = word_at(word_at(art.flight_at))
+    anchor_y = descriptor + 10
+    assert original[anchor_y:anchor_y + 2] == bytes(2)
+    assert lowered[anchor_y:anchor_y + 2] == (-10).to_bytes(2, "big", signed=True)
+    lowered[anchor_y:anchor_y + 2] = original[anchor_y:anchor_y + 2]
+    assert lowered == original
